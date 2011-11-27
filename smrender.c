@@ -464,10 +464,11 @@ void init_rdata(struct rdata *rd, int p)
 
 int main(int argc, char *argv[])
 {
-   hpx_ctrl_t *ctl;
+   hpx_ctrl_t *ctl, *cfctl;
    int fd = 0;
    struct stat st;
    FILE *f = stdout;
+   char *cf = "rules.osm";
 
    memset(&rdata_, 0, sizeof(rdata_));
    rdata_.x1c = 13.53;
@@ -492,7 +493,18 @@ int main(int argc, char *argv[])
       perror("hpx_init_simple"), exit(EXIT_FAILURE);
 
    (void) read_osm_file(ctl, &rdata_.nodes, &rdata_.ways);
+   (void) close(fd);
 
+   if ((fd = open(cf, O_RDONLY)) == -1)
+         perror("open"), exit(EXIT_FAILURE);
+
+   if (fstat(fd, &st) == -1)
+      perror("stat"), exit(EXIT_FAILURE);
+
+   if ((cfctl = hpx_init(fd, st.st_size)) == NULL)
+      perror("hpx_init_simple"), exit(EXIT_FAILURE);
+
+   (void) read_osm_file(cfctl, &rdata_.nrules, &rdata_.wrules);
    (void) close(fd);
 
    if ((rdata_.img = gdImageCreate(rdata_.w, rdata_.h)) == NULL)

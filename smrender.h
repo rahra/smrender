@@ -79,8 +79,8 @@ struct onode
 
 struct rdata
 {
-   bx_node_t *nodes;
-   bx_node_t *ways;
+   bx_node_t *nodes, *ways;
+   bx_node_t *nrules, *wrules;
    gdImage *img;
    double x1c, y1c, x2c, y2c, wc, hc;
    double mean_lat, mean_lat_len;
