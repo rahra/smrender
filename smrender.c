@@ -259,8 +259,8 @@ void apply_rules0(struct onode *mnd, struct rdata *rd, struct onode *nd)
          for (i = 0; i < gdImageSX(mnd->img.img); i++)
          {
             c = gdImageGetPixel(mnd->img.img, i, j);
-            if (gdTrueColorGetAlpha(c))
-               continue;
+//            if (gdTrueColorGetAlpha(c))
+//               continue;
             //gdImageSetPixel(rd->img, i + x, j + y, rd->col[BLACK]);
             gdImageSetPixel(rd->img, i + x, j + y, c);
          }
