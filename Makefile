@@ -17,14 +17,24 @@
 
 CC	= gcc
 CFLAGS	= -g -Wall -DHAS_STRPTIME -DMEM_USAGE -Dbx_hash_t=int64_t
-LDFLAGS	= -lm
+LDFLAGS	= -lm -lgd
 VER = smrender-r$(shell svnversion | tr -d M)
 
-all: smrender
+all: smrender smtemp smfix
 
-smrender: smrender.o bstring.o osm_func.o libhpxml.o smlog.o bxtree.o
+smload.o: smload.c smrules.h
+
+smrender: smrender.o bstring.o osm_func.o libhpxml.o smlog.o bxtree.o smload.o
+
+smtemp: smtemp.o bstring.o osm_func.o libhpxml.o smlog.o bxtree.o
+
+smfix: smfix.o bstring.o osm_func.o libhpxml.o smlog.o bxtree.o
 
 smrender.o: smrender.c smlog.h bstring.h
+
+smtemp.o: smtemp.c smlog.h bstring.h
+
+smfix.o: smfix.c smlog.h bstring.h
 
 osm_func.o: osm_func.c osm_inplace.h
 
