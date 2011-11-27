@@ -30,15 +30,47 @@
 //#include "smrules.h"
 
 
+typedef struct rdata rdata_t;
+typedef struct onode onode_t;
+
+
 struct otag
 {
    bstring_t k;
    bstring_t v;
 };
 
+struct actImage
+{
+   char *fn;
+   gdImage *img;
+};
+
+struct actCaption
+{
+   int pos;
+   int family;
+   int type;
+   double size;
+};
+
+struct actFunction
+{
+   char *lib;
+   int (*func)(const rdata_t*, const onode_t*);
+};
+
+
 struct onode
 {
    struct osm_node nd;
+   int type;
+   union
+   {
+      struct actImage img;
+      struct actCaption cap;
+      struct actFunction func;
+   };
    int ref_cnt;
    int64_t *ref;
    int tag_cnt;
@@ -61,6 +93,7 @@ struct rdata
 
 enum {WHITE, YELLOW, BLACK, BLUE, VIOLETT};
 enum {LAT, LON};
+enum {ACT_NA, ACT_IMG, ACT_CAP, ACT_FUNC};
 
 // select projection
 // PRJ_DIRECT directly projects the bounding box onto the image.
@@ -69,39 +102,17 @@ enum {LAT, LON};
 enum {PRJ_DIRECT, PRJ_MERC_PAGE, PRJ_MERC_BB};
 
 
-struct actImage
-{
-   char *fn;
-   gdImage *img;
-};
-
-struct actCaption
-{
-   int pos;
-   int family;
-   int type;
-   double size;
-};
-
-struct actFunction
-{
-   char *lib;
-   int (*func)(const struct rdata*, const struct onode*);
-};
-
-
+/*
 struct smrule
 {
-   struct smrule *next;
-   char *k;
-   char *v;
+   //struct smrule *next;
+   bstring_t k;
+   bstring_t v;
 };
-
 
 struct smevent
 {
    struct smevent *next;
-   struct smrule *rule;
    int type;
    union
    {
@@ -109,12 +120,16 @@ struct smevent
       struct actCaption cap;
       struct actFunction func;
    };
+   int rule_cnt;
+   struct smrule rule[];
 };
+*/
 
 int read_osm_file(hpx_ctrl_t *, bx_node_t **, bx_node_t **);
 
 struct smevent *dummy_load(void);
 
+extern int oline_;
 
 #endif
 

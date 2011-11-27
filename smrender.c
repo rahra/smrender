@@ -110,10 +110,10 @@ int coords_inrange(const struct rdata *rd, int x, int y)
    return x >= 0 && x < rd->w && y >= 0 && y < rd->h;
 }
 
-
+/*
 void draw_nodes(struct onode *nd, struct rdata *rd)
 {
-   int x, y, i, j, c;
+   int x, y, i, j;
 
    if (match_attr(nd, rd->ev->rule->k, rd->ev->rule->v) == -1)
       return;
@@ -134,6 +134,7 @@ void draw_nodes(struct onode *nd, struct rdata *rd)
          }
    }
 }
+*/
 
 
 void draw_coast_fill(struct onode *nd, struct rdata *rd)
@@ -509,8 +510,8 @@ int main(int argc, char *argv[])
    traverse(rdata_.ways, 0, draw_coast_fill, &rdata_);
 
 
-   rdata_.ev = dummy_load();
-   traverse(rdata_.nodes, 0, draw_nodes, &rdata_);
+   //rdata_.ev = dummy_load();
+   //traverse(rdata_.nodes, 0, draw_nodes, &rdata_);
 
 
    grid(&rdata_, rdata_.col[BLACK]);

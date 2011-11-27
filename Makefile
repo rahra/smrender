@@ -20,11 +20,11 @@ CFLAGS	= -g -Wall -DHAS_STRPTIME -DMEM_USAGE -Dbx_hash_t=int64_t
 LDFLAGS	= -lm -lgd
 VER = smrender-r$(shell svnversion | tr -d M)
 
-all: smrender smtemp smfix
+all: smrender
 
-smload.o: smload.c smrules.h
+smloadosm.o: smloadosm.c smrender.h
 
-smrender: smrender.o bstring.o osm_func.o libhpxml.o smlog.o bxtree.o smload.o
+smrender: smrender.o bstring.o osm_func.o libhpxml.o smlog.o bxtree.o smloadosm.o
 
 smtemp: smtemp.o bstring.o osm_func.o libhpxml.o smlog.o bxtree.o
 

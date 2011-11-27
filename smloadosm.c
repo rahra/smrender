@@ -52,6 +52,7 @@ int read_osm_file(hpx_ctrl_t *ctl, bx_node_t **ntree, bx_node_t **wtree)
    hpx_tree_t *tlist = NULL;
    bx_node_t *tr;
    int64_t *ref;
+   int64_t nid = INT64_MIN + 1;
 
    if (hpx_tree_resize(&tlist, 0) == -1)
       perror("hpx_tree_resize"), exit(EXIT_FAILURE);
@@ -84,6 +85,8 @@ int read_osm_file(hpx_ctrl_t *ctl, bx_node_t **ntree, bx_node_t **wtree)
                memset(&nd, 0, sizeof(nd));
                nd.type = n;
                proc_osm_node(tag, &nd);
+               if (!nd.id) nd.id = nid++;
+
                if (tlist->nsub >= tlist->msub)
                {
                   if (hpx_tree_resize(&tlist, 1) == -1)
@@ -102,6 +105,7 @@ int read_osm_file(hpx_ctrl_t *ctl, bx_node_t **ntree, bx_node_t **wtree)
                memset(&nd, 0, sizeof(nd));
                nd.type = n;
                proc_osm_node(tag, &nd);
+               if (!nd.id) nd.id = nid++;
 
                tr = bx_add_node(nd.type == OSM_NODE ? ntree : wtree, nd.id);
                if ((ond = malloc(sizeof(*ond))) == NULL)

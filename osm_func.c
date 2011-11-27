@@ -17,6 +17,7 @@
 
 #define _XOPEN_SOURCE
 #include <time.h>
+#include <string.h>
 
 #include "osm_inplace.h"
 #include "bstring.h"
@@ -83,7 +84,6 @@ int proc_osm_node(const hpx_tag_t *tag, struct osm_node *nd)
          nd->act[n] = '\0';
       }
    }
-   nd->cl = NCL(nd->lat, nd->lon);
 
    return tag->type;
 }
