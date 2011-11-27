@@ -42,7 +42,7 @@ struct otag
 
 struct actImage
 {
-   char *fn;
+   //char *fn;
    gdImage *img;
 };
 
@@ -88,7 +88,7 @@ struct rdata
    int dpi;
    double scale;
    int col[5];
-   struct smevent *ev;
+   //struct smevent *ev;
 };
 
 enum {WHITE, YELLOW, BLACK, BLUE, VIOLETT};
@@ -126,8 +126,9 @@ struct smevent
 */
 
 int read_osm_file(hpx_ctrl_t *, bx_node_t **, bx_node_t **);
+void traverse(const bx_node_t *, int, void (*)(struct onode*, struct rdata*, void*), struct rdata *, void *);
 
-struct smevent *dummy_load(void);
+//struct smevent *dummy_load(void);
 
 extern int oline_;
 

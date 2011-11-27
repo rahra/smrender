@@ -31,6 +31,7 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <gd.h>
+#include <regex.h>
 
 #include "osm_inplace.h"
 #include "bstring.h"
@@ -71,30 +72,145 @@ char *cfmt(double c, int d, char *s, int l)
    return s;
 }
 
-int match_attr(const struct onode *nd, const char *k, const char *v)
+
+int bs_cmp2(const bstring_t *s1, const bstring_t *s2)
 {
-   int i;
+   if (s1->len != s2->len)
+      return s1->len > s2->len ? 1 : -1;
+   return memcmp(s1->buf, s2->buf, s1->len);
+}
+
+
+int bs_match(const bstring_t *dst, const bstring_t *pat)
+{
+   int m = 0;
+   regex_t re;
+   char buf[dst->len + 1];
+
+   if (pat->len && (*pat->buf == '/'))
+   {
+      if (regcomp(&re, pat->buf + 1, REG_NOSUB))
+      {
+         fprintf(stderr, "failed to compile regex %s/\n", pat->buf);
+         return -1;
+      }
+
+      memcpy(buf, dst->buf, dst->len);
+      buf[dst->len] = '\0';
+      
+      if (!regexec(&re, buf, 0, NULL, 0))
+         m = 1;
+
+      regfree(&re);
+   }
+   else if (!bs_cmp2(dst, pat))
+   {
+      m = 1;
+   }
+
+   return m;
+}
+
+
+int bs_match_attr(const struct onode *nd, const bstring_t *k, const bstring_t *v)
+{
+   int i, kmatch, vmatch;
 
    for (i = 0; i < nd->tag_cnt; i++)
    {
-      if (k != NULL)
-      {
-         if (!bs_cmp(nd->otag[i].k, k))
-         {
-            if (v == NULL)
-               return i;
-            if (!bs_cmp(nd->otag[i].v, v))
-               return i;
-         }
-      }
-      else
-      {
-         if (!bs_cmp(nd->otag[i].v, v))
-            return i;
-      }
+      kmatch = vmatch = 0;
+
+      kmatch = (k != NULL) && k->len ? bs_match(&nd->otag[i].k, k) : 1;
+      vmatch = (v != NULL) && v->len ? bs_match(&nd->otag[i].v, v) : 1;
+
+      if (kmatch && vmatch)
+         return i;
    }
 
    return -1;
+}
+
+
+int match_attr(const struct onode *nd, const char *k, const char *v)
+{
+   bstring_t bk, bv, *bkp = NULL, *bvp = NULL;
+
+   if (k)
+   {
+      bk.len = strlen(k);
+      bk.buf = (char*) k;
+      bkp = &bk;
+   }
+   if (v)
+   {
+      bv.len = strlen(v);
+      bv.buf = (char*) v;
+      bvp = &bv;
+   }
+
+   return bs_match_attr(nd, bkp, bvp);
+}
+
+
+/*! check if bstring is a regex (i.e. /.../).
+ *  @return 1 if it is no regex, 0 if text is enclosed in /, or -1 if there is
+ *  an error with the regex.
+ */
+int ckregex(bstring_t *b)
+{
+   if (!b->len)
+      return 1;
+
+   if (*b->buf == '/')
+   {
+      if ((b->len > 1) && (b->buf[b->len - 1] == '/'))
+      {
+         b->buf[b->len - 1] = '\0';
+         b->len--;
+         return 0;
+      }
+      return -1;
+   }
+   return 1;
+}
+
+
+void prepare_rules(struct onode *nd, struct rdata *rd, void *p)
+{
+   char *s;
+   FILE *f;
+   int i;
+
+   for (i = 0; i < nd->tag_cnt; i++)
+      if ((ckregex(&nd->otag[i].k) == -1) || (ckregex(&nd->otag[i].v) == -1))
+      {
+         fprintf(stderr, "illegal regex definition: '%.*s'='%.*s'\n", 
+               nd->otag[i].k.len, nd->otag[i].k.buf, nd->otag[i].v.len, nd->otag[i].v.buf);
+         return;
+      }
+
+   s = strtok(nd->nd.act, ":");
+   if (!strcmp(s, "img"))
+   {
+      if ((s = strtok(NULL, ":")) == NULL)
+         return;
+      if ((f = fopen(s, "r")) == NULL)
+      {
+         fprintf(stderr, "fopen(%s) failed: %s\n", s, strerror(errno));
+         return;
+      }
+
+      if ((nd->img.img = gdImageCreateFromPng(f)) == NULL)
+         fprintf(stderr, "could not read PNG from %s\n", s);
+      (void) fclose(f);
+
+      nd->type = ACT_IMG;
+      fprintf(stderr, "successfully imported PNG %s\n", s);
+   }
+   else
+   {
+      fprintf(stderr, "action type '%s' not supported yet\n", s);
+   }
 }
 
 
@@ -110,34 +226,61 @@ int coords_inrange(const struct rdata *rd, int x, int y)
    return x >= 0 && x < rd->w && y >= 0 && y < rd->h;
 }
 
-/*
-void draw_nodes(struct onode *nd, struct rdata *rd)
-{
-   int x, y, i, j;
 
-   if (match_attr(nd, rd->ev->rule->k, rd->ev->rule->v) == -1)
+void apply_rules0(struct onode *mnd, struct rdata *rd, struct onode *nd)
+{
+   int x, y, i, j, c;
+
+   if (!mnd->type)
+   {
+      fprintf(stderr, "ACT_NA rule ignored\n");
+      return;
+   }
+
+   // check if node has tags
+   if (!nd->tag_cnt)
       return;
 
-   fprintf(stderr, "node rule match\n");
-   
-   mkcoords(nd->nd.lat, nd->nd.lon, rd, &x, &y);
-   x -= gdImageSX(rd->ev->img) / 2;
-   y -= gdImageSY(rd->ev->img) / 2;
+   for (i = 0; i < mnd->tag_cnt; i++)
+      if (bs_match_attr(nd, &mnd->otag[i].k, &mnd->otag[i].v) == -1)
+         return;
 
-   for (j = 0; j < gdImageSY(rd->ev->img); j++)
+   fprintf(stderr, "node id %ld rule match\n", nd->nd.id);
+
+   if (mnd->type == ACT_IMG)
    {
-         for (i = 0; i < gdImageSX(rd->ev->img); i++)
+      mkcoords(nd->nd.lat, nd->nd.lon, rd, &x, &y);
+
+      x -= gdImageSX(mnd->img.img) / 2;
+      y -= gdImageSY(mnd->img.img) / 2;
+
+      for (j = 0; j < gdImageSY(mnd->img.img); j++)
+      {
+         for (i = 0; i < gdImageSX(mnd->img.img); i++)
          {
-            if (gdTrueColorGetAlpha(gdImageGetPixel(rd->ev->img, i, j)))
+            c = gdImageGetPixel(mnd->img.img, i, j);
+            if (gdTrueColorGetAlpha(c))
                continue;
-            gdImageSetPixel(rd->img, i + x, j + y, rd->col[BLACK]);
+            //gdImageSetPixel(rd->img, i + x, j + y, rd->col[BLACK]);
+            gdImageSetPixel(rd->img, i + x, j + y, c);
          }
+      }
+   }
+   else
+   {
+      fprintf(stderr, "action type %d not implemented yet\n", mnd->type);
    }
 }
-*/
 
 
-void draw_coast_fill(struct onode *nd, struct rdata *rd)
+void apply_rules(struct onode *nd, struct rdata *rd, void *vp)
+{
+   traverse(rd->nrules, 0, (void (*)(struct onode *, struct rdata *, void *)) apply_rules0, rd, nd);
+}
+
+
+
+void draw_coast_fill(struct onode *nd, struct rdata *rd, void *vp)
 {
    bx_node_t *nt;
    struct onode *node;
@@ -261,7 +404,7 @@ void draw_coast_fill(struct onode *nd, struct rdata *rd)
 }
 
 
-void draw_coast(struct onode *nd, struct rdata *rd)
+void draw_coast(struct onode *nd, struct rdata *rd, void *vp)
 {
    bx_node_t *nt;
    struct onode *node;
@@ -357,14 +500,14 @@ void print_tree(struct onode *nd, struct rdata *rd)
 }
 
 
-void traverse(const bx_node_t *nt, int d, void (*dhandler)(struct onode*, struct rdata*), struct rdata *rd)
+void traverse(const bx_node_t *nt, int d, void (*dhandler)(struct onode*, struct rdata*, void*), struct rdata *rd, void *p)
 {
    int i;
 
    if (d == 8)
    {
       if (nt->next[0] != NULL)
-         dhandler(nt->next[0], rd);
+         dhandler(nt->next[0], rd, p);
       else
          fprintf(stderr, "*** this should not happen: NULL pointer catched\n");
 
@@ -373,7 +516,7 @@ void traverse(const bx_node_t *nt, int d, void (*dhandler)(struct onode*, struct
 
    for (i = 0; i < 256; i++)
       if (nt->next[i])
-         traverse(nt->next[i], d + 1, dhandler, rd);
+         traverse(nt->next[i], d + 1, dhandler, rd, p);
 
    return;
 }
@@ -507,7 +650,7 @@ int main(int argc, char *argv[])
    (void) read_osm_file(cfctl, &rdata_.nrules, &rdata_.wrules);
    (void) close(fd);
 
-   if ((rdata_.img = gdImageCreate(rdata_.w, rdata_.h)) == NULL)
+   if ((rdata_.img = gdImageCreateTrueColor(rdata_.w, rdata_.h)) == NULL)
       perror("gdImage"), exit(EXIT_FAILURE);
    rdata_.col[WHITE] = gdImageColorAllocate(rdata_.img, 255, 255, 255);
    rdata_.col[BLACK] = gdImageColorAllocate(rdata_.img, 0, 0, 0);
@@ -515,15 +658,19 @@ int main(int argc, char *argv[])
    rdata_.col[BLUE] = gdImageColorAllocate(rdata_.img, 137, 199, 178);
    rdata_.col[VIOLETT] = gdImageColorAllocate(rdata_.img, 120, 8, 44);
 
+   gdImageFill(rdata_.img, 0, 0, rdata_.col[WHITE]);
+
+
+   traverse(rdata_.nrules, 0, prepare_rules, &rdata_, NULL);
 
    //traverse(rdata_.nodes, 0, print_tree, &rdata_);
    //traverse(rdata_.ways, 0, print_tree, &rdata_);
-   traverse(rdata_.ways, 0, draw_coast, &rdata_);
-   traverse(rdata_.ways, 0, draw_coast_fill, &rdata_);
+   traverse(rdata_.ways, 0, draw_coast, &rdata_, NULL);
+   traverse(rdata_.ways, 0, draw_coast_fill, &rdata_, NULL);
 
 
    //rdata_.ev = dummy_load();
-   //traverse(rdata_.nodes, 0, draw_nodes, &rdata_);
+   traverse(rdata_.nodes, 0, apply_rules, &rdata_, NULL);
 
 
    grid(&rdata_, rdata_.col[BLACK]);
