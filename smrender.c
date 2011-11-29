@@ -329,6 +329,7 @@ int act_caption(struct onode *nd, struct rdata *rd, struct onode *mnd, int x, in
 {
    int br[8], n;
    char *s;
+   gdFTStringExtra fte;
 
    if ((n = match_attr(nd, mnd->rule.cap.key, NULL)) == -1)
    {
@@ -336,8 +337,12 @@ int act_caption(struct onode *nd, struct rdata *rd, struct onode *mnd, int x, in
       return 0;
    }
 fprintf(stderr, "font: %s\n", mnd->rule.cap.font);
+   memset(&fte, 0, sizeof(fte));
+   fte.flags = gdFTEX_RESOLUTION;
+   fte.hdpi = fte.vdpi = rd->dpi;
+
    nd->otag[n].v.buf[nd->otag[n].v.len] = '\0';
-   if ((s = gdImageStringFT(rd->img, br, mnd->rule.cap.col, mnd->rule.cap.font, mnd->rule.cap.size, 0, x, y, nd->otag[n].v.buf)) != NULL)
+   if ((s = gdImageStringFTEx(rd->img, br, mnd->rule.cap.col, mnd->rule.cap.font, mnd->rule.cap.size * 2.8699, 0, x, y, nd->otag[n].v.buf, &fte)) != NULL)
       fprintf(stderr, "error rendering caption: %s\n", s);
    else
       fprintf(stderr, "printed %s at %d,%d\n", nd->otag[n].v.buf, x, y);
