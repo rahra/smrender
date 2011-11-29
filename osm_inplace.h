@@ -47,7 +47,7 @@ struct osm_node
    int ver, cs, uid;
    int vis;
    time_t tim;
-   char act[1024];
+//   char act[1024];
 
    // osmx specific type
    int type;

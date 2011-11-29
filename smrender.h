@@ -28,16 +28,38 @@
 #include "bxtree.h"
 //#include "smact.h"
 //#include "smrules.h"
+#include <regex.h>
+
+
+#define SPECIAL_DIRECT 0x0000
+#define SPECIAL_REGEX 0x0001
+#define SPECIAL_INVERT 0x8000
+
+
+#define POS_M 3
+#define POS_N 1
+#define POS_S 2
+#define POS_C 12
+#define POS_E 4
+#define POS_W 8
 
 
 typedef struct rdata rdata_t;
 typedef struct onode onode_t;
 
 
+struct specialTag
+{
+   short type;
+   regex_t re;
+};
+
 struct otag
 {
    bstring_t k;
    bstring_t v;
+   struct specialTag stk;
+   struct specialTag stv;
 };
 
 struct actImage
@@ -48,29 +70,41 @@ struct actImage
 
 struct actCaption
 {
-   int pos;
-   int family;
-   int type;
+   short pos;
+   int col;
+   char *font;
+   char *key;
    double size;
 };
 
 struct actFunction
 {
-   char *lib;
+   //char *lib;
    int (*func)(const rdata_t*, const onode_t*);
 };
 
-
-struct onode
+struct actDraw
 {
-   struct osm_node nd;
-   int type;
+   short lcol, lstyle, fcol, fstyle;
+};
+
+struct rule
+{
+   short type;
    union
    {
       struct actImage img;
       struct actCaption cap;
       struct actFunction func;
+      struct actDraw draw;
    };
+ 
+};
+
+struct onode
+{
+   struct osm_node nd;
+   struct rule rule;
    int ref_cnt;
    int64_t *ref;
    int tag_cnt;
@@ -91,9 +125,9 @@ struct rdata
    //struct smevent *ev;
 };
 
-enum {WHITE, YELLOW, BLACK, BLUE, VIOLETT};
+enum {WHITE, YELLOW, BLACK, BLUE, MAGENTA};
 enum {LAT, LON};
-enum {ACT_NA, ACT_IMG, ACT_CAP, ACT_FUNC};
+enum {ACT_NA, ACT_IMG, ACT_CAP, ACT_FUNC, ACT_DRAW};
 
 // select projection
 // PRJ_DIRECT directly projects the bounding box onto the image.

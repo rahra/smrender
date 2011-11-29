@@ -81,38 +81,40 @@ int bs_cmp2(const bstring_t *s1, const bstring_t *s2)
 }
 
 
-int bs_match(const bstring_t *dst, const bstring_t *pat)
+int bs_match(const bstring_t *dst, const bstring_t *pat, const struct specialTag *st)
 {
-   int m = 0;
-   regex_t re;
+   //int m = 0;
+   //regex_t re;
    char buf[dst->len + 1];
 
-   if (pat->len && (*pat->buf == '/'))
-   {
-      if (regcomp(&re, pat->buf + 1, REG_NOSUB))
-      {
-         fprintf(stderr, "failed to compile regex %s/\n", pat->buf);
-         return -1;
-      }
+   if (st == NULL)
+      return bs_cmp2(dst, pat) == 0;
 
+   if (st->type == SPECIAL_DIRECT)
+      return bs_cmp2(dst, pat) == 0;
+
+   if (st->type == SPECIAL_INVERT)
+      return bs_cmp2(dst, pat) != 0;
+
+   if ((st->type & ~SPECIAL_INVERT) == SPECIAL_REGEX)
+   {
+      // FIXME: this could be avoid if tags are 0-terminated.
       memcpy(buf, dst->buf, dst->len);
       buf[dst->len] = '\0';
-      
-      if (!regexec(&re, buf, 0, NULL, 0))
-         m = 1;
-
-      regfree(&re);
-   }
-   else if (!bs_cmp2(dst, pat))
-   {
-      m = 1;
+ 
+      if (!regexec(&st->re, buf, 0, NULL, 0))
+      {
+         if (st->type & SPECIAL_INVERT)
+            return 0;
+         return 1;
+      }
    }
 
-   return m;
+   return 0;
 }
 
 
-int bs_match_attr(const struct onode *nd, const bstring_t *k, const bstring_t *v)
+int bs_match_attr(const struct onode *nd, const struct otag *ot)
 {
    int i, kmatch, vmatch;
 
@@ -120,8 +122,8 @@ int bs_match_attr(const struct onode *nd, const bstring_t *k, const bstring_t *v
    {
       kmatch = vmatch = 0;
 
-      kmatch = (k != NULL) && k->len ? bs_match(&nd->otag[i].k, k) : 1;
-      vmatch = (v != NULL) && v->len ? bs_match(&nd->otag[i].v, v) : 1;
+      kmatch = ot->k.len ? bs_match(&nd->otag[i].k, &ot->k, &ot->stk) : 1;
+      vmatch = ot->v.len ? bs_match(&nd->otag[i].v, &ot->v, &ot->stv) : 1;
 
       if (kmatch && vmatch)
          return i;
@@ -133,45 +135,74 @@ int bs_match_attr(const struct onode *nd, const bstring_t *k, const bstring_t *v
 
 int match_attr(const struct onode *nd, const char *k, const char *v)
 {
-   bstring_t bk, bv, *bkp = NULL, *bvp = NULL;
+   struct otag ot;
+
+   memset(&ot, 0, sizeof(ot));
 
    if (k)
    {
-      bk.len = strlen(k);
-      bk.buf = (char*) k;
-      bkp = &bk;
+      ot.k.len = strlen(k);
+      ot.k.buf = (char*) k;
    }
    if (v)
    {
-      bv.len = strlen(v);
-      bv.buf = (char*) v;
-      bvp = &bv;
+      ot.v.len = strlen(v);
+      ot.v.buf = (char*) v;
    }
 
-   return bs_match_attr(nd, bkp, bvp);
+   return bs_match_attr(nd, &ot);
 }
 
 
-/*! check if bstring is a regex (i.e. /.../).
- *  @return 1 if it is no regex, 0 if text is enclosed in /, or -1 if there is
- *  an error with the regex.
- */
-int ckregex(bstring_t *b)
+int check_matchtype(bstring_t *b, struct specialTag *t)
 {
-   if (!b->len)
-      return 1;
+   t->type = 0;
 
-   if (*b->buf == '/')
+   if (b->len > 2)
    {
-      if ((b->len > 1) && (b->buf[b->len - 1] == '/'))
+      if ((b->buf[0] == '!') && (b->buf[b->len - 1] == '!'))
       {
          b->buf[b->len - 1] = '\0';
-         b->len--;
-         return 0;
+         b->buf++;
+         b->len -= 2;
+
+         t->type |= SPECIAL_INVERT;
       }
-      return -1;
    }
-   return 1;
+
+   if (b->len > 2)
+   {
+      if ((b->buf[0] == '/') && (b->buf[b->len - 1] == '/'))
+      {
+         b->buf[b->len - 1] = '\0';
+         b->buf++;
+         b->len -= 2;
+
+         if (regcomp(&t->re, b->buf + 1, REG_NOSUB))
+         {
+            fprintf(stderr, "failed to compile regex %s/\n", b->buf);
+            return -1;
+         }
+         t->type |= SPECIAL_REGEX;
+      }
+   }
+
+   return 0;
+}
+
+
+short ppos(const char *s)
+{
+   char c[] = "nsmewc";
+   int p[] = {POS_N, POS_S, POS_M, POS_E, POS_W, POS_C};
+   int i;
+   short pos = 0;
+
+   for (i = 0; i < strlen(c); i++)
+      if (strchr(s, c[i]) != NULL)
+         pos |= p[i];
+
+   return pos;
 }
 
 
@@ -182,14 +213,21 @@ void prepare_rules(struct onode *nd, struct rdata *rd, void *p)
    int i;
 
    for (i = 0; i < nd->tag_cnt; i++)
-      if ((ckregex(&nd->otag[i].k) == -1) || (ckregex(&nd->otag[i].v) == -1))
-      {
-         fprintf(stderr, "illegal regex definition: '%.*s'='%.*s'\n", 
-               nd->otag[i].k.len, nd->otag[i].k.buf, nd->otag[i].v.len, nd->otag[i].v.buf);
+   {
+      if (check_matchtype(&nd->otag[i].k, &nd->otag[i].stk) == -1)
          return;
-      }
+      if (check_matchtype(&nd->otag[i].v, &nd->otag[i].stv) == -1)
+         return;
+   }
 
-   s = strtok(nd->nd.act, ":");
+   if ((i = match_attr(nd, "_action_", NULL)) == -1)
+   {
+      fprintf(stderr, "rule has no action\n");
+      return;
+   }
+
+   nd->otag[i].v.buf[nd->otag[i].v.len] = '\0';
+   s = strtok(nd->otag[i].v.buf, ":");
    if (!strcmp(s, "img"))
    {
       if ((s = strtok(NULL, ":")) == NULL)
@@ -200,17 +238,54 @@ void prepare_rules(struct onode *nd, struct rdata *rd, void *p)
          return;
       }
 
-      if ((nd->img.img = gdImageCreateFromPng(f)) == NULL)
+      if ((nd->rule.img.img = gdImageCreateFromPng(f)) == NULL)
          fprintf(stderr, "could not read PNG from %s\n", s);
       (void) fclose(f);
 
-      nd->type = ACT_IMG;
+      nd->rule.type = ACT_IMG;
       fprintf(stderr, "successfully imported PNG %s\n", s);
+   }
+   else if (!strcmp(s, "cap"))
+   {
+      if ((s = strtok(NULL, ",")) == NULL) return;
+      nd->rule.cap.font = s;
+      if ((s = strtok(NULL, ",")) == NULL) return;
+      nd->rule.cap.size = atof(s);
+      if ((s = strtok(NULL, ",")) == NULL) return;
+      nd->rule.cap.pos = ppos(s);
+      if ((s = strtok(NULL, ",")) == NULL) return;
+
+      if (!strcmp(s, "magenta"))
+         nd->rule.cap.col = rd->col[MAGENTA];
+      if (!strcmp(s, "yellow"))
+         nd->rule.cap.col = rd->col[YELLOW];
+      if (!strcmp(s, "white"))
+         nd->rule.cap.col = rd->col[WHITE];
+      if (!strcmp(s, "blue"))
+         nd->rule.cap.col = rd->col[BLUE];
+      else
+         nd->rule.cap.col = rd->col[BLACK];
+
+
+      if ((s = strtok(NULL, ",")) == NULL) return;
+      nd->rule.cap.key = s;
+      nd->rule.type = ACT_CAP;
+      fprintf(stderr, "successfully parsed caption rule\n");
+   }
+   else if (!strcmp(s, "draw"))
+   {
+      nd->rule.type = ACT_DRAW;
+      fprintf(stderr, "successfully parsed draw rule\n");
    }
    else
    {
       fprintf(stderr, "action type '%s' not supported yet\n", s);
    }
+
+   // remove _action_ tag from tag list
+   if (i < nd->tag_cnt - 1)
+      memcpy(&nd->otag[i], &nd->otag[i + 1], sizeof(struct otag));
+   nd->tag_cnt--;
 }
 
 
@@ -227,11 +302,60 @@ int coords_inrange(const struct rdata *rd, int x, int y)
 }
 
 
-void apply_rules0(struct onode *mnd, struct rdata *rd, struct onode *nd)
+int act_image(struct onode *nd, struct rdata *rd, struct onode *mnd, int x, int y)
 {
-   int x, y, i, j, c;
+   int i, j, c;
 
-   if (!mnd->type)
+   x -= gdImageSX(mnd->rule.img.img) / 2;
+   y -= gdImageSY(mnd->rule.img.img) / 2;
+
+   for (j = 0; j < gdImageSY(mnd->rule.img.img); j++)
+   {
+      for (i = 0; i < gdImageSX(mnd->rule.img.img); i++)
+      {
+         c = gdImageGetPixel(mnd->rule.img.img, i, j);
+//       if (gdTrueColorGetAlpha(c))
+//          continue;
+//       gdImageSetPixel(rd->img, i + x, j + y, rd->col[BLACK]);
+         gdImageSetPixel(rd->img, i + x, j + y, c);
+      }
+   }
+
+   return 0;
+}
+
+
+int act_caption(struct onode *nd, struct rdata *rd, struct onode *mnd, int x, int y)
+{
+   int br[8], n;
+   char *s;
+
+   if ((n = match_attr(nd, mnd->rule.cap.key, NULL)) == -1)
+   {
+      fprintf(stderr, "node %ld has no caption tag '%s'\n", nd->nd.id, mnd->rule.cap.key);
+      return 0;
+   }
+fprintf(stderr, "font: %s\n", mnd->rule.cap.font);
+   nd->otag[n].v.buf[nd->otag[n].v.len] = '\0';
+   if ((s = gdImageStringFT(rd->img, br, mnd->rule.cap.col, mnd->rule.cap.font, mnd->rule.cap.size, 0, x, y, nd->otag[n].v.buf)) != NULL)
+      fprintf(stderr, "error rendering caption: %s\n", s);
+   else
+      fprintf(stderr, "printed %s at %d,%d\n", nd->otag[n].v.buf, x, y);
+
+   return 0;
+}
+
+
+/*! Match and apply ruleset to node.
+ *  @param nd Node which should be rendered.
+ *  @param rd Pointer to general rendering parameters.
+ *  @param mnd Ruleset.
+ */
+void apply_rules0(struct onode *nd, struct rdata *rd, struct onode *mnd)
+{
+   int x, y, i;
+
+   if (!mnd->rule.type)
    {
       fprintf(stderr, "ACT_NA rule ignored\n");
       return;
@@ -242,42 +366,101 @@ void apply_rules0(struct onode *mnd, struct rdata *rd, struct onode *nd)
       return;
 
    for (i = 0; i < mnd->tag_cnt; i++)
-      if (bs_match_attr(nd, &mnd->otag[i].k, &mnd->otag[i].v) == -1)
+      if (bs_match_attr(nd, &mnd->otag[i]) == -1)
          return;
 
-   fprintf(stderr, "node id %ld rule match\n", nd->nd.id);
+   fprintf(stderr, "node id %ld rule match %ld\n", nd->nd.id, mnd->nd.id);
+   mkcoords(nd->nd.lat, nd->nd.lon, rd, &x, &y);
 
-   if (mnd->type == ACT_IMG)
+   switch (mnd->rule.type)
    {
-      mkcoords(nd->nd.lat, nd->nd.lon, rd, &x, &y);
+      case ACT_IMG:
+         act_image(nd, rd, mnd, x, y);
+        break;
 
-      x -= gdImageSX(mnd->img.img) / 2;
-      y -= gdImageSY(mnd->img.img) / 2;
+      case ACT_CAP:
+         act_caption(nd, rd, mnd, x, y);
+         break;
 
-      for (j = 0; j < gdImageSY(mnd->img.img); j++)
-      {
-         for (i = 0; i < gdImageSX(mnd->img.img); i++)
-         {
-            c = gdImageGetPixel(mnd->img.img, i, j);
-//            if (gdTrueColorGetAlpha(c))
-//               continue;
-            //gdImageSetPixel(rd->img, i + x, j + y, rd->col[BLACK]);
-            gdImageSetPixel(rd->img, i + x, j + y, c);
-         }
-      }
-   }
-   else
-   {
-      fprintf(stderr, "action type %d not implemented yet\n", mnd->type);
+      default:
+         fprintf(stderr, "action type %d not implemented yet\n", mnd->rule.type);
    }
 }
 
 
 void apply_rules(struct onode *nd, struct rdata *rd, void *vp)
 {
-   traverse(rd->nrules, 0, (void (*)(struct onode *, struct rdata *, void *)) apply_rules0, rd, nd);
+   traverse(rd->nodes, 0, (void (*)(struct onode *, struct rdata *, void *)) apply_rules0, rd, nd);
 }
 
+
+void act_fill_poly(struct onode *wy, struct rdata *rd, struct onode *mnd)
+{
+   int i;
+   bx_node_t *nt;
+   struct onode *nd;
+   gdPoint p[wy->ref_cnt];
+
+   for (i = 0; i < wy->ref_cnt; i++)
+   {
+      if ((nt = bx_get_node(rd->nodes, wy->ref[i])) == NULL)
+      {
+         fprintf(stderr, "*** bx_get_node() failed\n");
+         return;
+      }
+      if ((nd = nt->next[0]) == NULL)
+      {
+         fprintf(stderr, "*** nt->next[0] contains NULL pointer\n");
+         return;
+      }
+      mkcoords(nd->nd.lat, nd->nd.lon, rd, &p[i].x, &p[i].y);
+   }
+
+   gdImageFilledPolygon(rd->img, p, wy->ref_cnt, rd->col[BLACK]);
+}
+
+/*! Match and apply ruleset to node.
+ *  @param nd Node which should be rendered.
+ *  @param rd Pointer to general rendering parameters.
+ *  @param mnd Ruleset.
+ */
+void apply_wrules0(struct onode *nd, struct rdata *rd, struct onode *mnd)
+{
+   int i;
+
+   if (!mnd->rule.type)
+   {
+      fprintf(stderr, "ACT_NA rule ignored\n");
+      return;
+   }
+
+   // check if node has tags
+   if (!nd->tag_cnt)
+      return;
+
+   for (i = 0; i < mnd->tag_cnt; i++)
+      if (bs_match_attr(nd, &mnd->otag[i]) == -1)
+         return;
+
+   fprintf(stderr, "way id %ld rule match %ld\n", nd->nd.id, mnd->nd.id);
+
+   switch (mnd->rule.type)
+   {
+      case ACT_DRAW:
+         if (nd->ref[0] == nd->ref[nd->ref_cnt - 1])
+            act_fill_poly(nd, rd, mnd);
+        break;
+
+      default:
+         fprintf(stderr, "action type %d not implemented yet\n", mnd->rule.type);
+   }
+}
+
+
+void apply_wrules(struct onode *nd, struct rdata *rd, void *vp)
+{
+   traverse(rd->ways, 0, (void (*)(struct onode *, struct rdata *, void *)) apply_wrules0, rd, nd);
+}
 
 
 void draw_coast_fill(struct onode *nd, struct rdata *rd, void *vp)
@@ -305,6 +488,7 @@ void draw_coast_fill(struct onode *nd, struct rdata *rd, void *vp)
          fprintf(stderr, "*** missing node %ld in way %ld\n", nd->ref[i], nd->nd.id);
          continue;
       }
+      // FIXME: add NULL pointer check
       node = nt->next[0];
       mkcoords(node->nd.lat, node->nd.lon, rd, &p[j].x, &p[j].y);
       j++;
@@ -426,6 +610,7 @@ void draw_coast(struct onode *nd, struct rdata *rd, void *vp)
          fprintf(stderr, "*** missing node %ld in way %ld\n", nd->ref[i], nd->nd.id);
          continue;
       }
+      // FIXME: add NULL pointer check
       node = nt->next[0];
       mkcoords(node->nd.lat, node->nd.lon, rd, &p[j].x, &p[j].y);
       j++;
@@ -527,6 +712,7 @@ void print_rdata(FILE *f, const struct rdata *rd)
    fprintf(f, "rdata:\nx1c = %.3f, y1c = %.3f, x2c = %.3f, y2c = %.3f\nmean_lat = %.3f, mean_lat_len = %.3f\nwc = %.3f, hc = %.3f\nw = %d, h = %d\ndpi = %d\nscale = 1:%.0f\n",
          rd->x1c, rd->y1c, rd->x2c, rd->y2c, rd->mean_lat, rd->mean_lat_len, rd->wc, rd->hc, rd->w, rd->h, rd->dpi, rd->scale);
 }
+
 
 double ticks(double d)
 {
@@ -656,12 +842,15 @@ int main(int argc, char *argv[])
    rdata_.col[BLACK] = gdImageColorAllocate(rdata_.img, 0, 0, 0);
    rdata_.col[YELLOW] = gdImageColorAllocate(rdata_.img, 231,209,74);
    rdata_.col[BLUE] = gdImageColorAllocate(rdata_.img, 137, 199, 178);
-   rdata_.col[VIOLETT] = gdImageColorAllocate(rdata_.img, 120, 8, 44);
+   rdata_.col[MAGENTA] = gdImageColorAllocate(rdata_.img, 120, 8, 44);
 
    gdImageFill(rdata_.img, 0, 0, rdata_.col[WHITE]);
+   if (!gdFTUseFontConfig(1))
+      fprintf(stderr, "fontconfig library not available\n");
 
 
    traverse(rdata_.nrules, 0, prepare_rules, &rdata_, NULL);
+   traverse(rdata_.wrules, 0, prepare_rules, &rdata_, NULL);
 
    //traverse(rdata_.nodes, 0, print_tree, &rdata_);
    //traverse(rdata_.ways, 0, print_tree, &rdata_);
@@ -670,7 +859,9 @@ int main(int argc, char *argv[])
 
 
    //rdata_.ev = dummy_load();
-   traverse(rdata_.nodes, 0, apply_rules, &rdata_, NULL);
+   //traverse(rdata_.nodes, 0, apply_rules, &rdata_, NULL);
+   traverse(rdata_.wrules, 0, apply_wrules, &rdata_, NULL);
+   traverse(rdata_.nrules, 0, apply_rules, &rdata_, NULL);
 
 
    grid(&rdata_, rdata_.col[BLACK]);
