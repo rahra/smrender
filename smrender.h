@@ -83,9 +83,18 @@ struct actFunction
    int (*func)(const rdata_t*, const onode_t*);
 };
 
+struct drawStyle
+{
+   int col;
+   double width;
+   short style;
+   short used;
+};
+
 struct actDraw
 {
-   short lcol, lstyle, fcol, fstyle;
+   struct drawStyle fill;
+   struct drawStyle border;
 };
 
 struct rule
@@ -128,6 +137,7 @@ struct rdata
 enum {WHITE, YELLOW, BLACK, BLUE, MAGENTA};
 enum {LAT, LON};
 enum {ACT_NA, ACT_IMG, ACT_CAP, ACT_FUNC, ACT_DRAW};
+enum {DRAW_SOLID, DRAW_DASHED, DRAW_DOTTED};
 
 // select projection
 // PRJ_DIRECT directly projects the bounding box onto the image.

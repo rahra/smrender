@@ -174,13 +174,15 @@ int check_matchtype(bstring_t *b, struct specialTag *t)
    {
       if ((b->buf[0] == '/') && (b->buf[b->len - 1] == '/'))
       {
+         fprintf(stderr, "seems to be regex: '%.*s' (%d, %c) \n", b->len, b->buf, b->len, b->buf[b->len - 1]);
          b->buf[b->len - 1] = '\0';
          b->buf++;
          b->len -= 2;
+         fprintf(stderr, "preparing regex '%s'\n", b->buf);
 
-         if (regcomp(&t->re, b->buf + 1, REG_NOSUB))
+         if (regcomp(&t->re, b->buf, REG_EXTENDED | REG_NOSUB))
          {
-            fprintf(stderr, "failed to compile regex %s/\n", b->buf);
+            fprintf(stderr, "failed to compile regex '%s'\n", b->buf);
             return -1;
          }
          t->type |= SPECIAL_REGEX;
@@ -203,6 +205,46 @@ short ppos(const char *s)
          pos |= p[i];
 
    return pos;
+}
+
+
+int parse_draw(const char *src, struct drawStyle *ds, const struct rdata *rd)
+{
+   char buf[strlen(src) + 1];
+   char *s, *sb;
+
+   strcpy(buf, src);
+   if ((s = strtok_r(buf, ",", &sb)) == NULL)
+   {
+      fprintf(stderr, "syntax error in draw rule %s\n", src);
+      return -1;
+   }
+   if (*s == '#')
+   {
+      fprintf(stderr, "HTML color style (%s) not supported yet, defaulting to black\n", src);
+      ds->col = rd->col[BLACK];
+   }
+   else if (!strcmp(s, "white"))
+      ds->col = rd->col[WHITE];
+   else if (!strcmp(s, "yellow"))
+      ds->col = rd->col[YELLOW];
+   else if (!strcmp(s, "black"))
+      ds->col = rd->col[BLACK];
+   else if (!strcmp(s, "blue"))
+      ds->col = rd->col[BLUE];
+   else if (!strcmp(s, "magenta"))
+      ds->col = rd->col[MAGENTA];
+   else
+   {
+      fprintf(stderr, "unknown color %s\n", s);
+      return -1;
+   }
+
+   if ((s = strtok_r(NULL, ",", &sb)) == NULL)
+      return 0;
+
+   fprintf(stderr, "draw width and styles are not parsed yet (sorry...)\n");
+   return 0;
 }
 
 
@@ -266,7 +308,6 @@ void prepare_rules(struct onode *nd, struct rdata *rd, void *p)
       else
          nd->rule.cap.col = rd->col[BLACK];
 
-
       if ((s = strtok(NULL, ",")) == NULL) return;
       nd->rule.cap.key = s;
       nd->rule.type = ACT_CAP;
@@ -274,6 +315,35 @@ void prepare_rules(struct onode *nd, struct rdata *rd, void *p)
    }
    else if (!strcmp(s, "draw"))
    {
+      if ((s = strtok(NULL, "")) == NULL)
+      {
+         fprintf(stderr, "syntax error in draw rule\n");
+         return;
+      }
+
+      if (*s != ':')
+      {
+         s = strtok(s, ":");
+         if (parse_draw(s, &nd->rule.draw.fill, rd) == -1)
+            return;
+         nd->rule.draw.fill.used = 1;
+         if ((s = strtok(NULL, ":")) != NULL)
+         {
+            if (!parse_draw(s, &nd->rule.draw.border, rd))
+               nd->rule.draw.border.used = 1;
+         }
+      }
+      else
+      {
+         if (strlen(s) <= 1)
+         {
+            fprintf(stderr, "syntax error in draw rule\n");
+            return;
+         }
+         if (!parse_draw(s + 1, &nd->rule.draw.border, rd))
+            nd->rule.draw.border.used = 1;
+      }
+
       nd->rule.type = ACT_DRAW;
       fprintf(stderr, "successfully parsed draw rule\n");
    }
@@ -399,6 +469,32 @@ void apply_rules(struct onode *nd, struct rdata *rd, void *vp)
 }
 
 
+void act_open_poly(struct onode *wy, struct rdata *rd, struct onode *mnd)
+{
+   int i;
+   bx_node_t *nt;
+   struct onode *nd;
+   gdPoint p[wy->ref_cnt];
+
+   for (i = 0; i < wy->ref_cnt; i++)
+   {
+      if ((nt = bx_get_node(rd->nodes, wy->ref[i])) == NULL)
+      {
+         fprintf(stderr, "*** bx_get_node() failed\n");
+         return;
+      }
+      if ((nd = nt->next[0]) == NULL)
+      {
+         fprintf(stderr, "*** nt->next[0] contains NULL pointer\n");
+         return;
+      }
+      mkcoords(nd->nd.lat, nd->nd.lon, rd, &p[i].x, &p[i].y);
+   }
+
+   gdImageOpenPolygon(rd->img, p, wy->ref_cnt, rd->col[BLACK]);
+}
+
+
 void act_fill_poly(struct onode *wy, struct rdata *rd, struct onode *mnd)
 {
    int i;
@@ -454,6 +550,8 @@ void apply_wrules0(struct onode *nd, struct rdata *rd, struct onode *mnd)
       case ACT_DRAW:
          if (nd->ref[0] == nd->ref[nd->ref_cnt - 1])
             act_fill_poly(nd, rd, mnd);
+         else
+            act_open_poly(nd, rd, mnd);
         break;
 
       default:
@@ -693,6 +791,12 @@ void print_tree(struct onode *nd, struct rdata *rd)
 void traverse(const bx_node_t *nt, int d, void (*dhandler)(struct onode*, struct rdata*, void*), struct rdata *rd, void *p)
 {
    int i;
+
+   if (nt == NULL)
+   {
+      fprintf(stderr, "null pointer catched...breaking recursion\n");
+      return;
+   }
 
    if (d == 8)
    {
