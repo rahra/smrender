@@ -1,0 +1,35 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<osm version='0.6'>
+   <node>
+      <tag k='seamark:type' v='light_minor'/>
+      <tag k='_action_' v='img:Light_Minor.png'/>
+   </node>
+   <node>
+      <tag k='seamark:type' v='light_major'/>
+      <tag k='_action_' v='img:Light_Major.png'/>
+   </node>
+   <node>
+      <tag k='/^seamark:light.*/' v=''/>
+      <tag k='_action_' v='img:Light_Magenta_120.png'/>
+   </node>
+   <node>
+      <tag k='_action_' v='img:Cardinal_Beacon_West.png'/>
+      <tag k='seamark:beacon_cardinal:category' v='west' />
+      <tag k='seamark:type' v='beacon_cardinal' />
+   </node>
+   <node>
+      <!-- cap:<fontfile>,<size in cm>,<alignement [ewc][nsm]>,<color>,<keyname to print> -->
+      <tag k='_action_' v='cap:/usr/share/fonts/truetype/ttf-liberation/LiberationSans-Italic.ttf,3,cm,black,seamark:light:ref'/>
+      <tag k='seamark:light:ref' v=''/>
+   </node>
+   <way>
+      <tag k='building' v=''/>
+      <!-- draw:<fill color>,<fill width>[,<fill style>][:<border color>,<border width>[,<border style>]] -->
+      <tag k='_action_' v='draw:black'/>
+   </way>
+   <way>
+      <tag k='highway' v='/^(secondary|primary|residential)$/'/>
+      <tag k='_action_' v='draw:black'/>
+   </way>
+</osm>
+
