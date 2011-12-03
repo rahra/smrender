@@ -840,6 +840,10 @@ if (m >= 10)
 }
 
 
+/*! ...
+ *  Karte im Maßstab 1:100 000 (Silba-Pag): grid 10', ticks 1', subticks 0.25'
+ *  ...
+ */
 void grid(struct rdata *rd, int col)
 {
    double xt, yt, xn, yn, l;
@@ -873,7 +877,7 @@ void grid(struct rdata *rd, int col)
 }
 
 
-void init_rdata(struct rdata *rd, int p)
+void init_prj(struct rdata *rd, int p)
 {
    rd->mean_lat = (rd->y1c + rd->y2c) / 2;
    switch (p)
@@ -900,6 +904,27 @@ void init_rdata(struct rdata *rd, int p)
 }
 
 
+void init_rdata(struct rdata *rd)
+{
+   memset(rd, 0, sizeof(*rd));
+
+   // A4 paper portrait
+   rd->w = 3507;
+   rd->h = 4961;
+   rd->dpi = 300;
+
+   rd->grd.lat_ticks = rd->grd.lon_ticks = G_TICKS;
+   rd->grd.lat_sticks = rd->grd.lon_sticks = G_STICKS;
+   rd->grd.lat_g = rd->grd.lon_g = G_GRID;
+
+   // this should be given by CLI arguments
+   rd->x1c = 13.53;
+   rd->y1c = 45.28;
+   rd->x2c = 13.63;
+   rd->y2c = 45.183;
+}
+
+
 int main(int argc, char *argv[])
 {
    hpx_ctrl_t *ctl, *cfctl;
@@ -908,17 +933,9 @@ int main(int argc, char *argv[])
    FILE *f = stdout;
    char *cf = "rules.osm";
 
-   memset(&rdata_, 0, sizeof(rdata_));
-   rdata_.x1c = 13.53;
-   rdata_.y1c = 45.28;
-   rdata_.x2c = 13.63;
-   rdata_.y2c = 45.183;
-   rdata_.w = 2480;
-   rdata_.h = 3507;
-   rdata_.dpi = 300;
+   init_rdata(&rdata_);
+   init_prj(&rdata_, PRJ_MERC_PAGE);
 
-   print_rdata(stderr, &rdata_);
-   init_rdata(&rdata_, PRJ_MERC_PAGE);
    print_rdata(stderr, &rdata_);
 
    if ((argc >= 2) && ((fd = open(argv[1], O_RDONLY)) == -1))

@@ -43,6 +43,9 @@
 #define POS_E 4
 #define POS_W 8
 
+#define G_GRID ((double) 10 / (double) 60)
+#define G_TICKS ((double) 1 / (double) 60)
+#define G_STICKS ((double) 0.25 / (double) 60)
 
 typedef struct rdata rdata_t;
 typedef struct onode onode_t;
@@ -120,6 +123,13 @@ struct onode
    struct otag otag[];
 };
 
+struct grid
+{
+   double lat_ticks, lon_ticks;
+   double lat_sticks, lon_sticks;
+   double lat_g, lon_g;
+};
+
 struct rdata
 {
    bx_node_t *nodes, *ways;
@@ -130,8 +140,8 @@ struct rdata
    int w, h;
    int dpi;
    double scale;
+   struct grid grd;
    int col[5];
-   //struct smevent *ev;
 };
 
 enum {WHITE, YELLOW, BLACK, BLUE, MAGENTA};
