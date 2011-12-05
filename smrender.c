@@ -630,13 +630,16 @@ void draw_coast_fill(struct onode *nd, struct rdata *rd, void *vp)
       {
          // find next non-BLACK pixel in easterly direction
          for (x = p[i].x + 1; x < rd->w; x++)
+         {
+            gdImageSetPixel(rd->img, x, p[i].y, 0x00ff00);
             if ((c = gdImageGetPixel(rd->img, x, p[i].y)) != rd->col[BLACK])
                break;
+         }
 
          // fill area if it is not filled already
          if ((x < rd->w) && (c != rd->col[YELLOW]))
-            //gdImageFillToBorder(rd->img, p[0].x + 1, p[0].y + 1, YELLOW, BLACK);
-            gdImageFill(rd->img, x, p[i].y, rd->col[YELLOW]);
+            //gdImageFill(rd->img, x, p[i].y, rd->col[YELLOW]);
+            fprintf(stderr, "%d %d\n", x, p[i].y);
          else
          {
             fprintf(stderr, "area filled\n");
@@ -649,12 +652,16 @@ void draw_coast_fill(struct onode *nd, struct rdata *rd, void *vp)
       {
          // find next non-BLACK pixel in easterly direction
          for (x = p[i].x - 1; x >= 0; x--)
+         {
+            gdImageSetPixel(rd->img, x, p[i].y, 0x00ff00);
             if ((c = gdImageGetPixel(rd->img, x, p[i].y)) != rd->col[BLACK])
                break;
+         }
 
          // fill area if it is not filled already
          if ((x >= 0) && (c != rd->col[YELLOW]))
-            gdImageFill(rd->img, x, p[i].y, rd->col[YELLOW]);
+            //gdImageFill(rd->img, x, p[i].y, rd->col[YELLOW]);
+            fprintf(stderr, "%d %d\n", x, p[i].y);
          else
          {
             fprintf(stderr, "area filled or out of range\n");
@@ -669,12 +676,16 @@ void draw_coast_fill(struct onode *nd, struct rdata *rd, void *vp)
       {
          // find next non-BLACK pixel in easterly direction
          for (y = p[i].y + 1; y < rd->h; y++)
+         {
+            gdImageSetPixel(rd->img, x, p[i].y, 0x00ff00);
             if ((c = gdImageGetPixel(rd->img, p[i].x, y)) != rd->col[BLACK])
                break;
+         }
 
          // fill area if it is not filled already
          if ((y < rd->h) && (c != rd->col[YELLOW]))
-            gdImageFill(rd->img, p[i].x, y, rd->col[YELLOW]);
+            //gdImageFill(rd->img, p[i].x, y, rd->col[YELLOW]);
+            fprintf(stderr, "%d %d\n", p[i].x, y);
          else
          {
             fprintf(stderr, "area filled or out of range\n");
@@ -687,12 +698,16 @@ void draw_coast_fill(struct onode *nd, struct rdata *rd, void *vp)
       {
          // find next non-BLACK pixel in easterly direction
          for (y = p[i].y - 1; y >= 0; y--)
+         {
+            gdImageSetPixel(rd->img, x, p[i].y, 0x00ff00);
             if ((c = gdImageGetPixel(rd->img, p[i].x, y)) != rd->col[BLACK])
                break;
+         }
 
          // fill area if it is not filled already
          if ((y >= 0) && (c != rd->col[YELLOW]))
-            gdImageFill(rd->img, p[i].x, y, rd->col[YELLOW]);
+            //gdImageFill(rd->img, p[i].x, y, rd->col[YELLOW]);
+            fprintf(stderr, "%d %d\n", p[i].x, y);
          else
          {
             fprintf(stderr, "area filled or out of range\n");
@@ -1057,6 +1072,8 @@ void init_rdata(struct rdata *rd)
    //rd->w = 3507; rd->h = 4961; rd->dpi = 300;
    // A4 paper portrait (300dpi)
    rd->w = 2480; rd->h = 3507; rd->dpi = 300;
+   // A4 paper landscape (300dpi)
+   rd->h = 2480; rd->w = 3507; rd->dpi = 300;
    // A4 paper portrait (600dpi)
    //rd->w = 4961; rd->h = 7016; rd->dpi = 600;
 
@@ -1065,10 +1082,15 @@ void init_rdata(struct rdata *rd)
    rd->grd.lat_g = rd->grd.lon_g = G_GRID;
 
    // this should be given by CLI arguments
+   /* porec.osm
    rd->x1c = 13.53;
    rd->y1c = 45.28;
    rd->x2c = 13.63;
-   rd->y2c = 45.183;
+   rd->y2c = 45.183; */
+   rd->x1c = 14.72;
+   rd->y1c = 44.23;
+   rd->x2c = 15.29;
+   rd->y2c = 43.96;
 }
 
 
@@ -1081,6 +1103,7 @@ int main(int argc, char *argv[])
    char *cf = "rules.osm";
 
    init_rdata(&rdata_);
+   print_rdata(stderr, &rdata_);
    init_prj(&rdata_, PRJ_MERC_PAGE);
    print_rdata(stderr, &rdata_);
 
@@ -1120,7 +1143,6 @@ int main(int argc, char *argv[])
    if (!gdFTUseFontConfig(1))
       fprintf(stderr, "fontconfig library not available\n");
 
-
    traverse(rdata_.nrules, 0, prepare_rules, &rdata_, NULL);
    traverse(rdata_.wrules, 0, prepare_rules, &rdata_, NULL);
 
@@ -1129,15 +1151,12 @@ int main(int argc, char *argv[])
    traverse(rdata_.ways, 0, draw_coast, &rdata_, NULL);
    traverse(rdata_.ways, 0, draw_coast_fill, &rdata_, NULL);
 
-
-   //rdata_.ev = dummy_load();
-   //traverse(rdata_.nodes, 0, apply_rules, &rdata_, NULL);
+   /*
    traverse(rdata_.wrules, 0, apply_wrules, &rdata_, NULL);
    traverse(rdata_.nrules, 0, apply_rules, &rdata_, NULL);
 
-
    grid(&rdata_, rdata_.col[BLACK]);
-
+*/
    hpx_free(ctl);
 
    gdImagePng(rdata_.img, f);
