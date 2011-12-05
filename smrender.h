@@ -43,9 +43,17 @@
 #define POS_E 4
 #define POS_W 8
 
-#define G_GRID ((double) 10 / (double) 60)
-#define G_TICKS ((double) 1 / (double) 60)
-#define G_STICKS ((double) 0.25 / (double) 60)
+#define G_GRID (10.0 / 60.0)
+#define G_TICKS (1.0 / 60.0)
+#define G_STICKS (G_TICKS / 4.0)
+// margin from paper edge to border of chart (mm)
+#define G_MARGIN 15.0
+// width of ticks border (mm)
+#define G_TW 5.0
+// width of subticks border (mm)
+#define G_STW 2.5
+// line width of chart border (mm)
+#define G_BW 0.1
 
 typedef struct rdata rdata_t;
 typedef struct onode onode_t;
