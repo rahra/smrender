@@ -938,13 +938,19 @@ void grid(struct rdata *rd, int col)
    p[4].x = rd->w - p[1].x;
    p[5].x = rd->w - p[2].x;
    p[0].y = rd->h - p[1].x;
+   d = p[1].x;
    mk_chart_coords(p[0].x, p[0].y, rd, &lat, &lon);
    // draw ticks and subticks on left and right border
+   for (l = fround(lat, G_STICKS); l < rd->y2c; l += G_STICKS)
+      fprintf(stderr, "%f\n", l);
+
    for (l = fround(lat, G_STICKS); l < rd->y1c; l += G_STICKS)
    {
       mk_paper_coords(l, lon, rd, &x, &y);
       p[0].y = p[1].y = p[2].y = p[3].y = p[4].y = p[5].y = y;
-      fprintf(stderr, "l = %s (%f), y = %d, frnd(l,GT) = %f\n", cfmt(l, LAT, buf, sizeof(buf)), l, y, fround(l, G_TICKS));
+      if (y > (rd->h - d)) continue;
+      if (y < d) break;
+      //fprintf(stderr, "l = %s (%f), y = %d, frnd(l,GT) = %f\n", cfmt(l, LAT, buf, sizeof(buf)), l, y, fround(l, G_TICKS));
       gdImageOpenPolygon(rd->img, &p[1], 2, col);
       gdImageOpenPolygon(rd->img, &p[4], 2, col);
    }
@@ -956,13 +962,16 @@ void grid(struct rdata *rd, int col)
    p[4].x = rd->w - p[1].x;
    p[5].x = rd->w - p[2].x;
    p[0].y = rd->h - p[1].x;
+   d = p[1].x;
    mk_chart_coords(p[0].x, p[0].y, rd, &lat, &lon);
    // draw ticks and subticks on left and right border
    for (l = fround(lat, G_TICKS); l < rd->y1c; l += G_TICKS)
    {
       mk_paper_coords(l, lon, rd, &x, &y);
       p[0].y = p[1].y = p[2].y = p[3].y = p[4].y = p[5].y = y;
-      fprintf(stderr, "l = %s (%f), y = %d, frnd(l,GT) = %f\n", cfmt(l, LAT, buf, sizeof(buf)), l, y, fround(l, G_TICKS));
+      if (y > (rd->h - d)) continue;
+      if (y < d) break;
+      //fprintf(stderr, "l = %s (%f), y = %d, frnd(l,GT) = %f\n", cfmt(l, LAT, buf, sizeof(buf)), l, y, fround(l, G_TICKS));
       gdImageOpenPolygon(rd->img, &p[0], 2, col);
       gdImageOpenPolygon(rd->img, &p[3], 2, col);
    }
@@ -975,12 +984,15 @@ void grid(struct rdata *rd, int col)
    p[4].y = rd->h - p[1].y;
    p[5].y = rd->h - p[2].y;
    p[0].x = p[1].y;
+   d = p[1].y;
    mk_chart_coords(p[0].x, p[0].y, rd, &lat, &lon);
    for (l = fround(lon, G_STICKS); l < rd->x2c; l += G_STICKS)
    {
       mk_paper_coords(lat, l, rd, &x, &y);
       p[0].x = p[1].x = p[2].x = p[3].x = p[4].x = p[5].x = x;
-      fprintf(stderr, "l = %s (%f), y = %d, frnd(l,GT) = %f\n", cfmt(l, LON, buf, sizeof(buf)), l, y, fround(l, G_TICKS));
+      if (x < d) continue;
+      if (x > (rd->w - d)) break;
+      //fprintf(stderr, "l = %s (%f), y = %d, frnd(l,GT) = %f\n", cfmt(l, LON, buf, sizeof(buf)), l, y, fround(l, G_TICKS));
       gdImageOpenPolygon(rd->img, &p[1], 2, col);
       gdImageOpenPolygon(rd->img, &p[4], 2, col);
    }
@@ -993,12 +1005,15 @@ void grid(struct rdata *rd, int col)
    p[4].y = rd->h - p[1].y;
    p[5].y = rd->h - p[2].y;
    p[0].x = p[1].y;
+   d = p[1].y;
    mk_chart_coords(p[0].x, p[0].y, rd, &lat, &lon);
    for (l = fround(lon, G_TICKS); l < rd->x2c; l += G_TICKS)
    {
       mk_paper_coords(lat, l, rd, &x, &y);
       p[0].x = p[1].x = p[2].x = p[3].x = p[4].x = p[5].x = x;
-      fprintf(stderr, "l = %s (%f), y = %d, frnd(l,GT) = %f\n", cfmt(l, LON, buf, sizeof(buf)), l, y, fround(l, G_TICKS));
+      if (x < d) continue;
+      if (x > (rd->w - d)) break;
+      //fprintf(stderr, "l = %s (%f), y = %d, frnd(l,GT) = %f\n", cfmt(l, LON, buf, sizeof(buf)), l, y, fround(l, G_TICKS));
       gdImageOpenPolygon(rd->img, &p[0], 2, col);
       gdImageOpenPolygon(rd->img, &p[3], 2, col);
    }
@@ -1038,11 +1053,12 @@ void init_rdata(struct rdata *rd)
 {
    memset(rd, 0, sizeof(*rd));
 
-   // A3 paper portrait
-   //rd->w = 3507; rd->h = 4961;
-   // A4 paper portrait
-   rd->w = 2480; rd->h = 3507;
-   rd->dpi = 300;
+   // A3 paper portrait (300dpi)
+   //rd->w = 3507; rd->h = 4961; rd->dpi = 300;
+   // A4 paper portrait (300dpi)
+   rd->w = 2480; rd->h = 3507; rd->dpi = 300;
+   // A4 paper portrait (600dpi)
+   //rd->w = 4961; rd->h = 7016; rd->dpi = 600;
 
    rd->grd.lat_ticks = rd->grd.lon_ticks = G_TICKS;
    rd->grd.lat_sticks = rd->grd.lon_sticks = G_STICKS;
