@@ -138,6 +138,9 @@ int bs_match_attr(const struct onode *nd, const struct otag *ot)
 }
 
 
+/*! Match tag.
+ *  @return -1 on error (no match), otherwise return number of tag which matches.
+ */
 int match_attr(const struct onode *nd, const char *k, const char *v)
 {
    struct otag ot;
@@ -631,15 +634,17 @@ void draw_coast_fill(struct onode *nd, struct rdata *rd, void *vp)
          // find next non-BLACK pixel in easterly direction
          for (x = p[i].x + 1; x < rd->w; x++)
          {
-            gdImageSetPixel(rd->img, x, p[i].y, 0x00ff00);
+            //gdImageSetPixel(rd->img, x, p[i].y, 0x00ff00);
             if ((c = gdImageGetPixel(rd->img, x, p[i].y)) != rd->col[BLACK])
                break;
          }
 
          // fill area if it is not filled already
          if ((x < rd->w) && (c != rd->col[YELLOW]))
+         {
             //gdImageFill(rd->img, x, p[i].y, rd->col[YELLOW]);
-            fprintf(stderr, "%d %d\n", x, p[i].y);
+            //fprintf(stderr, "%d %d\n", x, p[i].y);
+         }
          else
          {
             fprintf(stderr, "area filled\n");
@@ -653,15 +658,17 @@ void draw_coast_fill(struct onode *nd, struct rdata *rd, void *vp)
          // find next non-BLACK pixel in easterly direction
          for (x = p[i].x - 1; x >= 0; x--)
          {
-            gdImageSetPixel(rd->img, x, p[i].y, 0x00ff00);
+            //gdImageSetPixel(rd->img, x, p[i].y, 0x00ff00);
             if ((c = gdImageGetPixel(rd->img, x, p[i].y)) != rd->col[BLACK])
                break;
          }
 
          // fill area if it is not filled already
          if ((x >= 0) && (c != rd->col[YELLOW]))
+         {
             //gdImageFill(rd->img, x, p[i].y, rd->col[YELLOW]);
-            fprintf(stderr, "%d %d\n", x, p[i].y);
+            //fprintf(stderr, "%d %d\n", x, p[i].y);
+         }
          else
          {
             fprintf(stderr, "area filled or out of range\n");
@@ -677,15 +684,17 @@ void draw_coast_fill(struct onode *nd, struct rdata *rd, void *vp)
          // find next non-BLACK pixel in easterly direction
          for (y = p[i].y + 1; y < rd->h; y++)
          {
-            gdImageSetPixel(rd->img, x, p[i].y, 0x00ff00);
+            //gdImageSetPixel(rd->img, x, p[i].y, 0x00ff00);
             if ((c = gdImageGetPixel(rd->img, p[i].x, y)) != rd->col[BLACK])
                break;
          }
 
          // fill area if it is not filled already
          if ((y < rd->h) && (c != rd->col[YELLOW]))
+         {
             //gdImageFill(rd->img, p[i].x, y, rd->col[YELLOW]);
-            fprintf(stderr, "%d %d\n", p[i].x, y);
+            //fprintf(stderr, "%d %d\n", p[i].x, y);
+         }
          else
          {
             fprintf(stderr, "area filled or out of range\n");
@@ -699,15 +708,17 @@ void draw_coast_fill(struct onode *nd, struct rdata *rd, void *vp)
          // find next non-BLACK pixel in easterly direction
          for (y = p[i].y - 1; y >= 0; y--)
          {
-            gdImageSetPixel(rd->img, x, p[i].y, 0x00ff00);
+            //gdImageSetPixel(rd->img, x, p[i].y, 0x00ff00);
             if ((c = gdImageGetPixel(rd->img, p[i].x, y)) != rd->col[BLACK])
                break;
          }
 
          // fill area if it is not filled already
          if ((y >= 0) && (c != rd->col[YELLOW]))
+         {
             //gdImageFill(rd->img, p[i].x, y, rd->col[YELLOW]);
-            fprintf(stderr, "%d %d\n", p[i].x, y);
+            //fprintf(stderr, "%d %d\n", p[i].x, y);
+         }
          else
          {
             fprintf(stderr, "area filled or out of range\n");
@@ -733,8 +744,6 @@ void draw_coast(struct onode *nd, struct rdata *rd, void *vp)
 
    if (match_attr(nd, "natural", "coastline") == -1)
       return;
-
-   fprintf(stderr, "found coastline: %ld\n", nd->nd.id);
 
    if ((p = malloc(sizeof(gdPoint) * nd->ref_cnt)) == NULL)
       perror("malloc"), exit(EXIT_FAILURE);
@@ -1039,6 +1048,8 @@ void grid(struct rdata *rd, int col)
 
 void init_prj(struct rdata *rd, int p)
 {
+   double y1, y2;
+
    rd->mean_lat = (rd->y1c + rd->y2c) / 2;
    switch (p)
    {
@@ -1046,8 +1057,12 @@ void init_prj(struct rdata *rd, int p)
          rd->wc = rd->x2c - rd->x1c;
          rd->mean_lat_len = rd->wc * cos(rd->mean_lat * M_PI / 180);
          rd->hc = rd->mean_lat_len * rd->h / rd->w;
-         rd->y1c = rd->mean_lat + rd->hc / 2.0;
-         rd->y2c = rd->mean_lat - rd->hc / 2.0;
+         y1 = rd->mean_lat + rd->hc / 2.0;
+         y2 = rd->mean_lat - rd->hc / 2.0;
+         if ((y1 > rd->y1c) || (y2 < rd->y2c))
+            fprintf(stderr, "Warning: window enlarged in latitude! This may result in incorrect rendering.\n");
+         rd->y1c = y1;
+         rd->y2c = y2;
          break;
 
       case PRJ_MERC_BB:
@@ -1103,7 +1118,7 @@ int main(int argc, char *argv[])
    char *cf = "rules.osm";
 
    init_rdata(&rdata_);
-   print_rdata(stderr, &rdata_);
+   //print_rdata(stderr, &rdata_);
    init_prj(&rdata_, PRJ_MERC_PAGE);
    print_rdata(stderr, &rdata_);
 
@@ -1116,6 +1131,7 @@ int main(int argc, char *argv[])
    if ((ctl = hpx_init(fd, st.st_size)) == NULL)
       perror("hpx_init_simple"), exit(EXIT_FAILURE);
 
+   fprintf(stderr, "reading osm input file...\n");
    (void) read_osm_file(ctl, &rdata_.nodes, &rdata_.ways);
    (void) close(fd);
 
@@ -1128,6 +1144,7 @@ int main(int argc, char *argv[])
    if ((cfctl = hpx_init(fd, st.st_size)) == NULL)
       perror("hpx_init_simple"), exit(EXIT_FAILURE);
 
+   fprintf(stderr, "reading rules...\n");
    (void) read_osm_file(cfctl, &rdata_.nrules, &rdata_.wrules);
    (void) close(fd);
 
@@ -1143,20 +1160,24 @@ int main(int argc, char *argv[])
    if (!gdFTUseFontConfig(1))
       fprintf(stderr, "fontconfig library not available\n");
 
+   fprintf(stderr, "preparing rules...\n");
    traverse(rdata_.nrules, 0, prepare_rules, &rdata_, NULL);
    traverse(rdata_.wrules, 0, prepare_rules, &rdata_, NULL);
 
+   fprintf(stderr, "preparing coastline...\n");
+   cat_poly(&rdata_);
+
    //traverse(rdata_.nodes, 0, print_tree, &rdata_);
    //traverse(rdata_.ways, 0, print_tree, &rdata_);
+   fprintf(stderr, "rendering coastline (closed polygons)...\n");
    traverse(rdata_.ways, 0, draw_coast, &rdata_, NULL);
-   traverse(rdata_.ways, 0, draw_coast_fill, &rdata_, NULL);
+   //traverse(rdata_.ways, 0, draw_coast_fill, &rdata_, NULL);
 
-   /*
-   traverse(rdata_.wrules, 0, apply_wrules, &rdata_, NULL);
-   traverse(rdata_.nrules, 0, apply_rules, &rdata_, NULL);
+   //traverse(rdata_.wrules, 0, apply_wrules, &rdata_, NULL);
+   //traverse(rdata_.nrules, 0, apply_rules, &rdata_, NULL);
 
-   grid(&rdata_, rdata_.col[BLACK]);
-*/
+   //grid(&rdata_, rdata_.col[BLACK]);
+
    hpx_free(ctl);
 
    gdImagePng(rdata_.img, f);

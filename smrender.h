@@ -20,6 +20,7 @@
 
 #include <stdint.h>
 #include <gd.h>
+#include <regex.h>
 
 #include "osm_inplace.h"
 #include "bstring.h"
@@ -28,7 +29,7 @@
 #include "bxtree.h"
 //#include "smact.h"
 //#include "smrules.h"
-#include <regex.h>
+#include "smath.h"
 
 
 #define SPECIAL_DIRECT 0x0000
@@ -118,7 +119,6 @@ struct rule
       struct actFunction func;
       struct actDraw draw;
    };
- 
 };
 
 struct onode
@@ -164,33 +164,13 @@ enum {DRAW_SOLID, DRAW_DASHED, DRAW_DOTTED};
 enum {PRJ_DIRECT, PRJ_MERC_PAGE, PRJ_MERC_BB};
 
 
-/*
-struct smrule
-{
-   //struct smrule *next;
-   bstring_t k;
-   bstring_t v;
-};
-
-struct smevent
-{
-   struct smevent *next;
-   int type;
-   union
-   {
-      struct actImage img;
-      struct actCaption cap;
-      struct actFunction func;
-   };
-   int rule_cnt;
-   struct smrule rule[];
-};
-*/
-
+/* smrender.c */
 int read_osm_file(hpx_ctrl_t *, bx_node_t **, bx_node_t **);
 void traverse(const bx_node_t *, int, void (*)(struct onode*, struct rdata*, void*), struct rdata *, void *);
+int match_attr(const struct onode *, const char *, const char *);
 
-//struct smevent *dummy_load(void);
+/* smcoast.c */
+int cat_poly(struct rdata *);
 
 extern int oline_;
 

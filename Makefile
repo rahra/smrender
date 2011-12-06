@@ -24,7 +24,7 @@ all: smrender
 
 smloadosm.o: smloadosm.c smrender.h
 
-smrender: smrender.o bstring.o osm_func.o libhpxml.o smlog.o bxtree.o smloadosm.o
+smrender: smrender.o bstring.o osm_func.o libhpxml.o smlog.o bxtree.o smloadosm.o smath.o smcoast.o
 
 smtemp: smtemp.o bstring.o osm_func.o libhpxml.o smlog.o bxtree.o
 
@@ -45,6 +45,10 @@ libhpxml.o: libhpxml.c libhpxml.h bstring.h
 smlog.o: smlog.c smlog.h
 
 bxtree.o: bxtree.c bxtree.h
+
+smath.o: smath.c smath.h
+
+smcoast.o: smcoast.c smrender.h smath.h
 
 clean:
 	rm -f *.o smrender
