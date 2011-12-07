@@ -4,16 +4,19 @@
 
 #include "smrender.h"
 #include "smath.h"
+#include "bxtree.h"
 
 
 // initial number of ref array
 #define INIT_MAX_REF 20
+#define MAX_OPEN_POLY 32
 
 
 struct wlist
 {
    int64_t id;
    int ref_cnt, max_ref;
+   struct pcoord start, end;
    int64_t ref[];
 };
 
@@ -178,8 +181,35 @@ int poly_out(FILE *f, struct wlist *nl, struct rdata *rd)
       // FIXME: return code should be tested
       bn = bx_get_node(rd->nodes, nl->ref[i]);
       nd = bn->next[0];
-      fprintf(f, "<node id=\"%ld\" lat=\"%f\" lon=\"%f\" version=\"1\"/>\n", nd->nd.id, nd->nd.lat, nd->nd.lon);
+      print_onode(f, nd);
+      //fprintf(f, "<node id=\"%ld\" lat=\"%f\" lon=\"%f\" version=\"1\"/>\n", nd->nd.id, nd->nd.lat, nd->nd.lon);
    }
+
+   return 0;
+}
+
+
+
+int poly_ends(struct rdata *rd, struct wlist *nl, const struct coord *c)
+{
+   bx_node_t *bn;
+   struct onode *nd;
+   struct coord dst;
+
+   if (nl->ref_cnt < 2) return -1;
+   if ((bn = bx_get_node(rd->nodes, nl->ref[0])) == NULL) return -1;
+   if ((nd = bn->next[0]) == NULL) return -1;
+
+   dst.lat = nd->nd.lat;
+   dst.lon = nd->nd.lon;
+   nl->start = coord_diff(c, &dst);
+
+   if ((bn = bx_get_node(rd->nodes, nl->ref[nl->ref_cnt - 1])) == NULL) return -1;
+   if ((nd = bn->next[0]) == NULL) return -1;
+
+   dst.lat = nd->nd.lat;
+   dst.lon = nd->nd.lon;
+   nl->end = coord_diff(c, &dst);
 
    return 0;
 }
@@ -187,9 +217,10 @@ int poly_out(FILE *f, struct wlist *nl, struct rdata *rd)
 
 int cat_poly(struct rdata *rd)
 {
-   int i;
-   struct wlist *wl, *nl;
+   int i, nl_cnt;
+   struct wlist *wl, *nl[MAX_OPEN_POLY];
    FILE *f;
+   struct coord center, dst;
 
    if ((wl = malloc(sizeof(*wl) + INIT_MAX_REF * sizeof(int64_t))) == NULL)
       perror("malloc"), exit(EXIT_FAILURE);
@@ -208,14 +239,26 @@ int cat_poly(struct rdata *rd)
       perror("fopen"), exit(EXIT_FAILURE);
    fprintf(f, "<?xml version='1.0' encoding='UTF-8'?>\n<osm version='0.6' generator='smrender'>\n");
 
-   while ((nl = poly_find_adj(rd, wl)) != NULL)
+   center.lat = rd->mean_lat;
+   center.lon = (rd->x1c + rd->x2c) / 2;
+   i = 0;
+   while ((nl[i] = poly_find_adj(rd, wl)) != NULL)
    {
-      fprintf(stderr, "connected way, ref_cnt = %d\n", nl->ref_cnt);
-      poly_node_to_border(rd, nl);
-      poly_out(f, nl, rd);
-      free(nl);
+      fprintf(stderr, "connected way, ref_cnt = %d, ref[0] = %ld, ref[%d] = %ld\n",
+            nl[i]->ref_cnt, nl[i]->ref[0], nl[i]->ref_cnt - 1, nl[i]->ref[nl[i]->ref_cnt - 1]);
+      //poly_node_to_border(rd, nl);
+      poly_out(f, nl[i], rd);
+
+      if (poly_ends(rd, nl[i], &center) == -1)
+         fprintf(stderr, "*** error in poly_ends()\n");
+
+      i++;
    }
-   
+   nl_cnt = i;
+
+   for (i = 0; i < nl_cnt; i++)
+      free(nl[i]);
+
    fprintf(f, "</osm>\n");
    fclose(f);
 

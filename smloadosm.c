@@ -1,18 +1,18 @@
 /* Copyright 2011 Bernhard R. Fischer, 2048R/5C5FFD47 <bf@abenteuerland.at>
  *
- * This file is part of smfilter.
+ * This file is part of smrender.
  *
- * Smfilter is free software: you can redistribute it and/or modify
+ * Smrender is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, version 3 of the License.
  *
- * Smfilter is distributed in the hope that it will be useful,
+ * Smrender is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with smfilter. If not, see <http://www.gnu.org/licenses/>.
+ * along with smrender. If not, see <http://www.gnu.org/licenses/>.
  */
 
 /*! This program reads an OSM/XML file and parses, filters, and modifies it.
@@ -35,11 +35,25 @@
 #include "osm_inplace.h"
 #include "bstring.h"
 #include "libhpxml.h"
-//#include "seamark.h"
 #include "smlog.h"
 #include "bxtree.h"
 #include "smrender.h"
-//#include "smrules.h"
+
+
+int oline_ = 0;
+
+
+#ifdef MEM_USAGE
+static size_t mem_usage_ = 0;
+#endif
+
+
+#ifdef MEM_USAGE
+size_t onode_mem(void)
+{
+   return mem_usage_;
+}
+#endif
 
 
 int read_osm_file(hpx_ctrl_t *ctl, bx_node_t **ntree, bx_node_t **wtree)
@@ -58,6 +72,8 @@ int read_osm_file(hpx_ctrl_t *ctl, bx_node_t **ntree, bx_node_t **wtree)
       perror("hpx_tree_resize"), exit(EXIT_FAILURE);
    if ((tlist->tag = hpx_tm_create(16)) == NULL)
       perror("hpx_tm_create"), exit(EXIT_FAILURE);
+
+   oline_ = 0;
 
    tlist->nsub = 0;
    tag = tlist->tag;
@@ -110,6 +126,9 @@ int read_osm_file(hpx_ctrl_t *ctl, bx_node_t **ntree, bx_node_t **wtree)
                tr = bx_add_node(nd.type == OSM_NODE ? ntree : wtree, nd.id);
                if ((ond = malloc(sizeof(*ond))) == NULL)
                   perror("malloc"), exit(EXIT_FAILURE);
+#ifdef MEM_USAGE
+               mem_usage_ += sizeof(*ond);
+#endif
                memcpy(&ond->nd, &nd, sizeof(nd));
                memset(((char*) ond) + sizeof(nd), 0, sizeof(*ond) - sizeof(nd));
                tr->next[0] = ond;
@@ -123,6 +142,9 @@ int read_osm_file(hpx_ctrl_t *ctl, bx_node_t **ntree, bx_node_t **wtree)
                tr = bx_add_node(nd.type == OSM_NODE ? ntree : wtree, nd.id);
                if ((ond = malloc(sizeof(*ond))) == NULL)
                   perror("malloc"), exit(EXIT_FAILURE);
+#ifdef MEM_USAGE
+               mem_usage_ += sizeof(*ond);
+#endif
                memcpy(&ond->nd, &nd, sizeof(nd));
                memset(((char*) ond) + sizeof(nd), 0, sizeof(*ond) - sizeof(nd));
 
@@ -140,7 +162,10 @@ int read_osm_file(hpx_ctrl_t *ctl, bx_node_t **ntree, bx_node_t **wtree)
 
                if ((ond->ref = malloc(ond->ref_cnt * sizeof(int64_t))) == NULL)
                   perror("malloc"), exit(EXIT_FAILURE);
-
+#ifdef MEM_USAGE
+               mem_usage_ += ond->ref_cnt * sizeof(int64_t) + ond->tag_cnt * sizeof(struct otag);
+#endif
+ 
                for (i = 0, ref = ond->ref, j = 0; i < tlist->nsub; i++)
                {
                   if (!bs_cmp(tlist->subtag[i]->tag->tag, "tag"))

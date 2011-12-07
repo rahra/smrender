@@ -138,6 +138,16 @@ struct grid
    double lat_g, lon_g;
 };
 
+struct dstats
+{
+   struct coord lu;  // left upper
+   struct coord rb;  // right bottom
+   int64_t min_nid;
+   int64_t max_nid;
+   int64_t min_wid;
+   int64_t max_wid;
+};
+
 struct rdata
 {
    bx_node_t *nodes, *ways;
@@ -165,9 +175,15 @@ enum {PRJ_DIRECT, PRJ_MERC_PAGE, PRJ_MERC_BB};
 
 
 /* smrender.c */
-int read_osm_file(hpx_ctrl_t *, bx_node_t **, bx_node_t **);
 void traverse(const bx_node_t *, int, void (*)(struct onode*, struct rdata*, void*), struct rdata *, void *);
 int match_attr(const struct onode *, const char *, const char *);
+int print_onode(FILE *, const struct onode *);
+
+/* smloadosm.c */
+int read_osm_file(hpx_ctrl_t *, bx_node_t **, bx_node_t **);
+#ifdef MEM_USAGE
+size_t onode_mem(void);
+#endif
 
 /* smcoast.c */
 int cat_poly(struct rdata *);

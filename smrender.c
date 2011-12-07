@@ -44,7 +44,6 @@
 
 
 struct rdata rdata_;
-int oline_ = 0;
 
 
 void usage(const char *s)
@@ -1109,6 +1108,68 @@ void init_rdata(struct rdata *rd)
 }
 
 
+int print_onode(FILE *f, const struct onode *nd)
+{
+   int i;
+
+   switch (nd->nd.type)
+   {
+      case OSM_NODE:
+         fprintf(f, "<node id=\"%ld\" version=\"%d\" lat=\"%f\" lon=\"%f\" uid=\"%d\">\n",
+               nd->nd.id, nd->nd.ver, nd->nd.lat, nd->nd.lon, nd->nd.uid);
+         break;
+
+      case OSM_WAY:
+         fprintf(f, "<way id=\"%ld\" version=\"%d\" uid=\"%d\">\n",
+               nd->nd.id, nd->nd.ver, nd->nd.uid);
+         break;
+
+      default:
+         fprintf(f, "<!-- unknown node type: %d -->\n", nd->nd.type);
+         return -1;
+   }
+
+   switch (nd->nd.type)
+   {
+      case OSM_NODE:
+         fprintf(f, "</node>\n");
+         break;
+
+      case OSM_WAY:
+         fprintf(f, "</way>\n");
+         break;
+   }
+
+   for (i = 0; i < nd->tag_cnt; i++)
+      fprintf(f, "<tag k=\"%.*s\" v=\"%.*s\"/>\n",
+            nd->otag[i].k.len, nd->otag[i].k.buf, nd->otag[i].v.len, nd->otag[i].v.buf);
+
+   for (i = 0; i < nd->ref_cnt; i++)
+      fprintf(f, "<nd ref=\"%ld\"/>\n", nd->ref[i]);
+
+   return 0;
+}
+
+
+void onode_stats(struct onode *nd, struct rdata *rd, struct dstats *ds)
+{
+   if (nd->nd.type == OSM_NODE)
+   {
+      if (ds->lu.lat < nd->nd.lat) ds->lu.lat = nd->nd.lat;
+      if (ds->lu.lon > nd->nd.lon) ds->lu.lon = nd->nd.lon;
+      if (ds->rb.lat > nd->nd.lat) ds->rb.lat = nd->nd.lat;
+      if (ds->rb.lon < nd->nd.lon) ds->rb.lon = nd->nd.lon;
+      if (ds->min_nid > nd->nd.id) ds->min_nid = nd->nd.id;
+      if (ds->max_nid < nd->nd.id) ds->max_nid = nd->nd.id;
+   }
+   else if (nd->nd.type == OSM_WAY)
+   {
+      if (ds->min_wid > nd->nd.id) ds->min_wid = nd->nd.id;
+      if (ds->max_wid < nd->nd.id) ds->max_wid = nd->nd.id;
+   }
+}
+
+
 int main(int argc, char *argv[])
 {
    hpx_ctrl_t *ctl, *cfctl;
@@ -1116,6 +1177,7 @@ int main(int argc, char *argv[])
    struct stat st;
    FILE *f = stdout;
    char *cf = "rules.osm";
+   struct dstats ds;
 
    init_rdata(&rdata_);
    //print_rdata(stderr, &rdata_);
@@ -1131,7 +1193,7 @@ int main(int argc, char *argv[])
    if ((ctl = hpx_init(fd, st.st_size)) == NULL)
       perror("hpx_init_simple"), exit(EXIT_FAILURE);
 
-   fprintf(stderr, "reading osm input file...\n");
+   fprintf(stderr, "reading osm input file (file size %ld kb)...\n", (long) st.st_size / 1024);
    (void) read_osm_file(ctl, &rdata_.nodes, &rdata_.ways);
    (void) close(fd);
 
@@ -1144,9 +1206,25 @@ int main(int argc, char *argv[])
    if ((cfctl = hpx_init(fd, st.st_size)) == NULL)
       perror("hpx_init_simple"), exit(EXIT_FAILURE);
 
-   fprintf(stderr, "reading rules...\n");
+   fprintf(stderr, "reading rules (file size %ld kb)...\n", (long) st.st_size / 1024);
    (void) read_osm_file(cfctl, &rdata_.nrules, &rdata_.wrules);
    (void) close(fd);
+
+#ifdef MEM_USAGE
+   fprintf(stderr, "tree memory used: %ld kb\n", (long) bx_sizeof() / 1024);
+   fprintf(stderr, "onode memory used: %ld kb\n", (long) onode_mem() / 1024);
+#endif
+
+   fprintf(stderr, "gathering stats...\n");
+   ds.min_nid = (int64_t) 0x7fffffffffffffff;
+   ds.max_nid = (int64_t) 0x8000000000000000;
+   ds.lu.lat = -90;
+   ds.rb.lat = 90;
+   ds.lu.lon = 180;
+   ds.rb.lon = -180;
+   traverse(rdata_.nodes, 0, (void (*)(struct onode *, struct rdata *, void *)) onode_stats, &rdata_, &ds);
+   fprintf(stderr, "min_nid = %ld, max_nid = %ld, %.2f/%.2f x %.2f/%.2f\n",
+         ds.min_nid, ds.max_nid, ds.lu.lat, ds.lu.lon, ds.rb.lat, ds.rb.lon);
 
    if ((rdata_.img = gdImageCreateTrueColor(rdata_.w, rdata_.h)) == NULL)
       perror("gdImage"), exit(EXIT_FAILURE);
