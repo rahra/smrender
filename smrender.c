@@ -845,7 +845,7 @@ void traverse(const bx_node_t *nt, int d, void (*dhandler)(struct onode*, struct
       return;
    }
 
-   if (d == 8)
+   if (d == sizeof(bx_hash_t) * 8 / BX_RES)
    {
       if (nt->next[0] != NULL)
          dhandler(nt->next[0], rd, p);
@@ -855,7 +855,7 @@ void traverse(const bx_node_t *nt, int d, void (*dhandler)(struct onode*, struct
       return;
    }
 
-   for (i = 0; i < 256; i++)
+   for (i = 0; i < 1 << BX_RES; i++)
       if (nt->next[i])
          traverse(nt->next[i], d + 1, dhandler, rd, p);
 
