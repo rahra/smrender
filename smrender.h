@@ -159,6 +159,7 @@ struct rdata
    int dpi;
    double scale;
    struct grid grd;
+   struct dstats ds;
    int col[5];
 };
 

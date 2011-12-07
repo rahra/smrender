@@ -26,7 +26,10 @@
       <tag k='_action_' v='cap:/usr/share/fonts/truetype/ttf-liberation/LiberationSans-Italic.ttf,3,cm,black,name'/>
       <tag k='place' v=''/>
    </node>
- 
+    <way>
+      <tag k='natural' v='coastline'/>
+      <tag k='_action_' v='draw:yellow:black'/>
+   </way>
    <way>
       <tag k='building' v=''/>
       <!-- draw:<fill color>,<fill width>[,<fill style>][:<border color>,<border width>[,<border style>]] -->

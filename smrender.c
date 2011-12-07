@@ -426,16 +426,17 @@ int act_caption(struct onode *nd, struct rdata *rd, struct onode *mnd, int x, in
       fprintf(stderr, "node %ld has no caption tag '%s'\n", nd->nd.id, mnd->rule.cap.key);
       return 0;
    }
-fprintf(stderr, "font: %s\n", mnd->rule.cap.font);
+
    memset(&fte, 0, sizeof(fte));
-   fte.flags = gdFTEX_RESOLUTION;
+   fte.flags = gdFTEX_RESOLUTION | gdFTEX_CHARMAP;
+   fte.charmap = gdFTEX_Unicode;
    fte.hdpi = fte.vdpi = rd->dpi;
 
    nd->otag[n].v.buf[nd->otag[n].v.len] = '\0';
    if ((s = gdImageStringFTEx(rd->img, br, mnd->rule.cap.col, mnd->rule.cap.font, mnd->rule.cap.size * 2.8699, 0, x, y, nd->otag[n].v.buf, &fte)) != NULL)
       fprintf(stderr, "error rendering caption: %s\n", s);
-   else
-      fprintf(stderr, "printed %s at %d,%d\n", nd->otag[n].v.buf, x, y);
+//   else
+//      fprintf(stderr, "printed %s at %d,%d\n", nd->otag[n].v.buf, x, y);
 
    return 0;
 }
@@ -464,7 +465,7 @@ void apply_rules0(struct onode *nd, struct rdata *rd, struct onode *mnd)
       if (bs_match_attr(nd, &mnd->otag[i]) == -1)
          return;
 
-   fprintf(stderr, "node id %ld rule match %ld\n", nd->nd.id, mnd->nd.id);
+   //fprintf(stderr, "node id %ld rule match %ld\n", nd->nd.id, mnd->nd.id);
    mk_paper_coords(nd->nd.lat, nd->nd.lon, rd, &x, &y);
 
    switch (mnd->rule.type)
@@ -537,7 +538,10 @@ void act_fill_poly(struct onode *wy, struct rdata *rd, struct onode *mnd)
       mk_paper_coords(nd->nd.lat, nd->nd.lon, rd, &p[i].x, &p[i].y);
    }
 
-   gdImageFilledPolygon(rd->img, p, wy->ref_cnt, rd->col[BLACK]);
+   if (mnd->rule.draw.fill.used)
+      gdImageFilledPolygon(rd->img, p, wy->ref_cnt, mnd->rule.draw.fill.col);
+   if (mnd->rule.draw.border.used)
+      gdImagePolygon(rd->img, p, wy->ref_cnt, mnd->rule.draw.border.col);
 }
 
 /*! Match and apply ruleset to node.
@@ -563,7 +567,7 @@ void apply_wrules0(struct onode *nd, struct rdata *rd, struct onode *mnd)
       if (bs_match_attr(nd, &mnd->otag[i]) == -1)
          return;
 
-   fprintf(stderr, "way id %ld rule match %ld\n", nd->nd.id, mnd->nd.id);
+   //fprintf(stderr, "way id %ld rule match %ld\n", nd->nd.id, mnd->nd.id);
 
    switch (mnd->rule.type)
    {
@@ -586,6 +590,7 @@ void apply_wrules(struct onode *nd, struct rdata *rd, void *vp)
 }
 
 
+#if 0
 void draw_coast_fill(struct onode *nd, struct rdata *rd, void *vp)
 {
    bx_node_t *nt;
@@ -776,6 +781,7 @@ void draw_coast(struct onode *nd, struct rdata *rd, void *vp)
 
    free(p);
 }
+#endif
 
 
 void print_tree(struct onode *nd, struct rdata *rd)
@@ -1177,7 +1183,8 @@ int main(int argc, char *argv[])
    struct stat st;
    FILE *f = stdout;
    char *cf = "rules.osm";
-   struct dstats ds;
+   //struct dstats ds;
+   struct rdata *rd = &rdata_;
 
    init_rdata(&rdata_);
    //print_rdata(stderr, &rdata_);
@@ -1216,15 +1223,17 @@ int main(int argc, char *argv[])
 #endif
 
    fprintf(stderr, "gathering stats...\n");
-   ds.min_nid = (int64_t) 0x7fffffffffffffff;
-   ds.max_nid = (int64_t) 0x8000000000000000;
-   ds.lu.lat = -90;
-   ds.rb.lat = 90;
-   ds.lu.lon = 180;
-   ds.rb.lon = -180;
-   traverse(rdata_.nodes, 0, (void (*)(struct onode *, struct rdata *, void *)) onode_stats, &rdata_, &ds);
-   fprintf(stderr, "min_nid = %ld, max_nid = %ld, %.2f/%.2f x %.2f/%.2f\n",
-         ds.min_nid, ds.max_nid, ds.lu.lat, ds.lu.lon, ds.rb.lat, ds.rb.lon);
+   rd->ds.min_nid = rd->ds.min_wid = (int64_t) 0x7fffffffffffffff;
+   rd->ds.max_nid = rd->ds.max_wid = (int64_t) 0x8000000000000000;
+   rd->ds.lu.lat = -90;
+   rd->ds.rb.lat = 90;
+   rd->ds.lu.lon = 180;
+   rd->ds.rb.lon = -180;
+   traverse(rdata_.nodes, 0, (void (*)(struct onode *, struct rdata *, void *)) onode_stats, &rdata_, &rd->ds);
+   traverse(rdata_.ways, 0, (void (*)(struct onode *, struct rdata *, void *)) onode_stats, &rdata_, &rd->ds);
+   fprintf(stderr, "min_nid = %ld, max_nid = %ld, min_wid = %ld, max_wid = %ld, %.2f/%.2f x %.2f/%.2f\n",
+         rd->ds.min_nid, rd->ds.max_nid, rd->ds.min_wid, rd->ds.max_wid,
+         rd->ds.lu.lat, rd->ds.lu.lon, rd->ds.rb.lat, rd->ds.rb.lon);
 
    if ((rdata_.img = gdImageCreateTrueColor(rdata_.w, rdata_.h)) == NULL)
       perror("gdImage"), exit(EXIT_FAILURE);
@@ -1247,12 +1256,14 @@ int main(int argc, char *argv[])
 
    //traverse(rdata_.nodes, 0, print_tree, &rdata_);
    //traverse(rdata_.ways, 0, print_tree, &rdata_);
-   fprintf(stderr, "rendering coastline (closed polygons)...\n");
-   traverse(rdata_.ways, 0, draw_coast, &rdata_, NULL);
+   //fprintf(stderr, "rendering coastline (closed polygons)...\n");
+   //traverse(rdata_.ways, 0, draw_coast, &rdata_, NULL);
    //traverse(rdata_.ways, 0, draw_coast_fill, &rdata_, NULL);
 
-   //traverse(rdata_.wrules, 0, apply_wrules, &rdata_, NULL);
-   //traverse(rdata_.nrules, 0, apply_rules, &rdata_, NULL);
+   fprintf(stderr, "rendering ways...\n");
+   traverse(rdata_.wrules, 0, apply_wrules, &rdata_, NULL);
+   fprintf(stderr, "rendering nodes...\n");
+   traverse(rdata_.nrules, 0, apply_rules, &rdata_, NULL);
 
    //grid(&rdata_, rdata_.col[BLACK]);
 

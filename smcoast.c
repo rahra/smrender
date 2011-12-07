@@ -189,7 +189,6 @@ int poly_out(FILE *f, struct wlist *nl, struct rdata *rd)
 }
 
 
-
 int poly_ends(struct rdata *rd, struct wlist *nl, const struct coord *c)
 {
    bx_node_t *bn;
@@ -221,6 +220,8 @@ int cat_poly(struct rdata *rd)
    struct wlist *wl, *nl[MAX_OPEN_POLY];
    FILE *f;
    struct coord center, dst;
+   struct onode *ond;
+   bx_node_t *bn;
 
    if ((wl = malloc(sizeof(*wl) + INIT_MAX_REF * sizeof(int64_t))) == NULL)
       perror("malloc"), exit(EXIT_FAILURE);
@@ -249,7 +250,35 @@ int cat_poly(struct rdata *rd)
       //poly_node_to_border(rd, nl);
       poly_out(f, nl[i], rd);
 
-      if (poly_ends(rd, nl[i], &center) == -1)
+      // check if wlist is closed
+      if (nl[i]->ref[0] == nl[i]->ref[nl[i]->ref_cnt - 1])
+      {
+         if ((ond = malloc(sizeof(struct onode) + sizeof(struct otag))) == NULL)
+            perror("malloc"), exit(EXIT_FAILURE);
+         memset(ond, 0, sizeof(struct onode) + sizeof(struct otag));
+         if ((ond->ref = malloc(nl[i]->ref_cnt * sizeof(int64_t))) == NULL)
+            perror("malloc"), exit(EXIT_FAILURE);
+         ond->ref_cnt = nl[i]->ref_cnt;
+         memcpy(ond->ref, nl[i]->ref, nl[i]->ref_cnt * sizeof(int64_t));
+         
+         rd->ds.max_wid++;
+         ond->nd.id = rd->ds.max_wid;
+         ond->tag_cnt = 1;
+         ond->nd.type = OSM_WAY;
+         ond->nd.ver = 1;
+
+         ond->otag[0].k.buf = "natural";
+         ond->otag[0].k.len = 7;
+         ond->otag[0].v.buf = "coastline";
+         ond->otag[0].v.len = 9;
+
+         bn = bx_add_node(&rd->ways, ond->nd.id);
+         bn->next[0] = ond;
+
+         free(nl[i]);
+         i--;
+      }
+      else if (poly_ends(rd, nl[i], &center) == -1)
          fprintf(stderr, "*** error in poly_ends()\n");
 
       i++;
@@ -257,7 +286,9 @@ int cat_poly(struct rdata *rd)
    nl_cnt = i;
 
    for (i = 0; i < nl_cnt; i++)
-      free(nl[i]);
+   {
+     free(nl[i]);
+   }
 
    fprintf(f, "</osm>\n");
    fclose(f);
