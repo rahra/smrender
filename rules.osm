@@ -9,6 +9,16 @@
       <tag k='_action_' v='img:Light_Major.png'/>
    </node>
    <node>
+      <tag k='seamark:type' v='beacon_isolated_danger'/>
+      <tag k='seamark:beacon_isolated_danger:shape' v='tower'/>
+      <tag k='_action_' v='img:icons/Cardinal_Tower_Single.png'/>
+   </node>
+   <node>
+      <tag k='seamark:type' v='beacon_isolated_danger'/>
+      <tag k='!seamark:beacon_isolated_danger:shape!' v=''/>
+      <tag k='_action_' v='img:icons/Cardinal_Beacon_Single.png'/>
+   </node>
+   <node>
       <tag k='/^seamark:light.*/' v=''/>
       <tag k='_action_' v='img:Light_Magenta_120.png'/>
    </node>
@@ -19,8 +29,9 @@
    </node>
    <node>
       <!-- cap:<fontfile>,<size in cm>,<alignement [ewc][nsm]>,<color>,<keyname to print> -->
-      <tag k='_action_' v='cap:/usr/share/fonts/truetype/ttf-liberation/LiberationSans-Italic.ttf,3,cm,black,seamark:light:ref'/>
-      <tag k='seamark:light:ref' v=''/>
+      <tag k='_action_' v='cap:/usr/share/fonts/truetype/ttf-liberation/LiberationSans-Italic.ttf,2.5,cm,black,seamark:light_character'/>
+      <!-- <tag k='seamark:light:ref' v=''/> -->
+      <tag k='seamark:light_character' v=''/>
    </node>
    <node>
       <tag k='_action_' v='cap:/usr/share/fonts/truetype/ttf-liberation/LiberationSans-Italic.ttf,3,cm,black,name'/>
@@ -39,5 +50,14 @@
       <tag k='highway' v='/^(secondary|primary|residential)$/'/>
       <tag k='_action_' v='draw:black'/>
    </way>
+   <way>
+      <tag k='seamark:light_radial' v=''/>
+      <tag k='_action_' v='draw:black'/>
+   </way>
+    <way>
+      <tag k='seamark:light_arc' v=''/>
+      <tag k='_action_' v='draw:black'/>
+   </way>
+ 
 </osm>
 
