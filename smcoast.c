@@ -20,6 +20,13 @@ struct wlist
    int64_t ref[];
 };
 
+struct pdef
+{
+   struct wlist *wl;
+   int pn;           // index number of destined point
+   struct pcoord pc; // bearing to pointer
+};
+
 
 void gather_poly(struct onode *nd, struct rdata *rd, struct wlist **wl)
 {
@@ -137,6 +144,7 @@ struct wlist *poly_find_adj(struct rdata *rd, struct wlist *wl)
 }
 
 
+#if 0
 void poly_node_to_border(struct rdata *rd, struct wlist *nl)
 {
    int i;
@@ -163,6 +171,7 @@ void poly_node_to_border(struct rdata *rd, struct wlist *nl)
       if (nd->nd.lon > rd->x2c) nd->nd.lon = rd->x2c;
    }
 }
+#endif
 
 
 int poly_out(FILE *f, struct wlist *nl, struct rdata *rd)
@@ -189,6 +198,24 @@ int poly_out(FILE *f, struct wlist *nl, struct rdata *rd)
 }
 
 
+int poly_bearing(struct rdata *rd, struct wlist *nl, int n, struct pcoord *pc, const struct coord *c)
+{
+   bx_node_t *bn;
+   struct onode *nd;
+   struct coord dst;
+
+   if (nl->ref_cnt < n) return -1;
+   if ((bn = bx_get_node(rd->nodes, nl->ref[n])) == NULL) return -1;
+   if ((nd = bn->next[0]) == NULL) return -1;
+
+   dst.lat = nd->nd.lat;
+   dst.lon = nd->nd.lon;
+
+   *pc = coord_diff(c, &dst);
+   return 0;
+}
+
+
 int poly_ends(struct rdata *rd, struct wlist *nl, const struct coord *c)
 {
    bx_node_t *bn;
@@ -210,6 +237,7 @@ int poly_ends(struct rdata *rd, struct wlist *nl, const struct coord *c)
    dst.lon = nd->nd.lon;
    nl->end = coord_diff(c, &dst);
 
+   fprintf(stderr, "start/end angle: %f/%f\n", nl->start.bearing, nl->end.bearing);
    return 0;
 }
 
@@ -260,9 +288,9 @@ int cat_poly(struct rdata *rd)
             perror("malloc"), exit(EXIT_FAILURE);
          ond->ref_cnt = nl[i]->ref_cnt;
          memcpy(ond->ref, nl[i]->ref, nl[i]->ref_cnt * sizeof(int64_t));
-         
-         rd->ds.max_wid++;
-         ond->nd.id = rd->ds.max_wid;
+
+         rd->ds.min_wid = rd->ds.min_wid < 0 ? rd->ds.min_wid - 1 : -1;
+         ond->nd.id = rd->ds.min_wid;
          ond->tag_cnt = 1;
          ond->nd.type = OSM_WAY;
          ond->nd.ver = 1;
