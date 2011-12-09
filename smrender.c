@@ -32,6 +32,7 @@
 #include <fcntl.h>
 #include <gd.h>
 #include <regex.h>
+#include <limits.h>  // contains INT_MAX
 
 #include "osm_inplace.h"
 #include "bstring.h"
@@ -87,31 +88,32 @@ int bs_cmp2(const bstring_t *s1, const bstring_t *s2)
 
 int bs_match(const bstring_t *dst, const bstring_t *pat, const struct specialTag *st)
 {
-   //int m = 0;
-   //regex_t re;
+   int r;
    char buf[dst->len + 1];
 
    if (st == NULL)
       return bs_cmp2(dst, pat) == 0;
 
-   if (st->type == SPECIAL_DIRECT)
-      return bs_cmp2(dst, pat) == 0;
+   if ((st->type & SPECIAL_MASK) == SPECIAL_DIRECT)
+   {
+      r = bs_cmp2(dst, pat);
+      if (st->type & SPECIAL_INVERT)
+         return r != 0;
+      else
+         return r == 0;
+   }
 
-   if (st->type == SPECIAL_INVERT)
-      return bs_cmp2(dst, pat) != 0;
-
-   if ((st->type & ~SPECIAL_INVERT) == SPECIAL_REGEX)
+   if ((st->type & SPECIAL_MASK) == SPECIAL_REGEX)
    {
       // FIXME: this could be avoid if tags are 0-terminated.
       memcpy(buf, dst->buf, dst->len);
       buf[dst->len] = '\0';
  
-      if (!regexec(&st->re, buf, 0, NULL, 0))
-      {
-         if (st->type & SPECIAL_INVERT)
-            return 0;
-         return 1;
-      }
+      r = regexec(&st->re, buf, 0, NULL, 0);
+      if (st->type & SPECIAL_INVERT)
+         return r != 0;
+      else
+         return r == 0;
    }
 
    return 0;
@@ -129,9 +131,18 @@ int bs_match_attr(const struct onode *nd, const struct otag *ot)
       kmatch = ot->k.len ? bs_match(&nd->otag[i].k, &ot->k, &ot->stk) : 1;
       vmatch = ot->v.len ? bs_match(&nd->otag[i].v, &ot->v, &ot->stv) : 1;
 
+      if (kmatch && (ot->stk.type & SPECIAL_NOT))
+         return -1;
+
+      if (vmatch && (ot->stv.type & SPECIAL_NOT))
+         return -1;
+
       if (kmatch && vmatch)
          return i;
    }
+
+   if ((ot->stk.type & SPECIAL_NOT) || (ot->stv.type & SPECIAL_NOT))
+      return INT_MAX;
 
    return -1;
 }
@@ -172,9 +183,16 @@ int check_matchtype(bstring_t *b, struct specialTag *t)
          b->buf[b->len - 1] = '\0';
          b->buf++;
          b->len -= 2;
-
          t->type |= SPECIAL_INVERT;
       }
+      else if ((b->buf[0] == '~') && (b->buf[b->len - 1] == '~'))
+      {
+         b->buf[b->len - 1] = '\0';
+         b->buf++;
+         b->len -= 2;
+         t->type |= SPECIAL_NOT;
+      }
+ 
    }
 
    if (b->len > 2)
@@ -241,6 +259,8 @@ int parse_draw(const char *src, struct drawStyle *ds, const struct rdata *rd)
       ds->col = rd->col[BLUE];
    else if (!strcmp(s, "magenta"))
       ds->col = rd->col[MAGENTA];
+   else if (!strcmp(s, "brown"))
+      ds->col = rd->col[BROWN];
    else
    {
       fprintf(stderr, "unknown color %s\n", s);
@@ -312,10 +332,13 @@ void prepare_rules(struct onode *nd, struct rdata *rd, void *p)
          nd->rule.cap.col = rd->col[WHITE];
       if (!strcmp(s, "blue"))
          nd->rule.cap.col = rd->col[BLUE];
+      if (!strcmp(s, "brown"))
+         nd->rule.cap.col = rd->col[BROWN];
       else
          nd->rule.cap.col = rd->col[BLACK];
 
       if ((s = strtok(NULL, ",")) == NULL) return;
+
       nd->rule.cap.key = s;
       nd->rule.type = ACT_CAP;
       fprintf(stderr, "successfully parsed caption rule\n");
@@ -420,11 +443,33 @@ int act_caption(struct onode *nd, struct rdata *rd, struct onode *mnd, int x, in
    int br[8], n;
    char *s;
    gdFTStringExtra fte;
+   int a, m, mm, ma;
 
    if ((n = match_attr(nd, mnd->rule.cap.key, NULL)) == -1)
    {
       fprintf(stderr, "node %ld has no caption tag '%s'\n", nd->nd.id, mnd->rule.cap.key);
       return 0;
+   }
+
+   // auto detect angle
+   m = mm = ma = 0;
+   for (a = 0; a < 360; a += 10)
+   {
+      m = col_freq(rd, x, y, 50, 10, a, rd->col[WHITE]);
+      if (mm < m)
+      {
+         mm = m;
+         ma = a;
+      }
+   }
+   for (a = 0; a < 360; a += 10)
+   {
+      m = col_freq(rd, x, y, 50, 10, a, rd->col[YELLOW]);
+      if (mm < m)
+      {
+         mm = m;
+         ma = a;
+      }
    }
 
    memset(&fte, 0, sizeof(fte));
@@ -433,7 +478,7 @@ int act_caption(struct onode *nd, struct rdata *rd, struct onode *mnd, int x, in
    fte.hdpi = fte.vdpi = rd->dpi;
 
    nd->otag[n].v.buf[nd->otag[n].v.len] = '\0';
-   if ((s = gdImageStringFTEx(rd->img, br, mnd->rule.cap.col, mnd->rule.cap.font, mnd->rule.cap.size * 2.8699, 0, x, y, nd->otag[n].v.buf, &fte)) != NULL)
+   if ((s = gdImageStringFTEx(rd->img, br, mnd->rule.cap.col, mnd->rule.cap.font, mnd->rule.cap.size * 2.8699, ma, x, y, nd->otag[n].v.buf, &fte)) != NULL)
       fprintf(stderr, "error rendering caption: %s\n", s);
 //   else
 //      fprintf(stderr, "printed %s at %d,%d\n", nd->otag[n].v.buf, x, y);
@@ -486,6 +531,7 @@ void apply_rules0(struct onode *nd, struct rdata *rd, struct onode *mnd)
 
 void apply_rules(struct onode *nd, struct rdata *rd, void *vp)
 {
+   fprintf(stderr, "rule id 0x%016lx type %d\n", nd->nd.id, nd->rule.type);
    traverse(rd->nodes, 0, (void (*)(struct onode *, struct rdata *, void *)) apply_rules0, rd, nd);
 }
 
@@ -1114,6 +1160,33 @@ void init_rdata(struct rdata *rd)
 }
 
 
+int col_freq(struct rdata *rd, int x, int y, int w, int h, double a, int col)
+{
+   int x1, y1, rx, ry, c = 0;
+   double r, b;
+
+   //a = (360 - a + 90) * M_PI / 180;
+   a = a * M_PI / 180;
+
+   for (y1 = 0; y1 < h; y1++)
+      for (x1 = 0; x1 < w; x1++)
+      {
+         r = sqrt(x1 * x1 + y1 * y1);
+         b = atan((double) y1 / (double) x1);
+         rx = r * cos(a - b);
+         ry = r * sin(a - b);
+         c += (col == gdImageGetPixel(rd->img, x + rx, y + ry));
+      }
+
+   //gdImageLine(rd->img, x, y, rx + x, ry + y, rd->col[BROWN]);
+   //rx = c * cos(a) * 0.5;
+   //ry = c * sin(a) * 0.5;
+   //gdImageLine(rd->img, x, y, rx + x, ry + y, rd->col[BLACK]);
+
+   return c;
+}
+
+
 int print_onode(FILE *f, const struct onode *nd)
 {
    int i;
@@ -1242,6 +1315,7 @@ int main(int argc, char *argv[])
    rdata_.col[YELLOW] = gdImageColorAllocate(rdata_.img, 231,209,74);
    rdata_.col[BLUE] = gdImageColorAllocate(rdata_.img, 137, 199, 178);
    rdata_.col[MAGENTA] = gdImageColorAllocate(rdata_.img, 120, 8, 44);
+   rdata_.col[BROWN] = gdImageColorAllocate(rdata_.img, 154, 42, 2);
 
    gdImageFill(rdata_.img, 0, 0, rdata_.col[WHITE]);
    if (!gdFTUseFontConfig(1))

@@ -35,6 +35,8 @@
 #define SPECIAL_DIRECT 0x0000
 #define SPECIAL_REGEX 0x0001
 #define SPECIAL_INVERT 0x8000
+#define SPECIAL_NOT 0x4000
+#define SPECIAL_MASK 0x00ff
 
 
 #define POS_M 3
@@ -160,10 +162,10 @@ struct rdata
    double scale;
    struct grid grd;
    struct dstats ds;
-   int col[5];
+   int col[6];
 };
 
-enum {WHITE, YELLOW, BLACK, BLUE, MAGENTA};
+enum {WHITE, YELLOW, BLACK, BLUE, MAGENTA, BROWN};
 enum {LAT, LON};
 enum {ACT_NA, ACT_IMG, ACT_CAP, ACT_FUNC, ACT_DRAW};
 enum {DRAW_SOLID, DRAW_DASHED, DRAW_DOTTED};
@@ -179,6 +181,7 @@ enum {PRJ_DIRECT, PRJ_MERC_PAGE, PRJ_MERC_BB};
 void traverse(const bx_node_t *, int, void (*)(struct onode*, struct rdata*, void*), struct rdata *, void *);
 int match_attr(const struct onode *, const char *, const char *);
 int print_onode(FILE *, const struct onode *);
+int col_freq(struct rdata *, int, int, int, int, double, int);
 
 /* smloadosm.c */
 int read_osm_file(hpx_ctrl_t *, bx_node_t **, bx_node_t **);
