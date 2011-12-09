@@ -451,35 +451,38 @@ int act_caption(struct onode *nd, struct rdata *rd, struct onode *mnd, int x, in
       return 0;
    }
 
-   // auto detect angle
-   m = mm = ma = 0;
-   for (a = 0; a < 360; a += 10)
-   {
-      m = col_freq(rd, x, y, 50, 10, a, rd->col[WHITE]);
-      if (mm < m)
-      {
-         mm = m;
-         ma = a;
-      }
-   }
-   for (a = 0; a < 360; a += 10)
-   {
-      m = col_freq(rd, x, y, 50, 10, a, rd->col[YELLOW]);
-      if (mm < m)
-      {
-         mm = m;
-         ma = a;
-      }
-   }
-
    memset(&fte, 0, sizeof(fte));
    fte.flags = gdFTEX_RESOLUTION | gdFTEX_CHARMAP;
    fte.charmap = gdFTEX_Unicode;
    fte.hdpi = fte.vdpi = rd->dpi;
 
    nd->otag[n].v.buf[nd->otag[n].v.len] = '\0';
-   if ((s = gdImageStringFTEx(rd->img, br, mnd->rule.cap.col, mnd->rule.cap.font, mnd->rule.cap.size * 2.8699, ma, x, y, nd->otag[n].v.buf, &fte)) != NULL)
-      fprintf(stderr, "error rendering caption: %s\n", s);
+   gdImageStringFTEx(NULL, br, mnd->rule.cap.col, mnd->rule.cap.font, mnd->rule.cap.size * 2.8699, 0, x, y, nd->otag[n].v.buf, &fte);
+   {
+      // auto detect angle
+      m = mm = ma = 0;
+      for (a = 0; a < 360; a += 10)
+      {
+         m = col_freq(rd, x, y, br[4] - br[0], br[1] - br[5], a, rd->col[WHITE]);
+         if (mm < m)
+         {
+            mm = m;
+            ma = a;
+         }
+      }
+      for (a = 0; a < 360; a += 10)
+      {
+         m = col_freq(rd, x, y, br[4] - br[0], br[1] - br[5], a, rd->col[YELLOW]);
+         if (mm < m)
+         {
+            mm = m;
+            ma = a;
+         }
+      }  
+
+      if ((s = gdImageStringFTEx(rd->img, br, mnd->rule.cap.col, mnd->rule.cap.font, mnd->rule.cap.size * 2.8699, ma, x, y, nd->otag[n].v.buf, &fte)) != NULL)
+         fprintf(stderr, "error rendering caption: %s\n", s);
+   }
 //   else
 //      fprintf(stderr, "printed %s at %d,%d\n", nd->otag[n].v.buf, x, y);
 
@@ -1165,6 +1168,7 @@ int col_freq(struct rdata *rd, int x, int y, int w, int h, double a, int col)
    int x1, y1, rx, ry, c = 0;
    double r, b;
 
+   //fprintf(stderr, "%d %d\n", w, h);
    //a = (360 - a + 90) * M_PI / 180;
    a = a * M_PI / 180;
 
