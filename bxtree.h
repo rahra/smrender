@@ -16,7 +16,7 @@
 #define BX_MSK ((1 << BX_RES) - 1)
 #define BT_ROOT 0
 //#define BT_SHIFT(x) (x << BX_RES)
-#define BT_MASK(x, y) ((x >> (y * BX_RES)) & BX_MSK)
+#define BT_MASK(x, y) ((x >> ((sizeof(bx_hash_t) * 8  - 1) - y * BX_RES)) & BX_MSK)
 
 #define bx_add_node(x, y) bx_add_node0(x, y, BT_ROOT)
 #define bx_get_node(x, y) bx_get_node0(x, y, BT_ROOT)
