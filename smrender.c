@@ -438,12 +438,35 @@ int act_image(struct onode *nd, struct rdata *rd, struct onode *mnd, int x, int 
 }
 
 
+void rot_rect(const struct rdata *rd, int x, int y, double a, int br[])
+{
+   gdPoint p[5];
+   int i;
+
+   rot_pos(br[0] - x, br[1] - y, a, &p[0].x, &p[0].y);
+   rot_pos(br[2] - x, br[3] - y, a, &p[1].x, &p[1].y);
+   rot_pos(br[4] - x, br[5] - y, a, &p[2].x, &p[2].y);
+   rot_pos(br[6] - x, br[7] - y, a, &p[3].x, &p[3].y);
+
+   for (i = 0; i < 4; i++)
+   {
+      p[i].x += x;
+      p[i].y = y - p[i].y;
+   }
+
+   p[4] = p[0];
+
+   gdImagePolygon(rd->img, p, 5, rd->col[BLACK]);
+}
+
+
 int act_caption(struct onode *nd, struct rdata *rd, struct onode *mnd, int x, int y)
 {
-   int br[8], n;
+   int br[8], n, i;
    char *s;
    gdFTStringExtra fte;
-   int a, m, mm, ma;
+   int m, mm, rx, ry;
+   double a, ma;
 
    if ((n = match_attr(nd, mnd->rule.cap.key, NULL)) == -1)
    {
@@ -458,31 +481,53 @@ int act_caption(struct onode *nd, struct rdata *rd, struct onode *mnd, int x, in
 
    nd->otag[n].v.buf[nd->otag[n].v.len] = '\0';
    gdImageStringFTEx(NULL, br, mnd->rule.cap.col, mnd->rule.cap.font, mnd->rule.cap.size * 2.8699, 0, x, y, nd->otag[n].v.buf, &fte);
-   {
-      // auto detect angle
-      m = mm = ma = 0;
-      for (a = 0; a < 360; a += 10)
-      {
-         m = col_freq(rd, x, y, br[4] - br[0], br[1] - br[5], a, rd->col[WHITE]);
-         if (mm < m)
-         {
-            mm = m;
-            ma = a;
-         }
-      }
-      for (a = 0; a < 360; a += 10)
-      {
-         m = col_freq(rd, x, y, br[4] - br[0], br[1] - br[5], a, rd->col[YELLOW]);
-         if (mm < m)
-         {
-            mm = m;
-            ma = a;
-         }
-      }  
+   //fprintf(stderr, "x = %d, y = %d\n", x, y);
+   //for (i = 0; i < 8; i++)
+   //   fprintf(stderr, "br[%d] = %d\n", i, br[i]);
 
-      if ((s = gdImageStringFTEx(rd->img, br, mnd->rule.cap.col, mnd->rule.cap.font, mnd->rule.cap.size * 2.8699, ma, x, y, nd->otag[n].v.buf, &fte)) != NULL)
-         fprintf(stderr, "error rendering caption: %s\n", s);
+   // auto detect angle
+   m = mm = ma = 0;
+   //fprintf(stderr, "detect (%s)...\n", nd->otag[n].v.buf);
+   for (a = 0; a < 360; a += ANGLE_DIFF)
+   {
+      m = col_freq(rd, x, y, br[4] - br[0], br[1] - br[5], DEG2RAD(a), rd->col[WHITE]);
+      if (mm < m)
+      {
+         mm = m;
+         ma = a;
+      }
+      //fprintf(stderr, "%d %d\n", a, m);
    }
+      /*
+      for (a = 0; a < 360; a += 10)
+      {
+         m = col_freq(rd, x, y, br[4] - br[0], br[1] - br[5], DEG2RAD(a), rd->col[YELLOW]);
+         if (mm < m)
+         {
+            mm = m;
+            ma = a;
+         }
+      }*/  
+      //fprintf(stderr, "angle chosen %d\n", ma);
+      //
+
+   rot_rect(rd, x, y, DEG2RAD(ma), br);
+
+   if ((ma < 90) || (ma >= 270))
+   {
+      rot_pos(0, (br[1] - br[5]) / 2, DEG2RAD(ma), &rx, &ry);
+   }
+   else
+   {
+      //rot_pos(0, (br[1] - br[5]) / 2, DEG2RAD(ma), &rx, &ry);
+      ma -= 180;
+      rot_pos(br[0] - br[2], (br[1] - br[5]) / 2, DEG2RAD(ma), &rx, &ry);
+   }
+   fprintf(stderr, "dx = %d, dy = %d, rx = %d, ry = %d, a = %.1f, '%s'\n", br[0]-br[2],br[1]-br[5], rx, ry, ma, nd->otag[n].v.buf);
+
+   if ((s = gdImageStringFTEx(rd->img, br, mnd->rule.cap.col, mnd->rule.cap.font, mnd->rule.cap.size * 2.8699, DEG2RAD(ma), x + rx, y - ry, nd->otag[n].v.buf, &fte)) != NULL)
+      fprintf(stderr, "error rendering caption: %s\n", s);
+
 //   else
 //      fprintf(stderr, "printed %s at %d,%d\n", nd->otag[n].v.buf, x, y);
 
@@ -1156,36 +1201,70 @@ void init_rdata(struct rdata *rd)
    rd->y1c = 45.28;
    rd->x2c = 13.63;
    rd->y2c = 45.183; */
+   /* dugi.osm
    rd->x1c = 14.72;
    rd->y1c = 44.23;
    rd->x2c = 15.29;
    rd->y2c = 43.96;
+   */
+   rd->x1c = 24.33;
+   rd->y1c = 37.51;
+   rd->x2c = 24.98;
+   rd->y2c = 37.16;
+ 
+}
+
+
+double rot_pos(int x, int y, double a, int *rx, int *ry)
+{
+   double r, b;
+
+   r = sqrt(x * x + y * y);
+   //b = atan((double) y1 / (double) x1);
+   b = atan2((double) y, (double) x);
+   *rx = r * cos(a - b);
+   *ry = r * sin(a - b);
+
+   return r;
 }
 
 
 int col_freq(struct rdata *rd, int x, int y, int w, int h, double a, int col)
 {
    int x1, y1, rx, ry, c = 0;
-   double r, b;
+   //double r, b;
 
    //fprintf(stderr, "%d %d\n", w, h);
    //a = (360 - a + 90) * M_PI / 180;
-   a = a * M_PI / 180;
+   //a = a * M_PI / 180;
 
-   for (y1 = 0; y1 < h; y1++)
+   for (y1 = -h / 2; y1 < h / 2; y1++)
+   //for (y1 = 0; y1 < h; y1++)
       for (x1 = 0; x1 < w; x1++)
       {
+         /*
          r = sqrt(x1 * x1 + y1 * y1);
-         b = atan((double) y1 / (double) x1);
+         b = atan2((double) y1, (double) x1);
          rx = r * cos(a - b);
          ry = r * sin(a - b);
-         c += (col == gdImageGetPixel(rd->img, x + rx, y + ry));
+         */
+         rot_pos(x1, y1, a, &rx, &ry);
+         c += (col == gdImageGetPixel(rd->img, x + rx, y - ry));
       }
-
+/*
+   fprintf(stderr, "x = %d, y = %d, w = %d, h = %d, a = %d\n", x, y, w, h, (int) (a * 180 / M_PI));
+   fprintf(stderr, "%d %d %d %d\n",
+         (int) (sqrt(0 * 0 + (-h / 2) * (-h / 2)) * cos(a - atan2(-h / 2, 0))),
+         (int) (sqrt(0 * 0 + (-h / 2) * (-h / 2)) * sin(a - atan2(-h / 2, 0))),
+         (int) (sqrt(w * w + ( h / 2) * ( h / 2)) * cos(a - atan2( h / 2, w))),
+         (int) (sqrt(w * w + ( h / 2) * ( h / 2)) * sin(a - atan2( h / 2, w))));
+*/
    //gdImageLine(rd->img, x, y, rx + x, ry + y, rd->col[BROWN]);
-   //rx = c * cos(a) * 0.5;
-   //ry = c * sin(a) * 0.5;
-   //gdImageLine(rd->img, x, y, rx + x, ry + y, rd->col[BLACK]);
+   
+   //rx = c * cos(a) * 0.1;
+   //ry = c * sin(a) * 0.1;
+   //gdImageLine(rd->img, x, y, x + rx, y - ry, rd->col[BLACK]);
+   
 
    return c;
 }
@@ -1343,7 +1422,7 @@ int main(int argc, char *argv[])
    fprintf(stderr, "rendering nodes...\n");
    traverse(rdata_.nrules, 0, apply_rules, &rdata_, NULL);
 
-   //grid(&rdata_, rdata_.col[BLACK]);
+   grid(&rdata_, rdata_.col[BLACK]);
 
    hpx_free(ctl);
 

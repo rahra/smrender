@@ -247,7 +247,7 @@ int cat_poly(struct rdata *rd)
    int i, nl_cnt;
    struct wlist *wl, *nl[MAX_OPEN_POLY];
    FILE *f;
-   struct coord center, dst;
+   struct coord center;
    struct onode *ond;
    bx_node_t *bn;
 

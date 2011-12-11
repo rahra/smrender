@@ -38,7 +38,6 @@
 #define SPECIAL_NOT 0x4000
 #define SPECIAL_MASK 0x00ff
 
-
 #define POS_M 3
 #define POS_N 1
 #define POS_S 2
@@ -57,6 +56,9 @@
 #define G_STW 2.5
 // line width of chart border (mm)
 #define G_BW 0.1
+
+#define ANGLE_DIFF 10
+
 
 typedef struct rdata rdata_t;
 typedef struct onode onode_t;
@@ -182,6 +184,7 @@ void traverse(const bx_node_t *, int, void (*)(struct onode*, struct rdata*, voi
 int match_attr(const struct onode *, const char *, const char *);
 int print_onode(FILE *, const struct onode *);
 int col_freq(struct rdata *, int, int, int, int, double, int);
+double rot_pos(int, int, double, int *, int *);
 
 /* smloadosm.c */
 int read_osm_file(hpx_ctrl_t *, bx_node_t **, bx_node_t **);

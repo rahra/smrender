@@ -131,6 +131,8 @@ int read_osm_file(hpx_ctrl_t *ctl, bx_node_t **ntree, bx_node_t **wtree)
 #endif
                memcpy(&ond->nd, &nd, sizeof(nd));
                memset(((char*) ond) + sizeof(nd), 0, sizeof(*ond) - sizeof(nd));
+               if (tr->next[0] != NULL)
+                  fprintf(stderr, "node %ld already exists! Overwriting.\n", nd.id);
                tr->next[0] = ond;
 
                // finally
@@ -186,7 +188,8 @@ int read_osm_file(hpx_ctrl_t *ctl, bx_node_t **ntree, bx_node_t **wtree)
                      ref++;
                   }
                }
-
+               if (tr->next[0] != NULL)
+                  fprintf(stderr, "node %ld already exists! Overwriting.\n", nd.id);
                tr->next[0] = ond;
 
                // finally

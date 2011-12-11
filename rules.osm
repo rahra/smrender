@@ -2,15 +2,15 @@
 <osm version='0.6'>
    <node id="1">
       <tag k='/^seamark:light.*/' v=''/>
-      <tag k='_action_' v='img:Light_Magenta_120.png'/>
+      <tag k='_action_' v='img:icons/Light_Magenta_120.png'/>
    </node>
    <node id="2">
       <tag k='seamark:type' v='light_minor'/>
-      <tag k='_action_' v='img:Light_Minor.png'/>
+      <tag k='_action_' v='img:icons/Light_Minor.png'/>
    </node>
    <node id="3">
       <tag k='seamark:type' v='light_major'/>
-      <tag k='_action_' v='img:Light_Major.png'/>
+      <tag k='_action_' v='img:icons/Light_Major.png'/>
    </node>
    <node id="4">
       <tag k='seamark:type' v='beacon_isolated_danger'/>
@@ -22,11 +22,45 @@
       <tag k='~seamark:beacon_isolated_danger:shape~' v=''/>
       <tag k='_action_' v='img:icons/Cardinal_Beacon_Single.png'/>
    </node>
-  <node id="6">
-      <tag k='_action_' v='img:Cardinal_Beacon_West.png'/>
+   <node id="6">
+      <tag k='_action_' v='img:icons/Cardinal_Beacon_West.png'/>
       <tag k='seamark:beacon_cardinal:category' v='west' />
       <tag k='seamark:type' v='beacon_cardinal' />
    </node>
+   <node>
+      <tag k='_action_' v='img:icons/Light_House.png'/>
+      <tag k='seamark:type' v='landmark' />
+   </node>
+   <node>
+      <tag k='seamark:buoy_lateral:colour' v='~green~'/>
+      <tag k='seamark:buoy_lateral:shape' v='pillar'/>
+      <tag k='seamark:type' v='buoy_lateral'/>
+      <tag k='_action_' v='img:icons/Pillar.png'/>
+   </node>
+   <node>
+      <tag k='seamark:buoy_lateral:colour' v='green'/>
+      <tag k='seamark:buoy_lateral:shape' v='pillar'/>
+      <tag k='seamark:type' v='buoy_lateral'/>
+      <tag k='_action_' v='img:icons/Pillar_Black.png'/>
+   </node>
+   <node>
+      <tag k='seamark:beacon_lateral:colour' v='~green~'/>
+      <tag k='seamark:type' v='beacon_lateral'/>
+      <tag k='_action_' v='img:icons/Beacon.png'/>
+   </node>
+   <node>
+      <tag k='seamark:beacon_lateral:colour' v='green'/>
+      <tag k='seamark:type' v='beacon_lateral'/>
+      <tag k='_action_' v='img:icons/Beacon_Black.png'/>
+   </node>
+   <node>
+      <tag k='natural' v='peak'/>
+      <tag k='_action_' v='img:icons/Dot_6x6.png'/>
+   </node>
+
+
+
+
    <!--
         __Font styles__
         light captions: Sans (1.4mm)
@@ -51,6 +85,10 @@
    </node>
    <node id="9">
       <tag k='_action_' v='cap:/usr/share/fonts/truetype/ttf-liberation/LiberationSerif-Regular.ttf,1.2,cm,black,name'/>
+      <tag k='natural' v='peak'/>
+   </node>
+   <node>
+      <tag k='_action_' v='cap:/usr/share/fonts/truetype/ttf-liberation/LiberationSerif-Regular.ttf,1.2,cm,black,ele'/>
       <tag k='natural' v='peak'/>
    </node>
     <node id="10">
@@ -82,6 +120,14 @@
     <way>
       <tag k='seamark:light_arc' v=''/>
       <tag k='_action_' v='draw:black'/>
+   </way>
+     <way>
+      <tag k='natural' v='water'/>
+      <tag k='_action_' v='draw:blue:black'/>
+   </way>
+      <way>
+      <tag k='waterway' v=''/>
+      <tag k='_action_' v='draw:blue'/>
    </way>
  
 </osm>
