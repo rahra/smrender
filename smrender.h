@@ -38,10 +38,10 @@
 #define SPECIAL_NOT 0x4000
 #define SPECIAL_MASK 0x00ff
 
-#define POS_M 3
+#define POS_M 0
 #define POS_N 1
 #define POS_S 2
-#define POS_C 12
+#define POS_C 0
 #define POS_E 4
 #define POS_W 8
 
@@ -91,6 +91,7 @@ struct actCaption
    char *font;
    char *key;
    double size;
+   double angle;
 };
 
 struct actFunction

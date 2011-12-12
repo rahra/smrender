@@ -30,6 +30,7 @@
    <node>
       <tag k='_action_' v='img:icons/Light_House.png'/>
       <tag k='seamark:type' v='landmark' />
+      <tag k='/^seamark:light.*/' v=''/>
    </node>
    <node>
       <tag k='seamark:buoy_lateral:colour' v='~green~'/>
@@ -74,29 +75,34 @@
    -->
 
    <node id="7">
-      <!-- cap:<fontfile>,<size in cm>,<alignement [ewc][nsm]>,<color>,<keyname to print> -->
-      <tag k='_action_' v='cap:/usr/share/fonts/truetype/ttf-liberation/LiberationSans-Regular.ttf,1.4,cm,black,seamark:light_character'/>
+      <!-- cap:<fontfile>,<size in cm>,<alignement [ewc][nsm]>,<color>,<angle>,<keyname to print> -->
+      <tag k='_action_' v='cap:/usr/share/fonts/truetype/ttf-liberation/LiberationSans-Regular.ttf,1.4,cm,black,auto,seamark:light_character'/>
       <!-- <tag k='seamark:light:ref' v=''/> -->
       <tag k='seamark:light_character' v=''/>
    </node>
    <node id="8">
-      <tag k='_action_' v='cap:/usr/share/fonts/truetype/ttf-liberation/LiberationSerif-Bold.ttf,1.8,cm,black,name'/>
+      <tag k='_action_' v='cap:/usr/share/fonts/truetype/ttf-liberation/LiberationSerif-Bold.ttf,1.8,cm,black,auto,name'/>
       <tag k='place' v='village'/>
    </node>
+   <node>
+      <tag k='_action_' v='cap:/usr/share/fonts/truetype/ttf-liberation/LiberationSerif-Regular.ttf,1.5,cm,black,0,name'/>
+      <tag k='place' v='hamlet'/>
+   </node>
+ 
    <node id="9">
-      <tag k='_action_' v='cap:/usr/share/fonts/truetype/ttf-liberation/LiberationSerif-Regular.ttf,1.2,cm,black,name'/>
+      <tag k='_action_' v='cap:/usr/share/fonts/truetype/ttf-liberation/LiberationSerif-Regular.ttf,1.2,n,black,0,name'/>
       <tag k='natural' v='peak'/>
    </node>
    <node>
-      <tag k='_action_' v='cap:/usr/share/fonts/truetype/ttf-liberation/LiberationSerif-Regular.ttf,1.2,cm,black,ele'/>
+      <tag k='_action_' v='cap:/usr/share/fonts/truetype/ttf-liberation/LiberationSerif-Regular.ttf,1.2,s,black,0,ele'/>
       <tag k='natural' v='peak'/>
    </node>
     <node id="10">
-      <tag k='_action_' v='cap:/usr/share/fonts/truetype/ttf-liberation/LiberationSans-Bold.ttf,2.5,cm,black,name'/>
+      <tag k='_action_' v='cap:/usr/share/fonts/truetype/ttf-liberation/LiberationSans-Bold.ttf,2.5,cm,black,auto,name'/>
       <tag k='place' v='island'/>
    </node>
    <node id="11">
-      <tag k='_action_' v='cap:/usr/share/fonts/truetype/ttf-liberation/LiberationSans-Bold.ttf,1.4,cm,black,name'/>
+      <tag k='_action_' v='cap:/usr/share/fonts/truetype/ttf-liberation/LiberationSans-Bold.ttf,1.4,cm,black,auto,name'/>
       <tag k='place' v='islet'/>
    </node>
  
@@ -127,7 +133,7 @@
    </way>
       <way>
       <tag k='waterway' v=''/>
-      <tag k='_action_' v='draw:blue'/>
+      <tag k='_action_' v='draw:blue:blue'/>
    </way>
  
 </osm>

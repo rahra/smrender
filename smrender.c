@@ -233,6 +233,31 @@ short ppos(const char *s)
 }
 
 
+int parse_color(const struct rdata *rd, const char *s)
+{
+   if (*s == '#')
+   {
+      fprintf(stderr, "HTML color style (%s) not supported yet, defaulting to black\n", s);
+      return rd->col[BLACK];
+   }
+   if (!strcmp(s, "white"))
+      return rd->col[WHITE];
+   if (!strcmp(s, "yellow"))
+      return rd->col[YELLOW];
+   if (!strcmp(s, "black"))
+      return rd->col[BLACK];
+   if (!strcmp(s, "blue"))
+      return rd->col[BLUE];
+   if (!strcmp(s, "magenta"))
+      return rd->col[MAGENTA];
+   if (!strcmp(s, "brown"))
+      return rd->col[BROWN];
+
+   fprintf(stderr, "unknown color %s\n", s);
+   return rd->col[BLACK];
+}
+
+
 int parse_draw(const char *src, struct drawStyle *ds, const struct rdata *rd)
 {
    char buf[strlen(src) + 1];
@@ -244,28 +269,8 @@ int parse_draw(const char *src, struct drawStyle *ds, const struct rdata *rd)
       fprintf(stderr, "syntax error in draw rule %s\n", src);
       return -1;
    }
-   if (*s == '#')
-   {
-      fprintf(stderr, "HTML color style (%s) not supported yet, defaulting to black\n", src);
-      ds->col = rd->col[BLACK];
-   }
-   else if (!strcmp(s, "white"))
-      ds->col = rd->col[WHITE];
-   else if (!strcmp(s, "yellow"))
-      ds->col = rd->col[YELLOW];
-   else if (!strcmp(s, "black"))
-      ds->col = rd->col[BLACK];
-   else if (!strcmp(s, "blue"))
-      ds->col = rd->col[BLUE];
-   else if (!strcmp(s, "magenta"))
-      ds->col = rd->col[MAGENTA];
-   else if (!strcmp(s, "brown"))
-      ds->col = rd->col[BROWN];
-   else
-   {
-      fprintf(stderr, "unknown color %s\n", s);
-      return -1;
-   }
+
+   ds->col = parse_color(rd, s);
 
    if ((s = strtok_r(NULL, ",", &sb)) == NULL)
       return 0;
@@ -324,19 +329,13 @@ void prepare_rules(struct onode *nd, struct rdata *rd, void *p)
       nd->rule.cap.pos = ppos(s);
       if ((s = strtok(NULL, ",")) == NULL) return;
 
-      if (!strcmp(s, "magenta"))
-         nd->rule.cap.col = rd->col[MAGENTA];
-      if (!strcmp(s, "yellow"))
-         nd->rule.cap.col = rd->col[YELLOW];
-      if (!strcmp(s, "white"))
-         nd->rule.cap.col = rd->col[WHITE];
-      if (!strcmp(s, "blue"))
-         nd->rule.cap.col = rd->col[BLUE];
-      if (!strcmp(s, "brown"))
-         nd->rule.cap.col = rd->col[BROWN];
-      else
-         nd->rule.cap.col = rd->col[BLACK];
+      nd->rule.cap.col = parse_color(rd, s);
 
+      if ((s = strtok(NULL, ",")) == NULL) return;
+      if (!strcmp(s, "auto"))
+         nd->rule.cap.angle = NAN;
+      else
+         nd->rule.cap.angle = atof(s);
       if ((s = strtok(NULL, ",")) == NULL) return;
 
       nd->rule.cap.key = s;
@@ -460,13 +459,34 @@ void rot_rect(const struct rdata *rd, int x, int y, double a, int br[])
 }
 
 
+double color_frequency(struct rdata *rd, int x, int y, int w, int h, int col)
+{
+   double a, ma = 0;
+   int m = 0, mm = 0;
+
+   // auto detect angle
+   for (a = 0; a < 360; a += ANGLE_DIFF)
+      {
+         m = col_freq(rd, x, y, w, h, DEG2RAD(a), col);
+         if (mm < m)
+         {
+            mm = m;
+            ma = a;
+         }
+      }
+   return ma;
+}
+
+ 
+#define POS_OFFSET round(1.3 * rd->dpi / 25.4)
+#define DIVX 3
 int act_caption(struct onode *nd, struct rdata *rd, struct onode *mnd, int x, int y)
 {
-   int br[8], n, i;
+   int br[8], n;
    char *s;
    gdFTStringExtra fte;
-   int m, mm, rx, ry;
-   double a, ma;
+   int rx, ry, ox, oy;
+   double ma;
 
    if ((n = match_attr(nd, mnd->rule.cap.key, NULL)) == -1)
    {
@@ -481,49 +501,58 @@ int act_caption(struct onode *nd, struct rdata *rd, struct onode *mnd, int x, in
 
    nd->otag[n].v.buf[nd->otag[n].v.len] = '\0';
    gdImageStringFTEx(NULL, br, mnd->rule.cap.col, mnd->rule.cap.font, mnd->rule.cap.size * 2.8699, 0, x, y, nd->otag[n].v.buf, &fte);
-   //fprintf(stderr, "x = %d, y = %d\n", x, y);
-   //for (i = 0; i < 8; i++)
-   //   fprintf(stderr, "br[%d] = %d\n", i, br[i]);
 
-   // auto detect angle
-   m = mm = ma = 0;
-   //fprintf(stderr, "detect (%s)...\n", nd->otag[n].v.buf);
-   for (a = 0; a < 360; a += ANGLE_DIFF)
+   if (isnan(mnd->rule.cap.angle))
    {
-      m = col_freq(rd, x, y, br[4] - br[0], br[1] - br[5], DEG2RAD(a), rd->col[WHITE]);
-      if (mm < m)
+      ma = color_frequency(rd, x, y, br[4] - br[0] + POS_OFFSET, br[1] - br[5], rd->col[WHITE]);
+      oy =(br[1] - br[5]) / DIVX;
+      if ((ma < 90) || (ma >= 270))
       {
-         mm = m;
-         ma = a;
+         ox = POS_OFFSET;
       }
-      //fprintf(stderr, "%d %d\n", a, m);
-   }
-      /*
-      for (a = 0; a < 360; a += 10)
+      else
       {
-         m = col_freq(rd, x, y, br[4] - br[0], br[1] - br[5], DEG2RAD(a), rd->col[YELLOW]);
-         if (mm < m)
-         {
-            mm = m;
-            ma = a;
-         }
-      }*/  
-      //fprintf(stderr, "angle chosen %d\n", ma);
-      //
-
-   rot_rect(rd, x, y, DEG2RAD(ma), br);
-
-   if ((ma < 90) || (ma >= 270))
-   {
-      rot_pos(0, (br[1] - br[5]) / 2, DEG2RAD(ma), &rx, &ry);
+         ma -= 180;
+         ox = br[0] - br[2] - POS_OFFSET;
+      }
    }
    else
    {
-      //rot_pos(0, (br[1] - br[5]) / 2, DEG2RAD(ma), &rx, &ry);
-      ma -= 180;
-      rot_pos(br[0] - br[2], (br[1] - br[5]) / 2, DEG2RAD(ma), &rx, &ry);
+      ma = mnd->rule.cap.angle;
+
+      switch (mnd->rule.cap.pos & 3)
+      {
+         case POS_N:
+            oy = 0;
+            oy = (br[7] - br[3]) / DIVX;
+            break;
+
+         case POS_S:
+            oy = br[3] - br[7];
+            break;
+
+         default:
+            oy = (br[3] - br[7]) / DIVX;
+      }
+      switch (mnd->rule.cap.pos & 12)
+      {
+         case POS_E:
+            ox = 0;
+            break;
+
+         case POS_W:
+            ox = br[0] - br[2];
+            break;
+
+         default:
+            ox = (br[0] - br[2]) / DIVX;
+      }
    }
-   fprintf(stderr, "dx = %d, dy = %d, rx = %d, ry = %d, a = %.1f, '%s'\n", br[0]-br[2],br[1]-br[5], rx, ry, ma, nd->otag[n].v.buf);
+
+  //rot_rect(rd, x, y, DEG2RAD(ma), br);
+
+  rot_pos(ox, oy, DEG2RAD(ma), &rx, &ry);
+   fprintf(stderr, "dx = %d, dy = %d, rx = %d, ry = %d, ma = %.3f, '%s'\n", br[0]-br[2],br[1]-br[5], rx, ry, ma, nd->otag[n].v.buf);
 
    if ((s = gdImageStringFTEx(rd->img, br, mnd->rule.cap.col, mnd->rule.cap.font, mnd->rule.cap.size * 2.8699, DEG2RAD(ma), x + rx, y - ry, nd->otag[n].v.buf, &fte)) != NULL)
       fprintf(stderr, "error rendering caption: %s\n", s);
@@ -1016,19 +1045,19 @@ void grid(struct rdata *rd, int col)
    gdPoint p[7];
    double l, d, lat, lon;
    int x, y;
-   char buf[100];
+   //char buf[100];
 
    gdImageSetThickness(rd->img, round(G_BW * rd->dpi / 25.4));
    for (d = fround(rd->y2c, rd->grd.lat_g); d < rd->y1c; d += rd->grd.lat_g)
    {
-      fprintf(stderr, "d = %s (%f)\n", cfmt(d, LAT, buf, sizeof(buf)), d);
+      //fprintf(stderr, "d = %s (%f)\n", cfmt(d, LAT, buf, sizeof(buf)), d);
       mk_paper_coords(d, rd->x1c, rd, &p[0].x, &p[0].y);
       mk_paper_coords(d, rd->x2c, rd, &p[1].x, &p[1].y);
       gdImageOpenPolygon(rd->img, p, 2, col);
    }
    for (d = fround(rd->x1c, rd->grd.lon_g); d < rd->x2c; d += rd->grd.lon_g)
    {
-      fprintf(stderr, "d = %s (%f)\n", cfmt(d, LAT, buf, sizeof(buf)), d);
+      //fprintf(stderr, "d = %s (%f)\n", cfmt(d, LAT, buf, sizeof(buf)), d);
       mk_paper_coords(rd->y1c, d, rd, &p[0].x, &p[0].y);
       mk_paper_coords(rd->y2c, d, rd, &p[1].x, &p[1].y);
       gdImageOpenPolygon(rd->img, p, 2, col);
@@ -1064,8 +1093,8 @@ void grid(struct rdata *rd, int col)
    d = p[1].x;
    mk_chart_coords(p[0].x, p[0].y, rd, &lat, &lon);
    // draw ticks and subticks on left and right border
-   for (l = fround(lat, G_STICKS); l < rd->y2c; l += G_STICKS)
-      fprintf(stderr, "%f\n", l);
+   //for (l = fround(lat, G_STICKS); l < rd->y2c; l += G_STICKS)
+   //   fprintf(stderr, "%f\n", l);
 
    for (l = fround(lat, G_STICKS); l < rd->y1c; l += G_STICKS)
    {
@@ -1201,16 +1230,18 @@ void init_rdata(struct rdata *rd)
    rd->y1c = 45.28;
    rd->x2c = 13.63;
    rd->y2c = 45.183; */
-   /* dugi.osm
+   //dugi.osm
    rd->x1c = 14.72;
    rd->y1c = 44.23;
    rd->x2c = 15.29;
    rd->y2c = 43.96;
-   */
+
+   /* treasure_island
    rd->x1c = 24.33;
    rd->y1c = 37.51;
    rd->x2c = 24.98;
    rd->y2c = 37.16;
+   */
  
 }
 
