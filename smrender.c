@@ -381,9 +381,10 @@ void prepare_rules(struct onode *nd, struct rdata *rd, void *p)
       fprintf(stderr, "action type '%s' not supported yet\n", s);
    }
 
-   // remove _action_ tag from tag list
+   // remove _action_ tag from tag list, i.e. move last element
+   // to position of _action_ tag (order doesn't matter).
    if (i < nd->tag_cnt - 1)
-      memcpy(&nd->otag[i], &nd->otag[i + 1], sizeof(struct otag));
+      memmove(&nd->otag[i], &nd->otag[nd->tag_cnt - 1], sizeof(struct otag));
    nd->tag_cnt--;
 }
 
@@ -907,7 +908,7 @@ void draw_coast(struct onode *nd, struct rdata *rd, void *vp)
 #endif
 
 
-void print_tree(struct onode *nd, struct rdata *rd)
+void print_tree(struct onode *nd, struct rdata *rd, void *p)
 {
    int i;
 
@@ -1435,6 +1436,11 @@ int main(int argc, char *argv[])
    if (!gdFTUseFontConfig(1))
       fprintf(stderr, "fontconfig library not available\n");
 
+   // output rules
+   //traverse(rdata_.nrules, 0, print_tree, &rdata_, NULL);
+   //traverse(rdata_.wrules, 0, print_tree, &rdata_, NULL);
+   //printf("\n\n\n");
+
    fprintf(stderr, "preparing rules...\n");
    traverse(rdata_.nrules, 0, prepare_rules, &rdata_, NULL);
    traverse(rdata_.wrules, 0, prepare_rules, &rdata_, NULL);
@@ -1442,7 +1448,10 @@ int main(int argc, char *argv[])
    fprintf(stderr, "preparing coastline...\n");
    cat_poly(&rdata_);
 
-   //traverse(rdata_.nodes, 0, print_tree, &rdata_);
+   // output rules
+   //traverse(rdata_.nrules, 0, print_tree, &rdata_, NULL);
+   //traverse(rdata_.wrules, 0, print_tree, &rdata_, NULL);
+
    //traverse(rdata_.ways, 0, print_tree, &rdata_);
    //fprintf(stderr, "rendering coastline (closed polygons)...\n");
    //traverse(rdata_.ways, 0, draw_coast, &rdata_, NULL);
