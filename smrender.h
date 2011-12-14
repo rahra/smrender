@@ -80,7 +80,7 @@ struct otag
 
 struct actImage
 {
-   //char *fn;
+   double angle;
    gdImage *img;
 };
 

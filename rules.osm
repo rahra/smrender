@@ -1,8 +1,8 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <osm version='0.6'>
    <node>
-      <tag k='/^seamark:light.*/' v=''/>
-      <tag k='_action_' v='img:icons/Light_Magenta_120.png'/>
+      <tag k='/^seamark:light:.*/' v=''/>
+      <tag k='_action_' v='img-auto:icons/Light_Magenta_90.png'/>
    </node>
    <node>
       <tag k='seamark:type' v='light_minor'/>
@@ -32,6 +32,7 @@
       <tag k='/^seamark:light.*/' v=''/>
       <tag k='seamark:type' v='landmark' />
    </node>
+   <!--
    <node>
       <tag k='seamark:buoy_lateral:colour' v='~green~'/>
       <tag k='seamark:buoy_lateral:shape' v='pillar'/>
@@ -44,6 +45,7 @@
       <tag k='seamark:type' v='buoy_lateral'/>
       <tag k='_action_' v='img:icons/Pillar_Black.png'/>
    </node>
+   -->
    <node>
       <tag k='seamark:beacon_lateral:colour' v='~green~'/>
       <tag k='seamark:type' v='beacon_lateral'/>

@@ -312,12 +312,31 @@ void prepare_rules(struct onode *nd, struct rdata *rd, void *p)
          return;
       }
 
+      nd->rule.img.angle = 0;
       if ((nd->rule.img.img = gdImageCreateFromPng(f)) == NULL)
          fprintf(stderr, "could not read PNG from %s\n", s);
       (void) fclose(f);
 
       nd->rule.type = ACT_IMG;
       fprintf(stderr, "successfully imported PNG %s\n", s);
+   }
+   else if (!strcmp(s, "img-auto"))
+   {
+      if ((s = strtok(NULL, ":")) == NULL)
+         return;
+      if ((f = fopen(s, "r")) == NULL)
+      {
+         fprintf(stderr, "fopen(%s) failed: %s\n", s, strerror(errno));
+         return;
+      }
+
+      nd->rule.img.angle = NAN;
+      if ((nd->rule.img.img = gdImageCreateFromPng(f)) == NULL)
+         fprintf(stderr, "could not read PNG from %s\n", s);
+      (void) fclose(f);
+
+      nd->rule.type = ACT_IMG;
+      fprintf(stderr, "img-auto, successfully imported PNG %s\n", s);
    }
    else if (!strcmp(s, "cap"))
    {
@@ -417,21 +436,28 @@ int coords_inrange(const struct rdata *rd, int x, int y)
 
 int act_image(struct onode *nd, struct rdata *rd, struct onode *mnd, int x, int y)
 {
-   int i, j, c;
+   int i, j, c, rx, ry, hx, hy;
    double a;
 
-   //a = color_frequency(rd, x, y, gdImageSX(mnd->rule.img.img) / 2, gdImageSY(mnd->rule.img.img), rd->col[WHITE]);
-   a = 0;
+   hx = gdImageSX(mnd->rule.img.img) / 2;
+   hy = gdImageSY(mnd->rule.img.img) / 2;
 
-   x -= gdImageSX(mnd->rule.img.img) / 2;
-   y -= gdImageSY(mnd->rule.img.img) / 2;
+   a = isnan(mnd->rule.img.angle) ? color_frequency(rd, x, y, hx, hy, rd->col[WHITE]) : 0;
+   a = DEG2RAD(a);
 
    for (j = 0; j < gdImageSY(mnd->rule.img.img); j++)
    {
       for (i = 0; i < gdImageSX(mnd->rule.img.img); i++)
       {
+         if (a != 0)
+            rot_pos(i - hx, j - hy, a, &rx, &ry);
+         else
+         {
+            rx = i - hx;
+            ry = hy - j;
+         }
          c = gdImageGetPixel(mnd->rule.img.img, i, j);
-         gdImageSetPixel(rd->img, i + x, j + y, c);
+         gdImageSetPixel(rd->img, x + rx, y - ry, c);
       }
    }
 
