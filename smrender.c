@@ -418,6 +418,10 @@ int coords_inrange(const struct rdata *rd, int x, int y)
 int act_image(struct onode *nd, struct rdata *rd, struct onode *mnd, int x, int y)
 {
    int i, j, c;
+   double a;
+
+   //a = color_frequency(rd, x, y, gdImageSX(mnd->rule.img.img) / 2, gdImageSY(mnd->rule.img.img), rd->col[WHITE]);
+   a = 0;
 
    x -= gdImageSX(mnd->rule.img.img) / 2;
    y -= gdImageSY(mnd->rule.img.img) / 2;
@@ -427,9 +431,6 @@ int act_image(struct onode *nd, struct rdata *rd, struct onode *mnd, int x, int 
       for (i = 0; i < gdImageSX(mnd->rule.img.img); i++)
       {
          c = gdImageGetPixel(mnd->rule.img.img, i, j);
-//       if (gdTrueColorGetAlpha(c))
-//          continue;
-//       gdImageSetPixel(rd->img, i + x, j + y, rd->col[BLACK]);
          gdImageSetPixel(rd->img, i + x, j + y, c);
       }
    }
@@ -480,13 +481,14 @@ double color_frequency(struct rdata *rd, int x, int y, int w, int h, int col)
 
  
 #define POS_OFFSET round(1.3 * rd->dpi / 25.4)
+#define MAX_OFFSET round(2.0 * rd->dpi / 25.4)
 #define DIVX 3
 int act_caption(struct onode *nd, struct rdata *rd, struct onode *mnd, int x, int y)
 {
    int br[8], n;
    char *s;
    gdFTStringExtra fte;
-   int rx, ry, ox, oy;
+   int rx, ry, ox, oy, off;
    double ma;
 
    if ((n = match_attr(nd, mnd->rule.cap.key, NULL)) == -1)
@@ -505,16 +507,18 @@ int act_caption(struct onode *nd, struct rdata *rd, struct onode *mnd, int x, in
 
    if (isnan(mnd->rule.cap.angle))
    {
-      ma = color_frequency(rd, x, y, br[4] - br[0] + POS_OFFSET, br[1] - br[5], rd->col[WHITE]);
+      ma = color_frequency(rd, x, y, br[4] - br[0] + MAX_OFFSET, br[1] - br[5], rd->col[WHITE]);
+      off = cf_dist(rd, x, y, br[4] - br[0], br[1] - br[5], DEG2RAD(ma), rd->col[WHITE], MAX_OFFSET);
+
       oy =(br[1] - br[5]) / DIVX;
       if ((ma < 90) || (ma >= 270))
       {
-         ox = POS_OFFSET;
+         ox = off;
       }
       else
       {
          ma -= 180;
-         ox = br[0] - br[2] - POS_OFFSET;
+         ox = br[0] - br[2] - off;
       }
    }
    else
@@ -553,7 +557,7 @@ int act_caption(struct onode *nd, struct rdata *rd, struct onode *mnd, int x, in
   //rot_rect(rd, x, y, DEG2RAD(ma), br);
 
   rot_pos(ox, oy, DEG2RAD(ma), &rx, &ry);
-   fprintf(stderr, "dx = %d, dy = %d, rx = %d, ry = %d, ma = %.3f, '%s'\n", br[0]-br[2],br[1]-br[5], rx, ry, ma, nd->otag[n].v.buf);
+   fprintf(stderr, "dx = %d, dy = %d, rx = %d, ry = %d, ma = %.3f, off = %d, '%s'\n", br[0]-br[2],br[1]-br[5], rx, ry, ma, off, nd->otag[n].v.buf);
 
    if ((s = gdImageStringFTEx(rd->img, br, mnd->rule.cap.col, mnd->rule.cap.font, mnd->rule.cap.size * 2.8699, DEG2RAD(ma), x + rx, y - ry, nd->otag[n].v.buf, &fte)) != NULL)
       fprintf(stderr, "error rendering caption: %s\n", s);
@@ -1254,49 +1258,43 @@ double rot_pos(int x, int y, double a, int *rx, int *ry)
    r = sqrt(x * x + y * y);
    //b = atan((double) y1 / (double) x1);
    b = atan2((double) y, (double) x);
-   *rx = r * cos(a - b);
-   *ry = r * sin(a - b);
+   *rx = round(r * cos(a - b));
+   *ry = round(r * sin(a - b));
 
    return r;
 }
 
 
+int cf_dist(struct rdata *rd, int x, int y, int w, int h, double a, int col, int mdist)
+{
+   int rx, ry, d, freq, max_freq = 0, dist = 0;
+
+   for (d = 0; d < mdist; d++)
+   {
+      rot_pos(d, 0, a, &rx, &ry);
+      freq = col_freq(rd, x + rx, y - ry, w, h, a, col);
+      if (max_freq < freq)
+      {
+         max_freq = freq;
+         dist = d;
+      }
+   }
+
+   return dist;
+}
+
+
+
 int col_freq(struct rdata *rd, int x, int y, int w, int h, double a, int col)
 {
    int x1, y1, rx, ry, c = 0;
-   //double r, b;
-
-   //fprintf(stderr, "%d %d\n", w, h);
-   //a = (360 - a + 90) * M_PI / 180;
-   //a = a * M_PI / 180;
 
    for (y1 = -h / 2; y1 < h / 2; y1++)
-   //for (y1 = 0; y1 < h; y1++)
       for (x1 = 0; x1 < w; x1++)
       {
-         /*
-         r = sqrt(x1 * x1 + y1 * y1);
-         b = atan2((double) y1, (double) x1);
-         rx = r * cos(a - b);
-         ry = r * sin(a - b);
-         */
          rot_pos(x1, y1, a, &rx, &ry);
          c += (col == gdImageGetPixel(rd->img, x + rx, y - ry));
       }
-/*
-   fprintf(stderr, "x = %d, y = %d, w = %d, h = %d, a = %d\n", x, y, w, h, (int) (a * 180 / M_PI));
-   fprintf(stderr, "%d %d %d %d\n",
-         (int) (sqrt(0 * 0 + (-h / 2) * (-h / 2)) * cos(a - atan2(-h / 2, 0))),
-         (int) (sqrt(0 * 0 + (-h / 2) * (-h / 2)) * sin(a - atan2(-h / 2, 0))),
-         (int) (sqrt(w * w + ( h / 2) * ( h / 2)) * cos(a - atan2( h / 2, w))),
-         (int) (sqrt(w * w + ( h / 2) * ( h / 2)) * sin(a - atan2( h / 2, w))));
-*/
-   //gdImageLine(rd->img, x, y, rx + x, ry + y, rd->col[BROWN]);
-   
-   //rx = c * cos(a) * 0.1;
-   //ry = c * sin(a) * 0.1;
-   //gdImageLine(rd->img, x, y, x + rx, y - ry, rd->col[BLACK]);
-   
 
    return c;
 }
@@ -1305,6 +1303,12 @@ int col_freq(struct rdata *rd, int x, int y, int w, int h, double a, int col)
 int print_onode(FILE *f, const struct onode *nd)
 {
    int i;
+
+   if (nd == NULL)
+   {
+      fprintf(stderr, "NULL pointer catched in print_onode()\n");
+      return -1;
+   }
 
    switch (nd->nd.type)
    {

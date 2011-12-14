@@ -16,18 +16,26 @@ struct wlist
 {
    int64_t id;
    int ref_cnt, max_ref;
-   struct pcoord start, end;
+   //struct pcoord start, end;
    int64_t ref[];
 };
 
 struct pdef
 {
-   struct wlist *wl;
+   //struct wlist *wl;
+   int wl_index;
    int pn;           // index number of destined point
    struct pcoord pc; // bearing to pointer
 };
 
 
+int poly_bearing(struct rdata*, struct wlist*, int, struct pcoord*, const struct coord*);
+int64_t add_dummy_node(struct rdata*, const struct coord*);
+
+
+/*! This finds open polygons with tag natural=coastline and adds
+ *  the node references to the wlist structure.
+ */
 void gather_poly(struct onode *nd, struct rdata *rd, struct wlist **wl)
 {
    // check if it is an open polygon
@@ -177,7 +185,7 @@ void poly_node_to_border(struct rdata *rd, struct wlist *nl)
 int poly_out(FILE *f, struct wlist *nl, struct rdata *rd)
 {
    bx_node_t *bn;
-   struct onode *nd;
+   //struct onode *nd;
    int i;
 
    fprintf(f, "<way id=\"%ld\" version=\"1\">\n", nl->id);
@@ -188,23 +196,142 @@ int poly_out(FILE *f, struct wlist *nl, struct rdata *rd)
    for (i = 0; i < nl->ref_cnt; i++)
    {
       // FIXME: return code should be tested
-      bn = bx_get_node(rd->nodes, nl->ref[i]);
-      nd = bn->next[0];
-      print_onode(f, nd);
+      if ((bn = bx_get_node(rd->nodes, nl->ref[i])) == NULL)
+      {
+         fprintf(stderr, "NULL pointer catchted in poly_out...continuing\n");
+         continue;
+      }
+      //nd = bn->next[0];
+      //print_onode(f, nd);
       //fprintf(f, "<node id=\"%ld\" lat=\"%f\" lon=\"%f\" version=\"1\"/>\n", nd->nd.id, nd->nd.lat, nd->nd.lon);
+      print_onode(f, bn->next[0]);
    }
 
    return 0;
 }
 
 
+int compare_pdef(const struct pdef *p1, const struct pdef *p2)
+{
+   if (p1->pc.bearing < p2->pc.bearing) return -1;
+   if (p1->pc.bearing > p2->pc.bearing) return 1;
+   return 0;
+}
+
+
+int enlarge_ref(struct wlist **wl, int n)
+{
+   if ((*wl = realloc(*wl, sizeof(struct wlist) + sizeof(int64_t) * ((*wl)->max_ref + n))) == NULL)
+      perror("realloc"), exit(EXIT_FAILURE);
+   (*wl)->max_ref++;
+
+   return 0;
+}
+
+
+int connect_open_poly(struct rdata *rd, struct wlist **wl, int n)
+{
+   const gdPoint ic[] = {{gdImageSX(rd->img), -1}, {gdImageSX(rd->img), gdImageSY(rd->img)}, {-1, gdImageSY(rd->img)}, {-1, -1}};
+   struct pdef pd[n * 2 + 1];
+   // center coord
+   struct coord c, d;
+   // corner points
+   int64_t cp[5];
+   struct pcoord pc[5];
+   int i, j, k;
+
+   // center coordinates
+   c.lat = rd->mean_lat;
+   c.lon = (rd->x1c + rd->x2c) / 2;
+
+   // generate corner points
+   for (i = 0; i < 4; i++)
+   {
+      mk_chart_coords(ic[i].x, ic[i].y, rd, &d.lat, &d.lon);
+      pc[i] = coord_diff(&c, &d);
+      cp[i] = add_dummy_node(rd, &d);
+   }
+   cp[4] = cp[0];
+   pc[4] = pc[0];
+
+   // calculate bearing and distance to each start and end point of wl.
+   for (i = 0; i < n; i++)
+   {
+      if ((pd[i].pn = poly_bearing(rd, wl[i], 0, &pd[i].pc, &c)) == -1)
+         return -1;
+      if ((pd[i + n].pn = poly_bearing(rd, wl[i], wl[i]->ref_cnt - 1, &pd[i + n].pc, &c)) == -1)
+         return -1;
+      pd[i].wl_index = pd[i + n].wl_index = i;
+   }
+
+   qsort(pd, n * 2, sizeof(struct pdef), (int(*)(const void *, const void *)) compare_pdef);
+
+   // if first point in list is not start point move it to the end
+   // FIXME: this is a qick n dirty solution. 
+   if (pd[0].pn)
+   {
+      memcpy(&pd[n * 2], &pd[0], sizeof(struct pdef));
+      memcpy(&pd[0], &pd[1], sizeof(struct pdef) * n * 2);
+   }
+
+
+   for (i = 0; i < n * 2 - 1; i++)
+   {
+      // FIXME: there should be a check if i is an end point and i + 1 is a
+      // start point
+
+      // check if endpoint is of same list as next start point
+      if (pd[i].wl_index == pd[i + 1].wl_index)
+      {
+         // find next corner point for i
+         for (j = 0; j < 4; j++)
+            if (pd[i].pc.bearing < pc[j].bearing)
+               break;
+         // find next corner point for j
+         for (k = 0; k < 4; k++)
+            if (pd[i + 1].pc.bearing < pc[k].bearing)
+               break;
+
+         // add corner points to way
+         for (; j < k; j++)
+         {
+            if (wl[pd[i].wl_index]->max_ref <= wl[pd[i].wl_index]->ref_cnt)
+               enlarge_ref(&wl[pd[i].wl_index], 1);
+            wl[pd[i].wl_index]->ref[wl[pd[i].wl_index]->ref_cnt] = cp[j];
+            wl[pd[i].wl_index]->ref_cnt++;
+         }
+
+         // check if list has enough entries, otherwise reserve memory
+         if (wl[pd[i].wl_index]->max_ref <= wl[pd[i].wl_index]->ref_cnt)
+            enlarge_ref(&wl[pd[i].wl_index], 1);
+
+         // set end point to start point
+         wl[pd[i].wl_index]->ref[wl[pd[i].wl_index]->ref_cnt] = wl[pd[i].wl_index]->ref[0];
+         wl[pd[i].wl_index]->ref_cnt++;
+         i++;
+      }
+   }
+
+   return 0;
+}
+
+
+/*! Calculate bearing/dist to node n of wlist. The result is stored into pc.
+ *  @param rd Pointer to struct rdata.
+ *  @param nl Pointer to wlist.
+ *  @param n Index number of node of wlist.
+ *  @param pc Pointer to struct pcoord which receives the result.
+ *  @param c Pointer struct coord which contains the source coordinates from
+ *  which the bearing and distance is calculated.
+ *  @return The function returns n if everything is ok. On error -1 is returned.
+ */
 int poly_bearing(struct rdata *rd, struct wlist *nl, int n, struct pcoord *pc, const struct coord *c)
 {
    bx_node_t *bn;
    struct onode *nd;
    struct coord dst;
 
-   if (nl->ref_cnt < n) return -1;
+   if ((n >= nl->ref_cnt) || (n < 0)) return -1;
    if ((bn = bx_get_node(rd->nodes, nl->ref[n])) == NULL) return -1;
    if ((nd = bn->next[0]) == NULL) return -1;
 
@@ -212,10 +339,13 @@ int poly_bearing(struct rdata *rd, struct wlist *nl, int n, struct pcoord *pc, c
    dst.lon = nd->nd.lon;
 
    *pc = coord_diff(c, &dst);
-   return 0;
+   return n;
 }
 
 
+#if 0
+/*! Calculate bearing/dist to start and end point of wlist.
+ */
 int poly_ends(struct rdata *rd, struct wlist *nl, const struct coord *c)
 {
    bx_node_t *bn;
@@ -240,6 +370,62 @@ int poly_ends(struct rdata *rd, struct wlist *nl, const struct coord *c)
    fprintf(stderr, "start/end angle: %f/%f\n", nl->start.bearing, nl->end.bearing);
    return 0;
 }
+#endif
+
+
+int64_t add_dummy_node(struct rdata *rd, const struct coord *c)
+{
+   struct onode *ond;
+   bx_node_t *bn;
+
+   if ((ond = malloc(sizeof(struct onode))) == NULL)
+         perror("malloc"), exit(EXIT_FAILURE);
+      memset(ond, 0, sizeof(struct onode));
+ 
+   rd->ds.min_nid = rd->ds.min_nid < 0 ? rd->ds.min_nid - 1 : -1;
+   ond->nd.id = rd->ds.min_nid;
+   ond->nd.type = OSM_NODE;
+   ond->nd.ver = 1;
+   ond->nd.lat = c->lat;
+   ond->nd.lon = c->lon;
+
+   bn = bx_add_node(&rd->nodes, ond->nd.id);
+   bn->next[0] = ond;
+
+   return ond->nd.id;
+
+}
+
+
+int64_t add_coast_way(struct rdata *rd, const struct wlist *nl)
+{
+   struct onode *ond;
+   bx_node_t *bn;
+
+   if ((ond = malloc(sizeof(struct onode) + sizeof(struct otag))) == NULL)
+         perror("malloc"), exit(EXIT_FAILURE);
+      memset(ond, 0, sizeof(struct onode) + sizeof(struct otag));
+   if ((ond->ref = malloc(nl->ref_cnt * sizeof(int64_t))) == NULL)
+         perror("malloc"), exit(EXIT_FAILURE);
+   ond->ref_cnt = nl->ref_cnt;
+   memcpy(ond->ref, nl->ref, nl->ref_cnt * sizeof(int64_t));
+
+   rd->ds.min_wid = rd->ds.min_wid < 0 ? rd->ds.min_wid - 1 : -1;
+   ond->nd.id = rd->ds.min_wid;
+   ond->tag_cnt = 1;
+   ond->nd.type = OSM_WAY;
+   ond->nd.ver = 1;
+
+   ond->otag[0].k.buf = "natural";
+   ond->otag[0].k.len = 7;
+   ond->otag[0].v.buf = "coastline";
+   ond->otag[0].v.len = 9;
+
+   bn = bx_add_node(&rd->ways, ond->nd.id);
+   bn->next[0] = ond;
+
+   return ond->nd.id;
+}
 
 
 int cat_poly(struct rdata *rd)
@@ -247,9 +433,6 @@ int cat_poly(struct rdata *rd)
    int i, nl_cnt;
    struct wlist *wl, *nl[MAX_OPEN_POLY];
    FILE *f;
-   struct coord center;
-   struct onode *ond;
-   bx_node_t *bn;
 
    if ((wl = malloc(sizeof(*wl) + INIT_MAX_REF * sizeof(int64_t))) == NULL)
       perror("malloc"), exit(EXIT_FAILURE);
@@ -268,54 +451,33 @@ int cat_poly(struct rdata *rd)
       perror("fopen"), exit(EXIT_FAILURE);
    fprintf(f, "<?xml version='1.0' encoding='UTF-8'?>\n<osm version='0.6' generator='smrender'>\n");
 
-   center.lat = rd->mean_lat;
-   center.lon = (rd->x1c + rd->x2c) / 2;
-   i = 0;
-   while ((nl[i] = poly_find_adj(rd, wl)) != NULL)
+   for (i = 0; (nl[i] = poly_find_adj(rd, wl)) != NULL; i++)
    {
       fprintf(stderr, "connected way, ref_cnt = %d, ref[0] = %ld, ref[%d] = %ld\n",
             nl[i]->ref_cnt, nl[i]->ref[0], nl[i]->ref_cnt - 1, nl[i]->ref[nl[i]->ref_cnt - 1]);
-      //poly_node_to_border(rd, nl);
       poly_out(f, nl[i], rd);
 
       // check if wlist is closed
       if (nl[i]->ref[0] == nl[i]->ref[nl[i]->ref_cnt - 1])
       {
-         if ((ond = malloc(sizeof(struct onode) + sizeof(struct otag))) == NULL)
-            perror("malloc"), exit(EXIT_FAILURE);
-         memset(ond, 0, sizeof(struct onode) + sizeof(struct otag));
-         if ((ond->ref = malloc(nl[i]->ref_cnt * sizeof(int64_t))) == NULL)
-            perror("malloc"), exit(EXIT_FAILURE);
-         ond->ref_cnt = nl[i]->ref_cnt;
-         memcpy(ond->ref, nl[i]->ref, nl[i]->ref_cnt * sizeof(int64_t));
-
-         rd->ds.min_wid = rd->ds.min_wid < 0 ? rd->ds.min_wid - 1 : -1;
-         ond->nd.id = rd->ds.min_wid;
-         ond->tag_cnt = 1;
-         ond->nd.type = OSM_WAY;
-         ond->nd.ver = 1;
-
-         ond->otag[0].k.buf = "natural";
-         ond->otag[0].k.len = 7;
-         ond->otag[0].v.buf = "coastline";
-         ond->otag[0].v.len = 9;
-
-         bn = bx_add_node(&rd->ways, ond->nd.id);
-         bn->next[0] = ond;
-
+         (void) add_coast_way(rd, nl[i]);
          free(nl[i]);
          i--;
       }
-      else if (poly_ends(rd, nl[i], &center) == -1)
-         fprintf(stderr, "*** error in poly_ends()\n");
-
-      i++;
    }
    nl_cnt = i;
 
+   connect_open_poly(rd, nl, nl_cnt);
+
    for (i = 0; i < nl_cnt; i++)
    {
-     free(nl[i]);
+      if (nl[i]->ref[0] == nl[i]->ref[nl[i]->ref_cnt - 1])
+      {
+         fprintf(stderr, "now connected way\n");
+         poly_out(f, nl[i], rd);
+         add_coast_way(rd, nl[i]);
+      }
+      free(nl[i]);
    }
 
    fprintf(f, "</osm>\n");

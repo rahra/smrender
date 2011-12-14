@@ -4,30 +4,30 @@
       <tag k='/^seamark:light.*/' v=''/>
       <tag k='_action_' v='img:icons/Light_Magenta_120.png'/>
    </node>
-   <node id="2">
+   <node>
       <tag k='seamark:type' v='light_minor'/>
       <tag k='_action_' v='img:icons/Light_Minor.png'/>
    </node>
-   <node id="3">
+   <node>
       <tag k='seamark:type' v='light_major'/>
       <tag k='_action_' v='img:icons/Light_Major.png'/>
    </node>
-   <node id="4">
+   <node>
       <tag k='seamark:type' v='beacon_isolated_danger'/>
       <tag k='seamark:beacon_isolated_danger:shape' v='tower'/>
       <tag k='_action_' v='img:icons/Cardinal_Tower_Single.png'/>
    </node>
-   <node id="5">
+   <node>
       <tag k='seamark:type' v='beacon_isolated_danger'/>
       <tag k='~seamark:beacon_isolated_danger:shape~' v=''/>
       <tag k='_action_' v='img:icons/Cardinal_Beacon_Single.png'/>
    </node>
-   <node id="6">
+   <node>
       <tag k='_action_' v='img:icons/Cardinal_Beacon_West.png'/>
       <tag k='seamark:beacon_cardinal:category' v='west' />
       <tag k='seamark:type' v='beacon_cardinal' />
    </node>
-   <node id="1">
+   <node>
       <tag k='_action_' v='img:icons/Light_House.png'/>
       <tag k='/^seamark:light.*/' v=''/>
       <tag k='seamark:type' v='landmark' />
@@ -74,13 +74,13 @@
         channels/passages: Sans italic upper case (2.3mm)
    -->
 
-   <node id="7">
+   <node>
       <!-- cap:<fontfile>,<size in cm>,<alignement [ewc][nsm]>,<color>,<angle>,<keyname to print> -->
       <tag k='_action_' v='cap:/usr/share/fonts/truetype/ttf-liberation/LiberationSans-Regular.ttf,1.4,cm,black,auto,seamark:light_character'/>
       <!-- <tag k='seamark:light:ref' v=''/> -->
       <tag k='seamark:light_character' v=''/>
    </node>
-   <node id="8">
+   <node>
       <tag k='_action_' v='cap:/usr/share/fonts/truetype/ttf-liberation/LiberationSerif-Bold.ttf,1.8,cm,black,auto,name'/>
       <!-- <tag k='_action_' v='cap:/usr/share/fonts/truetype/freefont/FreeSerifBold.ttf,1.8,cm,black,auto,name'/> -->
       <tag k='place' v='village'/>
@@ -90,7 +90,7 @@
       <tag k='place' v='hamlet'/>
    </node>
  
-   <node id="9">
+   <node>
       <tag k='_action_' v='cap:/usr/share/fonts/truetype/ttf-liberation/LiberationSerif-Regular.ttf,1.2,n,black,0,name'/>
       <tag k='natural' v='peak'/>
    </node>
@@ -98,11 +98,11 @@
       <tag k='_action_' v='cap:/usr/share/fonts/truetype/ttf-liberation/LiberationSerif-Regular.ttf,1.2,s,black,0,ele'/>
       <tag k='natural' v='peak'/>
    </node>
-    <node id="10">
+    <node>
       <tag k='_action_' v='cap:/usr/share/fonts/truetype/ttf-liberation/LiberationSans-Bold.ttf,2.5,cm,black,auto,name'/>
       <tag k='place' v='island'/>
    </node>
-   <node id="11">
+   <node>
       <tag k='_action_' v='cap:/usr/share/fonts/truetype/ttf-liberation/LiberationSans-Bold.ttf,1.4,cm,black,auto,name'/>
       <tag k='place' v='islet'/>
    </node>

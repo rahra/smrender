@@ -62,7 +62,7 @@
 
 typedef struct rdata rdata_t;
 typedef struct onode onode_t;
-
+typedef void (*tree_func_t)(struct onode*, struct rdata*, void*);
 
 struct specialTag
 {
@@ -185,7 +185,10 @@ void traverse(const bx_node_t *, int, void (*)(struct onode*, struct rdata*, voi
 int match_attr(const struct onode *, const char *, const char *);
 int print_onode(FILE *, const struct onode *);
 int col_freq(struct rdata *, int, int, int, int, double, int);
+int cf_dist(struct rdata *, int, int, int, int, double, int, int);
 double rot_pos(int, int, double, int *, int *);
+double color_frequency(struct rdata *, int, int, int, int, int);
+void mk_chart_coords(int, int, struct rdata*, double*, double*);
 
 /* smloadosm.c */
 int read_osm_file(hpx_ctrl_t *, bx_node_t **, bx_node_t **);
