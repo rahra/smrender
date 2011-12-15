@@ -24,11 +24,7 @@
 
 #include "osm_inplace.h"
 #include "bstring.h"
-//#include "libhpxml.h"
-//#include "smlog.h"
 #include "bxtree.h"
-//#include "smact.h"
-//#include "smrules.h"
 #include "smath.h"
 
 
@@ -56,9 +52,16 @@
 #define G_STW 2.5
 // line width of chart border (mm)
 #define G_BW 0.1
+#define G_FONT "/usr/share/fonts/truetype/ttf-liberation/LiberationSans-Regular.ttf"
+#define G_FTSIZE 3
+#define G_SFTSIZE 2
 
 #define ANGLE_DIFF 10
 
+// convert mm to pixels
+#define MM2PX(x) round((double) (x) * rd->dpi / 25.4)
+// convert mm to points (pt)
+#define MM2PT(x) round((double) (x) * 72.72 / 25.4)
 
 typedef struct rdata rdata_t;
 typedef struct onode onode_t;

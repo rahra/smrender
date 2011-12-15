@@ -53,6 +53,22 @@ void usage(const char *s)
 }
 
 
+/*! Returns degrees and minutes of a fractional coordinate.
+ */
+void fdm(double x, int *deg, int *min)
+{
+   double d, m;
+
+   *min = round(modf(x, &d) * 60);
+   *deg = round(d);
+   if (*min == 60)
+   {
+      (*deg)++;
+      *min = 0;
+   }
+}
+
+
 double fround(double x, double y)
 {
    return x - fmod(x, y);
@@ -61,6 +77,7 @@ double fround(double x, double y)
 
 char *cfmt(double c, int d, char *s, int l)
 {
+   // FIXME: modf should be used instead
    switch (d)
    {
       case LAT:
@@ -506,8 +523,8 @@ double color_frequency(struct rdata *rd, int x, int y, int w, int h, int col)
 }
 
  
-#define POS_OFFSET round(1.3 * rd->dpi / 25.4)
-#define MAX_OFFSET round(2.0 * rd->dpi / 25.4)
+#define POS_OFFSET MM2PX(1.3)
+#define MAX_OFFSET MM2PX(2.0)
 #define DIVX 3
 int act_caption(struct onode *nd, struct rdata *rd, struct onode *mnd, int x, int y)
 {
@@ -582,8 +599,8 @@ int act_caption(struct onode *nd, struct rdata *rd, struct onode *mnd, int x, in
 
   //rot_rect(rd, x, y, DEG2RAD(ma), br);
 
-  rot_pos(ox, oy, DEG2RAD(ma), &rx, &ry);
-   fprintf(stderr, "dx = %d, dy = %d, rx = %d, ry = %d, ma = %.3f, off = %d, '%s'\n", br[0]-br[2],br[1]-br[5], rx, ry, ma, off, nd->otag[n].v.buf);
+   rot_pos(ox, oy, DEG2RAD(ma), &rx, &ry);
+   //fprintf(stderr, "dx = %d, dy = %d, rx = %d, ry = %d, ma = %.3f, off = %d, '%s'\n", br[0]-br[2],br[1]-br[5], rx, ry, ma, off, nd->otag[n].v.buf);
 
    if ((s = gdImageStringFTEx(rd->img, br, mnd->rule.cap.col, mnd->rule.cap.font, mnd->rule.cap.size * 2.8699, DEG2RAD(ma), x + rx, y - ry, nd->otag[n].v.buf, &fte)) != NULL)
       fprintf(stderr, "error rendering caption: %s\n", s);
@@ -1024,7 +1041,7 @@ void print_rdata(FILE *f, const struct rdata *rd)
          "w = %d, h = %d px\ndpi = %d\nscale = 1:%.0f\npage size = %.1f x %.1f mm\n"
          "grid = %.1f', ticks = %.2f', subticks = %.2f'\n",
          rd->x1c, rd->y1c, rd->x2c, rd->y2c, rd->mean_lat, rd->mean_lat_len, rd->mean_lat_len * 60,
-         rd->wc, rd->hc, rd->w, rd->h, rd->dpi, rd->scale, (double) rd->w / rd->dpi * 25.4, (double) rd->h / rd->dpi * 25.4,
+         rd->wc, rd->hc, rd->w, rd->h, rd->dpi, rd->scale, MM2PX(rd->w), MM2PX(rd->h),
          rd->grd.lat_g * 60, rd->grd.lat_ticks * 60, rd->grd.lat_sticks * 60
          );
 
@@ -1051,6 +1068,71 @@ if (m >= 10)
 }
 */
 
+/*! Print string into image at a desired position with correct alignment.
+ *  @param rd Pointer to struct rdata.
+ *  @param x X position within image; the alignment is referred to these coordinates.
+ *  @param y Y position (see above).
+ *  @param pos Alignment: this is a combination (logical or) of horizontal and
+ *  vertical positioning parameters. The vertical alignment shall be one of
+ *  POS_N, POS_S, and P_OSM; the horizontal parameter is one of POS_E, POS_W,
+ *  and POS_C.
+ *  @param col Color of string.
+ *  @param ftsize Fontsize in milimeters.
+ *  @param ft Pointer to font file.
+ *  @param s Pointer to string buffer.
+ *  @return The function returns 0 on success, -1 otherwise.
+ */
+int img_print(const struct rdata *rd, int x, int y, int pos, int col, double ftsize, const char *ft, const char *s)
+{
+   char *err;
+   int br[8], ox, oy;
+   gdFTStringExtra fte;
+
+   memset(&fte, 0, sizeof(fte));
+   fte.flags = gdFTEX_RESOLUTION | gdFTEX_CHARMAP;
+   fte.charmap = gdFTEX_Unicode;
+   fte.hdpi = fte.vdpi = rd->dpi;
+
+   gdImageStringFTEx(NULL, br, col, (char*) ft, MM2PT(ftsize), 0, 0, 0, (char*) s, &fte);
+
+   switch (pos & 3)
+   {
+      case POS_N:
+         oy = 0;
+         break;
+
+      case POS_S:
+         oy = br[1] - br[5];
+         break;
+
+      default:
+         oy = (br[1] - br[5]) / 2;
+   }
+   switch (pos & 12)
+   {
+      case POS_E:
+         ox = 0;
+         break;
+         
+      case POS_W:
+         ox = br[0] - br[4];
+         break;
+
+      default:
+         ox = (br[0] - br[4]) / 2;
+   }
+
+   err = gdImageStringFTEx(rd->img, br, col, (char*) ft, MM2PT(ftsize), 0, x + ox, y + oy, (char*) s, &fte);
+   if (err != NULL)
+   {
+      fprintf(stderr, "gdImageStringFTEx error: '%s'\n", err);
+      return -1;
+   }
+
+   return 0;
+}
+
+
 /*! Fill a closed polygon (5 points) with coordinates of a rectangle
  *  with a border distance of b millimeters.
  *  @param rd Pointer to struct rdata.
@@ -1059,7 +1141,7 @@ if (m >= 10)
  */
 void grid_rcalc(const struct rdata *rd, gdPoint *p, double b)
 {
-   p[0].x = p[0].y = p[1].y = p[3].x = b * rd->dpi / 25.4;
+   p[0].x = p[0].y = p[1].y = p[3].x = MM2PX(b);
    p[1].x = p[2].x = rd->w - p[0].x;
    p[2].y = p[3].y = rd->h - p[0].y;
    p[4].x = p[0].x;
@@ -1076,15 +1158,44 @@ void grid(struct rdata *rd, int col)
    gdPoint p[7];
    double l, d, lat, lon;
    int x, y;
-   //char buf[100];
+   char buf[256];
+   gdFTStringExtra fte;
+   int br[8];
+   int min, deg;
 
-   gdImageSetThickness(rd->img, round(G_BW * rd->dpi / 25.4));
+   memset(&fte, 0, sizeof(fte));
+   fte.flags = gdFTEX_RESOLUTION | gdFTEX_CHARMAP;
+   fte.charmap = gdFTEX_Unicode;
+   fte.hdpi = fte.vdpi = rd->dpi;
+
+   l = MM2PX(G_MARGIN);
+   fdm(rd->mean_lat, &deg, &min);
+   snprintf(buf, sizeof(buf), "Mean Latitude = %02d %c %02d'   Scale = 1:%d", abs(deg), deg < 0 ? 'S' : 'N', min, (int) round(rd->scale));
+   img_print(rd, rd->w / 2, l / 2, POS_C | POS_M, rd->col[BLACK], G_FTSIZE, G_FONT, buf);
+   /*
+   gdImageStringFTEx(NULL, br, rd->col[BLACK], G_FONT, G_FTSIZE * 2.8699, 0, 0, 0, buf, &fte);
+   gdImageStringFTEx(rd->img, br, rd->col[BLACK], G_FONT, G_FTSIZE * 2.8699, 0, (rd->w - br[4] + br[0]) / 2, l / 2, buf, &fte);
+   */
+
+   gdImageSetThickness(rd->img, MM2PX(G_BW));
    for (d = fround(rd->y2c, rd->grd.lat_g); d < rd->y1c; d += rd->grd.lat_g)
    {
       //fprintf(stderr, "d = %s (%f)\n", cfmt(d, LAT, buf, sizeof(buf)), d);
       mk_paper_coords(d, rd->x1c, rd, &p[0].x, &p[0].y);
       mk_paper_coords(d, rd->x2c, rd, &p[1].x, &p[1].y);
       gdImageOpenPolygon(rd->img, p, 2, col);
+
+      fdm(d, &deg, &min);
+      if (min == 1.0) min = 0, deg++;
+      snprintf(buf, sizeof(buf), "%d°", deg);
+      //snprintf(buf, sizeof(buf), "%f°", d);
+      gdImageStringFTEx(NULL, br, rd->col[BLACK], G_FONT, G_FTSIZE * 2.8699, 0, 0, 0, buf, &fte);
+      gdImageStringFTEx(rd->img, br, rd->col[BLACK], G_FONT, G_FTSIZE * 2.8699, 0, l - (br[4] - br[0]), p[0].y - 3, buf, &fte);
+      gdImageStringFTEx(rd->img, br, rd->col[BLACK], G_FONT, G_FTSIZE * 2.8699, 0, rd->w - l, p[0].y - 3, buf, &fte);
+      snprintf(buf, sizeof(buf), "%d'", min);
+      gdImageStringFTEx(NULL, br, rd->col[BLACK], G_FONT, G_FTSIZE * 2.8699, 0, 0, 0, buf, &fte);
+      gdImageStringFTEx(rd->img, br, rd->col[BLACK], G_FONT, G_FTSIZE * 2.8699, 0, l - (br[4] - br[0]), p[0].y + br[1] - br[5], buf, &fte);
+      gdImageStringFTEx(rd->img, br, rd->col[BLACK], G_FONT, G_FTSIZE * 2.8699, 0, rd->w - l, p[0].y + br[1] - br[5], buf, &fte);
    }
    for (d = fround(rd->x1c, rd->grd.lon_g); d < rd->x2c; d += rd->grd.lon_g)
    {
@@ -1092,6 +1203,19 @@ void grid(struct rdata *rd, int col)
       mk_paper_coords(rd->y1c, d, rd, &p[0].x, &p[0].y);
       mk_paper_coords(rd->y2c, d, rd, &p[1].x, &p[1].y);
       gdImageOpenPolygon(rd->img, p, 2, col);
+
+      fdm(d, &deg, &min);
+      if (min == 1.0) min = 0, deg++;
+      snprintf(buf, sizeof(buf), "%d°", deg);
+      //snprintf(buf, sizeof(buf), "%f°", d);
+      l = MM2PX(G_MARGIN);
+      gdImageStringFTEx(NULL, br, rd->col[BLACK], G_FONT, G_FTSIZE * 2.8699, 0, 0, 0, buf, &fte);
+      gdImageStringFTEx(rd->img, br, rd->col[BLACK], G_FONT, G_FTSIZE * 2.8699, 0, p[0].x - br[4] + br[0], l, buf, &fte);
+      gdImageStringFTEx(rd->img, br, rd->col[BLACK], G_FONT, G_FTSIZE * 2.8699, 0, p[0].x - br[4] + br[0], rd->h - l + br[1] - br[5], buf, &fte);
+      snprintf(buf, sizeof(buf), "%d'", min);
+      gdImageStringFTEx(NULL, br, rd->col[BLACK], G_FONT, G_FTSIZE * 2.8699, 0, 0, 0, buf, &fte);
+      gdImageStringFTEx(rd->img, br, rd->col[BLACK], G_FONT, G_FTSIZE * 2.8699, 0, p[0].x, l, buf, &fte);
+      gdImageStringFTEx(rd->img, br, rd->col[BLACK], G_FONT, G_FTSIZE * 2.8699, 0, p[0].x, rd->h - l + br[1] - br[5], buf, &fte);
    }
 
    grid_rcalc(rd, p, G_MARGIN);
@@ -1114,9 +1238,9 @@ void grid(struct rdata *rd, int col)
    p[6].x = rd->w - p[6].x; 
    gdImageOpenPolygon(rd->img, &p[5], 2, col);
    
-   p[0].x = G_MARGIN * rd->dpi / 25.4;
-   p[1].x = (G_MARGIN + G_TW + G_STW) * rd->dpi / 25.4;
-   p[2].x = (G_MARGIN + G_TW) * rd->dpi / 25.4;
+   p[0].x = MM2PX(G_MARGIN);
+   p[1].x = MM2PX(G_MARGIN + G_TW + G_STW);
+   p[2].x = MM2PX(G_MARGIN + G_TW);
    p[3].x = rd->w - p[0].x;
    p[4].x = rd->w - p[1].x;
    p[5].x = rd->w - p[2].x;
@@ -1138,9 +1262,9 @@ void grid(struct rdata *rd, int col)
       gdImageOpenPolygon(rd->img, &p[4], 2, col);
    }
 
-   p[0].x = G_MARGIN * rd->dpi / 25.4;
-   p[1].x = (G_MARGIN + G_TW + G_STW) * rd->dpi / 25.4;
-   p[2].x = (G_MARGIN + G_TW) * rd->dpi / 25.4;
+   p[0].x = MM2PX(G_MARGIN);
+   p[1].x = MM2PX(G_MARGIN + G_TW + G_STW);
+   p[2].x = MM2PX(G_MARGIN + G_TW);
    p[3].x = rd->w - p[0].x;
    p[4].x = rd->w - p[1].x;
    p[5].x = rd->w - p[2].x;
@@ -1160,9 +1284,9 @@ void grid(struct rdata *rd, int col)
    }
 
    // draw ticks and subticks on top and bottom border
-   p[0].y = G_MARGIN * rd->dpi / 25.4;
-   p[1].y = (G_MARGIN + G_TW + G_STW) * rd->dpi / 25.4;
-   p[2].y = (G_MARGIN + G_TW) * rd->dpi / 25.4;
+   p[0].y = MM2PX(G_MARGIN);
+   p[1].y = MM2PX(G_MARGIN + G_TW + G_STW);
+   p[2].y = MM2PX(G_MARGIN + G_TW);
    p[3].y = rd->h - p[0].y;
    p[4].y = rd->h - p[1].y;
    p[5].y = rd->h - p[2].y;
@@ -1181,9 +1305,9 @@ void grid(struct rdata *rd, int col)
    }
 
    // draw ticks and subticks on top and bottom border
-   p[0].y = G_MARGIN * rd->dpi / 25.4;
-   p[1].y = (G_MARGIN + G_TW + G_STW) * rd->dpi / 25.4;
-   p[2].y = (G_MARGIN + G_TW) * rd->dpi / 25.4;
+   p[0].y = MM2PX(G_MARGIN);
+   p[1].y = MM2PX(G_MARGIN + G_TW + G_STW);
+   p[2].y = MM2PX(G_MARGIN + G_TW);
    p[3].y = rd->h - p[0].y;
    p[4].y = rd->h - p[1].y;
    p[5].y = rd->h - p[2].y;
@@ -1492,6 +1616,7 @@ int main(int argc, char *argv[])
    fprintf(stderr, "rendering nodes...\n");
    traverse(rdata_.nrules, 0, apply_rules, &rdata_, NULL);
 
+   fprintf(stderr, "creating grid and legend\n");
    grid(&rdata_, rdata_.col[BLACK]);
 
    hpx_free(ctl);
