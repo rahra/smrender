@@ -27,6 +27,9 @@
 #include "bxtree.h"
 #include "smath.h"
 
+#define SW_AUTHOR "Bernhard R. Fischer"
+#define SW_AEMAIL "bf@abenteuerland.at"
+#define SW_COPY "© 2011"
 
 #define SPECIAL_DIRECT 0x0000
 #define SPECIAL_REGEX 0x0001
@@ -62,6 +65,8 @@
 #define MM2PX(x) round((double) (x) * rd->dpi / 25.4)
 // convert mm to points (pt)
 #define MM2PT(x) round((double) (x) * 72.72 / 25.4)
+// convert pixels to mm
+#define PX2MM(x) ((double) (x) * 25.4 / rd->dpi)
 
 typedef struct rdata rdata_t;
 typedef struct onode onode_t;

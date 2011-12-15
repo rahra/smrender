@@ -1161,9 +1161,16 @@ void grid(struct rdata *rd, int col)
    char buf[256];
    int min, deg;
 
+   l = MM2PX(G_MARGIN + G_TW + G_STW);
+   snprintf(buf, sizeof(buf), "%s by %s, <%s>. Generated with /smrender/. Data source: OSM",
+         SW_COPY, SW_AUTHOR, SW_AEMAIL);
+   img_print(rd, l, rd->h - l, POS_E | POS_N, rd->col[BLACK], G_SFTSIZE, G_FONT, buf);
+
    l = MM2PX(G_MARGIN);
+   lat = PX2MM(rd->h) - G_MARGIN * 2;
+   lon = PX2MM(rd->w) - G_MARGIN * 2;
    fdm(rd->mean_lat, &deg, &min);
-   snprintf(buf, sizeof(buf), "Mean Latitude = %02d %c %02d'   Scale = 1:%d", abs(deg), deg < 0 ? 'S' : 'N', min, (int) round(rd->scale));
+   snprintf(buf, sizeof(buf), "Mean Latitude = %02d %c %02d'   Scale = 1:%d (%.1f x %.1f mm)", abs(deg), deg < 0 ? 'S' : 'N', min, (int) round(rd->scale), lon, lat);
    img_print(rd, rd->w / 2, l / 2, POS_C | POS_M, rd->col[BLACK], G_FTSIZE, G_FONT, buf);
 
    gdImageSetThickness(rd->img, MM2PX(G_BW));
@@ -1177,11 +1184,11 @@ void grid(struct rdata *rd, int col)
       fdm(d, &deg, &min);
       if (min == 1.0) min = 0, deg++;
       snprintf(buf, sizeof(buf), "%02d°", deg);
-      img_print(rd, l, p[0].y, POS_N | POS_W, rd->col[BLACK], G_FTSIZE, G_FONT, buf);
-      img_print(rd, rd->w - l, p[0].y, POS_N | POS_E, rd->col[BLACK], G_FTSIZE, G_FONT, buf);
+      img_print(rd, l, p[0].y, POS_N | POS_E, rd->col[BLACK], G_FTSIZE, G_FONT, buf);
+      img_print(rd, rd->w - l, p[0].y, POS_N | POS_W, rd->col[BLACK], G_FTSIZE, G_FONT, buf);
       snprintf(buf, sizeof(buf), "%02d'", min);
-      img_print(rd, l, p[0].y, POS_S | POS_W, rd->col[BLACK], G_FTSIZE, G_FONT, buf);
-      img_print(rd, rd->w - l, p[0].y, POS_S | POS_E, rd->col[BLACK], G_FTSIZE, G_FONT, buf);
+      img_print(rd, l, p[0].y, POS_S | POS_E, rd->col[BLACK], G_FTSIZE, G_FONT, buf);
+      img_print(rd, rd->w - l, p[0].y, POS_S | POS_W, rd->col[BLACK], G_FTSIZE, G_FONT, buf);
    }
    for (d = fround(rd->x1c, rd->grd.lon_g); d < rd->x2c; d += rd->grd.lon_g)
    {
@@ -1193,11 +1200,11 @@ void grid(struct rdata *rd, int col)
       fdm(d, &deg, &min);
       if (min == 1.0) min = 0, deg++;
       snprintf(buf, sizeof(buf), "%03d°", deg);
-      img_print(rd, p[0].x, l, POS_N | POS_W, rd->col[BLACK], G_FTSIZE, G_FONT, buf);
-      img_print(rd, p[0].x, rd->h - l, POS_S | POS_W, rd->col[BLACK], G_FTSIZE, G_FONT, buf);
+      img_print(rd, p[0].x, l, POS_S | POS_W, rd->col[BLACK], G_FTSIZE, G_FONT, buf);
+      img_print(rd, p[0].x, rd->h - l, POS_N | POS_W, rd->col[BLACK], G_FTSIZE, G_FONT, buf);
       snprintf(buf, sizeof(buf), "%02d'", min);
-      img_print(rd, p[0].x, l, POS_N | POS_E, rd->col[BLACK], G_FTSIZE, G_FONT, buf);
-      img_print(rd, p[0].x, rd->h - l, POS_S | POS_E, rd->col[BLACK], G_FTSIZE, G_FONT, buf);
+      img_print(rd, p[0].x, l, POS_S | POS_E, rd->col[BLACK], G_FTSIZE, G_FONT, buf);
+      img_print(rd, p[0].x, rd->h - l, POS_N | POS_E, rd->col[BLACK], G_FTSIZE, G_FONT, buf);
    }
 
    grid_rcalc(rd, p, G_MARGIN);
