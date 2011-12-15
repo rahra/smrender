@@ -1159,23 +1159,12 @@ void grid(struct rdata *rd, int col)
    double l, d, lat, lon;
    int x, y;
    char buf[256];
-   gdFTStringExtra fte;
-   int br[8];
    int min, deg;
-
-   memset(&fte, 0, sizeof(fte));
-   fte.flags = gdFTEX_RESOLUTION | gdFTEX_CHARMAP;
-   fte.charmap = gdFTEX_Unicode;
-   fte.hdpi = fte.vdpi = rd->dpi;
 
    l = MM2PX(G_MARGIN);
    fdm(rd->mean_lat, &deg, &min);
    snprintf(buf, sizeof(buf), "Mean Latitude = %02d %c %02d'   Scale = 1:%d", abs(deg), deg < 0 ? 'S' : 'N', min, (int) round(rd->scale));
    img_print(rd, rd->w / 2, l / 2, POS_C | POS_M, rd->col[BLACK], G_FTSIZE, G_FONT, buf);
-   /*
-   gdImageStringFTEx(NULL, br, rd->col[BLACK], G_FONT, G_FTSIZE * 2.8699, 0, 0, 0, buf, &fte);
-   gdImageStringFTEx(rd->img, br, rd->col[BLACK], G_FONT, G_FTSIZE * 2.8699, 0, (rd->w - br[4] + br[0]) / 2, l / 2, buf, &fte);
-   */
 
    gdImageSetThickness(rd->img, MM2PX(G_BW));
    for (d = fround(rd->y2c, rd->grd.lat_g); d < rd->y1c; d += rd->grd.lat_g)
@@ -1187,15 +1176,12 @@ void grid(struct rdata *rd, int col)
 
       fdm(d, &deg, &min);
       if (min == 1.0) min = 0, deg++;
-      snprintf(buf, sizeof(buf), "%d°", deg);
-      //snprintf(buf, sizeof(buf), "%f°", d);
-      gdImageStringFTEx(NULL, br, rd->col[BLACK], G_FONT, G_FTSIZE * 2.8699, 0, 0, 0, buf, &fte);
-      gdImageStringFTEx(rd->img, br, rd->col[BLACK], G_FONT, G_FTSIZE * 2.8699, 0, l - (br[4] - br[0]), p[0].y - 3, buf, &fte);
-      gdImageStringFTEx(rd->img, br, rd->col[BLACK], G_FONT, G_FTSIZE * 2.8699, 0, rd->w - l, p[0].y - 3, buf, &fte);
-      snprintf(buf, sizeof(buf), "%d'", min);
-      gdImageStringFTEx(NULL, br, rd->col[BLACK], G_FONT, G_FTSIZE * 2.8699, 0, 0, 0, buf, &fte);
-      gdImageStringFTEx(rd->img, br, rd->col[BLACK], G_FONT, G_FTSIZE * 2.8699, 0, l - (br[4] - br[0]), p[0].y + br[1] - br[5], buf, &fte);
-      gdImageStringFTEx(rd->img, br, rd->col[BLACK], G_FONT, G_FTSIZE * 2.8699, 0, rd->w - l, p[0].y + br[1] - br[5], buf, &fte);
+      snprintf(buf, sizeof(buf), "%02d°", deg);
+      img_print(rd, l, p[0].y, POS_N | POS_W, rd->col[BLACK], G_FTSIZE, G_FONT, buf);
+      img_print(rd, rd->w - l, p[0].y, POS_N | POS_E, rd->col[BLACK], G_FTSIZE, G_FONT, buf);
+      snprintf(buf, sizeof(buf), "%02d'", min);
+      img_print(rd, l, p[0].y, POS_S | POS_W, rd->col[BLACK], G_FTSIZE, G_FONT, buf);
+      img_print(rd, rd->w - l, p[0].y, POS_S | POS_E, rd->col[BLACK], G_FTSIZE, G_FONT, buf);
    }
    for (d = fround(rd->x1c, rd->grd.lon_g); d < rd->x2c; d += rd->grd.lon_g)
    {
@@ -1206,16 +1192,12 @@ void grid(struct rdata *rd, int col)
 
       fdm(d, &deg, &min);
       if (min == 1.0) min = 0, deg++;
-      snprintf(buf, sizeof(buf), "%d°", deg);
-      //snprintf(buf, sizeof(buf), "%f°", d);
-      l = MM2PX(G_MARGIN);
-      gdImageStringFTEx(NULL, br, rd->col[BLACK], G_FONT, G_FTSIZE * 2.8699, 0, 0, 0, buf, &fte);
-      gdImageStringFTEx(rd->img, br, rd->col[BLACK], G_FONT, G_FTSIZE * 2.8699, 0, p[0].x - br[4] + br[0], l, buf, &fte);
-      gdImageStringFTEx(rd->img, br, rd->col[BLACK], G_FONT, G_FTSIZE * 2.8699, 0, p[0].x - br[4] + br[0], rd->h - l + br[1] - br[5], buf, &fte);
-      snprintf(buf, sizeof(buf), "%d'", min);
-      gdImageStringFTEx(NULL, br, rd->col[BLACK], G_FONT, G_FTSIZE * 2.8699, 0, 0, 0, buf, &fte);
-      gdImageStringFTEx(rd->img, br, rd->col[BLACK], G_FONT, G_FTSIZE * 2.8699, 0, p[0].x, l, buf, &fte);
-      gdImageStringFTEx(rd->img, br, rd->col[BLACK], G_FONT, G_FTSIZE * 2.8699, 0, p[0].x, rd->h - l + br[1] - br[5], buf, &fte);
+      snprintf(buf, sizeof(buf), "%03d°", deg);
+      img_print(rd, p[0].x, l, POS_N | POS_W, rd->col[BLACK], G_FTSIZE, G_FONT, buf);
+      img_print(rd, p[0].x, rd->h - l, POS_S | POS_W, rd->col[BLACK], G_FTSIZE, G_FONT, buf);
+      snprintf(buf, sizeof(buf), "%02d'", min);
+      img_print(rd, p[0].x, l, POS_N | POS_E, rd->col[BLACK], G_FTSIZE, G_FONT, buf);
+      img_print(rd, p[0].x, rd->h - l, POS_S | POS_E, rd->col[BLACK], G_FTSIZE, G_FONT, buf);
    }
 
    grid_rcalc(rd, p, G_MARGIN);

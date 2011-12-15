@@ -16,7 +16,7 @@
 # */
 
 CC	= gcc
-CFLAGS	= -g -Wall -DHAS_STRPTIME -DMEM_USAGE -Dbx_hash_t=int64_t -DBX_RES=2
+CFLAGS	= -g -Wall -DHAS_STRPTIME -DMEM_USAGE -Dbx_hash_t=int64_t -DBX_RES=4
 LDFLAGS	= -lm -lgd
 VER = smrender-r$(shell svnversion | tr -d M)
 
