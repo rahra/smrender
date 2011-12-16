@@ -155,6 +155,7 @@ struct dstats
 {
    struct coord lu;  // left upper
    struct coord rb;  // right bottom
+   long ncnt, wcnt;
    int64_t min_nid;
    int64_t max_nid;
    int64_t min_wid;
@@ -206,6 +207,7 @@ size_t onode_mem(void);
 
 /* smcoast.c */
 int cat_poly(struct rdata *);
+
 
 extern int oline_;
 

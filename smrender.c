@@ -33,6 +33,7 @@
 #include <gd.h>
 #include <regex.h>
 #include <limits.h>  // contains INT_MAX
+#include <syslog.h>
 
 #include "osm_inplace.h"
 #include "bstring.h"
@@ -1488,10 +1489,23 @@ int print_onode(FILE *f, const struct onode *nd)
 }
 
 
+void init_stats(struct dstats *ds)
+{
+   memset(ds, 0, sizeof(*ds));
+   ds->min_nid = ds->min_wid = (int64_t) 0x7fffffffffffffff;
+   ds->max_nid = ds->max_wid = (int64_t) 0x8000000000000000;
+   ds->lu.lat = -90;
+   ds->rb.lat = 90;
+   ds->lu.lon = 180;
+   ds->rb.lon = -180;
+}
+
+ 
 void onode_stats(struct onode *nd, struct rdata *rd, struct dstats *ds)
 {
    if (nd->nd.type == OSM_NODE)
    {
+      ds->ncnt++;
       if (ds->lu.lat < nd->nd.lat) ds->lu.lat = nd->nd.lat;
       if (ds->lu.lon > nd->nd.lon) ds->lu.lon = nd->nd.lon;
       if (ds->rb.lat > nd->nd.lat) ds->rb.lat = nd->nd.lat;
@@ -1501,6 +1515,7 @@ void onode_stats(struct onode *nd, struct rdata *rd, struct dstats *ds)
    }
    else if (nd->nd.type == OSM_WAY)
    {
+      ds->wcnt++;
       if (ds->min_wid > nd->nd.id) ds->min_wid = nd->nd.id;
       if (ds->max_wid < nd->nd.id) ds->max_wid = nd->nd.id;
    }
@@ -1514,13 +1529,28 @@ int main(int argc, char *argv[])
    struct stat st;
    FILE *f = stdout;
    char *cf = "rules.osm";
-   //struct dstats ds;
    struct rdata *rd = &rdata_;
 
+   init_log("stderr");
+
+   log_msg(LOG_INFO, "initializing structures");
    init_rdata(&rdata_);
    //print_rdata(stderr, &rdata_);
    init_prj(&rdata_, PRJ_MERC_PAGE);
    print_rdata(stderr, &rdata_);
+
+   // preparing image
+   if ((rdata_.img = gdImageCreateTrueColor(rdata_.w, rdata_.h)) == NULL)
+      perror("gdImage"), exit(EXIT_FAILURE);
+   rdata_.col[WHITE] = gdImageColorAllocate(rdata_.img, 255, 255, 255);
+   rdata_.col[BLACK] = gdImageColorAllocate(rdata_.img, 0, 0, 0);
+   rdata_.col[YELLOW] = gdImageColorAllocate(rdata_.img, 231,209,74);
+   rdata_.col[BLUE] = gdImageColorAllocate(rdata_.img, 137, 199, 178);
+   rdata_.col[MAGENTA] = gdImageColorAllocate(rdata_.img, 120, 8, 44);
+   rdata_.col[BROWN] = gdImageColorAllocate(rdata_.img, 154, 42, 2);
+   gdImageFill(rdata_.img, 0, 0, rdata_.col[WHITE]);
+   if (!gdFTUseFontConfig(1))
+      log_msg(LOG_NOTICE, "fontconfig library not available");
 
    if ((argc >= 2) && ((fd = open(argv[1], O_RDONLY)) == -1))
          perror("open"), exit(EXIT_FAILURE);
@@ -1531,7 +1561,7 @@ int main(int argc, char *argv[])
    if ((ctl = hpx_init(fd, st.st_size)) == NULL)
       perror("hpx_init_simple"), exit(EXIT_FAILURE);
 
-   fprintf(stderr, "reading osm input file (file size %ld kb)...\n", (long) st.st_size / 1024);
+   log_msg(LOG_INFO, "reading osm data (file size %ld kb)", (long) st.st_size / 1024);
    (void) read_osm_file(ctl, &rdata_.nodes, &rdata_.ways);
    (void) close(fd);
 
@@ -1544,51 +1574,33 @@ int main(int argc, char *argv[])
    if ((cfctl = hpx_init(fd, st.st_size)) == NULL)
       perror("hpx_init_simple"), exit(EXIT_FAILURE);
 
-   fprintf(stderr, "reading rules (file size %ld kb)...\n", (long) st.st_size / 1024);
+   log_msg(LOG_INFO, "reading rules (file size %ld kb)", (long) st.st_size / 1024);
    (void) read_osm_file(cfctl, &rdata_.nrules, &rdata_.wrules);
    (void) close(fd);
 
 #ifdef MEM_USAGE
-   fprintf(stderr, "tree memory used: %ld kb\n", (long) bx_sizeof() / 1024);
-   fprintf(stderr, "onode memory used: %ld kb\n", (long) onode_mem() / 1024);
+   log_debug("tree memory used: %ld kb", (long) bx_sizeof() / 1024);
+   log_debug("onode memory used: %ld kb", (long) onode_mem() / 1024);
 #endif
 
-   fprintf(stderr, "gathering stats...\n");
-   rd->ds.min_nid = rd->ds.min_wid = (int64_t) 0x7fffffffffffffff;
-   rd->ds.max_nid = rd->ds.max_wid = (int64_t) 0x8000000000000000;
-   rd->ds.lu.lat = -90;
-   rd->ds.rb.lat = 90;
-   rd->ds.lu.lon = 180;
-   rd->ds.rb.lon = -180;
+   log_msg(LOG_INFO, "gathering stats");
+   init_stats(&rd->ds);
    traverse(rdata_.nodes, 0, (void (*)(struct onode *, struct rdata *, void *)) onode_stats, &rdata_, &rd->ds);
    traverse(rdata_.ways, 0, (void (*)(struct onode *, struct rdata *, void *)) onode_stats, &rdata_, &rd->ds);
-   fprintf(stderr, "min_nid = %ld, max_nid = %ld, min_wid = %ld, max_wid = %ld, %.2f/%.2f x %.2f/%.2f\n",
+   log_msg(LOG_INFO, "min_nid = %ld, max_nid = %ld, min_wid = %ld, max_wid = %ld, %.2f/%.2f x %.2f/%.2f",
          rd->ds.min_nid, rd->ds.max_nid, rd->ds.min_wid, rd->ds.max_wid,
          rd->ds.lu.lat, rd->ds.lu.lon, rd->ds.rb.lat, rd->ds.rb.lon);
-
-   if ((rdata_.img = gdImageCreateTrueColor(rdata_.w, rdata_.h)) == NULL)
-      perror("gdImage"), exit(EXIT_FAILURE);
-   rdata_.col[WHITE] = gdImageColorAllocate(rdata_.img, 255, 255, 255);
-   rdata_.col[BLACK] = gdImageColorAllocate(rdata_.img, 0, 0, 0);
-   rdata_.col[YELLOW] = gdImageColorAllocate(rdata_.img, 231,209,74);
-   rdata_.col[BLUE] = gdImageColorAllocate(rdata_.img, 137, 199, 178);
-   rdata_.col[MAGENTA] = gdImageColorAllocate(rdata_.img, 120, 8, 44);
-   rdata_.col[BROWN] = gdImageColorAllocate(rdata_.img, 154, 42, 2);
-
-   gdImageFill(rdata_.img, 0, 0, rdata_.col[WHITE]);
-   if (!gdFTUseFontConfig(1))
-      fprintf(stderr, "fontconfig library not available\n");
 
    // output rules
    //traverse(rdata_.nrules, 0, print_tree, &rdata_, NULL);
    //traverse(rdata_.wrules, 0, print_tree, &rdata_, NULL);
    //printf("\n\n\n");
 
-   fprintf(stderr, "preparing rules...\n");
+   log_msg(LOG_INFO, "preparing rules");
    traverse(rdata_.nrules, 0, prepare_rules, &rdata_, NULL);
    traverse(rdata_.wrules, 0, prepare_rules, &rdata_, NULL);
 
-   fprintf(stderr, "preparing coastline...\n");
+   log_msg(LOG_INFO, "preparing coastline");
    cat_poly(&rdata_);
 
    // output rules
@@ -1600,20 +1612,21 @@ int main(int argc, char *argv[])
    //traverse(rdata_.ways, 0, draw_coast, &rdata_, NULL);
    //traverse(rdata_.ways, 0, draw_coast_fill, &rdata_, NULL);
 
-   fprintf(stderr, "rendering ways...\n");
+   log_msg(LOG_INFO, "rendering ways");
    traverse(rdata_.wrules, 0, apply_wrules, &rdata_, NULL);
-   fprintf(stderr, "rendering nodes...\n");
+   log_msg(LOG_INFO, "rendering nodes");
    traverse(rdata_.nrules, 0, apply_rules, &rdata_, NULL);
 
-   fprintf(stderr, "creating grid and legend\n");
+   log_msg(LOG_INFO, "creating grid and legend");
    grid(&rdata_, rdata_.col[BLACK]);
 
    hpx_free(ctl);
+   hpx_free(cfctl);
 
+   log_msg(LOG_INFO, "saving image");
    gdImagePng(rdata_.img, f);
-
    gdImageDestroy(rdata_.img);
 
-   exit(EXIT_SUCCESS);
+   return EXIT_SUCCESS;
 }
 
