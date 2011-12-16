@@ -29,7 +29,8 @@
 #include <errno.h>
 #include <math.h>
 #include <sys/stat.h>
-#include <fcntl.h>
+#include <sys/time.h>      // gettimeofday()
+#include <fcntl.h>         // stat()
 #include <gd.h>
 #include <regex.h>
 #include <limits.h>  // contains INT_MAX
@@ -58,7 +59,7 @@ void usage(const char *s)
  */
 void fdm(double x, int *deg, int *min)
 {
-   double d, m;
+   double d;
 
    *min = round(modf(x, &d) * 60);
    *deg = round(d);
@@ -842,37 +843,21 @@ void traverse(const bx_node_t *nt, int d, void (*dhandler)(struct onode*, struct
 
 void print_rdata(FILE *f, const struct rdata *rd)
 {
-   fprintf(f, "rdata:\nx1c = %.3f, y1c = %.3f, x2c = %.3f, y2c = %.3f\n"
-         "mean_lat = %.3f, mean_lat_len = %.3f (%.1f nm)\nwc = %.3f, hc = %.3f\n"
-         "w = %d, h = %d px\ndpi = %d\nscale = 1:%.0f\npage size = %.1f x %.1f mm\n"
-         "grid = %.1f', ticks = %.2f', subticks = %.2f'\n",
-         rd->x1c, rd->y1c, rd->x2c, rd->y2c, rd->mean_lat, rd->mean_lat_len, rd->mean_lat_len * 60,
-         rd->wc, rd->hc, rd->w, rd->h, rd->dpi, rd->scale, MM2PX(rd->w), MM2PX(rd->h),
-         rd->grd.lat_g * 60, rd->grd.lat_ticks * 60, rd->grd.lat_sticks * 60
-         );
+   log_msg(LOG_NOTICE, "rendering data: left upper %.3f/%.3f, right bottom %.3f/%.3f",
+         rd->x1c, rd->y1c, rd->x2c, rd->y2c);
+   log_msg(LOG_NOTICE, "   mean_lat = %.3f°, mean_lat_len = %.3f° (%.1f nm)",
+         rd->mean_lat, rd->mean_lat_len, rd->mean_lat_len * 60);
+   log_msg(LOG_NOTICE, "   w x h = %d x %d px, dpi = %d, page size = %.1f x %.1f mm",
+         rd->w, rd->h, rd->dpi, PX2MM(rd->w), PX2MM(rd->h));
+   log_msg(LOG_NOTICE, "   scale 1:%.0f, %.1f x %.1f nm",
+         rd->scale, rd->wc * 60 * cos(rd->mean_lat), rd->hc * 60);
+   log_msg(LOG_NOTICE, "   grid = %.1f', ticks = %.2f', subticks = %.2f'",
+         rd->grd.lat_g * 60, rd->grd.lat_ticks * 60, rd->grd.lat_sticks * 60);
 
-   fprintf(f, "G_GRID %.3f\nG_TICKS %.3f\nG_STICKS %.3f\nG_MARGIN %.2f\nG_TW %.2f\nG_STW %.2f\nG_BW %.2f\n",
+   log_debug("G_GRID %.3f, G_TICKS %.3f, G_STICKS %.3f, G_MARGIN %.2f, G_TW %.2f, G_STW %.2f, G_BW %.2f",
          G_GRID, G_TICKS, G_STICKS, G_MARGIN, G_TW, G_STW, G_BW);
 }
 
-
-/*
-double ticks(double d)
-{
-   int m;
-
-   m = d * 60;
-   if (!m) m = d * 600;
-   
-if (m >= 10)
-{
-   m /= 10;
-   m *= 10;
-}
-
-   return (double) m / 60;
-}
-*/
 
 /*! Print string into image at a desired position with correct alignment.
  *  @param rd Pointer to struct rdata.
@@ -1335,7 +1320,9 @@ int main(int argc, char *argv[])
    FILE *f = stdout;
    char *cf = "rules.osm";
    struct rdata *rd = &rdata_;
+   struct timeval tv_start, tv_end;
 
+   (void) gettimeofday(&tv_start, NULL);
    init_log("stderr");
 
    log_msg(LOG_INFO, "initializing structures");
@@ -1435,7 +1422,17 @@ int main(int argc, char *argv[])
    gdImagePng(rdata_.img, f);
    gdImageDestroy(rdata_.img);
 
-   log_msg(LOG_INFO, "exiting. Thanks for using smrender!");
+   (void) gettimeofday(&tv_end, NULL);
+   tv_end.tv_sec -= tv_start.tv_sec;
+   tv_end.tv_usec -= tv_start.tv_usec;
+   if (tv_end.tv_usec < 0)
+   {
+      tv_end.tv_sec--;
+      tv_end.tv_usec += 1000000;
+   }
+
+   log_msg(LOG_INFO, "%d.%03d seconds elapsed. exiting", tv_end.tv_sec, tv_end.tv_usec / 1000);
+   log_msg(LOG_INFO, "Thanks for using smrender!");
    return EXIT_SUCCESS;
 }
 
