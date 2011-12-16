@@ -843,14 +843,14 @@ void traverse(const bx_node_t *nt, int d, void (*dhandler)(struct onode*, struct
 
 void print_rdata(FILE *f, const struct rdata *rd)
 {
-   log_msg(LOG_NOTICE, "rendering data: left upper %.3f/%.3f, right bottom %.3f/%.3f",
+   log_msg(LOG_NOTICE, "render data: left upper %.3f/%.3f, right bottom %.3f/%.3f",
          rd->x1c, rd->y1c, rd->x2c, rd->y2c);
    log_msg(LOG_NOTICE, "   mean_lat = %.3f°, mean_lat_len = %.3f° (%.1f nm)",
          rd->mean_lat, rd->mean_lat_len, rd->mean_lat_len * 60);
-   log_msg(LOG_NOTICE, "   w x h = %d x %d px, dpi = %d, page size = %.1f x %.1f mm",
+   log_msg(LOG_NOTICE, "   %dx%d px, dpi = %d, page size = %.1f x %.1f mm",
          rd->w, rd->h, rd->dpi, PX2MM(rd->w), PX2MM(rd->h));
    log_msg(LOG_NOTICE, "   scale 1:%.0f, %.1f x %.1f nm",
-         rd->scale, rd->wc * 60 * cos(rd->mean_lat), rd->hc * 60);
+         rd->scale, rd->wc * 60 * cos(DEG2RAD(rd->mean_lat)), rd->hc * 60);
    log_msg(LOG_NOTICE, "   grid = %.1f', ticks = %.2f', subticks = %.2f'",
          rd->grd.lat_g * 60, rd->grd.lat_ticks * 60, rd->grd.lat_sticks * 60);
 
@@ -1323,7 +1323,7 @@ int main(int argc, char *argv[])
    struct timeval tv_start, tv_end;
 
    (void) gettimeofday(&tv_start, NULL);
-   init_log("stderr");
+   init_log("stderr", LOG_INFO);
 
    log_msg(LOG_INFO, "initializing structures");
    init_rdata(&rdata_);
