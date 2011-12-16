@@ -217,15 +217,14 @@ int check_matchtype(bstring_t *b, struct specialTag *t)
    {
       if ((b->buf[0] == '/') && (b->buf[b->len - 1] == '/'))
       {
-         fprintf(stderr, "seems to be regex: '%.*s' (%d, %c) \n", b->len, b->buf, b->len, b->buf[b->len - 1]);
+         log_debug("seems to be regex: '%.*s' (%d, %c)", b->len, b->buf, b->len, b->buf[b->len - 1]);
          b->buf[b->len - 1] = '\0';
          b->buf++;
          b->len -= 2;
-         fprintf(stderr, "preparing regex '%s'\n", b->buf);
 
          if (regcomp(&t->re, b->buf, REG_EXTENDED | REG_NOSUB))
          {
-            fprintf(stderr, "failed to compile regex '%s'\n", b->buf);
+            log_msg(LOG_WARN, "failed to compile regex '%s'", b->buf);
             return -1;
          }
          t->type |= SPECIAL_REGEX;
@@ -255,7 +254,7 @@ int parse_color(const struct rdata *rd, const char *s)
 {
    if (*s == '#')
    {
-      fprintf(stderr, "HTML color style (%s) not supported yet, defaulting to black\n", s);
+      log_msg(LOG_WARN, "HTML color style (%s) not supported yet, defaulting to black", s);
       return rd->col[BLACK];
    }
    if (!strcmp(s, "white"))
@@ -271,7 +270,7 @@ int parse_color(const struct rdata *rd, const char *s)
    if (!strcmp(s, "brown"))
       return rd->col[BROWN];
 
-   fprintf(stderr, "unknown color %s\n", s);
+   log_msg(LOG_WARN, "unknown color %s, defaulting to black", s);
    return rd->col[BLACK];
 }
 
@@ -284,7 +283,7 @@ int parse_draw(const char *src, struct drawStyle *ds, const struct rdata *rd)
    strcpy(buf, src);
    if ((s = strtok_r(buf, ",", &sb)) == NULL)
    {
-      fprintf(stderr, "syntax error in draw rule %s\n", src);
+      log_msg(LOG_WARN, "syntax error in draw rule %s", src);
       return -1;
    }
 
@@ -293,7 +292,7 @@ int parse_draw(const char *src, struct drawStyle *ds, const struct rdata *rd)
    if ((s = strtok_r(NULL, ",", &sb)) == NULL)
       return 0;
 
-   fprintf(stderr, "draw width and styles are not parsed yet (sorry...)\n");
+   log_msg(LOG_WARN, "draw width and styles are not parsed yet (sorry...)");
    return 0;
 }
 
@@ -314,7 +313,7 @@ void prepare_rules(struct onode *nd, struct rdata *rd, void *p)
 
    if ((i = match_attr(nd, "_action_", NULL)) == -1)
    {
-      fprintf(stderr, "rule has no action\n");
+      log_msg(LOG_WARN, "rule %ld has no action", nd->nd.id);
       return;
    }
 
@@ -326,17 +325,17 @@ void prepare_rules(struct onode *nd, struct rdata *rd, void *p)
          return;
       if ((f = fopen(s, "r")) == NULL)
       {
-         fprintf(stderr, "fopen(%s) failed: %s\n", s, strerror(errno));
+         log_msg(LOG_WARN, "fopen(%s) failed: %s", s, strerror(errno));
          return;
       }
 
       nd->rule.img.angle = 0;
       if ((nd->rule.img.img = gdImageCreateFromPng(f)) == NULL)
-         fprintf(stderr, "could not read PNG from %s\n", s);
+         log_msg(LOG_WARN, "could not read PNG from %s", s);
       (void) fclose(f);
 
       nd->rule.type = ACT_IMG;
-      fprintf(stderr, "successfully imported PNG %s\n", s);
+      log_debug("successfully imported PNG %s", s);
    }
    else if (!strcmp(s, "img-auto"))
    {
@@ -344,17 +343,17 @@ void prepare_rules(struct onode *nd, struct rdata *rd, void *p)
          return;
       if ((f = fopen(s, "r")) == NULL)
       {
-         fprintf(stderr, "fopen(%s) failed: %s\n", s, strerror(errno));
+         log_msg(LOG_WARN, "fopen(%s) failed: %s", s, strerror(errno));
          return;
       }
 
       nd->rule.img.angle = NAN;
       if ((nd->rule.img.img = gdImageCreateFromPng(f)) == NULL)
-         fprintf(stderr, "could not read PNG from %s\n", s);
+         log_msg(LOG_WARN, "could not read PNG from %s\n", s);
       (void) fclose(f);
 
       nd->rule.type = ACT_IMG;
-      fprintf(stderr, "img-auto, successfully imported PNG %s\n", s);
+      log_debug("img-auto, successfully imported PNG %s", s);
    }
    else if (!strcmp(s, "cap"))
    {
@@ -377,13 +376,13 @@ void prepare_rules(struct onode *nd, struct rdata *rd, void *p)
 
       nd->rule.cap.key = s;
       nd->rule.type = ACT_CAP;
-      fprintf(stderr, "successfully parsed caption rule\n");
+      log_debug("successfully parsed caption rule");
    }
    else if (!strcmp(s, "draw"))
    {
       if ((s = strtok(NULL, "")) == NULL)
       {
-         fprintf(stderr, "syntax error in draw rule\n");
+         log_warn("syntax error in draw rule");
          return;
       }
 
@@ -403,7 +402,7 @@ void prepare_rules(struct onode *nd, struct rdata *rd, void *p)
       {
          if (strlen(s) <= 1)
          {
-            fprintf(stderr, "syntax error in draw rule\n");
+            log_warn("syntax error in draw rule");
             return;
          }
          if (!parse_draw(s + 1, &nd->rule.draw.border, rd))
@@ -411,11 +410,11 @@ void prepare_rules(struct onode *nd, struct rdata *rd, void *p)
       }
 
       nd->rule.type = ACT_DRAW;
-      fprintf(stderr, "successfully parsed draw rule\n");
+      log_debug("successfully parsed draw rule");
    }
    else
    {
-      fprintf(stderr, "action type '%s' not supported yet\n", s);
+      log_warn("action type '%s' not supported yet", s);
    }
 
    // remove _action_ tag from tag list, i.e. move last element
@@ -537,7 +536,7 @@ int act_caption(struct onode *nd, struct rdata *rd, struct onode *mnd, int x, in
 
    if ((n = match_attr(nd, mnd->rule.cap.key, NULL)) == -1)
    {
-      fprintf(stderr, "node %ld has no caption tag '%s'\n", nd->nd.id, mnd->rule.cap.key);
+      log_debug("node %ld has no caption tag '%s'", nd->nd.id, mnd->rule.cap.key);
       return 0;
    }
 
@@ -604,7 +603,7 @@ int act_caption(struct onode *nd, struct rdata *rd, struct onode *mnd, int x, in
    //fprintf(stderr, "dx = %d, dy = %d, rx = %d, ry = %d, ma = %.3f, off = %d, '%s'\n", br[0]-br[2],br[1]-br[5], rx, ry, ma, off, nd->otag[n].v.buf);
 
    if ((s = gdImageStringFTEx(rd->img, br, mnd->rule.cap.col, mnd->rule.cap.font, mnd->rule.cap.size * 2.8699, DEG2RAD(ma), x + rx, y - ry, nd->otag[n].v.buf, &fte)) != NULL)
-      fprintf(stderr, "error rendering caption: %s\n", s);
+      log_msg(LOG_ERR, "error rendering caption: %s", s);
 
 //   else
 //      fprintf(stderr, "printed %s at %d,%d\n", nd->otag[n].v.buf, x, y);
@@ -624,7 +623,7 @@ void apply_rules0(struct onode *nd, struct rdata *rd, struct onode *mnd)
 
    if (!mnd->rule.type)
    {
-      fprintf(stderr, "ACT_NA rule ignored\n");
+      log_debug("ACT_NA rule ignored");
       return;
    }
 
@@ -650,14 +649,14 @@ void apply_rules0(struct onode *nd, struct rdata *rd, struct onode *mnd)
          break;
 
       default:
-         fprintf(stderr, "action type %d not implemented yet\n", mnd->rule.type);
+         log_warn("action type %d not implemented yet", mnd->rule.type);
    }
 }
 
 
 void apply_rules(struct onode *nd, struct rdata *rd, void *vp)
 {
-   fprintf(stderr, "rule id 0x%016lx type %d\n", nd->nd.id, nd->rule.type);
+   log_debug("applying rule id 0x%016lx type %d", nd->nd.id, nd->rule.type);
    traverse(rd->nodes, 0, (void (*)(struct onode *, struct rdata *, void *)) apply_rules0, rd, nd);
 }
 
@@ -673,12 +672,12 @@ void act_open_poly(struct onode *wy, struct rdata *rd, struct onode *mnd)
    {
       if ((nt = bx_get_node(rd->nodes, wy->ref[i])) == NULL)
       {
-         fprintf(stderr, "*** bx_get_node() failed\n");
+         log_msg(LOG_ERR, "bx_get_node() failed");
          return;
       }
       if ((nd = nt->next[0]) == NULL)
       {
-         fprintf(stderr, "*** nt->next[0] contains NULL pointer\n");
+         log_msg(LOG_ERR, "nt->next[0] contains NULL pointer");
          return;
       }
       mk_paper_coords(nd->nd.lat, nd->nd.lon, rd, &p[i].x, &p[i].y);
@@ -699,12 +698,12 @@ void act_fill_poly(struct onode *wy, struct rdata *rd, struct onode *mnd)
    {
       if ((nt = bx_get_node(rd->nodes, wy->ref[i])) == NULL)
       {
-         fprintf(stderr, "*** bx_get_node() failed\n");
+         log_msg(LOG_ERR, "bx_get_node() failed");
          return;
       }
       if ((nd = nt->next[0]) == NULL)
       {
-         fprintf(stderr, "*** nt->next[0] contains NULL pointer\n");
+         log_msg(LOG_ERR, "nt->next[0] contains NULL pointer");
          return;
       }
       mk_paper_coords(nd->nd.lat, nd->nd.lon, rd, &p[i].x, &p[i].y);
@@ -727,7 +726,7 @@ void apply_wrules0(struct onode *nd, struct rdata *rd, struct onode *mnd)
 
    if (!mnd->rule.type)
    {
-      fprintf(stderr, "ACT_NA rule ignored\n");
+      log_debug("ACT_NA rule ignored");
       return;
    }
 
@@ -751,7 +750,7 @@ void apply_wrules0(struct onode *nd, struct rdata *rd, struct onode *mnd)
         break;
 
       default:
-         fprintf(stderr, "action type %d not implemented yet\n", mnd->rule.type);
+         log_msg(LOG_WARN, "action type %d not implemented yet", mnd->rule.type);
    }
 }
 
@@ -760,200 +759,6 @@ void apply_wrules(struct onode *nd, struct rdata *rd, void *vp)
 {
    traverse(rd->ways, 0, (void (*)(struct onode *, struct rdata *, void *)) apply_wrules0, rd, nd);
 }
-
-
-#if 0
-void draw_coast_fill(struct onode *nd, struct rdata *rd, void *vp)
-{
-   bx_node_t *nt;
-   struct onode *node;
-   gdPoint *p;
-   int i, j, x, y, c;
-
-   if (match_attr(nd, "natural", "coastline") == -1)
-      return;
-
-   if (nd->ref[nd->ref_cnt - 1] == nd->ref[0])
-      return;
-
-   fprintf(stderr, "found open coastline: %ld\n", nd->nd.id);
-
-   if ((p = malloc(sizeof(gdPoint) * nd->ref_cnt)) == NULL)
-      perror("malloc"), exit(EXIT_FAILURE);
-
-   for (i = 0, j = 0; i < nd->ref_cnt; i++)
-   {
-      if ((nt = bx_get_node(rd->nodes, nd->ref[i])) == NULL)
-      {
-         fprintf(stderr, "*** missing node %ld in way %ld\n", nd->ref[i], nd->nd.id);
-         continue;
-      }
-      // FIXME: add NULL pointer check
-      node = nt->next[0];
-      mk_paper_coords(node->nd.lat, node->nd.lon, rd, &p[j].x, &p[j].y);
-      j++;
-   }
-
-   for (i = 0; i < j - 1; i++)
-   {
-      // check if point is within image
-      if (!coords_inrange(rd, p[i].x, p[i].y))
-         continue;
-      if (!coords_inrange(rd, p[i + 1].x, p[i + 1].y))
-      {
-         i++;
-         continue;
-      }
-
-      if (p[i].y < p[i+1].y) // line heads South (land is easterly)
-      {
-         // find next non-BLACK pixel in easterly direction
-         for (x = p[i].x + 1; x < rd->w; x++)
-         {
-            //gdImageSetPixel(rd->img, x, p[i].y, 0x00ff00);
-            if ((c = gdImageGetPixel(rd->img, x, p[i].y)) != rd->col[BLACK])
-               break;
-         }
-
-         // fill area if it is not filled already
-         if ((x < rd->w) && (c != rd->col[YELLOW]))
-         {
-            //gdImageFill(rd->img, x, p[i].y, rd->col[YELLOW]);
-            //fprintf(stderr, "%d %d\n", x, p[i].y);
-         }
-         else
-         {
-            fprintf(stderr, "area filled\n");
-            break;
-         }
-         continue;
-      }
-
-      if (p[i].y > p[i+1].y) // line heads North (land is westerly)
-      {
-         // find next non-BLACK pixel in easterly direction
-         for (x = p[i].x - 1; x >= 0; x--)
-         {
-            //gdImageSetPixel(rd->img, x, p[i].y, 0x00ff00);
-            if ((c = gdImageGetPixel(rd->img, x, p[i].y)) != rd->col[BLACK])
-               break;
-         }
-
-         // fill area if it is not filled already
-         if ((x >= 0) && (c != rd->col[YELLOW]))
-         {
-            //gdImageFill(rd->img, x, p[i].y, rd->col[YELLOW]);
-            //fprintf(stderr, "%d %d\n", x, p[i].y);
-         }
-         else
-         {
-            fprintf(stderr, "area filled or out of range\n");
-            break;
-         }
-         continue;
-      }
-
-      // else, line is Meridian
-
-      if (p[i].x < p[i + 1].x)  // line heads West (land is southerly)
-      {
-         // find next non-BLACK pixel in easterly direction
-         for (y = p[i].y + 1; y < rd->h; y++)
-         {
-            //gdImageSetPixel(rd->img, x, p[i].y, 0x00ff00);
-            if ((c = gdImageGetPixel(rd->img, p[i].x, y)) != rd->col[BLACK])
-               break;
-         }
-
-         // fill area if it is not filled already
-         if ((y < rd->h) && (c != rd->col[YELLOW]))
-         {
-            //gdImageFill(rd->img, p[i].x, y, rd->col[YELLOW]);
-            //fprintf(stderr, "%d %d\n", p[i].x, y);
-         }
-         else
-         {
-            fprintf(stderr, "area filled or out of range\n");
-            break;
-         }
-         continue;
-      }
-
-      if (p[i].x > p[i + 1].x) //line heads East (land is northerly)
-      {
-         // find next non-BLACK pixel in easterly direction
-         for (y = p[i].y - 1; y >= 0; y--)
-         {
-            //gdImageSetPixel(rd->img, x, p[i].y, 0x00ff00);
-            if ((c = gdImageGetPixel(rd->img, p[i].x, y)) != rd->col[BLACK])
-               break;
-         }
-
-         // fill area if it is not filled already
-         if ((y >= 0) && (c != rd->col[YELLOW]))
-         {
-            //gdImageFill(rd->img, p[i].x, y, rd->col[YELLOW]);
-            //fprintf(stderr, "%d %d\n", p[i].x, y);
-         }
-         else
-         {
-            fprintf(stderr, "area filled or out of range\n");
-            break;
-         }
-         continue;
-      }
-
-      // line is Parallel (...and Meridian)
-      fprintf(stderr, "points exactly overlapping\n");
-   }
-
-   free(p);
-}
-
-
-void draw_coast(struct onode *nd, struct rdata *rd, void *vp)
-{
-   bx_node_t *nt;
-   struct onode *node;
-   gdPoint *p;
-   int i, j;
-
-   if (match_attr(nd, "natural", "coastline") == -1)
-      return;
-
-   if ((p = malloc(sizeof(gdPoint) * nd->ref_cnt)) == NULL)
-      perror("malloc"), exit(EXIT_FAILURE);
-
-   for (i = 0, j = 0; i < nd->ref_cnt; i++)
-   {
-      if ((nt = bx_get_node(rd->nodes, nd->ref[i])) == NULL)
-      {
-         fprintf(stderr, "*** missing node %ld in way %ld\n", nd->ref[i], nd->nd.id);
-         continue;
-      }
-      // FIXME: add NULL pointer check
-      node = nt->next[0];
-      mk_paper_coords(node->nd.lat, node->nd.lon, rd, &p[j].x, &p[j].y);
-      j++;
-   }
-   if (nd->ref[nd->ref_cnt - 1] == nd->ref[0])
-   {
-      gdImageFilledPolygon(rd->img, p, j, rd->col[YELLOW]);
-      gdImagePolygon(rd->img, p, j, rd->col[BLACK]);
-   }
-   else
-   {
-      gdImageOpenPolygon(rd->img, p, j, rd->col[BLACK]);
-      //gdImageFillToBorder(rd->img, p[0].x + 1, p[0].y + 1, YELLOW, BLACK);
-      /*
-      for (i = 0; i < j - 1; i++)
-         gdImageLine(rd->img, p[i].x, p[i].y, p[i + 1].x, p[i + 1].y, rd->col[BLACK]);
-         */
-   }
-
-   free(p);
-}
-#endif
 
 
 void print_tree(struct onode *nd, struct rdata *rd, void *p)
@@ -1013,7 +818,7 @@ void traverse(const bx_node_t *nt, int d, void (*dhandler)(struct onode*, struct
 
    if (nt == NULL)
    {
-      fprintf(stderr, "null pointer catched...breaking recursion\n");
+      log_msg(LOG_WARN, "null pointer catched...breaking recursion");
       return;
    }
 
@@ -1022,7 +827,7 @@ void traverse(const bx_node_t *nt, int d, void (*dhandler)(struct onode*, struct
       if (nt->next[0] != NULL)
          dhandler(nt->next[0], rd, p);
       else
-         fprintf(stderr, "*** this should not happen: NULL pointer catched\n");
+         log_msg(LOG_CRIT, "this should not happen: NULL pointer catched");
 
       return;
    }
@@ -1126,7 +931,7 @@ int img_print(const struct rdata *rd, int x, int y, int pos, int col, double fts
    err = gdImageStringFTEx(rd->img, br, col, (char*) ft, MM2PT(ftsize), 0, x + ox, y + oy, (char*) s, &fte);
    if (err != NULL)
    {
-      fprintf(stderr, "gdImageStringFTEx error: '%s'\n", err);
+      log_warn("gdImageStringFTEx error: '%s'", err);
       return -1;
    }
 
@@ -1333,13 +1138,13 @@ void init_prj(struct rdata *rd, int p)
          y1 = rd->mean_lat + rd->hc / 2.0;
          y2 = rd->mean_lat - rd->hc / 2.0;
          if ((y1 > rd->y1c) || (y2 < rd->y2c))
-            fprintf(stderr, "Warning: window enlarged in latitude! This may result in incorrect rendering.\n");
+            log_warn("window enlarged in latitude! This may result in incorrect rendering.");
          rd->y1c = y1;
          rd->y2c = y2;
          break;
 
       case PRJ_MERC_BB:
-         fprintf(stderr, "*** projection PRJ_MERC_BB not implemented yet\n"), exit(EXIT_FAILURE);
+         log_msg(LOG_ALERT, "projection PRJ_MERC_BB not implemented yet"), exit(EXIT_FAILURE);
          break;
 
       default:
@@ -1446,7 +1251,7 @@ int print_onode(FILE *f, const struct onode *nd)
 
    if (nd == NULL)
    {
-      fprintf(stderr, "NULL pointer catched in print_onode()\n");
+      log_warn("NULL pointer catched in print_onode()");
       return -1;
    }
 
@@ -1587,8 +1392,11 @@ int main(int argc, char *argv[])
    init_stats(&rd->ds);
    traverse(rdata_.nodes, 0, (void (*)(struct onode *, struct rdata *, void *)) onode_stats, &rdata_, &rd->ds);
    traverse(rdata_.ways, 0, (void (*)(struct onode *, struct rdata *, void *)) onode_stats, &rdata_, &rd->ds);
-   log_msg(LOG_INFO, "min_nid = %ld, max_nid = %ld, min_wid = %ld, max_wid = %ld, %.2f/%.2f x %.2f/%.2f",
-         rd->ds.min_nid, rd->ds.max_nid, rd->ds.min_wid, rd->ds.max_wid,
+   log_msg(LOG_INFO, "ncnt = %ld, min_nid = %ld, max_nid = %ld",
+         rd->ds.ncnt, rd->ds.min_nid, rd->ds.max_nid);
+   log_msg(LOG_INFO, "wcnt = %ld, min_wid = %ld, max_wid = %ld",
+         rd->ds.wcnt, rd->ds.min_wid, rd->ds.max_wid);
+   log_msg(LOG_INFO, "left upper %.2f/%.2f, right bottom %.2f/%.2f",
          rd->ds.lu.lat, rd->ds.lu.lon, rd->ds.rb.lat, rd->ds.rb.lon);
 
    // output rules
@@ -1627,6 +1435,7 @@ int main(int argc, char *argv[])
    gdImagePng(rdata_.img, f);
    gdImageDestroy(rdata_.img);
 
+   log_msg(LOG_INFO, "exiting. Thanks for using smrender!");
    return EXIT_SUCCESS;
 }
 

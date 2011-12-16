@@ -3,6 +3,7 @@
 #include <stdio.h>
 
 #include "smrender.h"
+#include "smlog.h"
 #include "smath.h"
 #include "bxtree.h"
 
@@ -112,7 +113,7 @@ struct wlist *poly_find_adj(struct rdata *rd, struct wlist *wl)
 
       if (nd->ref_cnt < 2)
       {
-         fprintf(stderr, "way id = %ld, ref_cnt = %d. Ignoring.\n", nd->nd.id, nd->ref_cnt);
+         log_warn("ignoring way id = %ld, ref_cnt = %d", nd->nd.id, nd->ref_cnt);
          continue;
       }
 
@@ -198,7 +199,7 @@ int poly_out(FILE *f, struct wlist *nl, struct rdata *rd)
       // FIXME: return code should be tested
       if ((bn = bx_get_node(rd->nodes, nl->ref[i])) == NULL)
       {
-         fprintf(stderr, "NULL pointer catchted in poly_out...continuing\n");
+         log_warn("NULL pointer catchted in poly_out...continuing");
          continue;
       }
       //nd = bn->next[0];
@@ -432,7 +433,9 @@ int cat_poly(struct rdata *rd)
 {
    int i, nl_cnt;
    struct wlist *wl, *nl[MAX_OPEN_POLY];
+#ifdef OUTPUT_COASTLINE
    FILE *f;
+#endif
 
    if ((wl = malloc(sizeof(*wl) + INIT_MAX_REF * sizeof(int64_t))) == NULL)
       perror("malloc"), exit(EXIT_FAILURE);
@@ -442,20 +445,23 @@ int cat_poly(struct rdata *rd)
 
    traverse(rd->ways, 0, (void (*)(struct onode *, struct rdata *, void *)) gather_poly, rd, &wl);
 
-   fprintf(stderr, "open coastline: \n");
    for (i = 0; i < wl->ref_cnt; i++)
-      fprintf(stderr, "%ld,", wl->ref[i]);
-   fprintf(stderr, "\n");
+      log_debug("open coastlinig %ld", wl->ref[i]);
 
+#ifdef OUTPUT_COASTLINE
    if ((f = fopen("open_coastline.osm", "w")) == NULL)
       perror("fopen"), exit(EXIT_FAILURE);
    fprintf(f, "<?xml version='1.0' encoding='UTF-8'?>\n<osm version='0.6' generator='smrender'>\n");
+#endif
 
    for (i = 0; (nl[i] = poly_find_adj(rd, wl)) != NULL; i++)
    {
-      fprintf(stderr, "connected way, ref_cnt = %d, ref[0] = %ld, ref[%d] = %ld\n",
+      log_debug("connected way, ref_cnt = %d, ref[0] = %ld, ref[%d] = %ld",
             nl[i]->ref_cnt, nl[i]->ref[0], nl[i]->ref_cnt - 1, nl[i]->ref[nl[i]->ref_cnt - 1]);
+
+#ifdef OUTPUT_COASTLINE
       poly_out(f, nl[i], rd);
+#endif
 
       // check if wlist is closed
       if (nl[i]->ref[0] == nl[i]->ref[nl[i]->ref_cnt - 1])
@@ -473,15 +479,19 @@ int cat_poly(struct rdata *rd)
    {
       if (nl[i]->ref[0] == nl[i]->ref[nl[i]->ref_cnt - 1])
       {
-         fprintf(stderr, "now connected way\n");
+         log_debug("now connected way");
+#ifdef OUTPUT_COASTLINE
          poly_out(f, nl[i], rd);
+#endif
          add_coast_way(rd, nl[i]);
       }
       free(nl[i]);
    }
 
+#ifdef OUTPUT_COASTLINE
    fprintf(f, "</osm>\n");
    fclose(f);
+#endif
 
    free(wl);
    return 0;
