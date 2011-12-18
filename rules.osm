@@ -9,6 +9,10 @@
       <tag k='_action_' v='img:icons/Light_Minor.png'/>
    </node>
    <node>
+      <tag k='seamark:type' v=''/>
+      <tag k='_action_' v='func:demo@./libdemo.so'/>
+   </node>
+   <node>
       <tag k='seamark:type' v='light_major'/>
       <tag k='_action_' v='img:icons/Light_Major.png'/>
    </node>

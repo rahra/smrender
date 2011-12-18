@@ -76,17 +76,13 @@ void gather_poly(struct onode *nd, struct rdata *rd, struct wlist **wl)
 struct wlist *poly_find_adj(struct rdata *rd, struct wlist *wl)
 {
    int i, j;
-   bx_node_t *bn;
    struct wlist *nl;
    struct onode *nd;
 
    if (!wl->ref_cnt)
       return NULL;
 
-   if ((bn = bx_get_node(rd->ways, wl->ref[0])) == NULL)
-      return NULL;
-
-   if ((nd = bn->next[0]) == NULL)
+   if ((nd = get_object(rd->ways, wl->ref[0])) == NULL)
       return NULL;
 
    if ((nl = malloc(sizeof(int64_t) * nd->ref_cnt + sizeof(struct wlist))) == NULL)
@@ -105,10 +101,7 @@ struct wlist *poly_find_adj(struct rdata *rd, struct wlist *wl)
    for (j = 0; j < wl->ref_cnt; j++)
    for (i = 0; i < wl->ref_cnt; i++)
    {
-      if ((bn = bx_get_node(rd->ways, wl->ref[i])) == NULL)
-         return NULL;
-
-      if ((nd = bn->next[0]) == NULL)
+      if ((nd = get_object(rd->ways, wl->ref[i])) == NULL)
          return NULL;
 
       if (nd->ref_cnt < 2)
@@ -328,13 +321,15 @@ int connect_open_poly(struct rdata *rd, struct wlist **wl, int n)
  */
 int poly_bearing(struct rdata *rd, struct wlist *nl, int n, struct pcoord *pc, const struct coord *c)
 {
-   bx_node_t *bn;
+   //bx_node_t *bn;
    struct onode *nd;
    struct coord dst;
 
-   if ((n >= nl->ref_cnt) || (n < 0)) return -1;
-   if ((bn = bx_get_node(rd->nodes, nl->ref[n])) == NULL) return -1;
-   if ((nd = bn->next[0]) == NULL) return -1;
+   if ((n >= nl->ref_cnt) || (n < 0))
+      return -1;
+
+   if ((nd = get_object(rd->nodes, nl->ref[n])) == NULL)
+      return -1;
 
    dst.lat = nd->nd.lat;
    dst.lon = nd->nd.lon;
@@ -446,7 +441,7 @@ int cat_poly(struct rdata *rd)
    traverse(rd->ways, 0, (void (*)(struct onode *, struct rdata *, void *)) gather_poly, rd, &wl);
 
    for (i = 0; i < wl->ref_cnt; i++)
-      log_debug("open coastlinig %ld", wl->ref[i]);
+      log_debug("open coastline %ld", wl->ref[i]);
 
 #ifdef OUTPUT_COASTLINE
    if ((f = fopen("open_coastline.osm", "w")) == NULL)

@@ -71,6 +71,8 @@
 typedef struct rdata rdata_t;
 typedef struct onode onode_t;
 typedef void (*tree_func_t)(struct onode*, struct rdata*, void*);
+typedef int (*ext_func_t)(struct onode*, struct rdata*);
+
 
 struct specialTag
 {
@@ -104,8 +106,12 @@ struct actCaption
 
 struct actFunction
 {
-   //char *lib;
-   int (*func)(const rdata_t*, const onode_t*);
+   union
+   {
+      ext_func_t func;
+      void *sym;
+   };
+   void *libhandle;
 };
 
 struct drawStyle
@@ -198,6 +204,7 @@ int cf_dist(struct rdata *, int, int, int, int, double, int, int);
 double rot_pos(int, int, double, int *, int *);
 double color_frequency(struct rdata *, int, int, int, int, int);
 void mk_chart_coords(int, int, struct rdata*, double*, double*);
+struct onode *get_object(bx_node_t*, int64_t);
 
 /* smloadosm.c */
 int read_osm_file(hpx_ctrl_t *, bx_node_t **, bx_node_t **);

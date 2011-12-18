@@ -35,6 +35,7 @@
 #include <regex.h>
 #include <limits.h>  // contains INT_MAX
 #include <syslog.h>
+#include <dlfcn.h>
 
 #include "osm_inplace.h"
 #include "bstring.h"
@@ -52,6 +53,25 @@ struct rdata rdata_;
 void usage(const char *s)
 {
    printf("Seamark renderer V1.0, (c) 2011, Bernhard R. Fischer, <bf@abenteuerland.at>.\n\n");
+}
+
+
+struct onode *get_object(bx_node_t *tree, int64_t id)
+{
+   bx_node_t *bn;
+
+   if ((bn = bx_get_node(tree, id)) == NULL)
+   {
+      log_msg(LOG_ERR, "bx_get_node() failed");
+      return NULL;
+   }
+   if (bn->next[0] == NULL)
+   {
+      log_msg(LOG_ERR, "nt->next[0] contains NULL pointer");
+      return NULL;
+   }
+
+   return bn->next[0];
 }
 
 
@@ -300,7 +320,7 @@ int parse_draw(const char *src, struct drawStyle *ds, const struct rdata *rd)
 
 void prepare_rules(struct onode *nd, struct rdata *rd, void *p)
 {
-   char *s;
+   char *s, *lib;
    FILE *f;
    int i;
 
@@ -378,6 +398,41 @@ void prepare_rules(struct onode *nd, struct rdata *rd, void *p)
       nd->rule.cap.key = s;
       nd->rule.type = ACT_CAP;
       log_debug("successfully parsed caption rule");
+   }
+   else if (!strcmp(s, "func"))
+   {
+      if ((s = strtok(NULL, "@")) == NULL)
+      {
+         log_msg(LOG_ERR, "syntax error in function rule");
+         return;
+      }
+      if ((lib = strtok(NULL, "")) == NULL)
+      {
+         log_msg(LOG_ERR, "syntax error in function rule");
+         return;
+      }
+
+      // Open shared library
+      if ((nd->rule.func.libhandle = dlopen(lib, RTLD_LAZY)) == NULL)
+      {
+         log_msg(LOG_ERR, "could not open library: %s", dlerror());
+         return;
+      }
+
+      // Clear any existing error
+      dlerror();
+
+      nd->rule.func.sym = dlsym(nd->rule.func.libhandle, s);
+
+      // Check for errors
+      if ((s = dlerror()) != NULL)
+      {
+         log_msg(LOG_ERR, "error loading symbol from libary: %s", s);
+         return;
+      }
+
+      nd->rule.type = ACT_FUNC;
+      log_debug("successfully parsed function rule");
    }
    else if (!strcmp(s, "draw"))
    {
@@ -649,6 +704,10 @@ void apply_rules0(struct onode *nd, struct rdata *rd, struct onode *mnd)
          act_caption(nd, rd, mnd, x, y);
          break;
 
+      case ACT_FUNC:
+        (void) mnd->rule.func.func(nd, rd);
+        break;
+
       default:
          log_warn("action type %d not implemented yet", mnd->rule.type);
    }
@@ -665,22 +724,14 @@ void apply_rules(struct onode *nd, struct rdata *rd, void *vp)
 void act_open_poly(struct onode *wy, struct rdata *rd, struct onode *mnd)
 {
    int i;
-   bx_node_t *nt;
    struct onode *nd;
    gdPoint p[wy->ref_cnt];
 
    for (i = 0; i < wy->ref_cnt; i++)
    {
-      if ((nt = bx_get_node(rd->nodes, wy->ref[i])) == NULL)
-      {
-         log_msg(LOG_ERR, "bx_get_node() failed");
+      if ((nd = get_object(rd->nodes, wy->ref[i])) == NULL)
          return;
-      }
-      if ((nd = nt->next[0]) == NULL)
-      {
-         log_msg(LOG_ERR, "nt->next[0] contains NULL pointer");
-         return;
-      }
+
       mk_paper_coords(nd->nd.lat, nd->nd.lon, rd, &p[i].x, &p[i].y);
    }
 
@@ -691,22 +742,14 @@ void act_open_poly(struct onode *wy, struct rdata *rd, struct onode *mnd)
 void act_fill_poly(struct onode *wy, struct rdata *rd, struct onode *mnd)
 {
    int i;
-   bx_node_t *nt;
    struct onode *nd;
    gdPoint p[wy->ref_cnt];
 
    for (i = 0; i < wy->ref_cnt; i++)
    {
-      if ((nt = bx_get_node(rd->nodes, wy->ref[i])) == NULL)
-      {
-         log_msg(LOG_ERR, "bx_get_node() failed");
+      if ((nd = get_object(rd->nodes, wy->ref[i])) == NULL)
          return;
-      }
-      if ((nd = nt->next[0]) == NULL)
-      {
-         log_msg(LOG_ERR, "nt->next[0] contains NULL pointer");
-         return;
-      }
+
       mk_paper_coords(nd->nd.lat, nd->nd.lon, rd, &p[i].x, &p[i].y);
    }
 
@@ -748,6 +791,10 @@ void apply_wrules0(struct onode *nd, struct rdata *rd, struct onode *mnd)
             act_fill_poly(nd, rd, mnd);
          else
             act_open_poly(nd, rd, mnd);
+        break;
+
+      case ACT_FUNC:
+        (void) mnd->rule.func.func(nd, rd);
         break;
 
       default:
@@ -1323,7 +1370,7 @@ int main(int argc, char *argv[])
    struct timeval tv_start, tv_end;
 
    (void) gettimeofday(&tv_start, NULL);
-   init_log("stderr", LOG_INFO);
+   init_log("stderr", LOG_DEBUG);
 
    log_msg(LOG_INFO, "initializing structures");
    init_rdata(&rdata_);
