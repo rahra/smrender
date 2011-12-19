@@ -173,8 +173,8 @@ struct cb_func
    void (*log_msg)(int, const char*, ...);
    struct onode *(*get_object)(bx_node_t*, int64_t);
    int (*put_object)(bx_node_t*, int64_t, struct onode*);
-   struct onode *(*malloc_object)(int, int);
-   int (*match_attr)(const struct onode*, const char*, const char*);
+//   struct onode *(*malloc_object)(int, int);
+//   int (*match_attr)(const struct onode*, const char*, const char*);
 };
 
 struct rdata
@@ -221,7 +221,6 @@ enum {PRJ_DIRECT, PRJ_MERC_PAGE, PRJ_MERC_BB};
 
 /* smrender.c */
 void traverse(const bx_node_t *, int, void (*)(struct onode*, struct rdata*, void*), struct rdata *, void *);
-int match_attr(const struct onode *, const char *, const char *);
 int print_onode(FILE *, const struct onode *);
 int col_freq(struct rdata *, int, int, int, int, double, int);
 int cf_dist(struct rdata *, int, int, int, int, double, int, int);
@@ -229,6 +228,14 @@ double rot_pos(int, int, double, int *, int *);
 double color_frequency(struct rdata *, int, int, int, int, int);
 void mk_chart_coords(int, int, struct rdata*, double*, double*);
 struct onode *get_object(bx_node_t*, int64_t);
+
+/* smutil.c */
+int match_attr(const struct onode *, const char *, const char *);
+int bs_match_attr(const struct onode *, const struct otag *);
+int bs_match(const bstring_t *, const bstring_t *, const struct specialTag *);
+int put_object(bx_node_t *, int64_t , struct onode *);
+struct onode *get_object(bx_node_t *, int64_t );
+struct onode *malloc_object(int , int );
 
 /* smloadosm.c */
 int read_osm_file(hpx_ctrl_t *, bx_node_t **, bx_node_t **);

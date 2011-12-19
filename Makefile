@@ -16,7 +16,7 @@
 # */
 
 CC	= gcc
-CFLAGS	= -O2 -g -Wall -DHAS_STRPTIME -DMEM_USAGE -Dbx_hash_t=int64_t -DBX_RES=4
+CFLAGS	= -g -Wall -DHAS_STRPTIME -DMEM_USAGE -Dbx_hash_t=int64_t -DBX_RES=4
 LDFLAGS	= -lm -lgd -ldl
 VER = smrender-r$(shell svnversion | tr -d M)
 
@@ -24,17 +24,11 @@ all: smrender libsmfilter.so
 
 smloadosm.o: smloadosm.c smrender.h
 
-smrender: smrender.o bstring.o osm_func.o libhpxml.o smlog.o bxtree.o smloadosm.o smath.o smcoast.o
+smrender: smrender.o bstring.o osm_func.o libhpxml.o smlog.o bxtree.o smloadosm.o smath.o smcoast.o smutil.o
 
-smtemp: smtemp.o bstring.o osm_func.o libhpxml.o smlog.o bxtree.o
-
-smfix: smfix.o bstring.o osm_func.o libhpxml.o smlog.o bxtree.o
+smutil.o: smutil.c
 
 smrender.o: smrender.c smlog.h bstring.h
-
-#smtemp.o: smtemp.c smlog.h bstring.h
-#
-#smfix.o: smfix.c smlog.h bstring.h
 
 osm_func.o: osm_func.c osm_inplace.h
 
