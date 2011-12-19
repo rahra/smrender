@@ -16,16 +16,22 @@
 # */
 
 CC	= gcc
-CFLAGS = -O2 -g -fPIC -I..
-
+CFLAGS = -g -fPIC -I..
+LDFLAGS = -lm
 all: libsmfilter.so
 
 bstring.o: bstring.c
 
+bxtree.o: bxtree.c
+
+smutil.o: smutil.c
+
+sector_calc.o: sector_calc.c
+
 libsmfilter.o: libsmfilter.c
 
-libsmfilter.so.1: bstring.o libsmfilter.o
-	ld -shared -soname libsmfilter.so.1 -o libsmfilter.so.1 -lc libsmfilter.o bstring.o
+libsmfilter.so.1: bstring.o libsmfilter.o smutil.o sector_calc.o
+	ld -shared -soname libsmfilter.so.1 -o libsmfilter.so.1 -lc -lm libsmfilter.o bstring.o smutil.o sector_calc.o
 
 libsmfilter.so: libsmfilter.so.1
 	if test ! -e libsmfilter.so ; then \
