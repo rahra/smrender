@@ -35,7 +35,7 @@
 #include <regex.h>
 #include <limits.h>  // contains INT_MAX
 #include <syslog.h>
-#include <dlfcn.h>
+#include <dlfcn.h>   // dlopen(),...
 
 #include "osm_inplace.h"
 #include "bstring.h"
@@ -45,9 +45,6 @@
 #include "bxtree.h"
 #include "smrender.h"
 //#include "smrules.h"
-
-
-struct rdata rdata_;
 
 
 void usage(const char *s)
@@ -496,16 +493,17 @@ void mk_chart_coords(int x, int y, struct rdata *rd, double *lat, double *lon)
  */
 void mk_paper_coords(double lat, double lon, struct rdata *rd, int *x, int *y)
 {
-   *x =         (lon - rd->x1c) * rd->w / rd->wc;
-   *y = rd->h - (lat - rd->y2c) * rd->h / rd->hc;
+   *x = round(        (lon - rd->x1c) * rd->w / rd->wc);
+   *y = round(rd->h - (lat - rd->y2c) * rd->h / rd->hc);
 }
 
 
+/*
 int coords_inrange(const struct rdata *rd, int x, int y)
 {
    return x >= 0 && x < rd->w && y >= 0 && y < rd->h;
 }
-
+*/
 
 int act_image(struct onode *nd, struct rdata *rd, struct onode *mnd, int x, int y)
 {
@@ -1189,8 +1187,11 @@ void init_prj(struct rdata *rd, int p)
 }
 
 
-void init_rdata(struct rdata *rd)
+//void init_rdata(struct rdata *rd)
+struct rdata *init_rdata(void)
 {
+   static struct rdata _rd, *rd = &_rd;
+
    memset(rd, 0, sizeof(*rd));
 
    // A3 paper portrait (300dpi)
@@ -1205,6 +1206,9 @@ void init_rdata(struct rdata *rd)
    rd->grd.lat_ticks = rd->grd.lon_ticks = G_TICKS;
    rd->grd.lat_sticks = rd->grd.lon_sticks = G_STICKS;
    rd->grd.lat_g = rd->grd.lon_g = G_GRID;
+
+   rd->cb.log_msg = log_msg;
+   rd->cb.get_object = get_object;
 
    // this should be given by CLI arguments
    /* porec.osm
@@ -1225,6 +1229,7 @@ void init_rdata(struct rdata *rd)
    rd->y2c = 37.16;
    */
  
+   return rd;
 }
 
 
@@ -1366,28 +1371,28 @@ int main(int argc, char *argv[])
    struct stat st;
    FILE *f = stdout;
    char *cf = "rules.osm";
-   struct rdata *rd = &rdata_;
+   struct rdata *rd;
    struct timeval tv_start, tv_end;
 
    (void) gettimeofday(&tv_start, NULL);
    init_log("stderr", LOG_DEBUG);
 
    log_msg(LOG_INFO, "initializing structures");
-   init_rdata(&rdata_);
-   //print_rdata(stderr, &rdata_);
-   init_prj(&rdata_, PRJ_MERC_PAGE);
-   print_rdata(stderr, &rdata_);
+   rd = init_rdata();
+   //print_rdata(stderr, rd);
+   init_prj(rd, PRJ_MERC_PAGE);
+   print_rdata(stderr, rd);
 
    // preparing image
-   if ((rdata_.img = gdImageCreateTrueColor(rdata_.w, rdata_.h)) == NULL)
+   if ((rd->img = gdImageCreateTrueColor(rd->w, rd->h)) == NULL)
       perror("gdImage"), exit(EXIT_FAILURE);
-   rdata_.col[WHITE] = gdImageColorAllocate(rdata_.img, 255, 255, 255);
-   rdata_.col[BLACK] = gdImageColorAllocate(rdata_.img, 0, 0, 0);
-   rdata_.col[YELLOW] = gdImageColorAllocate(rdata_.img, 231,209,74);
-   rdata_.col[BLUE] = gdImageColorAllocate(rdata_.img, 137, 199, 178);
-   rdata_.col[MAGENTA] = gdImageColorAllocate(rdata_.img, 120, 8, 44);
-   rdata_.col[BROWN] = gdImageColorAllocate(rdata_.img, 154, 42, 2);
-   gdImageFill(rdata_.img, 0, 0, rdata_.col[WHITE]);
+   rd->col[WHITE] = gdImageColorAllocate(rd->img, 255, 255, 255);
+   rd->col[BLACK] = gdImageColorAllocate(rd->img, 0, 0, 0);
+   rd->col[YELLOW] = gdImageColorAllocate(rd->img, 231,209,74);
+   rd->col[BLUE] = gdImageColorAllocate(rd->img, 137, 199, 178);
+   rd->col[MAGENTA] = gdImageColorAllocate(rd->img, 120, 8, 44);
+   rd->col[BROWN] = gdImageColorAllocate(rd->img, 154, 42, 2);
+   gdImageFill(rd->img, 0, 0, rd->col[WHITE]);
    if (!gdFTUseFontConfig(1))
       log_msg(LOG_NOTICE, "fontconfig library not available");
 
@@ -1401,7 +1406,7 @@ int main(int argc, char *argv[])
       perror("hpx_init_simple"), exit(EXIT_FAILURE);
 
    log_msg(LOG_INFO, "reading osm data (file size %ld kb)", (long) st.st_size / 1024);
-   (void) read_osm_file(ctl, &rdata_.nodes, &rdata_.ways);
+   (void) read_osm_file(ctl, &rd->nodes, &rd->ways);
    (void) close(fd);
 
    if ((fd = open(cf, O_RDONLY)) == -1)
@@ -1414,7 +1419,7 @@ int main(int argc, char *argv[])
       perror("hpx_init_simple"), exit(EXIT_FAILURE);
 
    log_msg(LOG_INFO, "reading rules (file size %ld kb)", (long) st.st_size / 1024);
-   (void) read_osm_file(cfctl, &rdata_.nrules, &rdata_.wrules);
+   (void) read_osm_file(cfctl, &rd->nrules, &rd->wrules);
    (void) close(fd);
 
 #ifdef MEM_USAGE
@@ -1424,8 +1429,8 @@ int main(int argc, char *argv[])
 
    log_msg(LOG_INFO, "gathering stats");
    init_stats(&rd->ds);
-   traverse(rdata_.nodes, 0, (void (*)(struct onode *, struct rdata *, void *)) onode_stats, &rdata_, &rd->ds);
-   traverse(rdata_.ways, 0, (void (*)(struct onode *, struct rdata *, void *)) onode_stats, &rdata_, &rd->ds);
+   traverse(rd->nodes, 0, (void (*)(struct onode *, struct rdata *, void *)) onode_stats, rd, &rd->ds);
+   traverse(rd->ways, 0, (void (*)(struct onode *, struct rdata *, void *)) onode_stats, rd, &rd->ds);
    log_msg(LOG_INFO, "ncnt = %ld, min_nid = %ld, max_nid = %ld",
          rd->ds.ncnt, rd->ds.min_nid, rd->ds.max_nid);
    log_msg(LOG_INFO, "wcnt = %ld, min_wid = %ld, max_wid = %ld",
@@ -1434,40 +1439,40 @@ int main(int argc, char *argv[])
          rd->ds.lu.lat, rd->ds.lu.lon, rd->ds.rb.lat, rd->ds.rb.lon);
 
    // output rules
-   //traverse(rdata_.nrules, 0, print_tree, &rdata_, NULL);
-   //traverse(rdata_.wrules, 0, print_tree, &rdata_, NULL);
+   //traverse(rd->nrules, 0, print_tree, rd, NULL);
+   //traverse(rd->wrules, 0, print_tree, rd, NULL);
    //printf("\n\n\n");
 
    log_msg(LOG_INFO, "preparing rules");
-   traverse(rdata_.nrules, 0, prepare_rules, &rdata_, NULL);
-   traverse(rdata_.wrules, 0, prepare_rules, &rdata_, NULL);
+   traverse(rd->nrules, 0, prepare_rules, rd, NULL);
+   traverse(rd->wrules, 0, prepare_rules, rd, NULL);
 
    log_msg(LOG_INFO, "preparing coastline");
-   cat_poly(&rdata_);
+   cat_poly(rd);
 
    // output rules
-   //traverse(rdata_.nrules, 0, print_tree, &rdata_, NULL);
-   //traverse(rdata_.wrules, 0, print_tree, &rdata_, NULL);
+   //traverse(rd->nrules, 0, print_tree, rd, NULL);
+   //traverse(rd->wrules, 0, print_tree, rd, NULL);
 
-   //traverse(rdata_.ways, 0, print_tree, &rdata_);
+   //traverse(rd->ways, 0, print_tree, rd);
    //fprintf(stderr, "rendering coastline (closed polygons)...\n");
-   //traverse(rdata_.ways, 0, draw_coast, &rdata_, NULL);
-   //traverse(rdata_.ways, 0, draw_coast_fill, &rdata_, NULL);
+   //traverse(rd->ways, 0, draw_coast, rd, NULL);
+   //traverse(rd->ways, 0, draw_coast_fill, rd, NULL);
 
    log_msg(LOG_INFO, "rendering ways");
-   traverse(rdata_.wrules, 0, apply_wrules, &rdata_, NULL);
+   traverse(rd->wrules, 0, apply_wrules, rd, NULL);
    log_msg(LOG_INFO, "rendering nodes");
-   traverse(rdata_.nrules, 0, apply_rules, &rdata_, NULL);
+   traverse(rd->nrules, 0, apply_rules, rd, NULL);
 
    log_msg(LOG_INFO, "creating grid and legend");
-   grid(&rdata_, rdata_.col[BLACK]);
+   grid(rd, rd->col[BLACK]);
 
    hpx_free(ctl);
    hpx_free(cfctl);
 
    log_msg(LOG_INFO, "saving image");
-   gdImagePng(rdata_.img, f);
-   gdImageDestroy(rdata_.img);
+   gdImagePng(rd->img, f);
+   gdImageDestroy(rd->img);
 
    (void) gettimeofday(&tv_end, NULL);
    tv_end.tv_sec -= tv_start.tv_sec;

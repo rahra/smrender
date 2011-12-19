@@ -168,19 +168,40 @@ struct dstats
    int64_t max_wid;
 };
 
+struct cb_func
+{ 
+   void (*log_msg)(int, const char*, ...);
+   struct onode *(*get_object)(bx_node_t*, int64_t);
+};
+
 struct rdata
 {
+   // root nodes of node tree and way tree
    bx_node_t *nodes, *ways;
+   // root nodes of node rules and way rules
    bx_node_t *nrules, *wrules;
+   // pointer to image data
    gdImage *img;
-   double x1c, y1c, x2c, y2c, wc, hc;
+   // left upper and right bottom coordinates
+   double x1c, y1c, x2c, y2c;
+   // coordinate with/height (wc=x2c-x1c, hc=y1c-y2c)
+   double wc, hc;
+   // mean latitude and its length in degrees
    double mean_lat, mean_lat_len;
+   // (pixel) image width and height
    int w, h;
+   // pixel resolution
    int dpi;
+   // scale
    double scale;
+   // grid drawing data
    struct grid grd;
+   // node/way stats
    struct dstats ds;
+   // image colors
    int col[6];
+   // callbacks for external function
+   struct cb_func cb;
 };
 
 enum {WHITE, YELLOW, BLACK, BLUE, MAGENTA, BROWN};
