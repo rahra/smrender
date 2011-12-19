@@ -1,6 +1,10 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <osm version='0.6'>
    <node>
+      <tag k='seamark:type' v=''/>
+      <tag k='_action_' v='func:pchar@./libsmfilter.so'/>
+   </node>
+   <node>
       <tag k='/^seamark:light:.*/' v=''/>
       <tag k='_action_' v='img-auto:icons/Light_Magenta_90.png'/>
    </node>
@@ -8,11 +12,7 @@
       <tag k='seamark:type' v='light_minor'/>
       <tag k='_action_' v='img:icons/Light_Minor.png'/>
    </node>
-   <node>
-      <tag k='seamark:type' v=''/>
-      <tag k='_action_' v='func:demo@./libdemo.so'/>
-   </node>
-   <node>
+  <node>
       <tag k='seamark:type' v='light_major'/>
       <tag k='_action_' v='img:icons/Light_Major.png'/>
    </node>

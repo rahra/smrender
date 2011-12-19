@@ -16,7 +16,7 @@
 # */
 
 CC	= gcc
-CFLAGS	= -O2 -g -Wall -DHAS_STRPTIME -DMEM_USAGE -Dbx_hash_t=int64_t -DBX_RES=4
+CFLAGS	= -O2 -g -fPIC -Wall -DHAS_STRPTIME -DMEM_USAGE -Dbx_hash_t=int64_t -DBX_RES=4
 LDFLAGS	= -lm -lgd -ldl
 VER = smrender-r$(shell svnversion | tr -d M)
 
@@ -50,15 +50,15 @@ smath.o: smath.c smath.h
 
 smcoast.o: smcoast.c smrender.h smath.h
 
-libdemo.so: libdemo.c
-	gcc -g -c -fPIC -Wall libdemo.c
-	ld -shared -soname libdemo.so.1 -o libdemo.so.1 -lc libdemo.o
-	if test ! -e libdemo.so.1 ; then \
-		ln -s libdemo.so.1 libdemo.so ; \
+libsmfilter.so: bstring.o libsmfilter.c
+	gcc -g -c -fPIC -Wall libsmfilter.c
+	ld -shared -soname libsmfilter.so.1 -o libsmfilter.so.1 -lc libsmfilter.o bstring.o
+	if test ! -e libsmfilter.so ; then \
+		ln -s libsmfilter.so.1 libsmfilter.so ; \
 	fi
 
 clean:
-	rm -f *.o smrender
+	rm -f *.o *.so smrender
 
 dist: smrender
 	if test -e $(VER) ; then \

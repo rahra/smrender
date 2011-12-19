@@ -40,16 +40,56 @@
 #include "osm_inplace.h"
 #include "bstring.h"
 #include "libhpxml.h"
-//#include "seamark.h"
 #include "smlog.h"
 #include "bxtree.h"
 #include "smrender.h"
-//#include "smrules.h"
 
 
 void usage(const char *s)
 {
    printf("Seamark renderer V1.0, (c) 2011, Bernhard R. Fischer, <bf@abenteuerland.at>.\n\n");
+}
+
+
+struct onode *malloc_object(int tag_cnt, int ref_cnt)
+{
+   struct onode *nd;
+
+   if ((nd = calloc(1, sizeof(struct onode) + tag_cnt * sizeof(struct otag))) == NULL)
+   {
+      log_msg(LOG_ERR, "cannot calloc() for new onode: %s", strerror(errno));
+      return NULL;
+   }
+   if ((nd->ref = calloc(ref_cnt, sizeof(int64_t))) == NULL)
+   {
+      log_msg(LOG_ERR, "cannot calloc() for refs of new onode: %s", strerror(errno));
+      free(nd);
+      return NULL;
+   }
+
+   nd->ref_cnt = ref_cnt;
+   nd->tag_cnt = tag_cnt;
+   return nd;
+}
+
+
+int put_object(bx_node_t *tree, int64_t id, struct onode *nd)
+{
+   bx_node_t *bn;
+
+   if ((bn = bx_get_node(tree, id)) == NULL)
+   {
+      log_msg(LOG_ERR, "bx_get_node() failed");
+      return -1;
+   }
+   /* too much debugging....
+   if (bn->next[0] != NULL)
+   {
+      log_msg(LOG_DEBUG, "nt->next[0] contains valid pointer, overwriting.");
+   }*/
+
+   bn->next[0] = nd;
+   return 0;
 }
 
 
@@ -677,7 +717,7 @@ void apply_rules0(struct onode *nd, struct rdata *rd, struct onode *mnd)
 
    if (!mnd->rule.type)
    {
-      log_debug("ACT_NA rule ignored");
+      //log_debug("ACT_NA rule ignored");
       return;
    }
 
@@ -768,7 +808,7 @@ void apply_wrules0(struct onode *nd, struct rdata *rd, struct onode *mnd)
 
    if (!mnd->rule.type)
    {
-      log_debug("ACT_NA rule ignored");
+      //log_debug("ACT_NA rule ignored");
       return;
    }
 
@@ -1207,8 +1247,12 @@ struct rdata *init_rdata(void)
    rd->grd.lat_sticks = rd->grd.lon_sticks = G_STICKS;
    rd->grd.lat_g = rd->grd.lon_g = G_GRID;
 
+   // init callback function pointers
    rd->cb.log_msg = log_msg;
    rd->cb.get_object = get_object;
+   rd->cb.put_object = put_object;
+   rd->cb.malloc_object = malloc_object;
+   rd->cb.match_attr = match_attr;
 
    // this should be given by CLI arguments
    /* porec.osm
