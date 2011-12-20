@@ -4,6 +4,8 @@
 
 #include <stdint.h>
 
+#include "smconfig.h"
+
 
 #ifndef bx_hash_t
 #define bx_hash_t uint32_t

@@ -28,6 +28,7 @@
 #define MAX_SEC 32
 #define MAX_SFRAC 36
 #define TAPER_SEGS 7
+#define DIR_ARC 2.0
 
 
 enum {ARC_UNDEF, ARC_SOLID, ARC_SUPPRESS, ARC_DASHED, ARC_TAPER_UP, ARC_TAPER_DOWN, ARC_TAPER_1, ARC_TAPER_2, ARC_TAPER_3, ARC_TAPER_4, ARC_TAPER_5, ARC_TAPER_6, ARC_TAPER_7};
@@ -79,15 +80,15 @@ struct sector
 };
 
 
-extern double arc_div_;
-extern double arc_max_;
-extern double sec_radius_;
+//extern double arc_div_;
+//extern double arc_max_;
+//extern double sec_radius_;
 
 //extern const double altr_[];
 
-int get_sectors(const struct onode *, struct sector *sec, int nmax);
+int get_sectors(struct rdata*, const struct onode *, struct sector *sec, int nmax);
 void node_calc(const struct osm_node *nd, double r, double a, double *lat, double *lon);
-void sector_calc2(const struct osm_node *nd, const struct sector *sec, bstring_t);
+int sector_calc3(struct rdata *, const struct onode *, const struct sector *, bstring_t);
 void init_sector(struct sector *sec);
 int proc_sfrac(struct sector *sec);
 const char *color(int);

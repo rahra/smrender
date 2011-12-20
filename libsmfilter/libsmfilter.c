@@ -67,7 +67,8 @@ int pchar(struct onode *nd, struct rdata *rd)
    if (node != nd)
    {
       nd = node;
-      (void) rd->cb.put_object(rd->nodes, nd->nd.id, nd);
+      //(void) rd->cb.put_object(rd->nodes, nd->nd.id, nd);
+      (void) put_object(rd->nodes, nd->nd.id, nd);
    }
 
    // clear additional otag structure
@@ -114,7 +115,7 @@ int vsector(struct onode *ond, struct rdata *rd)
    for (i = 0; i < MAX_SEC; i++)
       init_sector(&sec[i]);
 
-   if (!(i = get_sectors(ond, sec, MAX_SEC)))
+   if (!(i = get_sectors(rd, ond, sec, MAX_SEC)))
       return 0;
 
    for (i = 0, n = 0; i < MAX_SEC; i++)
@@ -176,6 +177,7 @@ int vsector(struct onode *ond, struct rdata *rd)
    } // for (i = 0; i < MAX_SEC; i++)
 
    // remove all unused (or invalid) sectors
+   //rd->cb.log_msg(LOG_DEBUG, "removing unused sectors");
    for (i = 0, j = 0; i < MAX_SEC && j < n; i++, j++)
    {
       if (sec[i].used)
@@ -208,7 +210,8 @@ int vsector(struct onode *ond, struct rdata *rd)
          }
          //printf("   <!-- [%d]: start = %.2f, end = %.2f, col = %d, r = %.2f, nr = %d -->\n",
          //   i, sec[i].start, sec[i].end, sec[i].col, sec[i].r, sec[i].nr);
-         sector_calc2(nd, &sec[i], b);
+         if (sector_calc3(rd, ond, &sec[i], b))
+            rd->cb.log_msg(LOG_ERR, "sector_calc3 failed: %s", strerror(errno));
 
          if (sec[i].col[1] != -1)
          {
@@ -218,7 +221,8 @@ int vsector(struct onode *ond, struct rdata *rd)
                for (k = 0; k < sec[i].fused; k++)
                   sec[i].sf[k].r -= altr_[j];
                sec[i].al++;
-               sector_calc2(nd, &sec[i], b);
+               if (sector_calc3(rd, ond, &sec[i], b))
+                  rd->cb.log_msg(LOG_ERR, "sector_calc3 failed: %s", strerror(errno));
             }
          }
       }

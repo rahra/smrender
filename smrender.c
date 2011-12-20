@@ -37,12 +37,12 @@
 #include <syslog.h>
 #include <dlfcn.h>   // dlopen(),...
 
+#include "smrender.h"
 #include "osm_inplace.h"
 #include "bstring.h"
 #include "libhpxml.h"
 #include "smlog.h"
 #include "bxtree.h"
-#include "smrender.h"
 
 
 void usage(const char *s)
@@ -694,52 +694,7 @@ void apply_wrules(struct onode *nd, struct rdata *rd, void *vp)
 
 void print_tree(struct onode *nd, struct rdata *rd, void *p)
 {
-   int i;
-
-         switch (nd->nd.type)
-         {
-            case OSM_NODE:
-               printf("<node version='%d' id='%ld' lat='%f' lon='%f'",  nd->nd.ver, nd->nd.id, nd->nd.lat, nd->nd.lon);
-               if (!nd->tag_cnt)
-                  printf("/>\n");
-               else
-               {
-                  printf(">\n");
-                  for (i = 0; i < nd->tag_cnt; i++)
-                     printf(" <tag k='%.*s' v='%.*s'/>\n",
-                           nd->otag[i].k.len, nd->otag[i].k.buf, nd->otag[i].v.len, nd->otag[i].v.buf);
-                  printf("</node>\n");
-               }
-
-               break;
-
-            case OSM_WAY:
-
-               if (match_attr(nd, "natural", "coastline"))
-                  printf("<!-- COASTLINE -->\n");
-
-               printf("<way version='%d' id='%ld'",  nd->nd.ver, nd->nd.id);
-
-               if (!nd->tag_cnt && !nd->ref_cnt)
-                  printf("/>\n");
-               else
-               {
-                  printf(">\n");
-                  for (i = 0; i < nd->tag_cnt; i++)
-                     printf(" <tag k='%.*s' v='%.*s'/>\n",
-                           nd->otag[i].k.len, nd->otag[i].k.buf, nd->otag[i].v.len, nd->otag[i].v.buf);
-                  for (i = 0; i < nd->ref_cnt; i++)
-                     printf(" <nd ref='%ld'/>\n", nd->ref[i]);
- 
-                  printf("</way>\n");
-               }
-
-               break;
-
-            default:
-               printf("<!-- node type %d unknown -->\n", nd->nd.type);
-               return;
-         }
+   print_onode(p, nd);
 }
 
 
@@ -1094,8 +1049,8 @@ struct rdata *init_rdata(void)
 
    // init callback function pointers
    rd->cb.log_msg = log_msg;
-   rd->cb.get_object = get_object;
-   rd->cb.put_object = put_object;
+   //rd->cb.get_object = get_object;
+   //rd->cb.put_object = put_object;
    //rd->cb.malloc_object = malloc_object;
    //rd->cb.match_attr = match_attr;
 
@@ -1362,6 +1317,16 @@ int main(int argc, char *argv[])
    log_msg(LOG_INFO, "saving image");
    gdImagePng(rd->img, f);
    gdImageDestroy(rd->img);
+
+   log_msg(LOG_INFO, "saving osm output");
+   if ((f = fopen("out.osm", "w")) != NULL)
+   {
+      traverse(rd->nodes, 0, print_tree, rd, f);
+      traverse(rd->ways, 0, print_tree, rd, f);
+      fclose(f);
+   }
+   else
+      log_msg(LOG_WARN, "could not open 'out.osm': %s", strerror(errno));
 
    (void) gettimeofday(&tv_end, NULL);
    tv_end.tv_sec -= tv_start.tv_sec;

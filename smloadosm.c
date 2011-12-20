@@ -32,12 +32,12 @@
 #include <fcntl.h>
 #include <gd.h>
 
+#include "smrender.h"
 #include "osm_inplace.h"
 #include "bstring.h"
 #include "libhpxml.h"
 #include "smlog.h"
 #include "bxtree.h"
-#include "smrender.h"
 
 
 int oline_ = 0;

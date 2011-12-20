@@ -41,12 +41,12 @@
 #define SEAMARK_LIGHT_ARC_AL "seamark:light_arc_al"
 #define SEAMARK_LIGHT_ARC "seamark:light_arc"
 
-double arc_div_ = ARC_DIV;
-double arc_max_ = ARC_MAX;
-double sec_radius_ = SEC_RADIUS;
+static double arc_div_ = ARC_DIV;
+static double arc_max_ = ARC_MAX;
+static double sec_radius_ = SEC_RADIUS;
+static double dir_arc_ = DIR_ARC;
 
 extern int parse_rhint_;
-extern double dir_arc_;
 
 const double altr_[] = {0.005, 0.005, 0.01, 0.005};
 
@@ -59,20 +59,6 @@ static const char *atype_[] = {"undef", "solid", "suppress", "dashed",
    "taper_up", "taper_down", "taper_1", "taper_2", "taper_3", "taper_4", "taper_5", "taper_6", "taper_7",
 #endif
    NULL};
-
-
-/*
-void set_id(long id)
-{
-   node_id_ = id;
-}
-
-
-long get_id(void)
-{
-   return node_id_--;
-}
-*/
 
 
 const char *color_abbr(int n)
@@ -159,7 +145,7 @@ int find_sep(bstring_t *c)
  *  @return Number of elements touched in sec array.
  */
 //int get_sectors(const hpx_tree_t *t, struct sector *sec, int nmax)
-int get_sectors(const struct onode *nd, struct sector *sec, int nmax)
+int get_sectors(struct rdata *rd, const struct onode *nd, struct sector *sec, int nmax)
 {
    int i, j, l;      //!< loop variables
    int n = 0;        //!< sector counter
@@ -397,6 +383,8 @@ int get_sectors(const struct onode *nd, struct sector *sec, int nmax)
             }
          }
  
+   //if (n) rd->cb.log_msg(LOG_DEBUG, "%d sectors found", n);
+
    return n;
 }
 
@@ -438,7 +426,7 @@ void pchar(const struct osm_node *nd, const struct sector *sec)
 #endif
 
 
-void sector_calc3(struct rdata *rd, const struct onode *nd, const struct sector *sec, bstring_t st)
+int sector_calc3(struct rdata *rd, const struct onode *nd, const struct sector *sec, bstring_t st)
 {
    double lat[3], lon[3], d, s, e, w, la, lo;
    int64_t id[5], sn;
@@ -451,6 +439,8 @@ void sector_calc3(struct rdata *rd, const struct onode *nd, const struct sector 
    //if ((tm = gmtime(&nd->tim)) != NULL)
    //   strftime(ts, TBUFLEN, "%Y-%m-%dT%H:%M:%SZ", tm);
 
+   //rd->cb.log_msg(LOG_DEBUG, "sector_calc3 called, %d fused", sec->fused);
+
    for (i = 0; i < sec->fused; i++)
    {
       s = M_PI - DEG2RAD(sec->sf[i].start) + M_PI_2;
@@ -458,26 +448,20 @@ void sector_calc3(struct rdata *rd, const struct onode *nd, const struct sector 
 
       // node and radial way of sector_start
       node_calc(&nd->nd, sec->sf[i].r / 60.0, s, &lat[0], &lon[0]);
-      if ((node = malloc_object(0, 0)) == NULL)
-      {
-         rd->cb.log_msg(LOG_ERR, "could not malloc_object()");
-         return;
-      }
-      
+      if ((node = malloc_object(0, 0)) == NULL) return -1;
       id[0] = node->nd.id = unique_node_id(rd);
       node->nd.type = OSM_NODE;
       node->nd.lat = lat[0] + nd->nd.lat;
       node->nd.lon = lon[0] + nd->nd.lon;
       node->nd.tim = nd->nd.tim;
       node->nd.ver = 1;
-      rd->cb.put_object(rd->nodes, node->nd.id, node);
+      put_object(rd->nodes, node->nd.id, node);
 
       //printf("<node id=\"%ld\" version=\"1\" timestamp=\"%s\" lat=\"%f\" lon=\"%f\"/>\n", id[0], ts, lat[0] + nd->lat, lon[0] + nd->lon);
 
       if (sec->sf[i].startr)
       {
-         if ((node = malloc_object(2, 2)) == NULL)
-            return;
+         if ((node = malloc_object(2, 2)) == NULL) return -1;
          node->nd.id = unique_way_id(rd);
          node->nd.type = OSM_WAY;
          node->nd.tim = nd->nd.tim;
@@ -490,12 +474,12 @@ void sector_calc3(struct rdata *rd, const struct onode *nd, const struct sector 
          if ((node->otag[0].v.buf = strdup(buf)) == NULL)
          {
             // FIXME: error handling should be improved
-            return;
+            return -1;
          }
          node->otag[0].v.len = strlen(buf);
          node->otag[1].k.buf = SEAMARK_LIGHT_OBJECT;
          node->otag[1].k.len = strlen(SEAMARK_LIGHT_OBJECT);
-         rd->cb.put_object(rd->ways, node->nd.id, node);
+         put_object(rd->ways, node->nd.id, node);
 
          //printf("<way id=\"%ld\" version=\"1\" timestamp=\"%s\">\n<nd ref=\"%ld\"/>\n<nd ref=\"%ld\"/>\n<tag k=\"seamark:light_radial\" v=\"%d\"/>\n<tag k=\"seamark:light:object\" v=\"%.*s\"/>\n</way>\n", node_id_--, ts, nd->id, id[0], sec->nr, st.len, st.buf);
       }
@@ -504,8 +488,7 @@ void sector_calc3(struct rdata *rd, const struct onode *nd, const struct sector 
       // (id[1] still contains end node of previous segment)
       if (i && (sec->sf[i].r != sec->sf[i - 1].r) && (sec->sf[i].type != ARC_SUPPRESS) && (sec->sf[i - 1].type != ARC_SUPPRESS))
       {
-         if ((node = malloc_object(2, 2)) == NULL)
-            return;
+         if ((node = malloc_object(2, 2)) == NULL) return -1;
          node->nd.id = unique_way_id(rd);
          node->nd.type = OSM_WAY;
          node->nd.tim = nd->nd.tim;
@@ -518,32 +501,32 @@ void sector_calc3(struct rdata *rd, const struct onode *nd, const struct sector 
          if ((node->otag[0].v.buf = strdup(buf)) == NULL)
          {
             // FIXME: error handling should be improved
-            return;
+            return -1;
          }
          node->otag[0].v.len = strlen(buf);
          node->otag[1].k.buf = SEAMARK_LIGHT_OBJECT;
          node->otag[1].k.len = strlen(SEAMARK_LIGHT_OBJECT);
-         rd->cb.put_object(rd->ways, node->nd.id, node);
+         put_object(rd->ways, node->nd.id, node);
 
          //printf("<way id=\"%ld\" version=\"1\" timestamp=\"%s\">\n<nd ref=\"%ld\"/>\n<nd ref=\"%ld\"/>\n<tag k=\"seamark:light_radial\" v=\"%d\"/>\n<tag k=\"seamark:light:object\" v=\"%.*s\"/>\n</way>\n", node_id_--, ts, id[1], id[0], sec->nr, st.len, st.buf);
       }
            
       // node and radial way of sector_end
       node_calc(&nd->nd, sec->sf[i].r / 60.0, e, &lat[1], &lon[1]);
+      if ((node = malloc_object(0, 0)) == NULL) return -1;
       id[1] = node->nd.id = unique_node_id(rd);
       node->nd.type = OSM_NODE;
       node->nd.lat = lat[1] + nd->nd.lat;
       node->nd.lon = lon[1] + nd->nd.lon;
       node->nd.tim = nd->nd.tim;
       node->nd.ver = 1;
-      rd->cb.put_object(rd->nodes, node->nd.id, node);
+      put_object(rd->nodes, node->nd.id, node);
 
       //printf("<node id=\"%ld\" version=\"1\" timestamp=\"%s\" lat=\"%f\" lon=\"%f\"/>\n", id[1], ts, lat[1] + nd->lat, lon[1] + nd->lon);
 
       if (sec->sf[i].endr)
       {
-         if ((node = malloc_object(2, 2)) == NULL)
-            return;
+         if ((node = malloc_object(2, 2)) == NULL) return -1;
          node->nd.id = unique_way_id(rd);
          node->nd.type = OSM_WAY;
          node->nd.tim = nd->nd.tim;
@@ -556,12 +539,12 @@ void sector_calc3(struct rdata *rd, const struct onode *nd, const struct sector 
          if ((node->otag[0].v.buf = strdup(buf)) == NULL)
          {
             // FIXME: error handling should be improved
-            return;
+            return -1;
          }
          node->otag[0].v.len = strlen(buf);
          node->otag[1].k.buf = SEAMARK_LIGHT_OBJECT;
          node->otag[1].k.len = strlen(SEAMARK_LIGHT_OBJECT);
-         rd->cb.put_object(rd->ways, node->nd.id, node);
+         put_object(rd->ways, node->nd.id, node);
 
          //printf("<way id=\"%ld\" version=\"1\" timestamp=\"%s\">\n<nd ref=\"%ld\"/>\n<nd ref=\"%ld\"/>\n<tag k=\"seamark:light_radial\" v=\"%d\"/>\n<tag k=\"seamark:light:object\" v=\"%.*s\"/>\n</way>\n", node_id_--, ts, nd->id, id[1], sec->nr, st.len, st.buf);
       }
@@ -586,7 +569,7 @@ void sector_calc3(struct rdata *rd, const struct onode *nd, const struct sector 
       for (w = s - d, sn = 0, j = 0; w > e; w -= d, j++)
       {
          node_calc(&nd->nd, sec->sf[i].r / 60.0, w, &la, &lo);
-
+         if ((node = malloc_object(0, 0)) == NULL) return -1;
          id[1] = node->nd.id = unique_node_id(rd);
          if (!sn) sn = id[1];
          node->nd.type = OSM_NODE;
@@ -594,14 +577,14 @@ void sector_calc3(struct rdata *rd, const struct onode *nd, const struct sector 
          node->nd.lon = lo + nd->nd.lon;
          node->nd.tim = nd->nd.tim;
          node->nd.ver = 1;
-         rd->cb.put_object(rd->nodes, node->nd.id, node);
+         put_object(rd->nodes, node->nd.id, node);
 
          //printf("<node id=\"%ld\" version=\"1\" timestamp=\"%s\" lat=\"%f\" lon=\"%f\"/>\n", node_id_--, ts, la + nd->lat, lo + nd->lon);
+         //rd->cb.log_msg(LOG_DEBUG, "creating arc nodes, id=%ld, w=%f, e=%f, j=%d", node->nd.id, w, e, j);
       }
 
       // connect nodes of arc to a way
-      if ((node = malloc_object(4, j + 2)) == NULL)
-         return;
+      if ((node = malloc_object(4, j + 2)) == NULL) return -1;
       id[3] = unique_way_id(rd);
       node->nd.id = id[3];
       node->nd.type = OSM_WAY;
@@ -613,17 +596,18 @@ void sector_calc3(struct rdata *rd, const struct onode *nd, const struct sector 
       if ((node->otag[0].v.buf = strdup(buf)) == NULL)
       {
          // FIXME: error handling should be improved
-         return;
+         return -1;
       }
       node->otag[0].v.len = strlen(buf);
-      node->otag[1].k.buf = SEAMARK_LIGHT_OBJECT;
+      node->otag[1].k.buf = strdup(SEAMARK_LIGHT_OBJECT);
       node->otag[1].k.len = strlen(SEAMARK_LIGHT_OBJECT);
 
-      node->otag[2].k.buf = SEAMARK_ARC_STYLE;
+      node->otag[2].k.buf = strdup(SEAMARK_ARC_STYLE);
       node->otag[2].k.len = strlen(SEAMARK_ARC_STYLE);
-      node->otag[2].v.buf = (char*) atype_[sec->sf[i].type];
+      node->otag[2].v.buf = strdup(atype_[sec->sf[i].type]);
       node->otag[2].v.len = strlen(atype_[sec->sf[i].type]);
 
+      rd->cb.log_msg(LOG_DEBUG, "secnr %p, SEAMARK_ARC_STYLE %p, atype_ %p", node->otag[0].v.buf, node->otag[2].k.buf, node->otag[2].v.buf);
       //printf("<way id=\"%ld\" version=\"1\" timestamp=\"%s\">\n<tag k=\"seamark:light:sector_nr\" v=\"%d\"/>\n<tag k=\"seamark:light:object\" v=\"%.*s\"/>\n<tag k=\"seamark:arc_style\" v=\"%s\"/>\n",
       //      id[3], ts, sec->nr, st.len, st.buf, atype_[sec->sf[i].type]);
 
@@ -647,11 +631,14 @@ void sector_calc3(struct rdata *rd, const struct onode *nd, const struct sector 
          //printf("<tag k=\"seamark:light_arc\" v=\"%s\"/>\n", col_[sec->col[0]]);
       }
 
-      nd->ref[0] = id[0];
-      nd->ref[nd->ref_cnt - 1] = id[1];
-      for (k = 0; k < j; sn--)
-         nd->ref[k + 1] = sn;
-      rd->cb.put_object(rd->ways, node->nd.id, node);
+      node->ref[0] = id[0];
+      node->ref[node->ref_cnt - 1] = id[1];
+      for (k = 0; k < j; sn--, k++)
+      {
+         node->ref[k + 1] = sn;
+         //rd->cb.log_msg(LOG_DEBUG, "adding refs to way, id=%ld", sn);
+      }
+      put_object(rd->ways, node->nd.id, node);
 
       /*
       printf("<nd ref=\"%ld\"/>\n", id[0]);
@@ -663,6 +650,8 @@ void sector_calc3(struct rdata *rd, const struct onode *nd, const struct sector 
       printf("</way>\n");
       */
    }
+
+   return 0;
 }
 
 
