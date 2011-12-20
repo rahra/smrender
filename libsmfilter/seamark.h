@@ -80,21 +80,18 @@ struct sector
 };
 
 
-//extern double arc_div_;
-//extern double arc_max_;
-//extern double sec_radius_;
-
-//extern const double altr_[];
-
+/*
+char *smstrdup(const char *);
 int get_sectors(struct rdata*, const struct onode *, struct sector *sec, int nmax);
 void node_calc(const struct osm_node *nd, double r, double a, double *lat, double *lon);
 int sector_calc3(struct rdata *, const struct onode *, const struct sector *, bstring_t);
 void init_sector(struct sector *sec);
 int proc_sfrac(struct sector *sec);
-const char *color(int);
-const char *color_abbr(int);
-//long get_id(void);
-//void set_id(long);
+static const char *color(int);
+static const char *color_abbr(int);
+static void sort_sectors(struct sector *, int);
+static int parse_color(bstring_t);
+*/
 
 #endif
 

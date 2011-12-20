@@ -30,12 +30,14 @@ sector_calc.o: sector_calc.c
 
 libsmfilter.o: libsmfilter.c
 
-libsmfilter.so.1: bstring.o libsmfilter.o smutil.o sector_calc.o bxtree.o
-	ld -shared -soname libsmfilter.so.1 -o libsmfilter.so.1 -lc -lm libsmfilter.o bstring.o smutil.o sector_calc.o bxtree.o
+#libsmfilter.so.1: bstring.o libsmfilter.o smutil.o sector_calc.o bxtree.o
+#	ld -shared -soname libsmfilter.so.1 -o libsmfilter.so.1 -lc -lm libsmfilter.o
+libsmfilter.so.1: libsmfilter.o
+	gcc -g -shared -Wl,-soname,libsmfilter.so.1 -o libsmfilter.so.1.0.1 libsmfilter.o -lc -lm
 
 libsmfilter.so: libsmfilter.so.1
 	if test ! -e libsmfilter.so ; then \
-		ln -s libsmfilter.so.1 libsmfilter.so ; \
+		ln -s libsmfilter.so.1.0.1 libsmfilter.so ; \
 	fi
 
 clean:
