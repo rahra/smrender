@@ -19,9 +19,9 @@ enum { SEAMARK_LIGHT_CHARACTER, SEAMARK_LIGHT_OBJECT, SEAMARK_LIGHT_RADIAL,
 
 
 static char *smstrdup(const char *);
-static int get_sectors(struct rdata*, const struct onode *, struct sector *sec, int nmax);
+static int get_sectors(const struct onode *, struct sector *sec, int nmax);
 static void node_calc(const struct osm_node *nd, double r, double a, double *lat, double *lon);
-static int sector_calc3(struct rdata *, const struct onode *, const struct sector *, bstring_t);
+static int sector_calc3(const struct onode *, const struct sector *, bstring_t);
 static void init_sector(struct sector *sec);
 static int proc_sfrac(struct sector *sec);
 static const char *color(int);
@@ -101,7 +101,7 @@ void __attribute__ ((destructor)) fini_libsmfilter(void)
  * combined tag of several light attributes.
  * The function is intended to be called by a rule action.
  */
-int pchar(struct onode *nd, struct rdata *rd)
+int pchar(struct onode *nd)
 {
    char lchar[8] = "", group[8] = "", period[8] = "", range[8] = "", col[8] = "", buf[256];
    int n;
@@ -135,7 +135,7 @@ int pchar(struct onode *nd, struct rdata *rd)
    {
       nd = node;
       // if realloc changed address re-put it into tree of nodes
-      (void) put_object(&rd->nodes, nd->nd.id, nd);
+      (void) put_object(nd);
    }
 
    // clear additional otag structure
@@ -156,7 +156,7 @@ int pchar(struct onode *nd, struct rdata *rd)
  * library for smrender. The code was changed as less as possible.
  * The function is intended to be called by a rule action.
  */
-int vsector(struct onode *ond, struct rdata *rd)
+int vsector(struct onode *ond)
 {
    int i, j, n, k;
    struct sector sec[MAX_SEC];
@@ -166,7 +166,7 @@ int vsector(struct onode *ond, struct rdata *rd)
    for (i = 0; i < MAX_SEC; i++)
       init_sector(&sec[i]);
 
-   if (!(i = get_sectors(rd, ond, sec, MAX_SEC)))
+   if (!(i = get_sectors(ond, sec, MAX_SEC)))
       return 0;
 
    for (i = 0, n = 0; i < MAX_SEC; i++)
@@ -261,7 +261,7 @@ int vsector(struct onode *ond, struct rdata *rd)
          }
          //printf("   <!-- [%d]: start = %.2f, end = %.2f, col = %d, r = %.2f, nr = %d -->\n",
          //   i, sec[i].start, sec[i].end, sec[i].col, sec[i].r, sec[i].nr);
-         if (sector_calc3(rd, ond, &sec[i], b))
+         if (sector_calc3(ond, &sec[i], b))
             log_msg(LOG_ERR, "sector_calc3 failed: %s", strerror(errno));
 
          if (sec[i].col[1] != -1)
@@ -272,7 +272,7 @@ int vsector(struct onode *ond, struct rdata *rd)
                for (k = 0; k < sec[i].fused; k++)
                   sec[i].sf[k].r -= altr_[j];
                sec[i].al++;
-               if (sector_calc3(rd, ond, &sec[i], b))
+               if (sector_calc3(ond, &sec[i], b))
                   log_msg(LOG_ERR, "sector_calc3 failed: %s", strerror(errno));
             }
          }
@@ -411,7 +411,7 @@ static int find_sep(bstring_t *c)
  *  @return Number of elements touched in sec array.
  */
 //int get_sectors(const hpx_tree_t *t, struct sector *sec, int nmax)
-static int get_sectors(struct rdata *rd, const struct onode *nd, struct sector *sec, int nmax)
+static int get_sectors(const struct onode *nd, struct sector *sec, int nmax)
 {
    int i, j, l;      //!< loop variables
    int n = 0;        //!< sector counter
@@ -662,7 +662,7 @@ static void node_calc(const struct osm_node *nd, double r, double a, double *lat
 }
 
 
-static int sector_calc3(struct rdata *rd, const struct onode *nd, const struct sector *sec, bstring_t st)
+static int sector_calc3(const struct onode *nd, const struct sector *sec, bstring_t st)
 {
    double lat[3], lon[3], d, s, e, w, la, lo;
    int64_t id[5], sn;
@@ -687,18 +687,18 @@ static int sector_calc3(struct rdata *rd, const struct onode *nd, const struct s
       // node and radial way of sector_start
       node_calc(&nd->nd, sec->sf[i].r / 60.0, s, &lat[0], &lon[0]);
       if ((node = malloc_object(0, 0)) == NULL) return -1;
-      id[0] = node->nd.id = unique_node_id(rd);
+      id[0] = node->nd.id = unique_node_id();
       node->nd.type = OSM_NODE;
       node->nd.lat = lat[0] + nd->nd.lat;
       node->nd.lon = lon[0] + nd->nd.lon;
       node->nd.tim = nd->nd.tim;
       node->nd.ver = 1;
-      put_object(&rd->nodes, node->nd.id, node);
+      put_object(node);
 
       if (sec->sf[i].startr)
       {
          if ((node = malloc_object(2, 2)) == NULL) return -1;
-         node->nd.id = unique_way_id(rd);
+         node->nd.id = unique_way_id();
          node->nd.type = OSM_WAY;
          node->nd.tim = nd->nd.tim;
          node->nd.ver = 1;
@@ -712,7 +712,7 @@ static int sector_calc3(struct rdata *rd, const struct onode *nd, const struct s
          node->otag[1].k.buf = tag_heap_[SEAMARK_LIGHT_OBJECT];
          node->otag[1].k.len = strlen(tag_heap_[SEAMARK_LIGHT_OBJECT]);
          node->otag[1].v = obj;
-         put_object(&rd->ways, node->nd.id, node);
+         put_object(node);
       }
 
       // if radii of two segments differ and they are not suppressed then draw a radial line
@@ -720,7 +720,7 @@ static int sector_calc3(struct rdata *rd, const struct onode *nd, const struct s
       if (i && (sec->sf[i].r != sec->sf[i - 1].r) && (sec->sf[i].type != ARC_SUPPRESS) && (sec->sf[i - 1].type != ARC_SUPPRESS))
       {
          if ((node = malloc_object(2, 2)) == NULL) return -1;
-         node->nd.id = unique_way_id(rd);
+         node->nd.id = unique_way_id();
          node->nd.type = OSM_WAY;
          node->nd.tim = nd->nd.tim;
          node->nd.ver = 1;
@@ -734,24 +734,24 @@ static int sector_calc3(struct rdata *rd, const struct onode *nd, const struct s
          node->otag[1].k.buf = tag_heap_[SEAMARK_LIGHT_OBJECT];
          node->otag[1].k.len = strlen(tag_heap_[SEAMARK_LIGHT_OBJECT]);
          node->otag[1].v = obj;
-         put_object(&rd->ways, node->nd.id, node);
+         put_object(node);
       }
            
       // node and radial way of sector_end
       node_calc(&nd->nd, sec->sf[i].r / 60.0, e, &lat[1], &lon[1]);
       if ((node = malloc_object(0, 0)) == NULL) return -1;
-      id[1] = node->nd.id = unique_node_id(rd);
+      id[1] = node->nd.id = unique_node_id();
       node->nd.type = OSM_NODE;
       node->nd.lat = lat[1] + nd->nd.lat;
       node->nd.lon = lon[1] + nd->nd.lon;
       node->nd.tim = nd->nd.tim;
       node->nd.ver = 1;
-      put_object(&rd->nodes, node->nd.id, node);
+      put_object(node);
 
       if (sec->sf[i].endr)
       {
          if ((node = malloc_object(2, 2)) == NULL) return -1;
-         node->nd.id = unique_way_id(rd);
+         node->nd.id = unique_way_id();
          node->nd.type = OSM_WAY;
          node->nd.tim = nd->nd.tim;
          node->nd.ver = 1;
@@ -765,7 +765,7 @@ static int sector_calc3(struct rdata *rd, const struct onode *nd, const struct s
          node->otag[1].k.buf = tag_heap_[SEAMARK_LIGHT_OBJECT];
          node->otag[1].k.len = strlen(tag_heap_[SEAMARK_LIGHT_OBJECT]);
          node->otag[1].v = obj;
-         put_object(&rd->ways, node->nd.id, node);
+         put_object(node);
       }
 
       // do not generate arc if radius is explicitly set to 0 or type of arc is
@@ -789,19 +789,19 @@ static int sector_calc3(struct rdata *rd, const struct onode *nd, const struct s
       {
          node_calc(&nd->nd, sec->sf[i].r / 60.0, w, &la, &lo);
          if ((node = malloc_object(0, 0)) == NULL) return -1;
-         node->nd.id = unique_node_id(rd);
+         node->nd.id = unique_node_id();
          if (!sn) sn = node->nd.id;
          node->nd.type = OSM_NODE;
          node->nd.lat = la + nd->nd.lat;
          node->nd.lon = lo + nd->nd.lon;
          node->nd.tim = nd->nd.tim;
          node->nd.ver = 1;
-         put_object(&rd->nodes, node->nd.id, node);
+         put_object(node);
       }
 
       // connect nodes of arc to a way
       if ((node = malloc_object(4, j + 2)) == NULL) return -1;
-      id[3] = unique_way_id(rd);
+      id[3] = unique_way_id();
       node->nd.id = id[3];
       node->nd.type = OSM_WAY;
       node->nd.tim = nd->nd.tim;
@@ -840,7 +840,7 @@ static int sector_calc3(struct rdata *rd, const struct onode *nd, const struct s
       node->ref[node->ref_cnt - 1] = id[1];
       for (k = 0; k < j; sn--, k++)
          node->ref[k + 1] = sn;
-      put_object(&rd->ways, node->nd.id, node);
+      put_object(node);
    }
 
    return 0;
