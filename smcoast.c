@@ -339,54 +339,17 @@ int poly_bearing(struct rdata *rd, struct wlist *nl, int n, struct pcoord *pc, c
 }
 
 
-#if 0
-/*! Calculate bearing/dist to start and end point of wlist.
- */
-int poly_ends(struct rdata *rd, struct wlist *nl, const struct coord *c)
-{
-   bx_node_t *bn;
-   struct onode *nd;
-   struct coord dst;
-
-   if (nl->ref_cnt < 2) return -1;
-   if ((bn = bx_get_node(rd->nodes, nl->ref[0])) == NULL) return -1;
-   if ((nd = bn->next[0]) == NULL) return -1;
-
-   dst.lat = nd->nd.lat;
-   dst.lon = nd->nd.lon;
-   nl->start = coord_diff(c, &dst);
-
-   if ((bn = bx_get_node(rd->nodes, nl->ref[nl->ref_cnt - 1])) == NULL) return -1;
-   if ((nd = bn->next[0]) == NULL) return -1;
-
-   dst.lat = nd->nd.lat;
-   dst.lon = nd->nd.lon;
-   nl->end = coord_diff(c, &dst);
-
-   fprintf(stderr, "start/end angle: %f/%f\n", nl->start.bearing, nl->end.bearing);
-   return 0;
-}
-#endif
-
-
 int64_t add_dummy_node(struct rdata *rd, const struct coord *c)
 {
    struct onode *ond;
-   bx_node_t *bn;
 
-   if ((ond = malloc(sizeof(struct onode))) == NULL)
-         perror("malloc"), exit(EXIT_FAILURE);
-      memset(ond, 0, sizeof(struct onode));
- 
-   rd->ds.min_nid = rd->ds.min_nid < 0 ? rd->ds.min_nid - 1 : -1;
-   ond->nd.id = rd->ds.min_nid;
+   ond = malloc_object(0, 0);
+   ond->nd.id = unique_node_id(rd);
    ond->nd.type = OSM_NODE;
    ond->nd.ver = 1;
    ond->nd.lat = c->lat;
    ond->nd.lon = c->lon;
-
-   bn = bx_add_node(&rd->nodes, ond->nd.id);
-   bn->next[0] = ond;
+   put_object(&rd->nodes, ond->nd.id, ond);
 
    return ond->nd.id;
 
@@ -396,18 +359,11 @@ int64_t add_dummy_node(struct rdata *rd, const struct coord *c)
 int64_t add_coast_way(struct rdata *rd, const struct wlist *nl)
 {
    struct onode *ond;
-   bx_node_t *bn;
 
-   if ((ond = malloc(sizeof(struct onode) + sizeof(struct otag))) == NULL)
-         perror("malloc"), exit(EXIT_FAILURE);
-      memset(ond, 0, sizeof(struct onode) + sizeof(struct otag));
-   if ((ond->ref = malloc(nl->ref_cnt * sizeof(int64_t))) == NULL)
-         perror("malloc"), exit(EXIT_FAILURE);
-   ond->ref_cnt = nl->ref_cnt;
+   ond = malloc_object(1, nl->ref_cnt);
    memcpy(ond->ref, nl->ref, nl->ref_cnt * sizeof(int64_t));
 
-   rd->ds.min_wid = rd->ds.min_wid < 0 ? rd->ds.min_wid - 1 : -1;
-   ond->nd.id = rd->ds.min_wid;
+   ond->nd.id = unique_way_id(rd);
    ond->tag_cnt = 1;
    ond->nd.type = OSM_WAY;
    ond->nd.ver = 1;
@@ -417,8 +373,7 @@ int64_t add_coast_way(struct rdata *rd, const struct wlist *nl)
    ond->otag[0].v.buf = "coastline";
    ond->otag[0].v.len = 9;
 
-   bn = bx_add_node(&rd->ways, ond->nd.id);
-   bn->next[0] = ond;
+   put_object(&rd->ways, ond->nd.id, ond);
 
    return ond->nd.id;
 }
