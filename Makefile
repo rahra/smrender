@@ -52,13 +52,13 @@ clean:
 	make -C libsmfilter clean
 	rm -f *.o smrender libsmfilter.so
 
-dist: smrender
+dist: smrender libsmfilter.so
 	if test -e $(VER) ; then \
 		rm -r $(VER) ; \
 	fi
-	mkdir $(VER) $(VER)/man
-	cp *.c *.h smrender Makefile testlight.osm $(VER)
-	cp man/smrender.1 $(VER)/man
+	mkdir $(VER) $(VER)/libsmfilter
+	cp *.c *.h smrender Makefile $(VER)
+	cp libsmfilter/libsmfilter.so* libsmfilter/*.c libsmfilter/*.h libsmfilter/Makefile $(VER)/libsmfilter
 	tar cvfj $(VER).tbz2 $(VER)
 
 .PHONY: clean dist
