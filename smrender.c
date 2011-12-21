@@ -572,8 +572,8 @@ int apply_rules0(struct onode *nd, struct rdata *rd, struct onode *mnd)
    }
 
    // check if node has tags
-   if (!nd->tag_cnt)
-      return 0;
+   //if (!nd->tag_cnt)
+   //   return 0;
 
    for (i = 0; i < mnd->tag_cnt; i++)
       if (bs_match_attr(nd, &mnd->otag[i]) == -1)
@@ -612,7 +612,7 @@ int apply_rules(struct onode *nd, struct rdata *rd, void *vp)
 }
 
 
-void act_open_poly(struct onode *wy, struct rdata *rd, struct onode *mnd)
+int act_open_poly(struct onode *wy, struct rdata *rd, struct onode *mnd)
 {
    int i;
    struct onode *nd;
@@ -621,16 +621,17 @@ void act_open_poly(struct onode *wy, struct rdata *rd, struct onode *mnd)
    for (i = 0; i < wy->ref_cnt; i++)
    {
       if ((nd = get_object(OSM_NODE, wy->ref[i])) == NULL)
-         return;
+         return E_REF_ERR;
 
       mk_paper_coords(nd->nd.lat, nd->nd.lon, rd, &p[i].x, &p[i].y);
    }
 
    gdImageOpenPolygon(rd->img, p, wy->ref_cnt, rd->col[BLACK]);
+   return 0;
 }
 
 
-void act_fill_poly(struct onode *wy, struct rdata *rd, struct onode *mnd)
+int act_fill_poly(struct onode *wy, struct rdata *rd, struct onode *mnd)
 {
    int i;
    struct onode *nd;
@@ -639,7 +640,7 @@ void act_fill_poly(struct onode *wy, struct rdata *rd, struct onode *mnd)
    for (i = 0; i < wy->ref_cnt; i++)
    {
       if ((nd = get_object(OSM_NODE, wy->ref[i])) == NULL)
-         return;
+         return E_REF_ERR;
 
       mk_paper_coords(nd->nd.lat, nd->nd.lon, rd, &p[i].x, &p[i].y);
    }
@@ -648,6 +649,7 @@ void act_fill_poly(struct onode *wy, struct rdata *rd, struct onode *mnd)
       gdImageFilledPolygon(rd->img, p, wy->ref_cnt, mnd->rule.draw.fill.col);
    if (mnd->rule.draw.border.used)
       gdImagePolygon(rd->img, p, wy->ref_cnt, mnd->rule.draw.border.col);
+   return 0;
 }
 
 /*! Match and apply ruleset to node.
@@ -666,8 +668,8 @@ int apply_wrules0(struct onode *nd, struct rdata *rd, struct onode *mnd)
    }
 
    // check if node has tags
-   if (!nd->tag_cnt)
-      return 0;
+   //if (!nd->tag_cnt)
+   //   return 0;
 
    for (i = 0; i < mnd->tag_cnt; i++)
       if (bs_match_attr(nd, &mnd->otag[i]) == -1)
@@ -679,14 +681,14 @@ int apply_wrules0(struct onode *nd, struct rdata *rd, struct onode *mnd)
    {
       case ACT_DRAW:
          if (nd->ref[0] == nd->ref[nd->ref_cnt - 1])
-            act_fill_poly(nd, rd, mnd);
+            e = act_fill_poly(nd, rd, mnd);
          else
-            act_open_poly(nd, rd, mnd);
-        break;
+            e = act_open_poly(nd, rd, mnd);
+         break;
 
       case ACT_FUNC:
-        e = mnd->rule.func.func(nd);
-        break;
+         e = mnd->rule.func.func(nd);
+         break;
 
       default:
          e = E_ACT_NOT_IMPL;

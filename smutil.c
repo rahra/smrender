@@ -140,7 +140,6 @@ int put_object(struct onode *nd)
 }
 
 
-
 struct onode *get_object0(bx_node_t *tree, int64_t id)
 {
    bx_node_t *bn;

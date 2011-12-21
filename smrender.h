@@ -75,7 +75,7 @@ typedef struct onode onode_t;
 typedef int (*tree_func_t)(struct onode*, struct rdata*, void*);
 typedef int (*ext_func_t)(struct onode*);
 
-enum {E_SM_OK, E_RTYPE_NA, E_ACT_NOT_IMPL, E_SYNTAX};
+enum {E_SM_OK, E_RTYPE_NA, E_ACT_NOT_IMPL, E_SYNTAX, E_REF_ERR};
 
 struct specialTag
 {
