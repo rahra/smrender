@@ -1133,6 +1133,9 @@ int col_freq(struct rdata *rd, int x, int y, int w, int h, double a, int col)
 int print_onode(FILE *f, const struct onode *nd)
 {
    int i;
+#define TBUFLEN 24
+   char ts[TBUFLEN] = "0000-00-00T00:00:00Z";
+   struct tm *tm;
 
    if (nd == NULL)
    {
@@ -1140,16 +1143,19 @@ int print_onode(FILE *f, const struct onode *nd)
       return -1;
    }
 
+   if ((tm = gmtime(&nd->nd.tim)) != NULL)
+      strftime(ts, sizeof(ts), "%Y-%m-%dT%H:%M:%SZ", tm);
+
    switch (nd->nd.type)
    {
       case OSM_NODE:
-         fprintf(f, "<node id=\"%ld\" version=\"%d\" lat=\"%f\" lon=\"%f\" uid=\"%d\">\n",
-               nd->nd.id, nd->nd.ver, nd->nd.lat, nd->nd.lon, nd->nd.uid);
+         fprintf(f, "<node id=\"%ld\" version=\"%d\" lat=\"%f\" lon=\"%f\" timestamp=\"%s\" uid=\"%d\">\n",
+               nd->nd.id, nd->nd.ver, nd->nd.lat, nd->nd.lon, ts, nd->nd.uid);
          break;
 
       case OSM_WAY:
-         fprintf(f, "<way id=\"%ld\" version=\"%d\" uid=\"%d\">\n",
-               nd->nd.id, nd->nd.ver, nd->nd.uid);
+         fprintf(f, "<way id=\"%ld\" version=\"%d\" timestamp=\"%s\" uid=\"%d\">\n",
+               nd->nd.id, nd->nd.ver, ts, nd->nd.uid);
          break;
 
       default:
