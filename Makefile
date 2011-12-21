@@ -17,7 +17,7 @@
 
 CC	= gcc
 CFLAGS	= -g -Wall
-LDFLAGS	= -lm -lgd -ldl
+LDFLAGS	= -lm -lgd -ldl -Wl,-export-dynamic
 VER = smrender-r$(shell svnversion | tr -d M)
 
 all: smrender libsmfilter.so
