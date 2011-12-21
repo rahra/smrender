@@ -12,10 +12,11 @@
 #define ATYPE_CNT 4
 #define TAG_CNT 7
 
-//#define TBUFLEN 24
+
 enum { SEAMARK_LIGHT_CHARACTER, SEAMARK_LIGHT_OBJECT, SEAMARK_LIGHT_RADIAL,
    SEAMARK_LIGHT_SECTOR_NR, SEAMARK_ARC_STYLE, SEAMARK_LIGHT_ARC_AL,
    SEAMARK_LIGHT_ARC};
+
 
 static char *smstrdup(const char *);
 static int get_sectors(struct rdata*, const struct onode *, struct sector *sec, int nmax);
@@ -36,10 +37,6 @@ static double dir_arc_ = DIR_ARC;
 static int untagged_circle_ = 0;
 
 static const double altr_[] = {0.005, 0.005, 0.01, 0.005};
-
-//static const int COL_CNT = 8;
-//static const int ATYPE_CNT = 4;
-//static const int TAG_CNT = 7;
 
 static const char *col_[] = {"white", "red", "green", "yellow", "orange", "blue", "violet", "amber", NULL};
 static const char *col_abbr_[] = {"W", "R", "G", "Y", "Or", "Bu", "Vi", "Am", NULL};
@@ -100,14 +97,15 @@ void __attribute__ ((destructor)) fini_libsmfilter(void)
 }
 
 
+/*! This function creates the new tag 'seamark:light_character' which is a
+ * combined tag of several light attributes.
+ * The function is intended to be called by a rule action.
+ */
 int pchar(struct onode *nd, struct rdata *rd)
 {
    char lchar[8] = "", group[8] = "", period[8] = "", range[8] = "", col[8] = "", buf[256];
    int n;
    struct onode *node;
-
-   //if ((tm = gmtime(&nd->nd.tim)) != NULL)
-   //   strftime(ts, sizeof(ts), "%Y-%m-%dT%H:%M:%SZ", tm);
 
    if ((n = match_attr(nd, "seamark:light:group", NULL)) != -1)
       snprintf(group, sizeof(group), "(%.*s)", nd->otag[n].v.len, nd->otag[n].v.buf);
@@ -128,7 +126,6 @@ int pchar(struct onode *nd, struct rdata *rd)
     
    if ((node = realloc(nd, sizeof(struct onode) + sizeof(struct otag) * (nd->tag_cnt + 1) + sizeof(int64_t) * nd->ref_cnt)) == NULL)
    {
-      //log_msg(LOG_ERR, "could not realloc new node: %s", strerror(errno));
       log_msg(LOG_ERR, "could not realloc new node: %s", strerror(errno));
       return -1;
    }
@@ -137,12 +134,13 @@ int pchar(struct onode *nd, struct rdata *rd)
    if (node != nd)
    {
       nd = node;
-      //(void) put_object(rd->nodes, nd->nd.id, nd);
+      // if realloc changed address re-put it into tree of nodes
       (void) put_object(&rd->nodes, nd->nd.id, nd);
    }
 
    // clear additional otag structure
    memset(&nd->otag[nd->tag_cnt], 0, sizeof(struct otag));
+   // add key and value to new tag structure
    nd->otag[nd->tag_cnt].v.buf = smstrdup(buf);
    nd->otag[nd->tag_cnt].v.len = strlen(buf);
    nd->otag[nd->tag_cnt].k.buf = tag_heap_[SEAMARK_LIGHT_CHARACTER];
@@ -153,6 +151,11 @@ int pchar(struct onode *nd, struct rdata *rd)
 }
 
 
+/*! This function generates virtual nodes and ways for sectored lights.
+ * The function was originally written for smfilter and was ported to this
+ * library for smrender. The code was changed as less as possible.
+ * The function is intended to be called by a rule action.
+ */
 int vsector(struct onode *ond, struct rdata *rd)
 {
    int i, j, n, k;
@@ -322,23 +325,6 @@ static void sort_sectors(struct sector *sec, int n)
          }
       }
 }
-
-
-/*
-extern int parse_rhint_;
-
-const double altr_[] = {0.005, 0.005, 0.01, 0.005};
-
-static const char *col_[] = {"white", "red", "green", "yellow", "orange", "blue", "violet", "amber", NULL};
-static const char *col_abbr_[] = {"W", "R", "G", "Y", "Or", "Bu", "Vi", "Am", NULL};
-static const int COL_CNT = 8;
-static long node_id_ = -1;
-static const char *atype_[] = {"undef", "solid", "suppress", "dashed", 
-#ifdef RENDER_TAPERING
-   "taper_up", "taper_down", "taper_1", "taper_2", "taper_3", "taper_4", "taper_5", "taper_6", "taper_7",
-#endif
-   NULL};
-*/
 
 
 static const char *color_abbr(int n)
@@ -676,51 +662,23 @@ static void node_calc(const struct osm_node *nd, double r, double a, double *lat
 }
 
 
-/*! This function creates the combined light character tag
- * 'seamark:light_character'.
- */
-#if 0
-void pchar(const struct osm_node *nd, const struct sector *sec)
-{
-   char group[8] = "", period[8] = "", range[8] = "", col[8] = "", buf[256];
-   struct tm *tm;
-   char ts[TBUFLEN] = "0000-00-00T00:00:00Z";
-
-   if ((tm = gmtime(&nd->tim)) != NULL)
-      strftime(ts, TBUFLEN, "%Y-%m-%dT%H:%M:%SZ", tm);
-
-   if (sec->lc.group)
-      snprintf(group, sizeof(group), "(%d)", sec->lc.group);
-   if (sec->lc.period)
-      snprintf(period, sizeof(period), " %ds", sec->lc.period);
-   if (sec->lc.range)
-      snprintf(range, sizeof(range), " %dM", sec->lc.range);
-   if (sec->lc.lc.len)
-      snprintf(col, sizeof(col), "%s%s.", sec->lc.group ? "" : " ", color_abbr(sec->col[0]));
-
-   if (snprintf(buf, sizeof(buf), "%.*s%s%s%s%s",
-         sec->lc.lc.len, sec->lc.lc.buf, group, col, period, range))
-      printf("<node id=\"%ld\" lat=\"%f\" lon=\"%f\" ver=\"1\" timestamp=\"%s\">\n<tag k=\"seamark:type\" v=\"virtual\"/>\n<tag k=\"seamark:light_character\" v=\"%s\"/>\n</node>\n",
-            get_id(), nd->lat, nd->lon, ts, buf);
-}
-#endif
-
-
 static int sector_calc3(struct rdata *rd, const struct onode *nd, const struct sector *sec, bstring_t st)
 {
    double lat[3], lon[3], d, s, e, w, la, lo;
    int64_t id[5], sn;
-   //struct tm *tm;
-   //char ts[TBUFLEN] = "0000-00-00T00:00:00Z";
-   int i, j, k;
+   int i, j, k, n;
    char buf[256];
    struct onode *node;
+   bstring_t obj;
 
-   //if ((tm = gmtime(&nd->tim)) != NULL)
-   //   strftime(ts, TBUFLEN, "%Y-%m-%dT%H:%M:%SZ", tm);
-
-   //log_msg(LOG_DEBUG, "sector_calc3 called, %d fused", sec->fused);
-
+   // get tag seamark:type of object
+   if ((n = match_attr(nd, "seamark:type", NULL)) == -1)
+   {
+      log_msg(LOG_WARNING, "sector_calc3 was called with object (%ld) w/o tag 'seamark:type'", nd->nd.id);
+      return -1;
+   }
+   obj = nd->otag[n].v;
+ 
    for (i = 0; i < sec->fused; i++)
    {
       s = M_PI - DEG2RAD(sec->sf[i].start) + M_PI_2;
@@ -736,8 +694,6 @@ static int sector_calc3(struct rdata *rd, const struct onode *nd, const struct s
       node->nd.tim = nd->nd.tim;
       node->nd.ver = 1;
       put_object(&rd->nodes, node->nd.id, node);
-
-      //printf("<node id=\"%ld\" version=\"1\" timestamp=\"%s\" lat=\"%f\" lon=\"%f\"/>\n", id[0], ts, lat[0] + nd->lat, lon[0] + nd->lon);
 
       if (sec->sf[i].startr)
       {
@@ -755,12 +711,8 @@ static int sector_calc3(struct rdata *rd, const struct onode *nd, const struct s
          node->otag[0].v.len = strlen(buf);
          node->otag[1].k.buf = tag_heap_[SEAMARK_LIGHT_OBJECT];
          node->otag[1].k.len = strlen(tag_heap_[SEAMARK_LIGHT_OBJECT]);
-         //FIXME
-         node->otag[1].v.buf = tag_heap_[SEAMARK_LIGHT_OBJECT];
-         node->otag[1].v.len = strlen(tag_heap_[SEAMARK_LIGHT_OBJECT]);
+         node->otag[1].v = obj;
          put_object(&rd->ways, node->nd.id, node);
-
-         //printf("<way id=\"%ld\" version=\"1\" timestamp=\"%s\">\n<nd ref=\"%ld\"/>\n<nd ref=\"%ld\"/>\n<tag k=\"seamark:light_radial\" v=\"%d\"/>\n<tag k=\"seamark:light:object\" v=\"%.*s\"/>\n</way>\n", node_id_--, ts, nd->id, id[0], sec->nr, st.len, st.buf);
       }
 
       // if radii of two segments differ and they are not suppressed then draw a radial line
@@ -781,12 +733,8 @@ static int sector_calc3(struct rdata *rd, const struct onode *nd, const struct s
          node->otag[0].v.len = strlen(buf);
          node->otag[1].k.buf = tag_heap_[SEAMARK_LIGHT_OBJECT];
          node->otag[1].k.len = strlen(tag_heap_[SEAMARK_LIGHT_OBJECT]);
-         //FIXME
-         node->otag[1].v.buf = tag_heap_[SEAMARK_LIGHT_OBJECT];
-         node->otag[1].v.len = strlen(tag_heap_[SEAMARK_LIGHT_OBJECT]);
+         node->otag[1].v = obj;
          put_object(&rd->ways, node->nd.id, node);
-
-         //printf("<way id=\"%ld\" version=\"1\" timestamp=\"%s\">\n<nd ref=\"%ld\"/>\n<nd ref=\"%ld\"/>\n<tag k=\"seamark:light_radial\" v=\"%d\"/>\n<tag k=\"seamark:light:object\" v=\"%.*s\"/>\n</way>\n", node_id_--, ts, id[1], id[0], sec->nr, st.len, st.buf);
       }
            
       // node and radial way of sector_end
@@ -799,8 +747,6 @@ static int sector_calc3(struct rdata *rd, const struct onode *nd, const struct s
       node->nd.tim = nd->nd.tim;
       node->nd.ver = 1;
       put_object(&rd->nodes, node->nd.id, node);
-
-      //printf("<node id=\"%ld\" version=\"1\" timestamp=\"%s\" lat=\"%f\" lon=\"%f\"/>\n", id[1], ts, lat[1] + nd->lat, lon[1] + nd->lon);
 
       if (sec->sf[i].endr)
       {
@@ -818,12 +764,8 @@ static int sector_calc3(struct rdata *rd, const struct onode *nd, const struct s
          node->otag[0].v.len = strlen(buf);
          node->otag[1].k.buf = tag_heap_[SEAMARK_LIGHT_OBJECT];
          node->otag[1].k.len = strlen(tag_heap_[SEAMARK_LIGHT_OBJECT]);
-         //FIXME
-         node->otag[1].v.buf = tag_heap_[SEAMARK_LIGHT_OBJECT];
-         node->otag[1].v.len = strlen(tag_heap_[SEAMARK_LIGHT_OBJECT]);
+         node->otag[1].v = obj;
          put_object(&rd->ways, node->nd.id, node);
-
-         //printf("<way id=\"%ld\" version=\"1\" timestamp=\"%s\">\n<nd ref=\"%ld\"/>\n<nd ref=\"%ld\"/>\n<tag k=\"seamark:light_radial\" v=\"%d\"/>\n<tag k=\"seamark:light:object\" v=\"%.*s\"/>\n</way>\n", node_id_--, ts, nd->id, id[1], sec->nr, st.len, st.buf);
       }
 
       // do not generate arc if radius is explicitly set to 0 or type of arc is
@@ -847,17 +789,14 @@ static int sector_calc3(struct rdata *rd, const struct onode *nd, const struct s
       {
          node_calc(&nd->nd, sec->sf[i].r / 60.0, w, &la, &lo);
          if ((node = malloc_object(0, 0)) == NULL) return -1;
-         id[1] = node->nd.id = unique_node_id(rd);
-         if (!sn) sn = id[1];
+         node->nd.id = unique_node_id(rd);
+         if (!sn) sn = node->nd.id;
          node->nd.type = OSM_NODE;
          node->nd.lat = la + nd->nd.lat;
          node->nd.lon = lo + nd->nd.lon;
          node->nd.tim = nd->nd.tim;
          node->nd.ver = 1;
          put_object(&rd->nodes, node->nd.id, node);
-
-         //printf("<node id=\"%ld\" version=\"1\" timestamp=\"%s\" lat=\"%f\" lon=\"%f\"/>\n", node_id_--, ts, la + nd->lat, lo + nd->lon);
-         //log_msg(LOG_DEBUG, "creating arc nodes, id=%ld, w=%f, e=%f, j=%d", node->nd.id, w, e, j);
       }
 
       // connect nodes of arc to a way
@@ -874,28 +813,20 @@ static int sector_calc3(struct rdata *rd, const struct onode *nd, const struct s
       node->otag[0].v.len = strlen(buf);
       node->otag[1].k.buf = tag_heap_[SEAMARK_LIGHT_OBJECT];
       node->otag[1].k.len = strlen(tag_heap_[SEAMARK_LIGHT_OBJECT]);
-      //FIXME
-      node->otag[1].v.buf = tag_heap_[SEAMARK_LIGHT_OBJECT];
-      node->otag[1].v.len = strlen(tag_heap_[SEAMARK_LIGHT_OBJECT]);
+      node->otag[1].v = obj;
 
       node->otag[2].k.buf = tag_heap_[SEAMARK_ARC_STYLE];
       node->otag[2].k.len = strlen(tag_heap_[SEAMARK_ARC_STYLE]);
       node->otag[2].v.buf = atype_heap_[sec->sf[i].type];
       node->otag[2].v.len = strlen(atype_heap_[sec->sf[i].type]);
 
-      //log_msg(LOG_DEBUG, "secnr %p, SEAMARK_ARC_STYLE %p, atype_ %p", node->otag[0].v.buf, node->otag[2].k.buf, node->otag[2].v.buf);
-      //printf("<way id=\"%ld\" version=\"1\" timestamp=\"%s\">\n<tag k=\"seamark:light:sector_nr\" v=\"%d\"/>\n<tag k=\"seamark:light:object\" v=\"%.*s\"/>\n<tag k=\"seamark:arc_style\" v=\"%s\"/>\n",
-      //      id[3], ts, sec->nr, st.len, st.buf, atype_[sec->sf[i].type]);
-
       if (sec->al)
       {
-         //FIXME %d after _al missing...
-         node->otag[3].k.buf = tag_heap_[SEAMARK_LIGHT_ARC_AL];
-         node->otag[3].k.len = strlen(tag_heap_[SEAMARK_LIGHT_ARC_AL]);
+         snprintf(buf, sizeof(buf), "%s%d", tag_heap_[SEAMARK_LIGHT_ARC_AL], sec->al);
+         node->otag[3].k.buf = smstrdup(buf);
+         node->otag[3].k.len = strlen(buf);
          node->otag[3].v.buf = col_heap_[sec->col[1]];
          node->otag[3].v.len = strlen(col_heap_[sec->col[1]]);
-
-         //printf("<tag k=\"seamark:light_arc_al%d\" v=\"%s\"/>\n", sec->al, col_[sec->col[1]]);
       }
       else
       {
@@ -903,28 +834,13 @@ static int sector_calc3(struct rdata *rd, const struct onode *nd, const struct s
          node->otag[3].k.len = strlen(tag_heap_[SEAMARK_LIGHT_ARC]);
          node->otag[3].v.buf = col_heap_[sec->col[0]];
          node->otag[3].v.len = strlen(col_heap_[sec->col[0]]);
-
-         //printf("<tag k=\"seamark:light_arc\" v=\"%s\"/>\n", col_[sec->col[0]]);
       }
 
       node->ref[0] = id[0];
       node->ref[node->ref_cnt - 1] = id[1];
       for (k = 0; k < j; sn--, k++)
-      {
          node->ref[k + 1] = sn;
-         //log_msg(LOG_DEBUG, "adding refs to way, id=%ld", sn);
-      }
       put_object(&rd->ways, node->nd.id, node);
-
-      /*
-      printf("<nd ref=\"%ld\"/>\n", id[0]);
-      for (w = s - d; sn > id[3]; sn--, w -= d)
-      {
-         printf("<nd ref=\"%ld\"/>\n", sn);
-      }
-      printf("<nd ref=\"%ld\"/>\n", id[1]);
-      printf("</way>\n");
-      */
    }
 
    return 0;
