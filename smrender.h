@@ -72,9 +72,10 @@
 
 typedef struct rdata rdata_t;
 typedef struct onode onode_t;
-typedef void (*tree_func_t)(struct onode*, struct rdata*, void*);
+typedef int (*tree_func_t)(struct onode*, struct rdata*, void*);
 typedef int (*ext_func_t)(struct onode*);
 
+enum {E_SM_OK, E_RTYPE_NA, E_ACT_NOT_IMPL, E_SYNTAX};
 
 struct specialTag
 {
@@ -213,7 +214,7 @@ enum {PRJ_DIRECT, PRJ_MERC_PAGE, PRJ_MERC_BB};
 
 
 /* smrender.c */
-void traverse(const bx_node_t *, int, void (*)(struct onode*, struct rdata*, void*), struct rdata *, void *);
+int traverse(const bx_node_t *, int, tree_func_t, struct rdata *, void *);
 int print_onode(FILE *, const struct onode *);
 int col_freq(struct rdata *, int, int, int, int, double, int);
 int cf_dist(struct rdata *, int, int, int, int, double, int, int);

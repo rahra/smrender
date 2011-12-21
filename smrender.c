@@ -203,7 +203,7 @@ int parse_draw(const char *src, struct drawStyle *ds, const struct rdata *rd)
 }
 
 
-void prepare_rules(struct onode *nd, struct rdata *rd, void *p)
+int prepare_rules(struct onode *nd, struct rdata *rd, void *p)
 {
    char *s, *lib;
    FILE *f;
@@ -212,15 +212,15 @@ void prepare_rules(struct onode *nd, struct rdata *rd, void *p)
    for (i = 0; i < nd->tag_cnt; i++)
    {
       if (check_matchtype(&nd->otag[i].k, &nd->otag[i].stk) == -1)
-         return;
+         return 0;
       if (check_matchtype(&nd->otag[i].v, &nd->otag[i].stv) == -1)
-         return;
+         return 0;
    }
 
    if ((i = match_attr(nd, "_action_", NULL)) == -1)
    {
       log_msg(LOG_WARN, "rule %ld has no action", nd->nd.id);
-      return;
+      return 0;
    }
 
    nd->otag[i].v.buf[nd->otag[i].v.len] = '\0';
@@ -228,11 +228,11 @@ void prepare_rules(struct onode *nd, struct rdata *rd, void *p)
    if (!strcmp(s, "img"))
    {
       if ((s = strtok(NULL, ":")) == NULL)
-         return;
+         return E_SYNTAX;
       if ((f = fopen(s, "r")) == NULL)
       {
          log_msg(LOG_WARN, "fopen(%s) failed: %s", s, strerror(errno));
-         return;
+         return E_SYNTAX;
       }
 
       nd->rule.img.angle = 0;
@@ -246,11 +246,11 @@ void prepare_rules(struct onode *nd, struct rdata *rd, void *p)
    else if (!strcmp(s, "img-auto"))
    {
       if ((s = strtok(NULL, ":")) == NULL)
-         return;
+         return E_SYNTAX;
       if ((f = fopen(s, "r")) == NULL)
       {
          log_msg(LOG_WARN, "fopen(%s) failed: %s", s, strerror(errno));
-         return;
+         return 0;
       }
 
       nd->rule.img.angle = NAN;
@@ -263,22 +263,22 @@ void prepare_rules(struct onode *nd, struct rdata *rd, void *p)
    }
    else if (!strcmp(s, "cap"))
    {
-      if ((s = strtok(NULL, ",")) == NULL) return;
+      if ((s = strtok(NULL, ",")) == NULL) return E_SYNTAX;
       nd->rule.cap.font = s;
-      if ((s = strtok(NULL, ",")) == NULL) return;
+      if ((s = strtok(NULL, ",")) == NULL) return E_SYNTAX;
       nd->rule.cap.size = atof(s);
-      if ((s = strtok(NULL, ",")) == NULL) return;
+      if ((s = strtok(NULL, ",")) == NULL) return E_SYNTAX;
       nd->rule.cap.pos = ppos(s);
-      if ((s = strtok(NULL, ",")) == NULL) return;
+      if ((s = strtok(NULL, ",")) == NULL) return E_SYNTAX;
 
       nd->rule.cap.col = parse_color(rd, s);
 
-      if ((s = strtok(NULL, ",")) == NULL) return;
+      if ((s = strtok(NULL, ",")) == NULL) return E_SYNTAX;
       if (!strcmp(s, "auto"))
          nd->rule.cap.angle = NAN;
       else
          nd->rule.cap.angle = atof(s);
-      if ((s = strtok(NULL, ",")) == NULL) return;
+      if ((s = strtok(NULL, ",")) == NULL) return E_SYNTAX;
 
       nd->rule.cap.key = s;
       nd->rule.type = ACT_CAP;
@@ -289,19 +289,19 @@ void prepare_rules(struct onode *nd, struct rdata *rd, void *p)
       if ((s = strtok(NULL, "@")) == NULL)
       {
          log_msg(LOG_ERR, "syntax error in function rule");
-         return;
+         return E_SYNTAX;
       }
       if ((lib = strtok(NULL, "")) == NULL)
       {
          log_msg(LOG_ERR, "syntax error in function rule");
-         return;
+         return E_SYNTAX;
       }
 
       // Open shared library
       if ((nd->rule.func.libhandle = dlopen(lib, RTLD_LAZY)) == NULL)
       {
          log_msg(LOG_ERR, "could not open library: %s", dlerror());
-         return;
+         return 0;
       }
 
       // Clear any existing error
@@ -313,7 +313,7 @@ void prepare_rules(struct onode *nd, struct rdata *rd, void *p)
       if ((s = dlerror()) != NULL)
       {
          log_msg(LOG_ERR, "error loading symbol from libary: %s", s);
-         return;
+         return 0;
       }
 
       nd->rule.type = ACT_FUNC;
@@ -324,14 +324,14 @@ void prepare_rules(struct onode *nd, struct rdata *rd, void *p)
       if ((s = strtok(NULL, "")) == NULL)
       {
          log_warn("syntax error in draw rule");
-         return;
+         return E_SYNTAX;
       }
 
       if (*s != ':')
       {
          s = strtok(s, ":");
          if (parse_draw(s, &nd->rule.draw.fill, rd) == -1)
-            return;
+            return E_SYNTAX;
          nd->rule.draw.fill.used = 1;
          if ((s = strtok(NULL, ":")) != NULL)
          {
@@ -344,7 +344,7 @@ void prepare_rules(struct onode *nd, struct rdata *rd, void *p)
          if (strlen(s) <= 1)
          {
             log_warn("syntax error in draw rule");
-            return;
+            return E_SYNTAX;
          }
          if (!parse_draw(s + 1, &nd->rule.draw.border, rd))
             nd->rule.draw.border.used = 1;
@@ -363,6 +363,8 @@ void prepare_rules(struct onode *nd, struct rdata *rd, void *p)
    if (i < nd->tag_cnt - 1)
       memmove(&nd->otag[i], &nd->otag[nd->tag_cnt - 1], sizeof(struct otag));
    nd->tag_cnt--;
+
+   return 0;
 }
 
 
@@ -559,23 +561,23 @@ int act_caption(struct onode *nd, struct rdata *rd, struct onode *mnd, int x, in
  *  @param rd Pointer to general rendering parameters.
  *  @param mnd Ruleset.
  */
-void apply_rules0(struct onode *nd, struct rdata *rd, struct onode *mnd)
+int apply_rules0(struct onode *nd, struct rdata *rd, struct onode *mnd)
 {
-   int x, y, i;
+   int x, y, i, e;
 
    if (!mnd->rule.type)
    {
       //log_debug("ACT_NA rule ignored");
-      return;
+      return E_RTYPE_NA;
    }
 
    // check if node has tags
    if (!nd->tag_cnt)
-      return;
+      return 0;
 
    for (i = 0; i < mnd->tag_cnt; i++)
       if (bs_match_attr(nd, &mnd->otag[i]) == -1)
-         return;
+         return 0;
 
    //fprintf(stderr, "node id %ld rule match %ld\n", nd->nd.id, mnd->nd.id);
    mk_paper_coords(nd->nd.lat, nd->nd.lon, rd, &x, &y);
@@ -583,27 +585,30 @@ void apply_rules0(struct onode *nd, struct rdata *rd, struct onode *mnd)
    switch (mnd->rule.type)
    {
       case ACT_IMG:
-         act_image(nd, rd, mnd, x, y);
-        break;
+         e = act_image(nd, rd, mnd, x, y);
+         break;
 
       case ACT_CAP:
-         act_caption(nd, rd, mnd, x, y);
+         e = act_caption(nd, rd, mnd, x, y);
          break;
 
       case ACT_FUNC:
-        (void) mnd->rule.func.func(nd);
-        break;
+         e = mnd->rule.func.func(nd);
+         break;
 
       default:
+         e = E_ACT_NOT_IMPL;
          log_warn("action type %d not implemented yet", mnd->rule.type);
    }
+
+   return e;
 }
 
 
-void apply_rules(struct onode *nd, struct rdata *rd, void *vp)
+int apply_rules(struct onode *nd, struct rdata *rd, void *vp)
 {
    log_debug("applying rule id 0x%016lx type %s(%d)", nd->nd.id, rule_type_[nd->rule.type], nd->rule.type);
-   traverse(rd->nodes, 0, (void (*)(struct onode *, struct rdata *, void *)) apply_rules0, rd, nd);
+   return traverse(rd->nodes, 0, (tree_func_t) apply_rules0, rd, nd);
 }
 
 
@@ -650,23 +655,23 @@ void act_fill_poly(struct onode *wy, struct rdata *rd, struct onode *mnd)
  *  @param rd Pointer to general rendering parameters.
  *  @param mnd Ruleset.
  */
-void apply_wrules0(struct onode *nd, struct rdata *rd, struct onode *mnd)
+int apply_wrules0(struct onode *nd, struct rdata *rd, struct onode *mnd)
 {
-   int i;
+   int i, e;
 
    if (!mnd->rule.type)
    {
       //log_debug("ACT_NA rule ignored");
-      return;
+      return E_RTYPE_NA;
    }
 
    // check if node has tags
    if (!nd->tag_cnt)
-      return;
+      return 0;
 
    for (i = 0; i < mnd->tag_cnt; i++)
       if (bs_match_attr(nd, &mnd->otag[i]) == -1)
-         return;
+         return 0;
 
    //fprintf(stderr, "way id %ld rule match %ld\n", nd->nd.id, mnd->nd.id);
 
@@ -680,53 +685,67 @@ void apply_wrules0(struct onode *nd, struct rdata *rd, struct onode *mnd)
         break;
 
       case ACT_FUNC:
-        (void) mnd->rule.func.func(nd);
+        e = mnd->rule.func.func(nd);
         break;
 
       default:
+         e = E_ACT_NOT_IMPL;
          log_msg(LOG_WARN, "action type %d not implemented yet", mnd->rule.type);
    }
+
+   return e;
 }
 
 
-void apply_wrules(struct onode *nd, struct rdata *rd, void *vp)
+int apply_wrules(struct onode *nd, struct rdata *rd, void *vp)
 {
    log_debug("applying rule id 0x%016lx type %s(%d)", nd->nd.id, rule_type_[nd->rule.type], nd->rule.type);
-   traverse(rd->ways, 0, (void (*)(struct onode *, struct rdata *, void *)) apply_wrules0, rd, nd);
+   return traverse(rd->ways, 0, (tree_func_t) apply_wrules0, rd, nd);
 }
 
 
-void print_tree(struct onode *nd, struct rdata *rd, void *p)
+int print_tree(struct onode *nd, struct rdata *rd, void *p)
 {
    print_onode(p, nd);
+   return 0;
 }
 
 
-void traverse(const bx_node_t *nt, int d, void (*dhandler)(struct onode*, struct rdata*, void*), struct rdata *rd, void *p)
+int traverse(const bx_node_t *nt, int d, tree_func_t dhandler, struct rdata *rd, void *p)
 {
-   int i;
+   int i, e;
 
    if (nt == NULL)
    {
       log_msg(LOG_WARN, "null pointer catched...breaking recursion");
-      return;
+      return -1;
    }
 
    if (d == sizeof(bx_hash_t) * 8 / BX_RES)
    {
-      if (nt->next[0] != NULL)
-         dhandler(nt->next[0], rd, p);
-      else
+      if (nt->next[0] == NULL)
+      {
          log_msg(LOG_CRIT, "this should not happen: NULL pointer catched");
+         return -1;
+      }
 
-      return;
+      return dhandler(nt->next[0], rd, p);
    }
 
    for (i = 0; i < 1 << BX_RES; i++)
       if (nt->next[i])
-         traverse(nt->next[i], d + 1, dhandler, rd, p);
+      {
+         e = traverse(nt->next[i], d + 1, dhandler, rd, p);
+         if (e < 0)
+         {
+            log_msg(LOG_WARNING, "traverse() returned %d, breaking recursion.", e);
+            return e;
+         }
+         else if (e > 0)
+            log_msg(LOG_INFO, "traverse() returned %d", e);
+      }
 
-   return;
+   return 0;
 }
 
 
@@ -1147,7 +1166,7 @@ void init_stats(struct dstats *ds)
 }
 
  
-void onode_stats(struct onode *nd, struct rdata *rd, struct dstats *ds)
+int onode_stats(struct onode *nd, struct rdata *rd, struct dstats *ds)
 {
    if (nd->nd.type == OSM_NODE)
    {
@@ -1165,7 +1184,9 @@ void onode_stats(struct onode *nd, struct rdata *rd, struct dstats *ds)
       if (ds->min_wid > nd->nd.id) ds->min_wid = nd->nd.id;
       if (ds->max_wid < nd->nd.id) ds->max_wid = nd->nd.id;
    }
+   return 0;
 }
+
 
 int save_osm(struct rdata *rd, const char *s)
 {
@@ -1253,8 +1274,8 @@ int main(int argc, char *argv[])
 
    log_msg(LOG_INFO, "gathering stats");
    init_stats(&rd->ds);
-   traverse(rd->nodes, 0, (void (*)(struct onode *, struct rdata *, void *)) onode_stats, rd, &rd->ds);
-   traverse(rd->ways, 0, (void (*)(struct onode *, struct rdata *, void *)) onode_stats, rd, &rd->ds);
+   traverse(rd->nodes, 0, (tree_func_t) onode_stats, rd, &rd->ds);
+   traverse(rd->ways, 0, (tree_func_t) onode_stats, rd, &rd->ds);
    log_msg(LOG_INFO, "ncnt = %ld, min_nid = %ld, max_nid = %ld",
          rd->ds.ncnt, rd->ds.min_nid, rd->ds.max_nid);
    log_msg(LOG_INFO, "wcnt = %ld, min_wid = %ld, max_wid = %ld",

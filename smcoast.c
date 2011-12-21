@@ -37,17 +37,17 @@ int64_t add_dummy_node(struct rdata*, const struct coord*);
 /*! This finds open polygons with tag natural=coastline and adds
  *  the node references to the wlist structure.
  */
-void gather_poly(struct onode *nd, struct rdata *rd, struct wlist **wl)
+int gather_poly(struct onode *nd, struct rdata *rd, struct wlist **wl)
 {
    // check if it is an open polygon
    if (nd->ref_cnt < 2)
-      return;
+      return 0;
    if (nd->ref[0] == nd->ref[nd->ref_cnt - 1])
-      return;
+      return 0;
 
    // check if it is a coastline
    if (match_attr(nd, "natural", "coastline") == -1)
-      return;
+      return 0;
 
    // check if there's enough memory
    if ((*wl)->ref_cnt >= (*wl)->max_ref)
@@ -60,6 +60,7 @@ void gather_poly(struct onode *nd, struct rdata *rd, struct wlist **wl)
    // add way to list
    (*wl)->ref[(*wl)->ref_cnt] = nd->nd.id;
    (*wl)->ref_cnt++;
+   return 0;
 }
 
 
@@ -393,7 +394,7 @@ int cat_poly(struct rdata *rd)
    wl->ref_cnt = 0;
    wl->max_ref = INIT_MAX_REF;
 
-   traverse(rd->ways, 0, (void (*)(struct onode *, struct rdata *, void *)) gather_poly, rd, &wl);
+   traverse(rd->ways, 0, (tree_func_t) gather_poly, rd, &wl);
 
    for (i = 0; i < wl->ref_cnt; i++)
       log_debug("open coastline %ld", wl->ref[i]);
