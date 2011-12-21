@@ -82,7 +82,7 @@ struct wlist *poly_find_adj(struct rdata *rd, struct wlist *wl)
    if (!wl->ref_cnt)
       return NULL;
 
-   if ((nd = get_object(rd->ways, wl->ref[0])) == NULL)
+   if ((nd = get_object(OSM_WAY, wl->ref[0])) == NULL)
       return NULL;
 
    if ((nl = malloc(sizeof(int64_t) * nd->ref_cnt + sizeof(struct wlist))) == NULL)
@@ -101,7 +101,7 @@ struct wlist *poly_find_adj(struct rdata *rd, struct wlist *wl)
    for (j = 0; j < wl->ref_cnt; j++)
    for (i = 0; i < wl->ref_cnt; i++)
    {
-      if ((nd = get_object(rd->ways, wl->ref[i])) == NULL)
+      if ((nd = get_object(OSM_WAY, wl->ref[i])) == NULL)
          return NULL;
 
       if (nd->ref_cnt < 2)
@@ -328,7 +328,7 @@ int poly_bearing(struct rdata *rd, struct wlist *nl, int n, struct pcoord *pc, c
    if ((n >= nl->ref_cnt) || (n < 0))
       return -1;
 
-   if ((nd = get_object(rd->nodes, nl->ref[n])) == NULL)
+   if ((nd = get_object(OSM_NODE, nl->ref[n])) == NULL)
       return -1;
 
    dst.lat = nd->nd.lat;
@@ -344,12 +344,12 @@ int64_t add_dummy_node(struct rdata *rd, const struct coord *c)
    struct onode *ond;
 
    ond = malloc_object(0, 0);
-   ond->nd.id = unique_node_id(rd);
+   ond->nd.id = unique_node_id();
    ond->nd.type = OSM_NODE;
    ond->nd.ver = 1;
    ond->nd.lat = c->lat;
    ond->nd.lon = c->lon;
-   put_object(&rd->nodes, ond->nd.id, ond);
+   put_object(ond);
 
    return ond->nd.id;
 
@@ -363,7 +363,7 @@ int64_t add_coast_way(struct rdata *rd, const struct wlist *nl)
    ond = malloc_object(1, nl->ref_cnt);
    memcpy(ond->ref, nl->ref, nl->ref_cnt * sizeof(int64_t));
 
-   ond->nd.id = unique_way_id(rd);
+   ond->nd.id = unique_way_id();
    ond->tag_cnt = 1;
    ond->nd.type = OSM_WAY;
    ond->nd.ver = 1;
@@ -373,7 +373,7 @@ int64_t add_coast_way(struct rdata *rd, const struct wlist *nl)
    ond->otag[0].v.buf = "coastline";
    ond->otag[0].v.len = 9;
 
-   put_object(&rd->ways, ond->nd.id, ond);
+   put_object(ond);
 
    return ond->nd.id;
 }

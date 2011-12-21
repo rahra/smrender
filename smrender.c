@@ -591,7 +591,7 @@ void apply_rules0(struct onode *nd, struct rdata *rd, struct onode *mnd)
          break;
 
       case ACT_FUNC:
-        (void) mnd->rule.func.func(nd, rd);
+        (void) mnd->rule.func.func(nd);
         break;
 
       default:
@@ -615,7 +615,7 @@ void act_open_poly(struct onode *wy, struct rdata *rd, struct onode *mnd)
 
    for (i = 0; i < wy->ref_cnt; i++)
    {
-      if ((nd = get_object(rd->nodes, wy->ref[i])) == NULL)
+      if ((nd = get_object(OSM_NODE, wy->ref[i])) == NULL)
          return;
 
       mk_paper_coords(nd->nd.lat, nd->nd.lon, rd, &p[i].x, &p[i].y);
@@ -633,7 +633,7 @@ void act_fill_poly(struct onode *wy, struct rdata *rd, struct onode *mnd)
 
    for (i = 0; i < wy->ref_cnt; i++)
    {
-      if ((nd = get_object(rd->nodes, wy->ref[i])) == NULL)
+      if ((nd = get_object(OSM_NODE, wy->ref[i])) == NULL)
          return;
 
       mk_paper_coords(nd->nd.lat, nd->nd.lon, rd, &p[i].x, &p[i].y);
@@ -680,7 +680,7 @@ void apply_wrules0(struct onode *nd, struct rdata *rd, struct onode *mnd)
         break;
 
       case ACT_FUNC:
-        (void) mnd->rule.func.func(nd, rd);
+        (void) mnd->rule.func.func(nd);
         break;
 
       default:
@@ -1031,56 +1031,6 @@ void init_prj(struct rdata *rd, int p)
 }
 
 
-//void init_rdata(struct rdata *rd)
-struct rdata *init_rdata(void)
-{
-   static struct rdata _rd, *rd = &_rd;
-
-   memset(rd, 0, sizeof(*rd));
-
-   // A3 paper portrait (300dpi)
-   //rd->w = 3507; rd->h = 4961; rd->dpi = 300;
-   // A4 paper portrait (300dpi)
-   rd->w = 2480; rd->h = 3507; rd->dpi = 300;
-   // A4 paper landscape (300dpi)
-   rd->h = 2480; rd->w = 3507; rd->dpi = 300;
-   // A4 paper portrait (600dpi)
-   //rd->w = 4961; rd->h = 7016; rd->dpi = 600;
-
-   rd->grd.lat_ticks = rd->grd.lon_ticks = G_TICKS;
-   rd->grd.lat_sticks = rd->grd.lon_sticks = G_STICKS;
-   rd->grd.lat_g = rd->grd.lon_g = G_GRID;
-
-   // init callback function pointers
-   //rd->cb.log_msg = log_msg;
-   //rd->cb.get_object = get_object;
-   //rd->cb.put_object = put_object;
-   //rd->cb.malloc_object = malloc_object;
-   //rd->cb.match_attr = match_attr;
-
-   // this should be given by CLI arguments
-   /* porec.osm
-   rd->x1c = 13.53;
-   rd->y1c = 45.28;
-   rd->x2c = 13.63;
-   rd->y2c = 45.183; */
-   //dugi.osm
-   rd->x1c = 14.72;
-   rd->y1c = 44.23;
-   rd->x2c = 15.29;
-   rd->y2c = 43.96;
-
-   /* treasure_island
-   rd->x1c = 24.33;
-   rd->y1c = 37.51;
-   rd->x2c = 24.98;
-   rd->y2c = 37.16;
-   */
- 
-   return rd;
-}
-
-
 double rot_pos(int x, int y, double a, int *rx, int *ry)
 {
    double r, b;
@@ -1312,26 +1262,12 @@ int main(int argc, char *argv[])
    log_msg(LOG_INFO, "left upper %.2f/%.2f, right bottom %.2f/%.2f",
          rd->ds.lu.lat, rd->ds.lu.lon, rd->ds.rb.lat, rd->ds.rb.lon);
 
-   // output rules
-   //traverse(rd->nrules, 0, print_tree, rd, NULL);
-   //traverse(rd->wrules, 0, print_tree, rd, NULL);
-   //printf("\n\n\n");
-
    log_msg(LOG_INFO, "preparing rules");
    traverse(rd->nrules, 0, prepare_rules, rd, NULL);
    traverse(rd->wrules, 0, prepare_rules, rd, NULL);
 
    log_msg(LOG_INFO, "preparing coastline");
    cat_poly(rd);
-
-   // output rules
-   //traverse(rd->nrules, 0, print_tree, rd, NULL);
-   //traverse(rd->wrules, 0, print_tree, rd, NULL);
-
-   //traverse(rd->ways, 0, print_tree, rd);
-   //fprintf(stderr, "rendering coastline (closed polygons)...\n");
-   //traverse(rd->ways, 0, draw_coast, rd, NULL);
-   //traverse(rd->ways, 0, draw_coast_fill, rd, NULL);
 
    log_msg(LOG_INFO, "rendering ways");
    traverse(rd->wrules, 0, apply_wrules, rd, NULL);
