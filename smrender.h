@@ -170,6 +170,7 @@ struct dstats
    int64_t max_wid;
 };
 
+/*
 struct cb_func
 { 
    void (*log_msg)(int, const char*, ...);
@@ -177,7 +178,7 @@ struct cb_func
 //   int (*put_object)(bx_node_t*, int64_t, struct onode*);
 //   struct onode *(*malloc_object)(int, int);
 //   int (*match_attr)(const struct onode*, const char*, const char*);
-};
+};*/
 
 struct rdata
 {
@@ -206,7 +207,7 @@ struct rdata
    // image colors
    int col[6];
    // callbacks for external function
-   struct cb_func cb;
+   //struct cb_func cb;
 };
 
 enum {WHITE, YELLOW, BLACK, BLUE, MAGENTA, BROWN};
@@ -235,9 +236,11 @@ struct onode *get_object(bx_node_t*, int64_t);
 int match_attr(const struct onode *, const char *, const char *);
 int bs_match_attr(const struct onode *, const struct otag *);
 int bs_match(const bstring_t *, const bstring_t *, const struct specialTag *);
-int put_object(bx_node_t *, int64_t , struct onode *);
+int put_object(bx_node_t **, int64_t , struct onode *);
 struct onode *get_object(bx_node_t *, int64_t );
 struct onode *malloc_object(int , int );
+int64_t unique_node_id(struct rdata *);
+int64_t unique_way_id(struct rdata *);
 
 /* smloadosm.c */
 int read_osm_file(hpx_ctrl_t *, bx_node_t **, bx_node_t **);

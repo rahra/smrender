@@ -45,13 +45,13 @@ struct onode *malloc_object(int tag_cnt, int ref_cnt)
 }
 
 
-int put_object(bx_node_t *tree, int64_t id, struct onode *nd)
+int put_object(bx_node_t **tree, int64_t id, struct onode *nd)
 {
    bx_node_t *bn;
 
-   if ((bn = bx_get_node(tree, id)) == NULL)
+   if ((bn = bx_add_node(tree, id)) == NULL)
    {
-      //log_msg(LOG_ERR, "bx_get_node() failed");
+      log_msg(LOG_ERR, "bx_add_node() failed");
       return -1;
    }
    /* too much debugging....

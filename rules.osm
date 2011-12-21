@@ -8,7 +8,6 @@
       <tag k='seamark:type' v=''/>
       <tag k='_action_' v='func:pchar@./libsmfilter.so'/>
    </node>
- 
    <node>
       <tag k='/^seamark:light:.*/' v=''/>
       <tag k='_action_' v='img-auto:icons/Light_Magenta_90.png'/>

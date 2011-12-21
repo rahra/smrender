@@ -45,6 +45,9 @@
 #include "bxtree.h"
 
 
+static const char *rule_type_[] = {"N/A", "ACT_IMG", "ACT_CAP", "ACT_FUNC", "ACT_DRAW"};
+
+
 void usage(const char *s)
 {
    printf("Seamark renderer V1.0, (c) 2011, Bernhard R. Fischer, <bf@abenteuerland.at>.\n\n");
@@ -599,7 +602,7 @@ void apply_rules0(struct onode *nd, struct rdata *rd, struct onode *mnd)
 
 void apply_rules(struct onode *nd, struct rdata *rd, void *vp)
 {
-   log_debug("applying rule id 0x%016lx type %d", nd->nd.id, nd->rule.type);
+   log_debug("applying rule id 0x%016lx type %s(%d)", nd->nd.id, rule_type_[nd->rule.type], nd->rule.type);
    traverse(rd->nodes, 0, (void (*)(struct onode *, struct rdata *, void *)) apply_rules0, rd, nd);
 }
 
@@ -688,6 +691,7 @@ void apply_wrules0(struct onode *nd, struct rdata *rd, struct onode *mnd)
 
 void apply_wrules(struct onode *nd, struct rdata *rd, void *vp)
 {
+   log_debug("applying rule id 0x%016lx type %s(%d)", nd->nd.id, rule_type_[nd->rule.type], nd->rule.type);
    traverse(rd->ways, 0, (void (*)(struct onode *, struct rdata *, void *)) apply_wrules0, rd, nd);
 }
 
@@ -1048,7 +1052,7 @@ struct rdata *init_rdata(void)
    rd->grd.lat_g = rd->grd.lon_g = G_GRID;
 
    // init callback function pointers
-   rd->cb.log_msg = log_msg;
+   //rd->cb.log_msg = log_msg;
    //rd->cb.get_object = get_object;
    //rd->cb.put_object = put_object;
    //rd->cb.malloc_object = malloc_object;
@@ -1153,6 +1157,13 @@ int print_onode(FILE *f, const struct onode *nd)
          return -1;
    }
 
+   for (i = 0; i < nd->tag_cnt; i++)
+      fprintf(f, "<tag k=\"%.*s\" v=\"%.*s\"/>\n",
+            nd->otag[i].k.len, nd->otag[i].k.buf, nd->otag[i].v.len, nd->otag[i].v.buf);
+
+   for (i = 0; i < nd->ref_cnt; i++)
+      fprintf(f, "<nd ref=\"%ld\"/>\n", nd->ref[i]);
+
    switch (nd->nd.type)
    {
       case OSM_NODE:
@@ -1163,13 +1174,6 @@ int print_onode(FILE *f, const struct onode *nd)
          fprintf(f, "</way>\n");
          break;
    }
-
-   for (i = 0; i < nd->tag_cnt; i++)
-      fprintf(f, "<tag k=\"%.*s\" v=\"%.*s\"/>\n",
-            nd->otag[i].k.len, nd->otag[i].k.buf, nd->otag[i].v.len, nd->otag[i].v.buf);
-
-   for (i = 0; i < nd->ref_cnt; i++)
-      fprintf(f, "<nd ref=\"%ld\"/>\n", nd->ref[i]);
 
    return 0;
 }
@@ -1205,6 +1209,25 @@ void onode_stats(struct onode *nd, struct rdata *rd, struct dstats *ds)
       if (ds->min_wid > nd->nd.id) ds->min_wid = nd->nd.id;
       if (ds->max_wid < nd->nd.id) ds->max_wid = nd->nd.id;
    }
+}
+
+int save_osm(struct rdata *rd, const char *s)
+{
+   FILE *f;
+
+   log_msg(LOG_INFO, "saving osm output to '%s'", s);
+   if ((f = fopen(s, "w")) != NULL)
+   {
+      fprintf(f, "<?xml version='1.0' encoding='UTF-8'?>\n<osm version='0.6' generator='smrender'>\n");
+      traverse(rd->nodes, 0, print_tree, rd, f);
+      traverse(rd->ways, 0, print_tree, rd, f);
+      fprintf(f, "</osm>\n");
+      fclose(f);
+   }
+   else
+      log_msg(LOG_WARN, "could not open '%s': %s", s, strerror(errno));
+
+   return 0;
 }
 
 
@@ -1252,6 +1275,7 @@ int main(int argc, char *argv[])
    log_msg(LOG_INFO, "reading osm data (file size %ld kb)", (long) st.st_size / 1024);
    (void) read_osm_file(ctl, &rd->nodes, &rd->ways);
    (void) close(fd);
+
 
    if ((fd = open(cf, O_RDONLY)) == -1)
          perror("open"), exit(EXIT_FAILURE);
@@ -1311,6 +1335,7 @@ int main(int argc, char *argv[])
    log_msg(LOG_INFO, "creating grid and legend");
    grid(rd, rd->col[BLACK]);
 
+   save_osm(rd, "out.osm");
    hpx_free(ctl);
    hpx_free(cfctl);
 
@@ -1318,15 +1343,6 @@ int main(int argc, char *argv[])
    gdImagePng(rd->img, f);
    gdImageDestroy(rd->img);
 
-   log_msg(LOG_INFO, "saving osm output");
-   if ((f = fopen("out.osm", "w")) != NULL)
-   {
-      traverse(rd->nodes, 0, print_tree, rd, f);
-      traverse(rd->ways, 0, print_tree, rd, f);
-      fclose(f);
-   }
-   else
-      log_msg(LOG_WARN, "could not open 'out.osm': %s", strerror(errno));
 
    (void) gettimeofday(&tv_end, NULL);
    tv_end.tv_sec -= tv_start.tv_sec;
