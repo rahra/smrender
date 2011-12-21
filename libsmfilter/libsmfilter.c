@@ -128,7 +128,7 @@ int pchar(struct onode *nd, struct rdata *rd)
     
    if ((node = realloc(nd, sizeof(struct onode) + sizeof(struct otag) * (nd->tag_cnt + 1) + sizeof(int64_t) * nd->ref_cnt)) == NULL)
    {
-      //rd->cb.log_msg(LOG_ERR, "could not realloc new node: %s", strerror(errno));
+      //log_msg(LOG_ERR, "could not realloc new node: %s", strerror(errno));
       log_msg(LOG_ERR, "could not realloc new node: %s", strerror(errno));
       return -1;
    }
@@ -137,8 +137,8 @@ int pchar(struct onode *nd, struct rdata *rd)
    if (node != nd)
    {
       nd = node;
-      //(void) rd->cb.put_object(rd->nodes, nd->nd.id, nd);
-      (void) put_object(rd->nodes, nd->nd.id, nd);
+      //(void) put_object(rd->nodes, nd->nd.id, nd);
+      (void) put_object(&rd->nodes, nd->nd.id, nd);
    }
 
    // clear additional otag structure
@@ -177,7 +177,7 @@ int vsector(struct onode *ond, struct rdata *rd)
          // been accidently imported with the LoL import.
          if (i && (sec[i].start == sec[i].end) && (sec[i].start == sec[0].dir))
          {
-            rd->cb.log_msg(LOG_INFO, "deprecated feature: %d:sector_start == %d:sector_end == orientation (node %ld)", sec[i].nr, sec[i].nr, nd->id);
+            log_msg(LOG_INFO, "deprecated feature: %d:sector_start == %d:sector_end == orientation (node %ld)", sec[i].nr, sec[i].nr, nd->id);
             sec[i].used = 0;
             continue;
          }
@@ -185,7 +185,7 @@ int vsector(struct onode *ond, struct rdata *rd)
          if ((!isnan(sec[i].dir) && (sec[i].cat != CAT_DIR)) ||
               (isnan(sec[i].dir) && (sec[i].cat == CAT_DIR)))
          {
-            rd->cb.log_msg(LOG_WARNING, "sector %d has incomplete definition of directional light (node %ld)", sec[i].nr, nd->id);
+            log_msg(LOG_WARNING, "sector %d has incomplete definition of directional light (node %ld)", sec[i].nr, nd->id);
             sec[i].dir = NAN;
             sec[i].cat = 0;
             sec[i].used = 0;
@@ -204,14 +204,14 @@ int vsector(struct onode *ond, struct rdata *rd)
             }
             else
             {
-               rd->cb.log_msg(LOG_WARNING, "sector %d of node %ld seems to lack start/end angle", sec[i].nr, nd->id);
+               log_msg(LOG_WARNING, "sector %d of node %ld seems to lack start/end angle", sec[i].nr, nd->id);
                sec[i].used = 0;
                continue;
             }
          }
          else if (isnan(sec[i].start) || isnan(sec[i].end))
          {
-            rd->cb.log_msg(LOG_WARNING, "sector %d of node %ld has either no start or no end angle!", sec[i].nr, nd->id);
+            log_msg(LOG_WARNING, "sector %d of node %ld has either no start or no end angle!", sec[i].nr, nd->id);
             sec[i].used = 0;
             continue;
          }
@@ -225,7 +225,7 @@ int vsector(struct onode *ond, struct rdata *rd)
    } // for (i = 0; i < MAX_SEC; i++)
 
    // remove all unused (or invalid) sectors
-   //rd->cb.log_msg(LOG_DEBUG, "removing unused sectors");
+   //log_msg(LOG_DEBUG, "removing unused sectors");
    for (i = 0, j = 0; i < MAX_SEC && j < n; i++, j++)
    {
       if (sec[i].used)
@@ -247,19 +247,19 @@ int vsector(struct onode *ond, struct rdata *rd)
       sec[i].espace = sec[i + 1].sspace = sec[i + 1].start - sec[i].end;
 
    // render sectors
-   for (i = 0; i < MAX_SEC; i++)
+   for (i = 0; i < n; i++)
    {
       if (sec[i].used)
       {
          if (proc_sfrac(&sec[i]) == -1)
          {
-            rd->cb.log_msg(LOG_WARNING, "negative angle definition is just allowed in last segment! (sector %d node %ld)", sec[i].nr, nd->id);
+            log_msg(LOG_WARNING, "negative angle definition is just allowed in last segment! (sector %d node %ld)", sec[i].nr, nd->id);
             continue;
          }
          //printf("   <!-- [%d]: start = %.2f, end = %.2f, col = %d, r = %.2f, nr = %d -->\n",
          //   i, sec[i].start, sec[i].end, sec[i].col, sec[i].r, sec[i].nr);
          if (sector_calc3(rd, ond, &sec[i], b))
-            rd->cb.log_msg(LOG_ERR, "sector_calc3 failed: %s", strerror(errno));
+            log_msg(LOG_ERR, "sector_calc3 failed: %s", strerror(errno));
 
          if (sec[i].col[1] != -1)
          {
@@ -270,7 +270,7 @@ int vsector(struct onode *ond, struct rdata *rd)
                   sec[i].sf[k].r -= altr_[j];
                sec[i].al++;
                if (sector_calc3(rd, ond, &sec[i], b))
-                  rd->cb.log_msg(LOG_ERR, "sector_calc3 failed: %s", strerror(errno));
+                  log_msg(LOG_ERR, "sector_calc3 failed: %s", strerror(errno));
             }
          }
       }
@@ -663,7 +663,7 @@ static int get_sectors(struct rdata *rd, const struct onode *nd, struct sector *
             }
          }
  
-   //if (n) rd->cb.log_msg(LOG_DEBUG, "%d sectors found", n);
+   //if (n) log_msg(LOG_DEBUG, "%d sectors found", n);
 
    return n;
 }
@@ -719,7 +719,7 @@ static int sector_calc3(struct rdata *rd, const struct onode *nd, const struct s
    //if ((tm = gmtime(&nd->tim)) != NULL)
    //   strftime(ts, TBUFLEN, "%Y-%m-%dT%H:%M:%SZ", tm);
 
-   //rd->cb.log_msg(LOG_DEBUG, "sector_calc3 called, %d fused", sec->fused);
+   //log_msg(LOG_DEBUG, "sector_calc3 called, %d fused", sec->fused);
 
    for (i = 0; i < sec->fused; i++)
    {
@@ -735,7 +735,7 @@ static int sector_calc3(struct rdata *rd, const struct onode *nd, const struct s
       node->nd.lon = lon[0] + nd->nd.lon;
       node->nd.tim = nd->nd.tim;
       node->nd.ver = 1;
-      put_object(rd->nodes, node->nd.id, node);
+      put_object(&rd->nodes, node->nd.id, node);
 
       //printf("<node id=\"%ld\" version=\"1\" timestamp=\"%s\" lat=\"%f\" lon=\"%f\"/>\n", id[0], ts, lat[0] + nd->lat, lon[0] + nd->lon);
 
@@ -758,7 +758,7 @@ static int sector_calc3(struct rdata *rd, const struct onode *nd, const struct s
          //FIXME
          node->otag[1].v.buf = tag_heap_[SEAMARK_LIGHT_OBJECT];
          node->otag[1].v.len = strlen(tag_heap_[SEAMARK_LIGHT_OBJECT]);
-         put_object(rd->ways, node->nd.id, node);
+         put_object(&rd->ways, node->nd.id, node);
 
          //printf("<way id=\"%ld\" version=\"1\" timestamp=\"%s\">\n<nd ref=\"%ld\"/>\n<nd ref=\"%ld\"/>\n<tag k=\"seamark:light_radial\" v=\"%d\"/>\n<tag k=\"seamark:light:object\" v=\"%.*s\"/>\n</way>\n", node_id_--, ts, nd->id, id[0], sec->nr, st.len, st.buf);
       }
@@ -784,7 +784,7 @@ static int sector_calc3(struct rdata *rd, const struct onode *nd, const struct s
          //FIXME
          node->otag[1].v.buf = tag_heap_[SEAMARK_LIGHT_OBJECT];
          node->otag[1].v.len = strlen(tag_heap_[SEAMARK_LIGHT_OBJECT]);
-         put_object(rd->ways, node->nd.id, node);
+         put_object(&rd->ways, node->nd.id, node);
 
          //printf("<way id=\"%ld\" version=\"1\" timestamp=\"%s\">\n<nd ref=\"%ld\"/>\n<nd ref=\"%ld\"/>\n<tag k=\"seamark:light_radial\" v=\"%d\"/>\n<tag k=\"seamark:light:object\" v=\"%.*s\"/>\n</way>\n", node_id_--, ts, id[1], id[0], sec->nr, st.len, st.buf);
       }
@@ -798,7 +798,7 @@ static int sector_calc3(struct rdata *rd, const struct onode *nd, const struct s
       node->nd.lon = lon[1] + nd->nd.lon;
       node->nd.tim = nd->nd.tim;
       node->nd.ver = 1;
-      put_object(rd->nodes, node->nd.id, node);
+      put_object(&rd->nodes, node->nd.id, node);
 
       //printf("<node id=\"%ld\" version=\"1\" timestamp=\"%s\" lat=\"%f\" lon=\"%f\"/>\n", id[1], ts, lat[1] + nd->lat, lon[1] + nd->lon);
 
@@ -821,7 +821,7 @@ static int sector_calc3(struct rdata *rd, const struct onode *nd, const struct s
          //FIXME
          node->otag[1].v.buf = tag_heap_[SEAMARK_LIGHT_OBJECT];
          node->otag[1].v.len = strlen(tag_heap_[SEAMARK_LIGHT_OBJECT]);
-         put_object(rd->ways, node->nd.id, node);
+         put_object(&rd->ways, node->nd.id, node);
 
          //printf("<way id=\"%ld\" version=\"1\" timestamp=\"%s\">\n<nd ref=\"%ld\"/>\n<nd ref=\"%ld\"/>\n<tag k=\"seamark:light_radial\" v=\"%d\"/>\n<tag k=\"seamark:light:object\" v=\"%.*s\"/>\n</way>\n", node_id_--, ts, nd->id, id[1], sec->nr, st.len, st.buf);
       }
@@ -854,10 +854,10 @@ static int sector_calc3(struct rdata *rd, const struct onode *nd, const struct s
          node->nd.lon = lo + nd->nd.lon;
          node->nd.tim = nd->nd.tim;
          node->nd.ver = 1;
-         put_object(rd->nodes, node->nd.id, node);
+         put_object(&rd->nodes, node->nd.id, node);
 
          //printf("<node id=\"%ld\" version=\"1\" timestamp=\"%s\" lat=\"%f\" lon=\"%f\"/>\n", node_id_--, ts, la + nd->lat, lo + nd->lon);
-         //rd->cb.log_msg(LOG_DEBUG, "creating arc nodes, id=%ld, w=%f, e=%f, j=%d", node->nd.id, w, e, j);
+         //log_msg(LOG_DEBUG, "creating arc nodes, id=%ld, w=%f, e=%f, j=%d", node->nd.id, w, e, j);
       }
 
       // connect nodes of arc to a way
@@ -883,7 +883,7 @@ static int sector_calc3(struct rdata *rd, const struct onode *nd, const struct s
       node->otag[2].v.buf = atype_heap_[sec->sf[i].type];
       node->otag[2].v.len = strlen(atype_heap_[sec->sf[i].type]);
 
-      //rd->cb.log_msg(LOG_DEBUG, "secnr %p, SEAMARK_ARC_STYLE %p, atype_ %p", node->otag[0].v.buf, node->otag[2].k.buf, node->otag[2].v.buf);
+      //log_msg(LOG_DEBUG, "secnr %p, SEAMARK_ARC_STYLE %p, atype_ %p", node->otag[0].v.buf, node->otag[2].k.buf, node->otag[2].v.buf);
       //printf("<way id=\"%ld\" version=\"1\" timestamp=\"%s\">\n<tag k=\"seamark:light:sector_nr\" v=\"%d\"/>\n<tag k=\"seamark:light:object\" v=\"%.*s\"/>\n<tag k=\"seamark:arc_style\" v=\"%s\"/>\n",
       //      id[3], ts, sec->nr, st.len, st.buf, atype_[sec->sf[i].type]);
 
@@ -912,9 +912,9 @@ static int sector_calc3(struct rdata *rd, const struct onode *nd, const struct s
       for (k = 0; k < j; sn--, k++)
       {
          node->ref[k + 1] = sn;
-         //rd->cb.log_msg(LOG_DEBUG, "adding refs to way, id=%ld", sn);
+         //log_msg(LOG_DEBUG, "adding refs to way, id=%ld", sn);
       }
-      put_object(rd->ways, node->nd.id, node);
+      put_object(&rd->ways, node->nd.id, node);
 
       /*
       printf("<nd ref=\"%ld\"/>\n", id[0]);

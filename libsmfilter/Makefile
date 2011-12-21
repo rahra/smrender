@@ -18,20 +18,11 @@
 CC	= gcc
 CFLAGS = -g -fPIC -I..
 LDFLAGS = -lm
+
 all: libsmfilter.so
-
-bstring.o: bstring.c
-
-bxtree.o: bxtree.c
-
-smutil.o: smutil.c
-
-sector_calc.o: sector_calc.c
 
 libsmfilter.o: libsmfilter.c
 
-#libsmfilter.so.1: bstring.o libsmfilter.o smutil.o sector_calc.o bxtree.o
-#	ld -shared -soname libsmfilter.so.1 -o libsmfilter.so.1 -lc -lm libsmfilter.o
 libsmfilter.so.1: libsmfilter.o
 	gcc -g -shared -Wl,-soname,libsmfilter.so.1 -o libsmfilter.so.1.0.1 libsmfilter.o -lc -lm
 
