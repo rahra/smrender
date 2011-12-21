@@ -19,11 +19,15 @@ struct rdata *init_rdata(void)
    // A3 paper portrait (300dpi)
    //rd->w = 3507; rd->h = 4961; rd->dpi = 300;
    // A4 paper portrait (300dpi)
-   rd->w = 2480; rd->h = 3507; rd->dpi = 300;
+   //rd->w = 2480; rd->h = 3507; rd->dpi = 300;
    // A4 paper landscape (300dpi)
-   rd->h = 2480; rd->w = 3507; rd->dpi = 300;
+   //rd->h = 2480; rd->w = 3507; rd->dpi = 300;
    // A4 paper portrait (600dpi)
    //rd->w = 4961; rd->h = 7016; rd->dpi = 600;
+   // A2 paper landscape (300dpi)
+   rd->w = 7016; rd->h = 4961; rd->dpi = 300;
+   // A1 paper landscape (300dpi)
+   rd->w = 9933; rd->h = 7016; rd->dpi = 300;
 
    rd->grd.lat_ticks = rd->grd.lon_ticks = G_TICKS;
    rd->grd.lat_sticks = rd->grd.lon_sticks = G_STICKS;
