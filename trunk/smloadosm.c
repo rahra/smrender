@@ -130,7 +130,11 @@ int read_osm_file(hpx_ctrl_t *ctl, bx_node_t **tree)
                memcpy(&ond->nd, &nd, sizeof(nd));
                memset(((char*) ond) + sizeof(nd), 0, sizeof(*ond) - sizeof(nd));
                if (tr->next[nd.type == OSM_WAY] != NULL)
-                  log_msg(LOG_ERR, "object %ld already exists, overwriting.", nd.id);
+               {
+                  free(tr->next[nd.type == OSM_WAY]);
+                  // too much debugging if there are many duplicates
+                  //log_msg(LOG_ERR, "object %ld already exists, overwriting.", nd.id);
+               }
                tr->next[nd.type == OSM_WAY] = ond;
 
                // finally
@@ -187,7 +191,11 @@ int read_osm_file(hpx_ctrl_t *ctl, bx_node_t **tree)
                   }
                }
                if (tr->next[nd.type == OSM_WAY] != NULL)
-                  log_msg(LOG_ERR, "object %ld already exists, overwriting.", nd.id);
+               {
+                  free(tr->next[nd.type == OSM_WAY]);
+                  // too much debugging if there are many duplicates
+                  //log_msg(LOG_ERR, "object %ld already exists, overwriting.", nd.id);
+               }
                tr->next[nd.type == OSM_WAY] = ond;
 
                // finally
