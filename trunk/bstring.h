@@ -1,1 +1,0 @@
-../../libhpxml/src/bstring.h
