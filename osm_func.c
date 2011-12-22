@@ -77,13 +77,12 @@ int proc_osm_node(const hpx_tag_t *tag, struct osm_node *nd)
          nd->uid = bs_tol(tag->attr[i].value);
       else if (!bs_cmp(tag->attr[i].name, "timestamp"))
          nd->tim = parse_time(tag->attr[i].value);
-      /*else if (!bs_cmp(tag->attr[i].name, "action"))
-      {
-         n = tag->attr[i].value.len < sizeof(nd->act) - 1 ? tag->attr[i].value.len : sizeof(nd->act) - 1;
-         memcpy(nd->act, tag->attr[i].value.buf, n);
-         nd->act[n] = '\0';
-      }*/
    }
+
+   if (!nd->ver)
+      nd->ver = 1;
+   if (!nd->tim)
+      nd->tim = time(NULL);
 
    return tag->type;
 }
