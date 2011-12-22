@@ -177,6 +177,7 @@ void poly_node_to_border(struct rdata *rd, struct wlist *nl)
 #endif
 
 
+#ifdef OUTPUT_COASTLINE
 int poly_out(FILE *f, struct wlist *nl, struct rdata *rd)
 {
    bx_node_t *bn;
@@ -204,6 +205,7 @@ int poly_out(FILE *f, struct wlist *nl, struct rdata *rd)
 
    return 0;
 }
+#endif
 
 
 int compare_pdef(const struct pdef *p1, const struct pdef *p2)
@@ -394,7 +396,7 @@ int cat_poly(struct rdata *rd)
    wl->ref_cnt = 0;
    wl->max_ref = INIT_MAX_REF;
 
-   traverse(rd->ways, 0, (tree_func_t) gather_poly, rd, &wl);
+   traverse(rd->obj, 0, IDX_WAY, (tree_func_t) gather_poly, rd, &wl);
 
    for (i = 0; i < wl->ref_cnt; i++)
       log_debug("open coastline %ld", wl->ref[i]);

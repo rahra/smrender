@@ -75,6 +75,9 @@ typedef struct onode onode_t;
 typedef int (*tree_func_t)(struct onode*, struct rdata*, void*);
 typedef int (*ext_func_t)(struct onode*);
 
+// indexes to object tree
+enum {IDX_NODE, IDX_WAY};
+
 enum {E_SM_OK, E_RTYPE_NA, E_ACT_NOT_IMPL, E_SYNTAX, E_REF_ERR};
 
 struct specialTag
@@ -173,10 +176,13 @@ struct dstats
 
 struct rdata
 {
+   // root node of objects (nodes and ways)
+   bx_node_t *obj;
    // root nodes of node tree and way tree
-   bx_node_t *nodes, *ways;
+   //bx_node_t *nodes, *ways;
    // root nodes of node rules and way rules
-   bx_node_t *nrules, *wrules;
+   //bx_node_t *nrules, *wrules;
+   bx_node_t *rules;
    // pointer to image data
    gdImage *img;
    // left upper and right bottom coordinates
@@ -214,7 +220,7 @@ enum {PRJ_DIRECT, PRJ_MERC_PAGE, PRJ_MERC_BB};
 
 
 /* smrender.c */
-int traverse(const bx_node_t *, int, tree_func_t, struct rdata *, void *);
+int traverse(const bx_node_t*, int, int, tree_func_t, struct rdata*, void*);
 int print_onode(FILE *, const struct onode *);
 int col_freq(struct rdata *, int, int, int, int, double, int);
 int cf_dist(struct rdata *, int, int, int, int, double, int, int);
@@ -227,9 +233,9 @@ int match_attr(const struct onode *, const char *, const char *);
 int bs_match_attr(const struct onode *, const struct otag *);
 int bs_match(const bstring_t *, const bstring_t *, const struct specialTag *);
 
-int put_object0(bx_node_t **, int64_t , struct onode *);
+int put_object0(bx_node_t**, int64_t, void*, int);
 int put_object(struct onode*);
-struct onode *get_object0(bx_node_t*, int64_t);
+void *get_object0(bx_node_t*, int64_t, int);
 struct onode *get_object(int, int64_t);
 struct onode *malloc_object(int , int);
 int64_t unique_node_id(void);
@@ -237,7 +243,7 @@ int64_t unique_way_id(void);
 struct rdata *init_rdata(void);
 
 /* smloadosm.c */
-int read_osm_file(hpx_ctrl_t *, bx_node_t **, bx_node_t **);
+int read_osm_file(hpx_ctrl_t*, bx_node_t**);
 #ifdef MEM_USAGE
 size_t onode_mem(void);
 #endif
