@@ -8,6 +8,8 @@
 #include "bxtree.h"
 
 
+#define OUTPUT_COASTLINE
+
 // initial number of ref array
 #define INIT_MAX_REF 20
 #define MAX_OPEN_POLY 32
@@ -180,8 +182,6 @@ void poly_node_to_border(struct rdata *rd, struct wlist *nl)
 #ifdef OUTPUT_COASTLINE
 int poly_out(FILE *f, struct wlist *nl, struct rdata *rd)
 {
-   bx_node_t *bn;
-   //struct onode *nd;
    int i;
 
    fprintf(f, "<way id=\"%ld\" version=\"1\">\n", nl->id);
@@ -190,18 +190,7 @@ int poly_out(FILE *f, struct wlist *nl, struct rdata *rd)
    fprintf(f, "</way>\n");
 
    for (i = 0; i < nl->ref_cnt; i++)
-   {
-      // FIXME: return code should be tested
-      if ((bn = bx_get_node(rd->nodes, nl->ref[i])) == NULL)
-      {
-         log_warn("NULL pointer catchted in poly_out...continuing");
-         continue;
-      }
-      //nd = bn->next[0];
-      //print_onode(f, nd);
-      //fprintf(f, "<node id=\"%ld\" lat=\"%f\" lon=\"%f\" version=\"1\"/>\n", nd->nd.id, nd->nd.lat, nd->nd.lon);
-      print_onode(f, bn->next[0]);
-   }
+      print_onode(f, get_object(OSM_NODE, nl->ref[i]));
 
    return 0;
 }

@@ -16,7 +16,7 @@
 # */
 
 CC	= gcc
-CFLAGS = -g -fPIC -I..
+CFLAGS = -g -O2 -fPIC -I..
 LDFLAGS = -lm
 
 all: libsmfilter.so
