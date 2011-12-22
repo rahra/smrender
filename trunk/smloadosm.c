@@ -56,7 +56,8 @@ size_t onode_mem(void)
 #endif
 
 
-int read_osm_file(hpx_ctrl_t *ctl, bx_node_t **ntree, bx_node_t **wtree)
+//int read_osm_file(hpx_ctrl_t *ctl, bx_node_t **ntree, bx_node_t **wtree)
+int read_osm_file(hpx_ctrl_t *ctl, bx_node_t **tree)
 {
    hpx_tag_t *tag;
    bstring_t b;
@@ -92,12 +93,10 @@ int read_osm_file(hpx_ctrl_t *ctl, bx_node_t **ntree, bx_node_t **wtree)
          else
             n = 0;
 
-         //if (!bs_cmp(tag->tag, "node"))
          if (n)
          {
             if (tag->type == HPX_OPEN)
             {
-               //nd->type = OSM_NODE;
                memset(&nd, 0, sizeof(nd));
                nd.type = n;
                proc_osm_node(tag, &nd);
@@ -117,13 +116,12 @@ int read_osm_file(hpx_ctrl_t *ctl, bx_node_t **ntree, bx_node_t **wtree)
             }
             else if (tag->type == HPX_SINGLE)
             {
-               //nd->type = OSM_NODE;
                memset(&nd, 0, sizeof(nd));
                nd.type = n;
                proc_osm_node(tag, &nd);
                if (!nd.id) nd.id = nid++;
 
-               tr = bx_add_node(nd.type == OSM_NODE ? ntree : wtree, nd.id);
+               tr = bx_add_node(tree, nd.id);
                if ((ond = malloc(sizeof(*ond))) == NULL)
                   perror("malloc"), exit(EXIT_FAILURE);
 #ifdef MEM_USAGE
@@ -131,9 +129,9 @@ int read_osm_file(hpx_ctrl_t *ctl, bx_node_t **ntree, bx_node_t **wtree)
 #endif
                memcpy(&ond->nd, &nd, sizeof(nd));
                memset(((char*) ond) + sizeof(nd), 0, sizeof(*ond) - sizeof(nd));
-               if (tr->next[0] != NULL)
-                  fprintf(stderr, "node %ld already exists! Overwriting.\n", nd.id);
-               tr->next[0] = ond;
+               if (tr->next[nd.type == OSM_WAY] != NULL)
+                  log_msg(LOG_ERR, "object %ld already exists, overwriting.", nd.id);
+               tr->next[nd.type == OSM_WAY] = ond;
 
                // finally
                tlist->nsub = 0;
@@ -141,7 +139,7 @@ int read_osm_file(hpx_ctrl_t *ctl, bx_node_t **ntree, bx_node_t **wtree)
             }
             else if (tag->type == HPX_CLOSE)
             {
-               tr = bx_add_node(nd.type == OSM_NODE ? ntree : wtree, nd.id);
+               tr = bx_add_node(tree, nd.id);
                if ((ond = malloc(sizeof(*ond))) == NULL)
                   perror("malloc"), exit(EXIT_FAILURE);
 #ifdef MEM_USAGE
@@ -188,9 +186,9 @@ int read_osm_file(hpx_ctrl_t *ctl, bx_node_t **ntree, bx_node_t **wtree)
                      ref++;
                   }
                }
-               if (tr->next[0] != NULL)
-                  fprintf(stderr, "node %ld already exists! Overwriting.\n", nd.id);
-               tr->next[0] = ond;
+               if (tr->next[nd.type == OSM_WAY] != NULL)
+                  log_msg(LOG_ERR, "object %ld already exists, overwriting.", nd.id);
+               tr->next[nd.type == OSM_WAY] = ond;
 
                // finally
                tlist->nsub = 0;

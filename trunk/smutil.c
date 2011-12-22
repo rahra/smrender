@@ -21,13 +21,13 @@ struct rdata *init_rdata(void)
    // A4 paper portrait (300dpi)
    //rd->w = 2480; rd->h = 3507; rd->dpi = 300;
    // A4 paper landscape (300dpi)
-   //rd->h = 2480; rd->w = 3507; rd->dpi = 300;
+   rd->h = 2480; rd->w = 3507; rd->dpi = 300;
    // A4 paper portrait (600dpi)
    //rd->w = 4961; rd->h = 7016; rd->dpi = 600;
    // A2 paper landscape (300dpi)
-   rd->w = 7016; rd->h = 4961; rd->dpi = 300;
+   //rd->w = 7016; rd->h = 4961; rd->dpi = 300;
    // A1 paper landscape (300dpi)
-   rd->w = 9933; rd->h = 7016; rd->dpi = 300;
+   //rd->w = 9933; rd->h = 7016; rd->dpi = 300;
 
    rd->grd.lat_ticks = rd->grd.lon_ticks = G_TICKS;
    rd->grd.lat_sticks = rd->grd.lon_sticks = G_STICKS;
@@ -101,13 +101,19 @@ struct onode *malloc_object(int tag_cnt, int ref_cnt)
 }
 
 
-int put_object0(bx_node_t **tree, int64_t id, struct onode *nd)
+int put_object0(bx_node_t **tree, int64_t id, void *p, int idx)
 {
    bx_node_t *bn;
 
+   if ((idx < 0) || (idx >= (1 << BX_RES)))
+   {
+      log_msg(LOG_ERR, "index to tree node out of range: %d", idx);
+      return -1;
+   }
+
    if ((bn = bx_add_node(tree, id)) == NULL)
    {
-      log_msg(LOG_ERR, "bx_add_node() failed");
+      log_msg(LOG_ERR, "bx_add_node() failed in put_object0()");
       return -1;
    }
    /* too much debugging....
@@ -116,73 +122,45 @@ int put_object0(bx_node_t **tree, int64_t id, struct onode *nd)
       log_msg(LOG_DEBUG, "nt->next[0] contains valid pointer, overwriting.");
    }*/
 
-   bn->next[0] = nd;
+   bn->next[idx] = p;
    return 0;
 }
 
 
 int put_object(struct onode *nd)
 {
-   bx_node_t **tree;
-
-   switch (nd->nd.type)
-   {
-      case OSM_NODE:
-         tree = &rd->nodes;
-         break;
-
-      case OSM_WAY:
-         tree = &rd->ways;
-         break;
-
-      default:
-         log_msg(LOG_ERR, "unknown node type %d", nd->nd.type);
-         return -1;
-   }
-
-   return put_object0(tree, nd->nd.id, nd);
+   return put_object0(&rd->obj, nd->nd.id, nd, nd->nd.type == OSM_WAY);
 }
 
 
-struct onode *get_object0(bx_node_t *tree, int64_t id)
+void *get_object0(bx_node_t *tree, int64_t id, int idx)
 {
    bx_node_t *bn;
+
+   if ((idx < 0) || (idx >= (1 << BX_RES)))
+   {
+      log_msg(LOG_ERR, "get_object0(): index (%d) to tree node out of range.", idx);
+      return NULL;
+   }
 
    if ((bn = bx_get_node(tree, id)) == NULL)
    {
       //log_msg(LOG_ERR, "bx_get_node() failed");
       return NULL;
    }
-   if (bn->next[0] == NULL)
+   if (bn->next[idx] == NULL)
    {
       //log_msg(LOG_ERR, "nt->next[0] contains NULL pointer");
       return NULL;
    }
 
-   return bn->next[0];
+   return bn->next[idx];
 }
 
 
 struct onode *get_object(int type, int64_t id)
 {
-   bx_node_t *tree;
-
-   switch (type)
-   {
-      case OSM_NODE:
-         tree = rd->nodes;
-         break;
-
-      case OSM_WAY:
-         tree = rd->ways;
-         break;
-
-      default:
-         log_msg(LOG_ERR, "unknown node type %d", type);
-         return NULL;
-   }
-
-   return get_object0(tree, id);
+   return get_object0(rd->obj, id, type == OSM_WAY);
 }
 
 

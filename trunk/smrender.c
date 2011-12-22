@@ -608,7 +608,7 @@ int apply_rules0(struct onode *nd, struct rdata *rd, struct onode *mnd)
 int apply_rules(struct onode *nd, struct rdata *rd, void *vp)
 {
    log_debug("applying rule id 0x%016lx type %s(%d)", nd->nd.id, rule_type_[nd->rule.type], nd->rule.type);
-   return traverse(rd->nodes, 0, (tree_func_t) apply_rules0, rd, nd);
+   return traverse(rd->obj, 0, IDX_NODE, (tree_func_t) apply_rules0, rd, nd);
 }
 
 
@@ -702,7 +702,7 @@ int apply_wrules0(struct onode *nd, struct rdata *rd, struct onode *mnd)
 int apply_wrules(struct onode *nd, struct rdata *rd, void *vp)
 {
    log_debug("applying rule id 0x%016lx type %s(%d)", nd->nd.id, rule_type_[nd->rule.type], nd->rule.type);
-   return traverse(rd->ways, 0, (tree_func_t) apply_wrules0, rd, nd);
+   return traverse(rd->obj, 0, IDX_WAY, (tree_func_t) apply_wrules0, rd, nd);
 }
 
 
@@ -713,9 +713,9 @@ int print_tree(struct onode *nd, struct rdata *rd, void *p)
 }
 
 
-int traverse(const bx_node_t *nt, int d, tree_func_t dhandler, struct rdata *rd, void *p)
+int traverse(const bx_node_t *nt, int d, int idx, tree_func_t dhandler, struct rdata *rd, void *p)
 {
-   int i, e;
+   int i, e, sidx, eidx;
 
    if (nt == NULL)
    {
@@ -723,28 +723,51 @@ int traverse(const bx_node_t *nt, int d, tree_func_t dhandler, struct rdata *rd,
       return -1;
    }
 
+   if ((idx < -1) || (idx >= (1 << BX_RES)))
+   {
+      log_msg(LOG_CRIT, "traverse(): idx (%d) out of range", idx);
+      return -1;
+   }
+
    if (d == sizeof(bx_hash_t) * 8 / BX_RES)
    {
-      if (nt->next[0] == NULL)
+      if (idx == -1)
       {
-         log_msg(LOG_CRIT, "this should not happen: NULL pointer catched");
-         return -1;
+         sidx = 0;
+         eidx = 1 << BX_RES;
+      }
+      else
+      {
+         sidx = idx;
+         eidx = sidx + 1;
       }
 
-      return dhandler(nt->next[0], rd, p);
+      for (i = sidx, e = 0; i < eidx; i++)
+      {
+         if (nt->next[i] != NULL)
+         {
+            e = dhandler(nt->next[i], rd, p);
+            if (e < 0)
+            {
+               //log_msg(LOG_WARNING, "dhandler() returned %d, breaking recursion.", e);
+               return e;
+            }
+         }
+      }
+      return e;
    }
 
    for (i = 0; i < 1 << BX_RES; i++)
       if (nt->next[i])
       {
-         e = traverse(nt->next[i], d + 1, dhandler, rd, p);
+         e = traverse(nt->next[i], d + 1, idx, dhandler, rd, p);
          if (e < 0)
          {
             log_msg(LOG_WARNING, "traverse() returned %d, breaking recursion.", e);
             return e;
          }
-         else if (e > 0)
-            log_msg(LOG_INFO, "traverse() returned %d", e);
+//         else if (e > 0)
+//            log_msg(LOG_INFO, "traverse() returned %d", e);
       }
 
    return 0;
@@ -1198,8 +1221,8 @@ int save_osm(struct rdata *rd, const char *s)
    if ((f = fopen(s, "w")) != NULL)
    {
       fprintf(f, "<?xml version='1.0' encoding='UTF-8'?>\n<osm version='0.6' generator='smrender'>\n");
-      traverse(rd->nodes, 0, print_tree, rd, f);
-      traverse(rd->ways, 0, print_tree, rd, f);
+      traverse(rd->obj, 0, IDX_NODE, print_tree, rd, f);
+      traverse(rd->obj, 0, IDX_WAY, print_tree, rd, f);
       fprintf(f, "</osm>\n");
       fclose(f);
    }
@@ -1252,7 +1275,7 @@ int main(int argc, char *argv[])
       perror("hpx_init_simple"), exit(EXIT_FAILURE);
 
    log_msg(LOG_INFO, "reading osm data (file size %ld kb)", (long) st.st_size / 1024);
-   (void) read_osm_file(ctl, &rd->nodes, &rd->ways);
+   (void) read_osm_file(ctl, &rd->obj);
    (void) close(fd);
 
 
@@ -1266,7 +1289,7 @@ int main(int argc, char *argv[])
       perror("hpx_init_simple"), exit(EXIT_FAILURE);
 
    log_msg(LOG_INFO, "reading rules (file size %ld kb)", (long) st.st_size / 1024);
-   (void) read_osm_file(cfctl, &rd->nrules, &rd->wrules);
+   (void) read_osm_file(cfctl, &rd->rules);
    (void) close(fd);
 
 #ifdef MEM_USAGE
@@ -1276,8 +1299,8 @@ int main(int argc, char *argv[])
 
    log_msg(LOG_INFO, "gathering stats");
    init_stats(&rd->ds);
-   traverse(rd->nodes, 0, (tree_func_t) onode_stats, rd, &rd->ds);
-   traverse(rd->ways, 0, (tree_func_t) onode_stats, rd, &rd->ds);
+   traverse(rd->obj, 0, IDX_WAY, (tree_func_t) onode_stats, rd, &rd->ds);
+   traverse(rd->obj, 0, IDX_NODE, (tree_func_t) onode_stats, rd, &rd->ds);
    log_msg(LOG_INFO, "ncnt = %ld, min_nid = %ld, max_nid = %ld",
          rd->ds.ncnt, rd->ds.min_nid, rd->ds.max_nid);
    log_msg(LOG_INFO, "wcnt = %ld, min_wid = %ld, max_wid = %ld",
@@ -1286,16 +1309,16 @@ int main(int argc, char *argv[])
          rd->ds.lu.lat, rd->ds.lu.lon, rd->ds.rb.lat, rd->ds.rb.lon);
 
    log_msg(LOG_INFO, "preparing rules");
-   traverse(rd->nrules, 0, prepare_rules, rd, NULL);
-   traverse(rd->wrules, 0, prepare_rules, rd, NULL);
+   traverse(rd->rules, 0, IDX_NODE, prepare_rules, rd, NULL);
+   traverse(rd->rules, 0, IDX_WAY, prepare_rules, rd, NULL);
 
    log_msg(LOG_INFO, "preparing coastline");
    cat_poly(rd);
 
    log_msg(LOG_INFO, "rendering ways");
-   traverse(rd->wrules, 0, apply_wrules, rd, NULL);
+   traverse(rd->rules, 0, IDX_WAY, apply_wrules, rd, NULL);
    log_msg(LOG_INFO, "rendering nodes");
-   traverse(rd->nrules, 0, apply_rules, rd, NULL);
+   traverse(rd->rules, 0, IDX_NODE, apply_rules, rd, NULL);
 
    log_msg(LOG_INFO, "creating grid and legend");
    grid(rd, rd->col[BLACK]);
