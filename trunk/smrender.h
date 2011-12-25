@@ -241,6 +241,7 @@ struct onode *malloc_object(int , int);
 int64_t unique_node_id(void);
 int64_t unique_way_id(void);
 struct rdata *init_rdata(void);
+void set_const_tag(struct otag*, char*, char*);
 
 /* smloadosm.c */
 int read_osm_file(hpx_ctrl_t*, bx_node_t**);

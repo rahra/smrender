@@ -72,6 +72,15 @@ struct rdata *init_rdata(void)
 }
 
 
+void set_const_tag(struct otag *tag, char *k, char *v)
+{
+   tag->k.buf = k;
+   tag->k.len = strlen(k);
+   tag->v.buf = v;
+   tag->v.len = strlen(v);
+}
+
+
 //int64_t unique_node_id(struct rdata *rd)
 int64_t unique_node_id(void)
 {
