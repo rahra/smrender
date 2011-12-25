@@ -16,11 +16,18 @@
 #define MAX_OPEN_POLY 32
 
 
+struct corner_point
+{
+   struct pcoord pc;
+   struct onode *nd;
+};
+
+
 struct poly
 {
    struct poly *next, *prev;
    struct onode *w;
-   short new;           // 1 if node is virtual and was newly created
+//   short new;           // 1 if node is virtual and was newly created
    short del;           // 1 if element should be removed from list
    short open;          // 1 if element is connected but still open way
 };
@@ -28,7 +35,7 @@ struct poly
 struct wlist
 {
    //struct wlist *next;
-   int64_t id;
+   //int64_t id;
    int ref_cnt, max_ref;
    struct poly ref[];
 };
@@ -47,6 +54,8 @@ struct pdef
 
 int poly_bearing(struct rdata*, struct wlist*, int, struct pcoord*, const struct coord*);
 int64_t add_dummy_node(struct rdata*, const struct coord*);
+void node_brg(struct pcoord*, struct coord*, int64_t);
+void init_corner_brg(const struct rdata*, const struct coord*, struct corner_point*);
 
 
 /*! This finds open polygons with tag natural=coastline and adds
@@ -94,7 +103,6 @@ struct pdef *poly_get_node_ids(const struct wlist *wl)
 {
    int i;
    struct pdef *pd;
-   struct onode *nd;
 
    if ((pd = calloc(wl->ref_cnt * 2, sizeof(struct pdef))) == NULL)
    {
@@ -104,29 +112,55 @@ struct pdef *poly_get_node_ids(const struct wlist *wl)
 
    for (i = 0; i < wl->ref_cnt; i++)
    {
-      if ((nd = get_object(OSM_WAY, wl->ref[i].w->nd.id)) == NULL)
-      {
-         log_msg(LOG_WARNING, "poly_get_node_ids(): way %ld does not exist", wl->ref[i]);
-         continue;
-      }
-      if (nd->ref_cnt < 2)
-      {
-         log_msg(LOG_WARNING, "poly_get_node_ids(): way %ld has less than 2 nodes", wl->ref[i]);
-         continue;
-      }
       pd[i].wl_index = i;
       pd[i].pn = 0;
-      pd[i].nid = nd->ref[0];
+      pd[i].nid = wl->ref[i].w->ref[0];
       pd[i + wl->ref_cnt].wl_index = i;
-      pd[i + wl->ref_cnt].pn = nd->ref_cnt - 1;
-      pd[i + wl->ref_cnt].nid = nd->ref[nd->ref_cnt - 1];
+      pd[i + wl->ref_cnt].pn = wl->ref[i].w->ref_cnt - 1;
+      pd[i + wl->ref_cnt].nid = wl->ref[i].w->ref[wl->ref[i].w->ref_cnt - 1];
    }
 
    return pd;
 }
 
 
-int poly_find_adj2(struct wlist *wl, struct pdef *pd, int pd_cnt)
+struct pdef *poly_get_brg(struct rdata *rd, struct wlist *wl, int ocnt)
+{
+   struct pdef *pd;
+   struct corner_point co_pt[4];
+   struct coord center = {rd->mean_lat, (rd->x1c + rd->x2c) / 2};
+   struct coord dst;
+   struct onode *node;
+   int i, j;
+
+   if ((pd = calloc(ocnt * 2, sizeof(struct pdef))) == NULL)
+   {
+      log_msg(LOG_EMERG, "poly_get_brg(): %s", strerror(errno));
+      exit(EXIT_FAILURE);
+   }
+
+   init_corner_brg(rd, &center, co_pt);
+
+   for (i = 0, j = 0; (i < wl->ref_cnt) && ( j < ocnt); i++)
+   {
+      if (!wl->ref[i].open)
+         continue;
+
+      node_brg(&pd[j].pc, &center, wl->ref[i].w->ref[0]);
+      pd[j].wl_index = i;
+      pd[j].pn = 0;
+      node_brg(&pd[j + ocnt].pc, &center, wl->ref[i].w->ref[wl->ref[i].w->ref_cnt - 1]);
+      pd[j + ocnt].wl_index = i;
+      pd[j + ocnt].pn = wl->ref[i].w->ref_cnt - 1;
+      j++;
+   }
+
+   return pd;
+}
+
+
+
+int poly_find_adj2(struct wlist *wl, struct pdef *pd)
 {
    int i, n;
 
@@ -134,7 +168,7 @@ int poly_find_adj2(struct wlist *wl, struct pdef *pd, int pd_cnt)
    //for (i = 0; i < pd_cnt; i++)
    //   log_debug("pd[%d].wl_index = %d, .pn = %d, .nid = %ld", i, pd[i].wl_index, pd[i].pn, pd[i].nid);
 
-   for (i = 0, n = 0; i < pd_cnt - 1; i++)
+   for (i = 0, n = 0; i < wl->ref_cnt * 2 - 1; i++)
    {
       if (pd[i].nid == pd[i + 1].nid)
       {
@@ -187,15 +221,8 @@ struct onode *create_new_coastline(int ref_cnt)
    nd->nd.id = unique_way_id();
    nd->nd.ver = 1;
    nd->nd.tim = time(NULL);
-   nd->otag[0].k.buf = "natural";
-   nd->otag[0].k.len = 7;
-   nd->otag[0].v.buf = "coastline";
-   nd->otag[0].v.len = 9;
-   nd->otag[1].k.buf = "generator";
-   nd->otag[1].k.len = 9;
-   nd->otag[1].v.buf = "smrender";
-   nd->otag[1].v.len = 8;
-
+   set_const_tag(&nd->otag[0], "natural", "coastline");
+   set_const_tag(&nd->otag[1], "generator", "smrender");
 
    return nd;
 }
@@ -203,10 +230,10 @@ struct onode *create_new_coastline(int ref_cnt)
 
 int join_open_poly(struct poly *pl, struct onode *nd)
 {
-   int pos, wcnt;
+   int pos, wcnt = 0;
    struct poly *list;
 
-   for (list = pl, pos = 0, wcnt = 0; list != NULL; list = list->next, wcnt++)
+   for (list = pl, pos = 0; list != NULL; list = list->next, wcnt++)
    {
       // copy all node refs...
       memcpy(&nd->ref[pos], list->w->ref, list->w->ref_cnt * sizeof(int64_t));
@@ -234,7 +261,7 @@ int join_open_poly(struct poly *pl, struct onode *nd)
 int loop_detect(struct wlist *wl)
 {
    struct onode *nd;
-   int i, cnt, ret;
+   int i, cnt, ret, ocnt = 0;
 #ifdef OUTPUT_COASTLINE
    int _i;
    FILE *f;
@@ -263,15 +290,21 @@ int loop_detect(struct wlist *wl)
          continue;
       }
 
-      if (!ret)
-         wl->ref[i].open = 1;
-
       log_debug("waylist: wl_index %d (start = %p, cnt = %d, loop = %d)", i, &wl->ref[i], cnt, ret);
       nd = create_new_coastline(cnt);
       cnt = join_open_poly(&wl->ref[i], nd);
       put_object(nd);
       log_debug("%d ways joined", cnt);
- 
+
+      // if it is not a loop, than it is a starting open way
+      if (!ret)
+      {
+         wl->ref[i].open = 1;
+         wl->ref[i].w = nd;
+         ocnt++;
+      }
+
+
 #ifdef OUTPUT_COASTLINE
       if (nd != NULL)
       {
@@ -290,10 +323,11 @@ int loop_detect(struct wlist *wl)
    fclose(f);
 #endif
 
-   return 0;
+   return ocnt;
 }
 
 
+#if 0
 /*! poly_find_adj returns a list of nodes which are all connected together
  *  with open polygons.
  *  @param rd Pointer to struct rdata.
@@ -375,6 +409,7 @@ struct wlist *poly_find_adj(struct rdata *rd, struct wlist *wl)
 
    return nl;
 }
+#endif
 
 
 #if 0
@@ -403,27 +438,6 @@ void poly_node_to_border(struct rdata *rd, struct wlist *nl)
       if (nd->nd.lon < rd->x1c) nd->nd.lon = rd->x1c;
       if (nd->nd.lon > rd->x2c) nd->nd.lon = rd->x2c;
    }
-}
-#endif
-
-
-#ifdef OUTPUT_COASTLINE
-int poly_out(FILE *f, struct wlist *nl, struct rdata *rd)
-{
-   int i;
-
-   // FIXME: with this print_onode(), something is wrong...
-   //print_onode(f, get_object(OSM_WAY, nl->id));
-
-   fprintf(f, "<way id=\"%ld\" version=\"1\">\n", nl->id);
-   for (i = 0; i < nl->ref_cnt; i++)
-      fprintf(f, "   <nd ref=\"%ld\"/>\n", nl->ref[i].w->nd.id);
-   fprintf(f, "</way>\n");
-
-   for (i = 0; i < nl->ref_cnt; i++)
-      print_onode(f, get_object(OSM_NODE, nl->ref[i].w->nd.id));
-
-   return 0;
 }
 #endif
 
@@ -460,6 +474,39 @@ int enlarge_ref(struct wlist **wl, int n)
    return 0;
 }
 
+
+void init_corner_brg(const struct rdata *rd, const struct coord *src, struct corner_point *co_pt)
+{
+   struct coord corner_coord[4] = {{rd->y1c, rd->x2c}, {rd->y2c, rd->x2c}, {rd->y1c, rd->x2c}, {rd->y1c, rd->x1c}};
+   int i;
+
+   for (i = 0; i < 4; i++)
+   {
+      co_pt[i].pc = coord_diff(src, &corner_coord[i]);
+      co_pt[i].nd = malloc_object(1, 0);
+      co_pt[i].nd->nd.id = unique_node_id();
+      co_pt[i].nd->nd.type = OSM_NODE;
+      co_pt[i].nd->nd.ver = 1;
+      co_pt[i].nd->nd.tim = time(NULL);
+      co_pt[i].nd->nd.lat = corner_coord[i].lat;
+      co_pt[i].nd->nd.lon = corner_coord[i].lon;
+      set_const_tag(&co_pt[i].nd->otag[0], "type", "pagecorner");
+   }
+}
+
+
+void node_brg(struct pcoord *pc, struct coord *src, int64_t nid)
+{
+   struct onode *nd;
+   struct coord dst;
+
+   nd = get_object(OSM_NODE, nid);
+   dst.lat = nd->nd.lat;
+   dst.lon = nd->nd.lon;
+   *pc = coord_diff(src, &dst);
+}
+
+ 
 
 int connect_open_poly(struct rdata *rd, struct wlist **wl, int n)
 {
@@ -625,7 +672,7 @@ int64_t add_coast_way(struct rdata *rd, const struct wlist *nl)
 
 int cat_poly(struct rdata *rd)
 {
-   int i, nl_cnt, pd_cnt;
+   int i, nl_cnt, pd_cnt, ocnt;
    struct wlist *wl, *nl[MAX_OPEN_POLY];
    struct pdef *pd;
 #ifdef OUTPUT_COASTLINE
@@ -644,15 +691,18 @@ int cat_poly(struct rdata *rd)
    //   log_debug("open coastline %ld", wl->ref[i].w->nd.id);
 
    pd = poly_get_node_ids(wl);
+   qsort(pd, wl->ref_cnt * 2, sizeof(struct pdef), (int(*)(const void *, const void *)) compare_pdef_nid);
+   poly_find_adj2(wl, pd);
+   ocnt = loop_detect(wl);
+   //connect_open_poly2(rd, wl, ocnt);
 
-   for (pd_cnt = wl->ref_cnt * 2; pd_cnt;)
-   {
-      qsort(pd, pd_cnt, sizeof(struct pdef), (int(*)(const void *, const void *)) compare_pdef_nid);
-      poly_find_adj2(wl, pd, pd_cnt);
-      loop_detect(wl);
+   free(pd);
+   pd = poly_get_brg(rd, wl, ocnt);
+   qsort(pd, ocnt * 2, sizeof(struct pdef), (int(*)(const void *, const void *)) compare_pdef);
 
-      pd_cnt = 0;
-   }
+   for (i = 0; i < ocnt * 2; i++)
+      log_debug("%d: wl_index = %d, pn = %d, brg = %f", i, pd[i].wl_index, pd[i].pn, pd[i].pc.bearing);
+
 
 #if 0
 #ifdef OUTPUT_COASTLINE
