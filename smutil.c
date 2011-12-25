@@ -94,14 +94,14 @@ struct onode *malloc_object(int tag_cnt, int ref_cnt)
 
    if ((nd = calloc(1, sizeof(struct onode) + tag_cnt * sizeof(struct otag))) == NULL)
    {
-      //log_msg(LOG_ERR, "cannot calloc() for new onode: %s", strerror(errno));
-      return NULL;
+      log_msg(LOG_EMERG, "malloc_object(): cannot calloc() new onode: %s", strerror(errno));
+      exit(EXIT_FAILURE);
    }
    if ((nd->ref = calloc(ref_cnt, sizeof(int64_t))) == NULL)
    {
-      //log_msg(LOG_ERR, "cannot calloc() for refs of new onode: %s", strerror(errno));
+      log_msg(LOG_EMERG, "malloc_object(): cannot calloc() refs of new onode: %s", strerror(errno));
       free(nd);
-      return NULL;
+      exit(EXIT_FAILURE);
    }
 
    nd->ref_cnt = ref_cnt;

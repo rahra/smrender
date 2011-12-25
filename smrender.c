@@ -1323,7 +1323,7 @@ int main(int argc, char *argv[])
    log_msg(LOG_INFO, "creating grid and legend");
    grid(rd, rd->col[BLACK]);
 
-   save_osm(rd, "out.osm");
+   //save_osm(rd, "out.osm");
    hpx_free(ctl);
    hpx_free(cfctl);
 
