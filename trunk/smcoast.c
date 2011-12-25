@@ -127,10 +127,7 @@ struct pdef *poly_get_node_ids(const struct wlist *wl)
 struct pdef *poly_get_brg(struct rdata *rd, struct wlist *wl, int ocnt)
 {
    struct pdef *pd;
-   struct corner_point co_pt[4];
    struct coord center = {rd->mean_lat, (rd->x1c + rd->x2c) / 2};
-   struct coord dst;
-   struct onode *node;
    int i, j;
 
    if ((pd = calloc(ocnt * 2, sizeof(struct pdef))) == NULL)
@@ -138,8 +135,6 @@ struct pdef *poly_get_brg(struct rdata *rd, struct wlist *wl, int ocnt)
       log_msg(LOG_EMERG, "poly_get_brg(): %s", strerror(errno));
       exit(EXIT_FAILURE);
    }
-
-   init_corner_brg(rd, &center, co_pt);
 
    for (i = 0, j = 0; (i < wl->ref_cnt) && ( j < ocnt); i++)
    {
@@ -157,7 +152,6 @@ struct pdef *poly_get_brg(struct rdata *rd, struct wlist *wl, int ocnt)
 
    return pd;
 }
-
 
 
 int poly_find_adj2(struct wlist *wl, struct pdef *pd)
@@ -491,6 +485,7 @@ void init_corner_brg(const struct rdata *rd, const struct coord *src, struct cor
       co_pt[i].nd->nd.lat = corner_coord[i].lat;
       co_pt[i].nd->nd.lon = corner_coord[i].lon;
       set_const_tag(&co_pt[i].nd->otag[0], "type", "pagecorner");
+      put_object(co_pt[i].nd);
    }
 }
 
@@ -507,7 +502,7 @@ void node_brg(struct pcoord *pc, struct coord *src, int64_t nid)
 }
 
  
-
+#if 0
 int connect_open_poly(struct rdata *rd, struct wlist **wl, int n)
 {
    const gdPoint ic[] = {{gdImageSX(rd->img), -1}, {gdImageSX(rd->img), gdImageSY(rd->img)}, {-1, gdImageSY(rd->img)}, {-1, -1}};
@@ -599,6 +594,7 @@ int connect_open_poly(struct rdata *rd, struct wlist **wl, int n)
 
    return 0;
 }
+#endif
 
 
 /*! Calculate bearing/dist to node n of wlist. The result is stored into pc.
@@ -670,9 +666,76 @@ int64_t add_coast_way(struct rdata *rd, const struct wlist *nl)
 }
 
 
+void connect_open(struct rdata *rd, struct pdef *pd, struct wlist *wl, int ocnt)
+{
+   int i, j, k, l;
+   int64_t *ref;
+   struct corner_point co_pt[4];
+   struct coord center = {rd->mean_lat, (rd->x1c + rd->x2c) / 2};
+
+   init_corner_brg(rd, &center, co_pt);
+
+   for (i = 0; i < ocnt; i++)
+   {
+      // skip end points and loops
+      if (pd[i].pn || !wl->ref[pd[i].wl_index].open)
+      {
+         //log_debug("skipping i = %d", i);
+         continue;
+      }
+
+      for (j = i + 1; j <= ocnt; j++)
+      {
+         // skip start points
+         if (!pd[j % ocnt].pn || !wl->ref[pd[j % ocnt].wl_index].open)
+         {
+            //log_debug("skipping j = %d", j);
+            continue;
+         }
+
+         if (pd[i].wl_index == pd[j % ocnt].wl_index)
+         {
+            // find next corner point for i
+            for (k = 0; k < 4; k++)
+               if (pd[i].pc.bearing < co_pt[k].pc.bearing)
+                  break;
+            // find next corner point for j
+            for (l = 0; l < 4; l++)
+               if (pd[j % ocnt].pc.bearing < co_pt[l].pc.bearing)
+                  break;
+            if (l < k)
+               l += 4;
+            // add corner points to way
+            for (; k < l; k++)
+            {
+               if ((ref = realloc(wl->ref[pd[i].wl_index].w->ref, sizeof(int64_t) * (wl->ref[pd[i].wl_index].w->ref_cnt + 1))) == NULL)
+                  log_msg(LOG_ERR, "realloc() failed: %s", strerror(errno)), exit(EXIT_FAILURE);
+
+               ref[wl->ref[pd[i].wl_index].w->ref_cnt] = co_pt[k % 4].nd->nd.id;
+               wl->ref[pd[i].wl_index].w->ref = ref;
+               wl->ref[pd[i].wl_index].w->ref_cnt++;
+               log_debug("added corner point %d", k % 4);
+            }
+
+            if ((ref = realloc(wl->ref[pd[i].wl_index].w->ref, sizeof(int64_t) * (wl->ref[pd[i].wl_index].w->ref_cnt + 1))) == NULL)
+               log_msg(LOG_ERR, "realloc() failed: %s", strerror(errno)), exit(EXIT_FAILURE);
+
+            ref[wl->ref[pd[i].wl_index].w->ref_cnt] = ref[0];
+            wl->ref[pd[i].wl_index].w->ref = ref;
+            wl->ref[pd[i].wl_index].w->ref_cnt++;
+            wl->ref[pd[i].wl_index].open = 0;
+            //put_object(wl->ref[pd[i].wl_index].w);
+            log_debug("way %ld (wl_index = %d) is now closed", wl->ref[pd[i].wl_index].w->nd.id, pd[i].wl_index);
+            break;
+         }
+      }
+   }
+}
+
+
 int cat_poly(struct rdata *rd)
 {
-   int i, nl_cnt, pd_cnt, ocnt;
+   int i, j, nl_cnt, pd_cnt, ocnt;
    struct wlist *wl, *nl[MAX_OPEN_POLY];
    struct pdef *pd;
 #ifdef OUTPUT_COASTLINE
@@ -695,14 +758,16 @@ int cat_poly(struct rdata *rd)
    poly_find_adj2(wl, pd);
    ocnt = loop_detect(wl);
    //connect_open_poly2(rd, wl, ocnt);
-
    free(pd);
    pd = poly_get_brg(rd, wl, ocnt);
-   qsort(pd, ocnt * 2, sizeof(struct pdef), (int(*)(const void *, const void *)) compare_pdef);
+   ocnt *= 2;
+   qsort(pd, ocnt, sizeof(struct pdef), (int(*)(const void *, const void *)) compare_pdef);
 
-   for (i = 0; i < ocnt * 2; i++)
+   for (i = 0; i < ocnt; i++)
       log_debug("%d: wl_index = %d, pn = %d, brg = %f", i, pd[i].wl_index, pd[i].pn, pd[i].pc.bearing);
 
+   connect_open(rd, pd, wl, ocnt);
+   free(pd);
 
 #if 0
 #ifdef OUTPUT_COASTLINE
