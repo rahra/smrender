@@ -93,8 +93,9 @@ void vlog_msgf(FILE *out, int lf, const char *fmt, va_list ap)
    t = tv.tv_sec;
    if ((tm = localtime(&t)))
    {
-      (void) strftime(timestr, TIMESTRLEN, "%a, %d %b %Y %H:%M:%S", tm);
-      (void) strftime(timez, TIMESTRLEN, "%z", tm);
+      //(void) strftime(timestr, TIMESTRLEN, "%a, %d %b %Y %H:%M:%S", tm);
+      (void) strftime(timestr, TIMESTRLEN, "%H:%M:%S", tm);
+      //(void) strftime(timez, TIMESTRLEN, "%z", tm);
    }
 
    if (out)

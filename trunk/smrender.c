@@ -198,7 +198,17 @@ int parse_draw(const char *src, struct drawStyle *ds, const struct rdata *rd)
    if ((s = strtok_r(NULL, ",", &sb)) == NULL)
       return 0;
 
-   log_msg(LOG_WARN, "draw width and styles are not parsed yet (sorry...)");
+   ds->width = atof(s);
+
+   if ((s = strtok_r(NULL, ",", &sb)) == NULL)
+      return 0;
+
+   if (!strcmp(s, "solid")) ds->style = DRAW_SOLID;
+   else if (!strcmp(s, "dashed")) ds->style = DRAW_DASHED;
+   else if (!strcmp(s, "dotted")) ds->style = DRAW_DOTTED;
+   else if (!strcmp(s, "transparent")) ds->style = DRAW_TRANSPARENT;
+
+   //log_msg(LOG_WARN, "draw width and styles are not parsed yet (sorry...)");
    return 0;
 }
 
@@ -646,9 +656,17 @@ int act_fill_poly(struct onode *wy, struct rdata *rd, struct onode *mnd)
    }
 
    if (mnd->rule.draw.fill.used)
-      gdImageFilledPolygon(rd->img, p, wy->ref_cnt, mnd->rule.draw.fill.col);
+   {
+      if (mnd->rule.draw.fill.style != DRAW_TRANSPARENT)
+         gdImageFilledPolygon(rd->img, p, wy->ref_cnt, mnd->rule.draw.fill.col);
+   }
+
    if (mnd->rule.draw.border.used)
-      gdImagePolygon(rd->img, p, wy->ref_cnt, mnd->rule.draw.border.col);
+   {
+      if (mnd->rule.draw.border.style != DRAW_TRANSPARENT)
+         gdImagePolygon(rd->img, p, wy->ref_cnt, mnd->rule.draw.border.col);
+   }
+
    return 0;
 }
 
@@ -903,7 +921,7 @@ void grid(struct rdata *rd, int col)
       //fprintf(stderr, "d = %s (%f)\n", cfmt(d, LAT, buf, sizeof(buf)), d);
       mk_paper_coords(d, rd->x1c, rd, &p[0].x, &p[0].y);
       mk_paper_coords(d, rd->x2c, rd, &p[1].x, &p[1].y);
-      gdImageOpenPolygon(rd->img, p, 2, col);
+      //gdImageOpenPolygon(rd->img, p, 2, col);
 
       fdm(d, &deg, &min);
       if (min == 1.0) min = 0, deg++;
@@ -919,7 +937,7 @@ void grid(struct rdata *rd, int col)
       //fprintf(stderr, "d = %s (%f)\n", cfmt(d, LAT, buf, sizeof(buf)), d);
       mk_paper_coords(rd->y1c, d, rd, &p[0].x, &p[0].y);
       mk_paper_coords(rd->y2c, d, rd, &p[1].x, &p[1].y);
-      gdImageOpenPolygon(rd->img, p, 2, col);
+      //gdImageOpenPolygon(rd->img, p, 2, col);
 
       fdm(d, &deg, &min);
       if (min == 1.0) min = 0, deg++;
@@ -930,12 +948,12 @@ void grid(struct rdata *rd, int col)
       img_print(rd, p[0].x, l, POS_S | POS_E, rd->col[BLACK], G_FTSIZE, G_FONT, buf);
       img_print(rd, p[0].x, rd->h - l, POS_N | POS_E, rd->col[BLACK], G_FTSIZE, G_FONT, buf);
    }
-
+#if 0
    grid_rcalc(rd, p, G_MARGIN);
    p[5] = p[0];
-   gdImagePolygon(rd->img, p, 5, col);
+   //gdImagePolygon(rd->img, p, 5, col);
    grid_rcalc(rd, p, G_MARGIN + G_TW);
-   gdImagePolygon(rd->img, p, 5, col);
+   //gdImagePolygon(rd->img, p, 5, col);
    grid_rcalc(rd, p, G_MARGIN + G_TW + G_STW);
    p[6] = p[0];
    gdImagePolygon(rd->img, p, 5, col);
@@ -1037,8 +1055,7 @@ void grid(struct rdata *rd, int col)
       gdImageOpenPolygon(rd->img, &p[0], 2, col);
       gdImageOpenPolygon(rd->img, &p[3], 2, col);
    }
-
-
+#endif
 }
 
 
@@ -1314,6 +1331,8 @@ int main(int argc, char *argv[])
 
    log_msg(LOG_INFO, "preparing coastline");
    cat_poly(rd);
+   log_msg(LOG_INFO, "generating grid nodes/ways");
+   grid2(rd);
 
    log_msg(LOG_INFO, "rendering ways");
    traverse(rd->rules, 0, IDX_WAY, apply_wrules, rd, NULL);
