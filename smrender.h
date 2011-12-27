@@ -69,6 +69,10 @@
 #define MM2PT(x) round((double) (x) * 72.72 / 25.4)
 // convert pixels to mm
 #define PX2MM(x) ((double) (x) * 25.4 / rd->dpi)
+// convert mm to degrees
+#define MM2LAT(x) ((x) * (rd->y1c - rd->y2c) / PX2MM(rd->h))
+#define MM2LON(x) ((x) * (rd->x2c - rd->x1c) / PX2MM(rd->w))
+
 
 typedef struct rdata rdata_t;
 typedef struct onode onode_t;
@@ -210,7 +214,7 @@ struct rdata
 enum {WHITE, YELLOW, BLACK, BLUE, MAGENTA, BROWN};
 enum {LAT, LON};
 enum {ACT_NA, ACT_IMG, ACT_CAP, ACT_FUNC, ACT_DRAW};
-enum {DRAW_SOLID, DRAW_DASHED, DRAW_DOTTED};
+enum {DRAW_SOLID, DRAW_DASHED, DRAW_DOTTED, DRAW_TRANSPARENT};
 
 // select projection
 // PRJ_DIRECT directly projects the bounding box onto the image.
@@ -252,6 +256,8 @@ size_t onode_mem(void);
 /* smcoast.c */
 int cat_poly(struct rdata *);
 
+/* smgrid.c */
+void grid2(struct rdata*);
 
 extern int oline_;
 

@@ -1,0 +1,172 @@
+/* Copyright 2011 Bernhard R. Fischer, 2048R/5C5FFD47 <bf@abenteuerland.at>
+ *
+ * This file is part of smfilter.
+ *
+ * Smfilter is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, version 3 of the License.
+ *
+ * Smfilter is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with smfilter. If not, see <http://www.gnu.org/licenses/>.
+ */
+
+/*! This program reads an OSM/XML file and parses, filters, and modifies it.
+ *  Filter and modification rules are hardcoded.
+ *
+ *  @author Bernhard R. Fischer
+ */
+
+#include "smrender.h"
+
+
+void geo_square(struct rdata *rd, double b, char *v)
+{
+   double lat[4] = {rd->y1c - MM2LAT(b), rd->y1c - MM2LAT(b), rd->y2c + MM2LAT(b), rd->y2c + MM2LAT(b)};
+   double lon[4] = {rd->x1c + MM2LON(b), rd->x2c - MM2LON(b), rd->x2c - MM2LON(b), rd->x1c + MM2LON(b)};
+   struct onode *n, *w;
+   int i;
+
+   w = malloc_object(2, 5);
+   w->nd.type = OSM_WAY;
+   w->nd.id = unique_way_id();
+   w->nd.tim = time(NULL);
+   w->nd.ver = 1;
+   set_const_tag(&w->otag[0], "generator", "smrender");
+   set_const_tag(&w->otag[1], "grid", v);
+   put_object(w);
+
+   for (i = 0; i < 4; i++)
+   {
+      n = malloc_object(1, 0);
+      n->nd.type = OSM_NODE;
+      w->ref[i] = n->nd.id = unique_node_id();
+      n->nd.tim = time(NULL);
+      n->nd.ver = 1;
+      n->nd.lat = lat[i];
+      n->nd.lon = lon[i];
+      set_const_tag(&n->otag[0], "generator", "smrender");
+      put_object(n);
+   }
+
+   w->ref[4] = w->ref[0];
+}
+
+
+void geo_tick(double lat1, double lon1, double lat2, double lon2, char *v)
+{
+   struct onode *n, *w;
+
+   w = malloc_object(2, 2);
+   w->nd.type = OSM_WAY;
+   w->nd.id = unique_way_id();
+   w->nd.tim = time(NULL);
+   w->nd.ver = 1;
+   set_const_tag(&w->otag[0], "generator", "smrender");
+   //set_const_tag(&w->otag[1], "grid", lon % t ? "subtick" : "tick");
+   set_const_tag(&w->otag[1], "grid", v);
+   put_object(w);
+
+   n = malloc_object(1, 0);
+   n->nd.type = OSM_NODE;
+   w->ref[0] = n->nd.id = unique_node_id();
+   n->nd.tim = time(NULL);
+   n->nd.ver = 1;
+   //n->nd.lat = rd->y1c - b3;
+   n->nd.lat = lat1;
+   //n->nd.lon = (double) lon / 600.0;
+   n->nd.lon = lon1;
+   set_const_tag(&n->otag[0], "generator", "smrender");
+   put_object(n);
+ 
+   n = malloc_object(1, 0);
+   n->nd.type = OSM_NODE;
+   w->ref[1] = n->nd.id = unique_node_id();
+   n->nd.tim = time(NULL);
+   n->nd.ver = 1;
+   //n->nd.lat = rd->y1c - ((lon % t) ? b2 : b1);
+   n->nd.lat = lat2;
+   //n->nd.lon = (double) lon / 600.0;
+   n->nd.lon = lon2;
+   set_const_tag(&n->otag[0], "generator", "smrender");
+   put_object(n);
+}
+
+
+/*! @param b Longitude border.
+ *  @param b1 Outer border (mm)
+ *  @param b2 Middle line (mm)
+ *  @param b3 Inner border (mm)
+ *  @param t Ticks in tenths of a minute (i.e. 600 = 1').
+ *  @param st subticks in tenths of a minute.
+ */
+void geo_lon_ticks(struct rdata *rd, double b, double b1, double b2, double b3, int g, int t, int st)
+{
+   int bi, lon;
+
+   bi = (lround(b * 600.0) / st) * st + (int) (rd->x1c * 600.0);
+   for (lon = bi + st; lon < (rd->x2c - b) * 600; lon += st)
+   {
+      if (lon % g)
+      {
+         geo_tick(rd->y1c - b3, (double) lon / 600.0, rd->y1c - ((lon % t) ? b2 : b1), (double) lon / 600.0, lon % t ? "subtick" : "tick");
+         geo_tick(rd->y2c + b3, (double) lon / 600.0, rd->y2c + ((lon % t) ? b2 : b1), (double) lon / 600.0, lon % t ? "subtick" : "tick");
+      }
+      else
+      {
+         geo_tick(rd->y2c + b1, (double) lon / 600.0, rd->y1c - b1, (double) lon / 600.0, "grid");
+      }
+   }
+}
+
+
+/*! @param b Longitude border.
+ *  @param b1 Outer border (mm)
+ *  @param b2 Middle line (mm)
+ *  @param b3 Inner border (mm)
+ *  @param t Ticks in tenths of a minute (i.e. 600 = 1').
+ *  @param st subticks in tenths of a minute.
+ */
+void geo_lat_ticks(struct rdata *rd, double b, double b1, double b2, double b3, int g, int t, int st)
+{
+   int bi, lat;
+
+   bi = (lround((b + rd->y2c) * 600) / st) * st;
+   for (lat = bi + st; lat < (rd->y1c - b) * 600; lat += st)
+   {
+      if (lat % g)
+      {
+         geo_tick((double) lat / 600.0, rd->x1c + b3, (double) lat / 600.0,
+               rd->x1c + ((lat % t) ? b2 : b1), lat % t ? "subtick" : "tick");
+         geo_tick((double) lat / 600.0, rd->x2c - b3, (double) lat / 600.0,
+               rd->x2c - ((lat % t) ? b2 : b1), lat % t ? "subtick" : "tick");
+      }
+      else
+      {
+         geo_tick((double) lat / 600.0, rd->x2c - b3, (double) lat / 600.0,
+               rd->x1c + b3, "grid");
+      }
+   }
+}
+
+
+/*! ...
+ *  Karte im Maßstab 1:100 000 (Silba-Pag): grid 10', ticks 1', subticks 0.25'
+ *  ...
+ */
+void grid2(struct rdata *rd)
+{
+   geo_square(rd, G_MARGIN, "outer_border");
+   geo_square(rd, G_MARGIN + G_TW, "ticks_border");
+   geo_square(rd, G_MARGIN + G_TW + G_STW, "subticks_border");
+
+   geo_lon_ticks(rd, MM2LON(G_MARGIN + G_TW + G_STW), MM2LAT(G_MARGIN),
+         MM2LAT(G_MARGIN + G_TW), MM2LAT(G_MARGIN + G_TW + G_STW), G_GRID * 600, G_TICKS * 600, G_STICKS * 600);
+   geo_lat_ticks(rd, MM2LAT(G_MARGIN + G_TW + G_STW), MM2LON(G_MARGIN),
+         MM2LON(G_MARGIN + G_TW), MM2LON(G_MARGIN + G_TW + G_STW), G_GRID * 600, G_TICKS * 600, G_STICKS * 600);
+}
+

@@ -138,18 +138,21 @@
       <tag k='seamark:light_radial' v=''/>
       <tag k='_action_' v='draw:black'/>
    </way>
-    <way>
+   <way>
       <tag k='seamark:light_arc' v=''/>
       <tag k='_action_' v='draw:black'/>
    </way>
-     <way>
+   <way>
       <tag k='natural' v='water'/>
       <tag k='_action_' v='draw:blue:black'/>
    </way>
-      <way>
+   <way>
       <tag k='waterway' v=''/>
       <tag k='_action_' v='draw:blue:blue'/>
    </way>
- 
+   <way>
+      <tag k='grid' v=''/>
+      <tag k='_action_' v='draw:black,0,transparent:black'/>
+   </way>
 </osm>
 
