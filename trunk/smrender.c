@@ -48,12 +48,6 @@
 static const char *rule_type_[] = {"N/A", "ACT_IMG", "ACT_CAP", "ACT_FUNC", "ACT_DRAW"};
 
 
-void usage(const char *s)
-{
-   printf("Seamark renderer V1.0, (c) 2011, Bernhard R. Fischer, <bf@abenteuerland.at>.\n\n");
-}
-
-
 /*! Returns degrees and minutes of a fractional coordinate.
  */
 void fdm(double x, int *deg, int *min)
@@ -499,7 +493,8 @@ int act_caption(struct onode *nd, struct rdata *rd, struct onode *mnd, int x, in
    fte.charmap = gdFTEX_Unicode;
    fte.hdpi = fte.vdpi = rd->dpi;
 
-   nd->otag[n].v.buf[nd->otag[n].v.len] = '\0';
+   if (nd->otag[n].v.buf[nd->otag[n].v.len])
+      nd->otag[n].v.buf[nd->otag[n].v.len] = '\0';
    gdImageStringFTEx(NULL, br, mnd->rule.cap.col, mnd->rule.cap.font, mnd->rule.cap.size * 2.8699, 0, x, y, nd->otag[n].v.buf, &fte);
 
    if (isnan(mnd->rule.cap.angle))
@@ -1050,6 +1045,9 @@ int save_osm(struct rdata *rd, const char *s)
 {
    FILE *f;
 
+   if (s == NULL)
+      return -1;
+
    log_msg(LOG_INFO, "saving osm output to '%s'", s);
    if ((f = fopen(s, "w")) != NULL)
    {
@@ -1066,18 +1064,66 @@ int save_osm(struct rdata *rd, const char *s)
 }
 
 
+void usage(const char *s)
+{
+   printf("Seamark renderer V1.1, (c) 2011, Bernhard R. Fischer, <bf@abenteuerland.at>.\n"
+         "usage: %s [OPTIONS]\n"
+         "   -G .................. Do not generate grid nodes/ways.\n"
+         "   -C .................. Do not close open coastline polygons.\n"
+         "   -i <osm input> ...... OSM input data (defaulta is stdin).\n"
+         "   -r <rules file> ..... Rules file ('rules.osm' is default).\n"
+         "   -o <image file> ..... Filename of output image (stdout is default).\n"
+         "   -w <osm file> ....... Output OSM data to file.\n",
+         s
+         );
+}
+
+
 int main(int argc, char *argv[])
 {
    hpx_ctrl_t *ctl, *cfctl;
-   int fd = 0;
+   int fd = 0, n;
    struct stat st;
    FILE *f = stdout;
-   char *cf = "rules.osm";
+   char *cf = "rules.osm", *img_file = NULL, *osm_ifile = NULL, *osm_ofile = NULL;
    struct rdata *rd;
    struct timeval tv_start, tv_end;
+   int gen_grid = 1, prep_coast = 1;
 
    (void) gettimeofday(&tv_start, NULL);
    init_log("stderr", LOG_DEBUG);
+
+   while ((n = getopt(argc, argv, "CGhi:o:r:w:")) != -1)
+      switch (n)
+      {
+         case 'C':
+            prep_coast = 0;
+            break;
+
+         case 'G':
+            gen_grid = 0;
+            break;
+
+         case 'h':
+            usage(argv[0]);
+            exit(EXIT_SUCCESS);
+
+         case 'i':
+            osm_ifile = optarg;
+            break;
+
+         case 'o':
+            img_file = optarg;
+            break;
+
+         case 'r':
+            cf = optarg;
+            break;
+
+         case 'w':
+            osm_ofile = optarg;
+            break;
+      }
 
    log_msg(LOG_INFO, "initializing structures");
    rd = init_rdata();
@@ -1098,7 +1144,7 @@ int main(int argc, char *argv[])
    if (!gdFTUseFontConfig(1))
       log_msg(LOG_NOTICE, "fontconfig library not available");
 
-   if ((argc >= 2) && ((fd = open(argv[1], O_RDONLY)) == -1))
+   if ((osm_ifile != NULL) && ((fd = open(osm_ifile, O_RDONLY)) == -1))
          perror("open"), exit(EXIT_FAILURE);
 
    if (fstat(fd, &st) == -1)
@@ -1109,8 +1155,8 @@ int main(int argc, char *argv[])
 
    log_msg(LOG_INFO, "reading osm data (file size %ld kb)", (long) st.st_size / 1024);
    (void) read_osm_file(ctl, &rd->obj);
-   (void) close(fd);
-
+   if (osm_ifile != NULL)
+      (void) close(fd);
 
    if ((fd = open(cf, O_RDONLY)) == -1)
          perror("open"), exit(EXIT_FAILURE);
@@ -1145,27 +1191,38 @@ int main(int argc, char *argv[])
    traverse(rd->rules, 0, IDX_NODE, prepare_rules, rd, NULL);
    traverse(rd->rules, 0, IDX_WAY, prepare_rules, rd, NULL);
 
-   log_msg(LOG_INFO, "preparing coastline");
-   cat_poly(rd);
-   log_msg(LOG_INFO, "generating grid nodes/ways");
-   grid2(rd);
+   if (prep_coast)
+   {
+      log_msg(LOG_INFO, "preparing coastline");
+      cat_poly(rd);
+   }
+
+   if (gen_grid)
+   {
+      log_msg(LOG_INFO, "generating grid nodes/ways");
+      grid2(rd);
+   }
 
    log_msg(LOG_INFO, "rendering ways");
    traverse(rd->rules, 0, IDX_WAY, apply_wrules, rd, NULL);
    log_msg(LOG_INFO, "rendering nodes");
    traverse(rd->rules, 0, IDX_NODE, apply_rules, rd, NULL);
 
-   //log_msg(LOG_INFO, "creating grid and legend");
-   //grid(rd, rd->col[BLACK]);
-
-   save_osm(rd, "out.osm");
+   save_osm(rd, osm_ofile);
    hpx_free(ctl);
    hpx_free(cfctl);
 
    log_msg(LOG_INFO, "saving image");
+   if (img_file != NULL)
+   {
+      if ((f = fopen(img_file, "w")) == NULL)
+         log_msg(LOG_ERR, "error opening file %s: %s", img_file, strerror(errno)),
+            exit(EXIT_FAILURE);
+   }
    gdImagePng(rd->img, f);
+   if (img_file != NULL)
+      fclose(f);
    gdImageDestroy(rd->img);
-
 
    (void) gettimeofday(&tv_end, NULL);
    tv_end.tv_sec -= tv_start.tv_sec;

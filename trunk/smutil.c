@@ -50,16 +50,16 @@ struct rdata *init_rdata(void)
    rd->y2c = 45.183; */
 
    //dugi.osm
-   rd->x1c = 14.72;
-   rd->y1c = 44.23;
-   rd->x2c = 15.29;
-   rd->y2c = 43.96;
+   //rd->x1c = 14.72;
+   //rd->y1c = 44.23;
+   //rd->x2c = 15.29;
+   //rd->y2c = 43.96;
 
    //croatia...osm
-   //rd->x1c = 13.9;
-   //rd->y1c = 45.75;
-   //rd->x2c = 15.4;
-   //rd->y2c = 43.0;
+   rd->x1c = 13.9;
+   rd->y1c = 45.75;
+   rd->x2c = 15.4;
+   rd->y2c = 43.0;
 
    //croatia_big...osm
    //rd->x1c = 13.5;
