@@ -69,9 +69,6 @@
       <tag k='_action_' v='img:icons/Dot_6x6.png'/>
    </node>
 
-
-
-
    <!--
         __Font styles__
         light captions: Sans (1.4mm)
@@ -108,7 +105,7 @@
       <tag k='_action_' v='cap:/usr/share/fonts/truetype/ttf-liberation/LiberationSerif-Regular.ttf,1.2,s,black,0,ele'/>
       <tag k='natural' v='peak'/>
    </node>
-    <node>
+   <node>
       <tag k='_action_' v='cap:/usr/share/fonts/truetype/ttf-liberation/LiberationSans-Bold.ttf,2.5,cm,black,auto,name'/>
       <tag k='place' v='island'/>
    </node>
@@ -120,7 +117,27 @@
       <tag k='_action_' v='cap:/usr/share/fonts/truetype/ttf-liberation/LiberationSans-Italic.ttf,1.4,cm,black,auto,name'/>
       <tag k='natural' v='bay'/>
    </node>
-
+   <node>
+      <tag k='_action_' v='cap:/usr/share/fonts/truetype/ttf-liberation/LiberationSans-Bold.ttf,4,cn,black,90,name'/>
+      <tag k='grid' v='text'/>
+      <tag k='border' v='left'/>
+   </node>
+   <node>
+      <tag k='_action_' v='cap:/usr/share/fonts/truetype/ttf-liberation/LiberationSans-Bold.ttf,4,cn,black,270,name'/>
+      <tag k='grid' v='text'/>
+      <tag k='border' v='right'/>
+   </node>
+   <node>
+      <tag k='_action_' v='cap:/usr/share/fonts/truetype/ttf-liberation/LiberationSans-Bold.ttf,4,cn,black,0,name'/>
+      <tag k='grid' v='text'/>
+      <tag k='border' v='top'/>
+   </node>
+   <node>
+      <tag k='_action_' v='cap:/usr/share/fonts/truetype/ttf-liberation/LiberationSans-Bold.ttf,4,cs,black,0,name'/>
+      <tag k='grid' v='text'/>
+      <tag k='border' v='bottom'/>
+   </node>
+ 
    <way>
       <tag k='natural' v='coastline'/>
       <tag k='_action_' v='draw:yellow:black'/>

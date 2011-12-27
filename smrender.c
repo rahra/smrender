@@ -1339,8 +1339,8 @@ int main(int argc, char *argv[])
    log_msg(LOG_INFO, "rendering nodes");
    traverse(rd->rules, 0, IDX_NODE, apply_rules, rd, NULL);
 
-   log_msg(LOG_INFO, "creating grid and legend");
-   grid(rd, rd->col[BLACK]);
+   //log_msg(LOG_INFO, "creating grid and legend");
+   //grid(rd, rd->col[BLACK]);
 
    save_osm(rd, "out.osm");
    hpx_free(ctl);
