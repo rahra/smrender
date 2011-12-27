@@ -21,7 +21,27 @@
  *  @author Bernhard R. Fischer
  */
 
+#include <string.h>
 #include "smrender.h"
+
+
+void geo_description(double lat, double lon, char *text, char *pos)
+{
+   struct onode *n;
+
+   n = malloc_object(4, 0);
+   n->nd.type = OSM_NODE;
+   n->nd.id = unique_node_id();
+   n->nd.tim = time(NULL);
+   n->nd.ver = 1;
+   n->nd.lat = lat;
+   n->nd.lon = lon;
+   set_const_tag(&n->otag[0], "generator", "smrender");
+   set_const_tag(&n->otag[1], "grid", "text");
+   set_const_tag(&n->otag[2], "name", text);
+   set_const_tag(&n->otag[3], "border", pos);
+   put_object(n);
+}
 
 
 void geo_square(struct rdata *rd, double b, char *v)
@@ -107,6 +127,7 @@ void geo_tick(double lat1, double lon1, double lat2, double lon2, char *v)
 void geo_lon_ticks(struct rdata *rd, double b, double b1, double b2, double b3, int g, int t, int st)
 {
    int bi, lon;
+   char buf[32], *s;
 
    bi = (lround(b * 600.0) / st) * st + (int) (rd->x1c * 600.0);
    for (lon = bi + st; lon < (rd->x2c - b) * 600; lon += st)
@@ -119,6 +140,12 @@ void geo_lon_ticks(struct rdata *rd, double b, double b1, double b2, double b3, 
       else
       {
          geo_tick(rd->y2c + b1, (double) lon / 600.0, rd->y1c - b1, (double) lon / 600.0, "grid");
+
+         snprintf(buf, sizeof(buf), "%03d° %02d'", lon / 600, (lon % 600) / 10);
+         s = strdup(buf);
+         geo_description(rd->y1c - b2, (double) lon / 600.0, s, "top");
+         geo_description(rd->y2c + b2, (double) lon / 600.0, s, "bottom");
+
       }
    }
 }
@@ -134,6 +161,7 @@ void geo_lon_ticks(struct rdata *rd, double b, double b1, double b2, double b3, 
 void geo_lat_ticks(struct rdata *rd, double b, double b1, double b2, double b3, int g, int t, int st)
 {
    int bi, lat;
+   char buf[32], *s;
 
    bi = (lround((b + rd->y2c) * 600) / st) * st;
    for (lat = bi + st; lat < (rd->y1c - b) * 600; lat += st)
@@ -147,8 +175,17 @@ void geo_lat_ticks(struct rdata *rd, double b, double b1, double b2, double b3, 
       }
       else
       {
-         geo_tick((double) lat / 600.0, rd->x2c - b3, (double) lat / 600.0,
-               rd->x1c + b3, "grid");
+         geo_tick((double) lat / 600.0, rd->x2c - b1, (double) lat / 600.0,
+               rd->x1c + b1, "grid");
+
+         snprintf(buf, sizeof(buf), "%02d° %02d'", lat / 600, (lat % 600) / 10);
+         s = strdup(buf);
+         geo_description((double) lat / 600.0, rd->x2c - b2, s, "right");
+         geo_description((double) lat / 600.0, rd->x1c + b2, s, "left");
+//         snprintf(buf, sizeof(buf), "%02.1f'", (double) (lat % 600) / 10);
+//         s = strdup(buf);
+//         geo_description((double) lat / 600.0, rd->x2c - b3, s, "en");
+//         geo_description((double) lat / 600.0, rd->x1c + b3, s, "wn");
       }
    }
 }
