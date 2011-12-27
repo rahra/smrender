@@ -191,6 +191,18 @@ void geo_lat_ticks(struct rdata *rd, double b, double b1, double b2, double b3, 
 }
 
 
+void geo_legend(struct rdata *rd)
+{
+   char buf[256], *s;
+   int lat;
+
+   lat = rd->mean_lat * 600.0;
+   snprintf(buf, sizeof(buf), "Mean Latitude %02d %c %.1f' Scale = 1:%.0f", lat / 600, lat < 0 ? 'S' : 'N', (double) (lat % 600) / 10, rd->scale);
+   s = strdup(buf);
+   geo_description(rd->y1c - MM2LAT(G_MARGIN), rd->x1c + rd->wc / 2, s, "top");
+   geo_description(rd->y2c + MM2LAT(G_MARGIN + G_TW + G_STW), rd->x1c + rd->wc / 2, "Generated with /smrender/, author Bernhard R. Fischer, 2048R/5C5FFD47 &lt;bf@abenteuerland.at&gt;, data source: OSM.", "top");
+}
+
 /*! ...
  *  Karte im Maßstab 1:100 000 (Silba-Pag): grid 10', ticks 1', subticks 0.25'
  *  ...
@@ -205,5 +217,6 @@ void grid2(struct rdata *rd)
          MM2LAT(G_MARGIN + G_TW), MM2LAT(G_MARGIN + G_TW + G_STW), G_GRID * 600, G_TICKS * 600, G_STICKS * 600);
    geo_lat_ticks(rd, MM2LAT(G_MARGIN + G_TW + G_STW), MM2LON(G_MARGIN),
          MM2LON(G_MARGIN + G_TW), MM2LON(G_MARGIN + G_TW + G_STW), G_GRID * 600, G_TICKS * 600, G_STICKS * 600);
+   geo_legend(rd);
 }
 
