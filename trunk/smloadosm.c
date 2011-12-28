@@ -15,8 +15,8 @@
  * along with smrender. If not, see <http://www.gnu.org/licenses/>.
  */
 
-/*! This program reads an OSM/XML file and parses, filters, and modifies it.
- *  Filter and modification rules are hardcoded.
+/*! This program reads an OSM/XML file and parses it into an object tree.
+ * Originally it was written for smfilter and was reused and adapted.
  *
  *  @author Bernhard R. Fischer
  */

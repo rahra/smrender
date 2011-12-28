@@ -1,3 +1,28 @@
+/* Copyright 2011 Bernhard R. Fischer, 2048R/5C5FFD47 <bf@abenteuerland.at>
+ *
+ * This file is part of smrender.
+ *
+ * Smrender is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, version 3 of the License.
+ *
+ * Smrender is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with smrender. If not, see <http://www.gnu.org/licenses/>.
+ */
+
+/*! This file contains 'utility' code. This is getting and putting object from
+ * and into the object tree, some bstring_t functions (which are not found in
+ * bstring.c), and the matching functions which are applied to the objects
+ * before execution the rules' actions.
+ *
+ *  @author Bernhard R. Fischer
+ */
+
 #include <stdint.h>
 #include <limits.h>
 #include <string.h>

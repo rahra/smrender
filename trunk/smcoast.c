@@ -1,3 +1,28 @@
+/* Copyright 2011 Bernhard R. Fischer, 2048R/5C5FFD47 <bf@abenteuerland.at>
+ *
+ * This file is part of smrender.
+ *
+ * Smrender is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, version 3 of the License.
+ *
+ * Smrender is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with smrender. If not, see <http://www.gnu.org/licenses/>.
+ */
+
+/*! This file contains the code which is used to close open polygons. Open
+ * polygons obviously cannot be filled, thus the must be closed before. Open
+ * polygons occure at the edges of the boundbox which is used to select data out
+ * of the OSM database. This is one of the most difficult parts at all.
+ *
+ *  @author Bernhard R. Fischer
+ */
+
 #include <unistd.h>
 #include <string.h>
 #include <stdio.h>

@@ -1,24 +1,25 @@
-/* Copyright 2008 Bernhard R. Fischer, Daniel Haslinger.
+/* Copyright 2008-2011 Bernhard R. Fischer, Daniel Haslinger.
  *
- * This file is part of OnionCat.
+ * This file is part of smrender.
  *
- * OnionCat is free software: you can redistribute it and/or modify
+ * Smrender is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, version 3 of the License.
  *
- * OnionCat is distributed in the hope that it will be useful,
+ * Smrender is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with OnionCat. If not, see <http://www.gnu.org/licenses/>.
+ * along with smrender. If not, see <http://www.gnu.org/licenses/>.
  */
 
-/*! @file
- *  File contains logging functions.
+/*! This file simply contains the logging functions. It was originally written
+ * for OnionCat and was adapted to be used for smrender.
+ * 
  *  @author Bernhard R. Fischer
- *  @version 2008/10/1
+ *  @version 2011/12/20
  */
 
 #include <stdio.h>
