@@ -115,7 +115,7 @@
    </node>
    <node>
       <tag k='_action_' v='cap:/usr/share/fonts/truetype/ttf-liberation/LiberationSans-Bold.ttf,2.5,cm,black,auto;yellow,name'/>
-      <tag k='place' v='island'/>
+      <tag k='place' v='/island|city/'/>
    </node>
    <node>
       <tag k='_action_' v='cap:/usr/share/fonts/truetype/ttf-liberation/LiberationSans-Bold.ttf,1.4,cm,black,auto;yellow,name'/>
