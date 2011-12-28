@@ -45,7 +45,7 @@
 #include "bxtree.h"
 
 
-static const char *rule_type_[] = {"N/A", "ACT_IMG", "ACT_CAP", "ACT_FUNC", "ACT_DRAW"};
+static const char *rule_type_[] = {"N/A", "ACT_IMG", "ACT_CAP", "ACT_FUNC", "ACT_DRAW", "ACT_IGNORE"};
 
 
 /*! Returns degrees and minutes of a fractional coordinate.
@@ -388,6 +388,10 @@ int prepare_rules(struct onode *nd, struct rdata *rd, void *p)
       nd->rule.type = ACT_DRAW;
       log_debug("successfully parsed draw rule");
    }
+   else if (!strcmp(s, "ignore"))
+   {
+      nd->rule.type = ACT_IGNORE;
+   }
    else
    {
       log_warn("action type '%s' not supported yet", s);
@@ -647,6 +651,10 @@ int apply_rules0(struct onode *nd, struct rdata *rd, struct onode *mnd)
          e = mnd->rule.func.func(nd);
          break;
 
+      case ACT_IGNORE:
+         e = -1;
+         break;
+
       default:
          e = E_ACT_NOT_IMPL;
          log_warn("action type %d not implemented yet", mnd->rule.type);
@@ -747,6 +755,10 @@ int apply_wrules0(struct onode *nd, struct rdata *rd, struct onode *mnd)
 
       case ACT_FUNC:
          e = mnd->rule.func.func(nd);
+         break;
+
+      case ACT_IGNORE:
+         e = -1;
          break;
 
       default:
