@@ -17,7 +17,7 @@ struct rdata *init_rdata(void)
    memset(rd, 0, sizeof(*rd));
 
    // A3 paper portrait (300dpi)
-   //rd->w = 3507; rd->h = 4961; rd->dpi = 300;
+   rd->w = 3507; rd->h = 4961; rd->dpi = 300;
    // A4 paper portrait (300dpi)
    //rd->w = 2480; rd->h = 3507; rd->dpi = 300;
    // A4 paper landscape (300dpi)
@@ -29,7 +29,7 @@ struct rdata *init_rdata(void)
    // A1 paper landscape (300dpi)
    //rd->w = 9933; rd->h = 7016; rd->dpi = 300;
    // A1 paper portrait (300dpi)
-   rd->h = 9933; rd->w = 7016; rd->dpi = 300;
+   //rd->h = 9933; rd->w = 7016; rd->dpi = 300;
 
    rd->grd.lat_ticks = rd->grd.lon_ticks = G_TICKS;
    rd->grd.lat_sticks = rd->grd.lon_sticks = G_STICKS;
@@ -50,16 +50,16 @@ struct rdata *init_rdata(void)
    rd->y2c = 45.183; */
 
    //dugi.osm
-   //rd->x1c = 14.72;
-   //rd->y1c = 44.23;
-   //rd->x2c = 15.29;
-   //rd->y2c = 43.96;
+   rd->x1c = 14.72;
+   rd->y1c = 44.23;
+   rd->x2c = 15.29;
+   rd->y2c = 43.96;
 
    //croatia...osm
-   rd->x1c = 13.9;
-   rd->y1c = 45.75;
-   rd->x2c = 15.4;
-   rd->y2c = 43.0;
+   //rd->x1c = 13.9;
+   //rd->y1c = 45.75;
+   //rd->x2c = 15.4;
+   //rd->y2c = 43.0;
 
    //croatia_big...osm
    //rd->x1c = 13.5;

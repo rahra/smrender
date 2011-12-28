@@ -207,6 +207,33 @@ int parse_draw(const char *src, struct drawStyle *ds, const struct rdata *rd)
 }
 
 
+int parse_auto_rot(struct rdata *rd, const char *str, struct auto_rot *rot)
+{
+   char buf[strlen(str) + 1], *s, *b;
+
+   strcpy(buf, str);
+   rot->autocol = rd->col[WHITE];
+   rot->weight = 1;
+   rot->phase = 0;
+
+   // first part contains "auto"
+   if ((s = strtok_r(buf, ";", &b)) == NULL) return 0;
+   if ((s = strtok_r(NULL, ";", &b)) == NULL) return 0;
+
+   rot->autocol = parse_color(rd, s);
+
+   if ((s = strtok_r(NULL, ";", &b)) == NULL) return 0;
+
+   rot->weight = atof(s);
+
+   if ((s = strtok_r(NULL, ";", &b)) == NULL) return 0;
+
+   rot->phase = atof(s);
+
+   return 0;
+}
+
+
 int prepare_rules(struct onode *nd, struct rdata *rd, void *p)
 {
    char *s, *lib;
@@ -278,8 +305,12 @@ int prepare_rules(struct onode *nd, struct rdata *rd, void *p)
       nd->rule.cap.col = parse_color(rd, s);
 
       if ((s = strtok(NULL, ",")) == NULL) return E_SYNTAX;
-      if (!strcmp(s, "auto"))
+      if (!strncmp(s, "auto", 4))
+      {
          nd->rule.cap.angle = NAN;
+         parse_auto_rot(rd, s, &nd->rule.cap.rot);
+         log_debug("auto;%08x;%.1f;%.1f", nd->rule.cap.rot.autocol, nd->rule.cap.rot.weight, nd->rule.cap.rot.phase);
+      }
       else
          nd->rule.cap.angle = atof(s);
       if ((s = strtok(NULL, ",")) == NULL) return E_SYNTAX;
@@ -452,7 +483,13 @@ void rot_rect(const struct rdata *rd, int x, int y, double a, int br[])
 }
 
 
-double color_frequency(struct rdata *rd, int x, int y, int w, int h, int col)
+double weight_angle(double a, double phase, double weight)
+{
+   return 0.5 * (cos((a + phase) * 2) + 1) * (1 - weight) + weight;
+}
+
+
+double color_frequency_w(struct rdata *rd, int x, int y, int w, int h, const struct auto_rot *rot)
 {
    double a, ma = 0;
    int m = 0, mm = 0;
@@ -460,7 +497,8 @@ double color_frequency(struct rdata *rd, int x, int y, int w, int h, int col)
    // auto detect angle
    for (a = 0; a < 360; a += ANGLE_DIFF)
       {
-         m = col_freq(rd, x, y, w, h, DEG2RAD(a), col);
+         m = col_freq(rd, x, y, w, h, DEG2RAD(a), rot->autocol)
+            * weight_angle(DEG2RAD(a), DEG2RAD(rot->phase), rot->weight);
          if (mm < m)
          {
             mm = m;
@@ -470,7 +508,15 @@ double color_frequency(struct rdata *rd, int x, int y, int w, int h, int col)
    return ma;
 }
 
+
+double color_frequency(struct rdata *rd, int x, int y, int w, int h, int col)
+{
+   struct auto_rot rot = {rd->col[WHITE], 1, 0};
+
+   return color_frequency_w(rd, x, y, w, h, &rot);
+}
  
+
 #define POS_OFFSET MM2PX(1.3)
 #define MAX_OFFSET MM2PX(2.0)
 #define DIVX 3
@@ -499,7 +545,7 @@ int act_caption(struct onode *nd, struct rdata *rd, struct onode *mnd, int x, in
 
    if (isnan(mnd->rule.cap.angle))
    {
-      ma = color_frequency(rd, x, y, br[4] - br[0] + MAX_OFFSET, br[1] - br[5], rd->col[WHITE]);
+      ma = color_frequency_w(rd, x, y, br[4] - br[0] + MAX_OFFSET, br[1] - br[5], &mnd->rule.cap.rot);
       off = cf_dist(rd, x, y, br[4] - br[0], br[1] - br[5], DEG2RAD(ma), rd->col[WHITE], MAX_OFFSET);
 
       oy =(br[1] - br[5]) / DIVX;

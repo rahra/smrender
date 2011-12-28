@@ -98,20 +98,31 @@ struct otag
    struct specialTag stv;
 };
 
+struct auto_rot
+{
+   double phase;     // phase of weighting function. 0 degress means east (0)
+                     // and west (180) is most important
+   int autocol;      // background color which is used for auto-rotation detection
+   double weight;    // auto-rot weighting (0-1), 1 means everything equal
+};
+
 struct actImage
 {
    double angle;
+   struct auto_rot rot;
    gdImage *img;
 };
 
 struct actCaption
 {
-   short pos;
-   int col;
-   char *font;
-   char *key;
-   double size;
-   double angle;
+   short pos;        // position, or'd POS_x macros
+   int col;          // caption color
+   char *font;       // pointer to font filename
+   char *key;        // pointer to caption string
+   double size;      // font size in mm
+   double angle;     // angle to rotate caption. 0 degress equals east,
+                     // counterclockwise. NAN means auto-rotate
+   struct auto_rot rot;
 };
 
 struct actFunction
