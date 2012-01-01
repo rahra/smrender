@@ -204,8 +204,9 @@ struct rdata
    double x1c, y1c, x2c, y2c;
    // coordinate with/height (wc=x2c-x1c, hc=y1c-y2c)
    double wc, hc;
-   // mean latitude and its length in degrees
+   // mean latitude and its length in degrees corresponding to the real nautical mails
    double mean_lat, mean_lat_len;
+   double mean_lon;
    // (pixel) image width and height
    int w, h;
    // pixel resolution
@@ -248,6 +249,8 @@ int match_attr(const struct onode *, const char *, const char *);
 int bs_match_attr(const struct onode *, const struct otag *);
 int bs_match(const bstring_t *, const bstring_t *, const struct specialTag *);
 
+void set_util_rd(struct rdata*);
+//void disable_put(void);
 int put_object0(bx_node_t**, int64_t, void*, int);
 int put_object(struct onode*);
 void *get_object0(bx_node_t*, int64_t, int);
@@ -255,7 +258,7 @@ struct onode *get_object(int, int64_t);
 struct onode *malloc_object(int , int);
 int64_t unique_node_id(void);
 int64_t unique_way_id(void);
-struct rdata *init_rdata(void);
+//struct rdata *init_rdata(void);
 void set_const_tag(struct otag*, char*, char*);
 
 /* smloadosm.c */

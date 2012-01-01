@@ -21,7 +21,6 @@
  *  @author Bernhard R. Fischer
  */
 #include <stdio.h>
-#include <stdlib.h>
 #include <stdint.h>
 #include <unistd.h>
 #include <string.h>
@@ -31,21 +30,16 @@
 #include <sys/stat.h>
 #include <sys/time.h>      // gettimeofday()
 #include <fcntl.h>         // stat()
-#include <gd.h>
-#include <regex.h>
-#include <limits.h>  // contains INT_MAX
 #include <syslog.h>
-#include <dlfcn.h>   // dlopen(),...
 
 #include "smrender.h"
-#include "osm_inplace.h"
-#include "bstring.h"
 #include "libhpxml.h"
 #include "smlog.h"
-#include "bxtree.h"
+#include "smrules.h"
+#include "smrparse.h"
 
 
-static const char *rule_type_[] = {"N/A", "ACT_IMG", "ACT_CAP", "ACT_FUNC", "ACT_DRAW", "ACT_IGNORE"};
+static struct rdata rd_;
 
 
 /*! Returns degrees and minutes of a fractional coordinate.
@@ -90,527 +84,6 @@ char *cfmt(double c, int d, char *s, int l)
 }
 
 
-int check_matchtype(bstring_t *b, struct specialTag *t)
-{
-   t->type = 0;
-
-   if (b->len > 2)
-   {
-      if ((b->buf[0] == '!') && (b->buf[b->len - 1] == '!'))
-      {
-         b->buf[b->len - 1] = '\0';
-         b->buf++;
-         b->len -= 2;
-         t->type |= SPECIAL_INVERT;
-      }
-      else if ((b->buf[0] == '~') && (b->buf[b->len - 1] == '~'))
-      {
-         b->buf[b->len - 1] = '\0';
-         b->buf++;
-         b->len -= 2;
-         t->type |= SPECIAL_NOT;
-      }
- 
-   }
-
-   if (b->len > 2)
-   {
-      if ((b->buf[0] == '/') && (b->buf[b->len - 1] == '/'))
-      {
-         log_debug("seems to be regex: '%.*s' (%d, %c)", b->len, b->buf, b->len, b->buf[b->len - 1]);
-         b->buf[b->len - 1] = '\0';
-         b->buf++;
-         b->len -= 2;
-
-         if (regcomp(&t->re, b->buf, REG_EXTENDED | REG_NOSUB))
-         {
-            log_msg(LOG_WARN, "failed to compile regex '%s'", b->buf);
-            return -1;
-         }
-         t->type |= SPECIAL_REGEX;
-      }
-   }
-
-   return 0;
-}
-
-
-short ppos(const char *s)
-{
-   char c[] = "nsmewc";
-   int p[] = {POS_N, POS_S, POS_M, POS_E, POS_W, POS_C};
-   int i;
-   short pos = 0;
-
-   for (i = 0; i < strlen(c); i++)
-      if (strchr(s, c[i]) != NULL)
-         pos |= p[i];
-
-   return pos;
-}
-
-
-int parse_color(const struct rdata *rd, const char *s)
-{
-   if (*s == '#')
-   {
-      log_msg(LOG_WARN, "HTML color style (%s) not supported yet, defaulting to black", s);
-      return rd->col[BLACK];
-   }
-   if (!strcmp(s, "white"))
-      return rd->col[WHITE];
-   if (!strcmp(s, "yellow"))
-      return rd->col[YELLOW];
-   if (!strcmp(s, "black"))
-      return rd->col[BLACK];
-   if (!strcmp(s, "blue"))
-      return rd->col[BLUE];
-   if (!strcmp(s, "magenta"))
-      return rd->col[MAGENTA];
-   if (!strcmp(s, "brown"))
-      return rd->col[BROWN];
-
-   log_msg(LOG_WARN, "unknown color %s, defaulting to black", s);
-   return rd->col[BLACK];
-}
-
-
-int parse_draw(const char *src, struct drawStyle *ds, const struct rdata *rd)
-{
-   char buf[strlen(src) + 1];
-   char *s, *sb;
-
-   strcpy(buf, src);
-   if ((s = strtok_r(buf, ",", &sb)) == NULL)
-   {
-      log_msg(LOG_WARN, "syntax error in draw rule %s", src);
-      return -1;
-   }
-
-   ds->col = parse_color(rd, s);
-
-   if ((s = strtok_r(NULL, ",", &sb)) == NULL)
-      return 0;
-
-   ds->width = atof(s);
-
-   if ((s = strtok_r(NULL, ",", &sb)) == NULL)
-      return 0;
-
-   if (!strcmp(s, "solid")) ds->style = DRAW_SOLID;
-   else if (!strcmp(s, "dashed")) ds->style = DRAW_DASHED;
-   else if (!strcmp(s, "dotted")) ds->style = DRAW_DOTTED;
-   else if (!strcmp(s, "transparent")) ds->style = DRAW_TRANSPARENT;
-
-   //log_msg(LOG_WARN, "draw width and styles are not parsed yet (sorry...)");
-   return 0;
-}
-
-
-int parse_auto_rot(struct rdata *rd, const char *str, struct auto_rot *rot)
-{
-   char buf[strlen(str) + 1], *s, *b;
-
-   strcpy(buf, str);
-   rot->autocol = rd->col[WHITE];
-   rot->weight = 1;
-   rot->phase = 0;
-
-   // first part contains "auto"
-   if ((s = strtok_r(buf, ";", &b)) == NULL) return 0;
-   if ((s = strtok_r(NULL, ";", &b)) == NULL) return 0;
-
-   rot->autocol = parse_color(rd, s);
-
-   if ((s = strtok_r(NULL, ";", &b)) == NULL) return 0;
-
-   rot->weight = atof(s);
-
-   if ((s = strtok_r(NULL, ";", &b)) == NULL) return 0;
-
-   rot->phase = atof(s);
-
-   return 0;
-}
-
-
-int prepare_rules(struct onode *nd, struct rdata *rd, void *p)
-{
-   char *s, *lib;
-   FILE *f;
-   int i;
-
-   for (i = 0; i < nd->tag_cnt; i++)
-   {
-      if (check_matchtype(&nd->otag[i].k, &nd->otag[i].stk) == -1)
-         return 0;
-      if (check_matchtype(&nd->otag[i].v, &nd->otag[i].stv) == -1)
-         return 0;
-   }
-
-   if ((i = match_attr(nd, "_action_", NULL)) == -1)
-   {
-      log_msg(LOG_WARN, "rule %ld has no action", nd->nd.id);
-      return 0;
-   }
-
-   nd->otag[i].v.buf[nd->otag[i].v.len] = '\0';
-   s = strtok(nd->otag[i].v.buf, ":");
-   if (!strcmp(s, "img"))
-   {
-      if ((s = strtok(NULL, ":")) == NULL)
-         return E_SYNTAX;
-      if ((f = fopen(s, "r")) == NULL)
-      {
-         log_msg(LOG_WARN, "fopen(%s) failed: %s", s, strerror(errno));
-         return E_SYNTAX;
-      }
-
-      nd->rule.img.angle = 0;
-      if ((nd->rule.img.img = gdImageCreateFromPng(f)) == NULL)
-         log_msg(LOG_WARN, "could not read PNG from %s", s);
-      (void) fclose(f);
-
-      nd->rule.type = ACT_IMG;
-      log_debug("successfully imported PNG %s", s);
-   }
-   else if (!strcmp(s, "img-auto"))
-   {
-      if ((s = strtok(NULL, ":")) == NULL)
-         return E_SYNTAX;
-      if ((f = fopen(s, "r")) == NULL)
-      {
-         log_msg(LOG_WARN, "fopen(%s) failed: %s", s, strerror(errno));
-         return 0;
-      }
-
-      nd->rule.img.angle = NAN;
-      if ((nd->rule.img.img = gdImageCreateFromPng(f)) == NULL)
-         log_msg(LOG_WARN, "could not read PNG from %s\n", s);
-      (void) fclose(f);
-
-      nd->rule.type = ACT_IMG;
-      log_debug("img-auto, successfully imported PNG %s", s);
-   }
-   else if (!strcmp(s, "cap"))
-   {
-      if ((s = strtok(NULL, ",")) == NULL) return E_SYNTAX;
-      nd->rule.cap.font = s;
-      if ((s = strtok(NULL, ",")) == NULL) return E_SYNTAX;
-      nd->rule.cap.size = atof(s);
-      if ((s = strtok(NULL, ",")) == NULL) return E_SYNTAX;
-      nd->rule.cap.pos = ppos(s);
-      if ((s = strtok(NULL, ",")) == NULL) return E_SYNTAX;
-
-      nd->rule.cap.col = parse_color(rd, s);
-
-      if ((s = strtok(NULL, ",")) == NULL) return E_SYNTAX;
-      if (!strncmp(s, "auto", 4))
-      {
-         nd->rule.cap.angle = NAN;
-         parse_auto_rot(rd, s, &nd->rule.cap.rot);
-         log_debug("auto;%08x;%.1f;%.1f", nd->rule.cap.rot.autocol, nd->rule.cap.rot.weight, nd->rule.cap.rot.phase);
-      }
-      else
-         nd->rule.cap.angle = atof(s);
-      if ((s = strtok(NULL, ",")) == NULL) return E_SYNTAX;
-
-      nd->rule.cap.key = s;
-      nd->rule.type = ACT_CAP;
-      log_debug("successfully parsed caption rule");
-   }
-   else if (!strcmp(s, "func"))
-   {
-      if ((s = strtok(NULL, "@")) == NULL)
-      {
-         log_msg(LOG_ERR, "syntax error in function rule");
-         return E_SYNTAX;
-      }
-      if ((lib = strtok(NULL, "")) == NULL)
-      {
-         log_msg(LOG_ERR, "syntax error in function rule");
-         return E_SYNTAX;
-      }
-
-      // Open shared library
-      if ((nd->rule.func.libhandle = dlopen(lib, RTLD_LAZY)) == NULL)
-      {
-         log_msg(LOG_ERR, "could not open library: %s", dlerror());
-         return 0;
-      }
-
-      // Clear any existing error
-      dlerror();
-
-      nd->rule.func.sym = dlsym(nd->rule.func.libhandle, s);
-
-      // Check for errors
-      if ((s = dlerror()) != NULL)
-      {
-         log_msg(LOG_ERR, "error loading symbol from libary: %s", s);
-         return 0;
-      }
-
-      nd->rule.type = ACT_FUNC;
-      log_debug("successfully parsed function rule");
-   }
-   else if (!strcmp(s, "draw"))
-   {
-      if ((s = strtok(NULL, "")) == NULL)
-      {
-         log_warn("syntax error in draw rule");
-         return E_SYNTAX;
-      }
-
-      if (*s != ':')
-      {
-         s = strtok(s, ":");
-         if (parse_draw(s, &nd->rule.draw.fill, rd) == -1)
-            return E_SYNTAX;
-         nd->rule.draw.fill.used = 1;
-         if ((s = strtok(NULL, ":")) != NULL)
-         {
-            if (!parse_draw(s, &nd->rule.draw.border, rd))
-               nd->rule.draw.border.used = 1;
-         }
-      }
-      else
-      {
-         if (strlen(s) <= 1)
-         {
-            log_warn("syntax error in draw rule");
-            return E_SYNTAX;
-         }
-         if (!parse_draw(s + 1, &nd->rule.draw.border, rd))
-            nd->rule.draw.border.used = 1;
-      }
-
-      nd->rule.type = ACT_DRAW;
-      log_debug("successfully parsed draw rule");
-   }
-   else if (!strcmp(s, "ignore"))
-   {
-      nd->rule.type = ACT_IGNORE;
-   }
-   else
-   {
-      log_warn("action type '%s' not supported yet", s);
-   }
-
-   // remove _action_ tag from tag list, i.e. move last element
-   // to position of _action_ tag (order doesn't matter).
-   if (i < nd->tag_cnt - 1)
-      memmove(&nd->otag[i], &nd->otag[nd->tag_cnt - 1], sizeof(struct otag));
-   nd->tag_cnt--;
-
-   return 0;
-}
-
-
-/*! Convert pixel coordinates back into latitude and longitude. Note that this
- *  leads to some inaccuracy.
- */
-void mk_chart_coords(int x, int y, struct rdata *rd, double *lat, double *lon)
-{
-   *lon = rd->wc *          x  / rd->w + rd->x1c;
-   *lat = rd->hc * (rd->h - y) / rd->h + rd->y2c;
-}
-
-
-/*! Convert latitude and longitude coordinates into x and y coordinates of
- * pixel image.
- */
-void mk_paper_coords(double lat, double lon, struct rdata *rd, int *x, int *y)
-{
-   *x = round(        (lon - rd->x1c) * rd->w / rd->wc);
-   *y = round(rd->h - (lat - rd->y2c) * rd->h / rd->hc);
-}
-
-
-/*
-int coords_inrange(const struct rdata *rd, int x, int y)
-{
-   return x >= 0 && x < rd->w && y >= 0 && y < rd->h;
-}
-*/
-
-int act_image(struct onode *nd, struct rdata *rd, struct onode *mnd, int x, int y)
-{
-   int i, j, c, rx, ry, hx, hy;
-   double a;
-
-   hx = gdImageSX(mnd->rule.img.img) / 2;
-   hy = gdImageSY(mnd->rule.img.img) / 2;
-
-   a = isnan(mnd->rule.img.angle) ? color_frequency(rd, x, y, hx, hy, rd->col[WHITE]) : 0;
-   a = DEG2RAD(a);
-
-   for (j = 0; j < gdImageSY(mnd->rule.img.img); j++)
-   {
-      for (i = 0; i < gdImageSX(mnd->rule.img.img); i++)
-      {
-         if (a != 0)
-            rot_pos(i - hx, j - hy, a, &rx, &ry);
-         else
-         {
-            rx = i - hx;
-            ry = hy - j;
-         }
-         c = gdImageGetPixel(mnd->rule.img.img, i, j);
-         gdImageSetPixel(rd->img, x + rx, y - ry, c);
-      }
-   }
-
-   return 0;
-}
-
-
-void rot_rect(const struct rdata *rd, int x, int y, double a, int br[])
-{
-   gdPoint p[5];
-   int i;
-
-   rot_pos(br[0] - x, br[1] - y, a, &p[0].x, &p[0].y);
-   rot_pos(br[2] - x, br[3] - y, a, &p[1].x, &p[1].y);
-   rot_pos(br[4] - x, br[5] - y, a, &p[2].x, &p[2].y);
-   rot_pos(br[6] - x, br[7] - y, a, &p[3].x, &p[3].y);
-
-   for (i = 0; i < 4; i++)
-   {
-      p[i].x += x;
-      p[i].y = y - p[i].y;
-   }
-
-   p[4] = p[0];
-
-   gdImagePolygon(rd->img, p, 5, rd->col[BLACK]);
-}
-
-
-double weight_angle(double a, double phase, double weight)
-{
-   return 0.5 * (cos((a + phase) * 2) + 1) * (1 - weight) + weight;
-}
-
-
-double color_frequency_w(struct rdata *rd, int x, int y, int w, int h, const struct auto_rot *rot)
-{
-   double a, ma = 0;
-   int m = 0, mm = 0;
-
-   // auto detect angle
-   for (a = 0; a < 360; a += ANGLE_DIFF)
-      {
-         m = col_freq(rd, x, y, w, h, DEG2RAD(a), rot->autocol)
-            * weight_angle(DEG2RAD(a), DEG2RAD(rot->phase), rot->weight);
-         if (mm < m)
-         {
-            mm = m;
-            ma = a;
-         }
-      }
-   return ma;
-}
-
-
-double color_frequency(struct rdata *rd, int x, int y, int w, int h, int col)
-{
-   struct auto_rot rot = {rd->col[WHITE], 1, 0};
-
-   return color_frequency_w(rd, x, y, w, h, &rot);
-}
- 
-
-#define POS_OFFSET MM2PX(1.3)
-#define MAX_OFFSET MM2PX(2.0)
-#define DIVX 3
-int act_caption(struct onode *nd, struct rdata *rd, struct onode *mnd, int x, int y)
-{
-   int br[8], n;
-   char *s;
-   gdFTStringExtra fte;
-   int rx, ry, ox, oy, off;
-   double ma;
-
-   if ((n = match_attr(nd, mnd->rule.cap.key, NULL)) == -1)
-   {
-      log_debug("node %ld has no caption tag '%s'", nd->nd.id, mnd->rule.cap.key);
-      return 0;
-   }
-
-   memset(&fte, 0, sizeof(fte));
-   fte.flags = gdFTEX_RESOLUTION | gdFTEX_CHARMAP;
-   fte.charmap = gdFTEX_Unicode;
-   fte.hdpi = fte.vdpi = rd->dpi;
-
-   if (nd->otag[n].v.buf[nd->otag[n].v.len])
-      nd->otag[n].v.buf[nd->otag[n].v.len] = '\0';
-   gdImageStringFTEx(NULL, br, mnd->rule.cap.col, mnd->rule.cap.font, mnd->rule.cap.size * 2.8699, 0, x, y, nd->otag[n].v.buf, &fte);
-
-   if (isnan(mnd->rule.cap.angle))
-   {
-      ma = color_frequency_w(rd, x, y, br[4] - br[0] + MAX_OFFSET, br[1] - br[5], &mnd->rule.cap.rot);
-      off = cf_dist(rd, x, y, br[4] - br[0], br[1] - br[5], DEG2RAD(ma), rd->col[WHITE], MAX_OFFSET);
-
-      oy =(br[1] - br[5]) / DIVX;
-      if ((ma < 90) || (ma >= 270))
-      {
-         ox = off;
-      }
-      else
-      {
-         ma -= 180;
-         ox = br[0] - br[2] - off;
-      }
-   }
-   else
-   {
-      ma = mnd->rule.cap.angle;
-
-      switch (mnd->rule.cap.pos & 3)
-      {
-         case POS_N:
-            oy = 0;
-            oy = (br[7] - br[3]) / DIVX;
-            break;
-
-         case POS_S:
-            oy = br[3] - br[7];
-            break;
-
-         default:
-            oy = (br[3] - br[7]) / DIVX;
-      }
-      switch (mnd->rule.cap.pos & 12)
-      {
-         case POS_E:
-            ox = 0;
-            break;
-
-         case POS_W:
-            ox = br[0] - br[2];
-            break;
-
-         default:
-            ox = (br[0] - br[2]) / DIVX;
-      }
-   }
-
-  //rot_rect(rd, x, y, DEG2RAD(ma), br);
-
-   rot_pos(ox, oy, DEG2RAD(ma), &rx, &ry);
-   //fprintf(stderr, "dx = %d, dy = %d, rx = %d, ry = %d, ma = %.3f, off = %d, '%s'\n", br[0]-br[2],br[1]-br[5], rx, ry, ma, off, nd->otag[n].v.buf);
-
-   if ((s = gdImageStringFTEx(rd->img, br, mnd->rule.cap.col, mnd->rule.cap.font, mnd->rule.cap.size * 2.8699, DEG2RAD(ma), x + rx, y - ry, nd->otag[n].v.buf, &fte)) != NULL)
-      log_msg(LOG_ERR, "error rendering caption: %s", s);
-
-//   else
-//      fprintf(stderr, "printed %s at %d,%d\n", nd->otag[n].v.buf, x, y);
-
-   return 0;
-}
-
-
 /*! Match and apply ruleset to node.
  *  @param nd Node which should be rendered.
  *  @param rd Pointer to general rendering parameters.
@@ -618,7 +91,7 @@ int act_caption(struct onode *nd, struct rdata *rd, struct onode *mnd, int x, in
  */
 int apply_rules0(struct onode *nd, struct rdata *rd, struct onode *mnd)
 {
-   int x, y, i, e;
+   int i, e;
 
    if (!mnd->rule.type)
    {
@@ -635,16 +108,15 @@ int apply_rules0(struct onode *nd, struct rdata *rd, struct onode *mnd)
          return 0;
 
    //fprintf(stderr, "node id %ld rule match %ld\n", nd->nd.id, mnd->nd.id);
-   mk_paper_coords(nd->nd.lat, nd->nd.lon, rd, &x, &y);
 
    switch (mnd->rule.type)
    {
       case ACT_IMG:
-         e = act_image(nd, rd, mnd, x, y);
+         e = act_image(nd, rd, mnd);
          break;
 
       case ACT_CAP:
-         e = act_caption(nd, rd, mnd, x, y);
+         e = act_caption(nd, rd, mnd);
          break;
 
       case ACT_FUNC:
@@ -666,58 +138,10 @@ int apply_rules0(struct onode *nd, struct rdata *rd, struct onode *mnd)
 
 int apply_rules(struct onode *nd, struct rdata *rd, void *vp)
 {
-   log_debug("applying rule id 0x%016lx type %s(%d)", nd->nd.id, rule_type_[nd->rule.type], nd->rule.type);
+   log_debug("applying rule id 0x%016lx type %s(%d)", nd->nd.id, rule_type_str(nd->rule.type), nd->rule.type);
    return traverse(rd->obj, 0, IDX_NODE, (tree_func_t) apply_rules0, rd, nd);
 }
 
-
-int act_open_poly(struct onode *wy, struct rdata *rd, struct onode *mnd)
-{
-   int i;
-   struct onode *nd;
-   gdPoint p[wy->ref_cnt];
-
-   for (i = 0; i < wy->ref_cnt; i++)
-   {
-      if ((nd = get_object(OSM_NODE, wy->ref[i])) == NULL)
-         return E_REF_ERR;
-
-      mk_paper_coords(nd->nd.lat, nd->nd.lon, rd, &p[i].x, &p[i].y);
-   }
-
-   gdImageOpenPolygon(rd->img, p, wy->ref_cnt, rd->col[BLACK]);
-   return 0;
-}
-
-
-int act_fill_poly(struct onode *wy, struct rdata *rd, struct onode *mnd)
-{
-   int i;
-   struct onode *nd;
-   gdPoint p[wy->ref_cnt];
-
-   for (i = 0; i < wy->ref_cnt; i++)
-   {
-      if ((nd = get_object(OSM_NODE, wy->ref[i])) == NULL)
-         return E_REF_ERR;
-
-      mk_paper_coords(nd->nd.lat, nd->nd.lon, rd, &p[i].x, &p[i].y);
-   }
-
-   if (mnd->rule.draw.fill.used)
-   {
-      if (mnd->rule.draw.fill.style != DRAW_TRANSPARENT)
-         gdImageFilledPolygon(rd->img, p, wy->ref_cnt, mnd->rule.draw.fill.col);
-   }
-
-   if (mnd->rule.draw.border.used)
-   {
-      if (mnd->rule.draw.border.style != DRAW_TRANSPARENT)
-         gdImagePolygon(rd->img, p, wy->ref_cnt, mnd->rule.draw.border.col);
-   }
-
-   return 0;
-}
 
 /*! Match and apply ruleset to node.
  *  @param nd Node which should be rendered.
@@ -772,7 +196,7 @@ int apply_wrules0(struct onode *nd, struct rdata *rd, struct onode *mnd)
 
 int apply_wrules(struct onode *nd, struct rdata *rd, void *vp)
 {
-   log_debug("applying rule id 0x%016lx type %s(%d)", nd->nd.id, rule_type_[nd->rule.type], nd->rule.type);
+   log_debug("applying rule id 0x%016lx type %s(%d)", nd->nd.id, rule_type_str(nd->rule.type), nd->rule.type);
    return traverse(rd->obj, 0, IDX_WAY, (tree_func_t) apply_wrules0, rd, nd);
 }
 
@@ -863,71 +287,25 @@ void print_rdata(FILE *f, const struct rdata *rd)
 }
 
 
-/*! Print string into image at a desired position with correct alignment.
- *  @param rd Pointer to struct rdata.
- *  @param x X position within image; the alignment is referred to these coordinates.
- *  @param y Y position (see above).
- *  @param pos Alignment: this is a combination (logical or) of horizontal and
- *  vertical positioning parameters. The vertical alignment shall be one of
- *  POS_N, POS_S, and P_OSM; the horizontal parameter is one of POS_E, POS_W,
- *  and POS_C.
- *  @param col Color of string.
- *  @param ftsize Fontsize in milimeters.
- *  @param ft Pointer to font file.
- *  @param s Pointer to string buffer.
- *  @return The function returns 0 on success, -1 otherwise.
- */
-int img_print(const struct rdata *rd, int x, int y, int pos, int col, double ftsize, const char *ft, const char *s)
+void init_bbox_mll(struct rdata *rd)
 {
-   char *err;
-   int br[8], ox, oy;
-   gdFTStringExtra fte;
-
-   memset(&fte, 0, sizeof(fte));
-   fte.flags = gdFTEX_RESOLUTION | gdFTEX_CHARMAP;
-   fte.charmap = gdFTEX_Unicode;
-   fte.hdpi = fte.vdpi = rd->dpi;
-
-   gdImageStringFTEx(NULL, br, col, (char*) ft, MM2PT(ftsize), 0, 0, 0, (char*) s, &fte);
-
-   switch (pos & 3)
-   {
-      case POS_N:
-         oy = 0;
-         break;
-
-      case POS_S:
-         oy = br[1] - br[5];
-         break;
-
-      default:
-         oy = (br[1] - br[5]) / 2;
-   }
-   switch (pos & 12)
-   {
-      case POS_E:
-         ox = 0;
-         break;
-         
-      case POS_W:
-         ox = br[0] - br[4];
-         break;
-
-      default:
-         ox = (br[0] - br[4]) / 2;
-   }
-
-   err = gdImageStringFTEx(rd->img, br, col, (char*) ft, MM2PT(ftsize), 0, x + ox, y + oy, (char*) s, &fte);
-   if (err != NULL)
-   {
-      log_warn("gdImageStringFTEx error: '%s'", err);
-      return -1;
-   }
-
-   return 0;
+   rd->wc = rd->mean_lat_len / cos(rd->mean_lat * M_PI / 180);
+   rd->x1c = rd->mean_lon - rd->wc / 2;
+   rd->x2c = rd->mean_lon + rd->wc / 2;
+   rd->hc = rd->mean_lat_len * rd->h / rd->w;
+   rd->y1c = rd->mean_lat + rd->hc / 2.0;
+   rd->y2c = rd->mean_lat - rd->hc / 2.0;
+   rd->scale = (rd->mean_lat_len * 60.0 * 1852 * 100 / 2.54) / ((double) rd->w / (double) rd->dpi);
 }
 
 
+void init_bbox_scale(struct rdata *rd)
+{
+   rd->mean_lat_len = rd->scale * ((double) rd->w / (double) rd->dpi) * 2.54 / (60.0 * 1852 * 100);
+}
+
+
+#if 0
 void init_prj(struct rdata *rd, int p)
 {
    double y1, y2;
@@ -959,55 +337,7 @@ void init_prj(struct rdata *rd, int p)
    rd->scale = (rd->mean_lat_len * 60.0 * 1852 * 100 / 2.54) / ((double) rd->w / (double) rd->dpi);
 
 }
-
-
-double rot_pos(int x, int y, double a, int *rx, int *ry)
-{
-   double r, b;
-
-   r = sqrt(x * x + y * y);
-   //b = atan((double) y1 / (double) x1);
-   b = atan2((double) y, (double) x);
-   *rx = round(r * cos(a - b));
-   *ry = round(r * sin(a - b));
-
-   return r;
-}
-
-
-int cf_dist(struct rdata *rd, int x, int y, int w, int h, double a, int col, int mdist)
-{
-   int rx, ry, d, freq, max_freq = 0, dist = 0;
-
-   for (d = 0; d < mdist; d++)
-   {
-      rot_pos(d, 0, a, &rx, &ry);
-      freq = col_freq(rd, x + rx, y - ry, w, h, a, col);
-      if (max_freq < freq)
-      {
-         max_freq = freq;
-         dist = d;
-      }
-   }
-
-   return dist;
-}
-
-
-
-int col_freq(struct rdata *rd, int x, int y, int w, int h, double a, int col)
-{
-   int x1, y1, rx, ry, c = 0;
-
-   for (y1 = -h / 2; y1 < h / 2; y1++)
-      for (x1 = 0; x1 < w; x1++)
-      {
-         rot_pos(x1, y1, a, &rx, &ry);
-         c += (col == gdImageGetPixel(rd->img, x + rx, y - ry));
-      }
-
-   return c;
-}
+#endif
 
 
 int print_onode(FILE *f, const struct onode *nd)
@@ -1122,16 +452,160 @@ int save_osm(struct rdata *rd, const char *s)
 }
 
 
+#if 0
+void swap_data(void *a, void *b, int n)
+{
+   char c[n];
+
+   memcpy(c, a, n);
+   memcpy(a, b, n);
+   memcpy(b, c, n);
+}
+#endif
+
+
+
+struct rdata *init_rdata(void)
+{
+   memset(&rd_, 0, sizeof(rd_));
+   rd_.dpi = 300;
+
+   return &rd_;
+}
+
+
+/*! Initializes data about paper (image) size.
+ *  rd->dpi must be pre-initialized!
+ */
+void init_rd_paper(struct rdata *rd, const char *paper, int landscape)
+{
+   double a4_w, a4_h;
+
+   a4_w = MM2PX(210);
+   a4_h = MM2PX(296.9848);
+
+   if (!strcasecmp(paper, "A4"))
+   {
+      rd->w = a4_w;
+      rd->h = a4_h;
+   }
+   else if (!strcasecmp(paper, "A3"))
+   {
+      rd->w = a4_h;
+      rd->h = a4_w * 2;
+   }
+   else if (!strcasecmp(paper, "A2"))
+   {
+      rd->w = a4_w * 2;
+      rd->h = a4_h * 2;
+   }
+   else if (!strcasecmp(paper, "A1"))
+   {
+      rd->w = a4_h * 2;
+      rd->h = a4_w * 4;
+   }
+   else if (!strcasecmp(paper, "A0"))
+   {
+      rd->w = a4_w * 4;
+      rd->h = a4_h * 4;
+   }
+   else
+   {
+      log_msg(LOG_WARN, "unknown page size %s, defaulting to A4", paper);
+      rd->w = a4_w;
+      rd->h = a4_h;
+   }
+
+   if (landscape)
+   {
+      a4_w = rd->w;
+      rd->w = rd->h;
+      rd->h = a4_w;
+   }
+
+
+   // A3 paper portrait (300dpi)
+   //rd->w = 3507; rd->h = 4961; rd->dpi = 300;
+   // A4 paper portrait (300dpi)
+   //rd->w = 2480; rd->h = 3507; rd->dpi = 300;
+   // A4 paper landscape (300dpi)
+   //rd->h = 2480; rd->w = 3507; rd->dpi = 300;
+   // A4 paper portrait (600dpi)
+   //rd->w = 4961; rd->h = 7016; rd->dpi = 600;
+   // A2 paper landscape (300dpi)
+   //rd->w = 7016; rd->h = 4961; rd->dpi = 300;
+   // A1 paper landscape (300dpi)
+   //rd->w = 9933; rd->h = 7016; rd->dpi = 300;
+   // A1 paper portrait (300dpi)
+   //rd->h = 9933; rd->w = 7016; rd->dpi = 300;
+
+   rd->grd.lat_ticks = rd->grd.lon_ticks = G_TICKS;
+   rd->grd.lat_sticks = rd->grd.lon_sticks = G_STICKS;
+   rd->grd.lat_g = rd->grd.lon_g = G_GRID;
+
+   // init callback function pointers
+   //rd->cb.log_msg = log_msg;
+   //rd->cb.get_object = get_object;
+   //rd->cb.put_object = put_object;
+   //rd->cb.malloc_object = malloc_object;
+   //rd->cb.match_attr = match_attr;
+
+   // this should be given by CLI arguments
+   /* porec.osm
+   rd->x1c = 13.53;
+   rd->y1c = 45.28;
+   rd->x2c = 13.63;
+   rd->y2c = 45.183; */
+
+   //dugi.osm
+   //rd->x1c = 14.72;
+   //rd->y1c = 44.23;
+   //rd->x2c = 15.29;
+   //rd->y2c = 43.96;
+
+   //croatia...osm
+   //rd->x1c = 13.9;
+   //rd->y1c = 45.75;
+   //rd->x2c = 15.4;
+   //rd->y2c = 43.0;
+
+   //croatia_big...osm
+   //rd->x1c = 13.5;
+   //rd->y1c = 45.5;
+   //rd->x2c = 15.5;
+   //rd->y2c = 43.5;
+
+   /* treasure_island
+   rd->x1c = 24.33;
+   rd->y1c = 37.51;
+   rd->x2c = 24.98;
+   rd->y2c = 37.16;
+   */
+}
+
+
+void init_rd_image(struct rdata *rd)
+{
+}
+
+
 void usage(const char *s)
 {
    printf("Seamark renderer V1.1, (c) 2011, Bernhard R. Fischer, <bf@abenteuerland.at>.\n"
          "usage: %s [OPTIONS]\n"
          "   -G .................. Do not generate grid nodes/ways.\n"
          "   -C .................. Do not close open coastline polygons.\n"
+         "   -d <density> ........ Set image density (300 is default).\n"
          "   -i <osm input> ...... OSM input data (defaulta is stdin).\n"
+         "   -l .................. Select landscape output.\n"
+         "   -m <length> ......... Length of mean latitude in degrees.\n"
          "   -r <rules file> ..... Rules file ('rules.osm' is default).\n"
+         "   -s <scale> .......... Select scale of chart.\n"
          "   -o <image file> ..... Filename of output image (stdout is default).\n"
-         "   -w <osm file> ....... Output OSM data to file.\n",
+         "   -P <page format> .... Select output page format.\n"
+         "   -w <osm file> ....... Output OSM data to file.\n"
+         "   -x <longitude> ...... Longitude of center point.\n"
+         "   -y <latitude> ....... Latitude if center point.\n",
          s
          );
 }
@@ -1146,16 +620,26 @@ int main(int argc, char *argv[])
    char *cf = "rules.osm", *img_file = NULL, *osm_ifile = NULL, *osm_ofile = NULL;
    struct rdata *rd;
    struct timeval tv_start, tv_end;
-   int gen_grid = 1, prep_coast = 1;
+   int gen_grid = 1, prep_coast = 1, landscape = 0;
+   char *paper = "A3";
 
    (void) gettimeofday(&tv_start, NULL);
    init_log("stderr", LOG_DEBUG);
+   log_msg(LOG_INFO, "initializing structures");
+   rd = init_rdata();
+   set_util_rd(rd);
 
-   while ((n = getopt(argc, argv, "CGhi:o:r:w:")) != -1)
+   while ((n = getopt(argc, argv, "Cd:Ghi:lm:o:P:r:s:w:x:y:")) != -1)
       switch (n)
       {
          case 'C':
             prep_coast = 0;
+            break;
+
+         case 'd':
+            if ((rd->dpi = atoi(optarg)) <= 0)
+               log_msg(LOG_ERR, "illegal dpi argument %s", optarg),
+                  exit(EXIT_FAILURE);
             break;
 
          case 'G':
@@ -1170,23 +654,60 @@ int main(int argc, char *argv[])
             osm_ifile = optarg;
             break;
 
+         case 'm':
+            if ((rd->mean_lat_len = atoi(optarg)) <= 0)
+               log_msg(LOG_ERR, "illegal argument for mean lat length %s", optarg),
+                  exit(EXIT_FAILURE);
+            break;
+
+         case 'l':
+            landscape = 1;
+            break;
+
          case 'o':
             img_file = optarg;
+            break;
+
+         case 'P':
+            paper = optarg;
             break;
 
          case 'r':
             cf = optarg;
             break;
 
+         case 's':
+            if ((rd->scale = atof(optarg)) <= 0)
+               log_msg(LOG_ERR, "illegal scale argument %s", optarg),
+                  exit(EXIT_FAILURE);
+            break;
+
          case 'w':
             osm_ofile = optarg;
             break;
+
+         case 'x':
+            rd->mean_lon = atof(optarg);
+            break;
+
+         case 'y':
+            rd->mean_lat = atof(optarg);
+            break;
       }
 
-   log_msg(LOG_INFO, "initializing structures");
-   rd = init_rdata();
-   //print_rdata(stderr, rd);
-   init_prj(rd, PRJ_MERC_PAGE);
+   if ((rd->scale != 0) && (rd->mean_lat_len != 0))
+      log_msg(LOG_ERR, "specifying scale AND mean latitude length is not allowed"),
+         exit(EXIT_FAILURE);
+   if ((rd->scale == 0) && (rd->mean_lat_len == 0))
+      log_msg(LOG_ERR, "either -s or -m is mandatory"),
+         exit(EXIT_FAILURE);
+
+   init_rd_paper(rd, paper, landscape);
+   if (rd->mean_lat_len == 0)
+      init_bbox_scale(rd);
+   init_bbox_mll(rd);
+
+   //init_prj(rd, PRJ_MERC_PAGE);
    print_rdata(stderr, rd);
 
    // preparing image
@@ -1229,10 +750,10 @@ int main(int argc, char *argv[])
    (void) read_osm_file(cfctl, &rd->rules);
    (void) close(fd);
 
-#ifdef MEM_USAGE
+//#ifdef MEM_USAGE
    log_debug("tree memory used: %ld kb", (long) bx_sizeof() / 1024);
    log_debug("onode memory used: %ld kb", (long) onode_mem() / 1024);
-#endif
+//#endif
 
    log_msg(LOG_INFO, "gathering stats");
    init_stats(&rd->ds);

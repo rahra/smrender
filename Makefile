@@ -24,7 +24,7 @@ all: smrender libsmfilter.so
 
 smloadosm.o: smloadosm.c smrender.h
 
-smrender: smrender.o bstring.o osm_func.o libhpxml.o smlog.o bxtree.o smloadosm.o smath.o smcoast.o smutil.o smgrid.o
+smrender: smrender.o bstring.o osm_func.o libhpxml.o smlog.o bxtree.o smloadosm.o smath.o smcoast.o smutil.o smgrid.o smrules.o smrparse.o
 
 smgrid.o: smgrid.c
 
@@ -45,6 +45,10 @@ bxtree.o: bxtree.c bxtree.h
 smath.o: smath.c smath.h
 
 smcoast.o: smcoast.c smrender.h smath.h
+
+smrules.o: smrules.c smrender.h
+
+smrparse.o: smrparse.c smrparse.h
 
 libsmfilter.so:
 	make -C libsmfilter
