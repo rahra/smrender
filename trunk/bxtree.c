@@ -3,17 +3,14 @@
 
 #include "bxtree.h"
 
-#ifdef MEM_USAGE
+
 static size_t mem_usage_ = 0;
-#endif
 
 
-#ifdef MEM_USAGE
 size_t bx_sizeof(void)
 {
    return mem_usage_;
 }
-#endif
 
 
 /*!

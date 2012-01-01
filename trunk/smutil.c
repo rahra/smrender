@@ -34,6 +34,16 @@
 #include "smlog.h"
 
 
+static struct rdata *rd;
+
+
+void set_util_rd(struct rdata *r)
+{
+   rd = r;
+}
+
+
+#if 0
 static struct rdata rd_, *rd = &rd_;
 
 
@@ -101,6 +111,7 @@ struct rdata *init_rdata(void)
  
    return rd;
 }
+#endif
 
 
 void set_const_tag(struct otag *tag, char *k, char *v)

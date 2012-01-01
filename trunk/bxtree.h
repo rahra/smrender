@@ -29,6 +29,7 @@ typedef struct bx_node
 } bx_node_t;
 
 
+void bx_disable_add(void);
 bx_node_t *bx_add_node0(bx_node_t **, bx_hash_t, bx_hash_t);
 bx_node_t *bx_get_node0(bx_node_t *, bx_hash_t, bx_hash_t);
 size_t bx_sizeof(void);
