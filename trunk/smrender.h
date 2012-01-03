@@ -262,10 +262,9 @@ int64_t unique_way_id(void);
 void set_const_tag(struct otag*, char*, char*);
 
 /* smloadosm.c */
+void osm_read_exit(void);
 int read_osm_file(hpx_ctrl_t*, bx_node_t**);
-#ifdef MEM_USAGE
 size_t onode_mem(void);
-#endif
 
 /* smcoast.c */
 int cat_poly(struct rdata *);
