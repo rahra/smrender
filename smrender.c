@@ -630,6 +630,10 @@ int main(int argc, char *argv[])
    rd = init_rdata();
    set_util_rd(rd);
 
+   // install exit handlers
+   osm_read_exit();
+   bx_exit();
+
    while ((n = getopt(argc, argv, "Cd:Ghi:lm:Mo:P:r:s:w:x:y:")) != -1)
       switch (n)
       {
@@ -765,10 +769,8 @@ int main(int argc, char *argv[])
    (void) read_osm_file(cfctl, &rd->rules);
    (void) close(fd);
 
-//#ifdef MEM_USAGE
    log_debug("tree memory used: %ld kb", (long) bx_sizeof() / 1024);
    log_debug("onode memory used: %ld kb", (long) onode_mem() / 1024);
-//#endif
 
    log_msg(LOG_INFO, "gathering stats");
    init_stats(&rd->ds);

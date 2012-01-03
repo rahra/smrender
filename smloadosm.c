@@ -43,20 +43,30 @@
 int oline_ = 0;
 
 
-#ifdef MEM_USAGE
 static size_t mem_usage_ = 0;
-#endif
 
 
-#ifdef MEM_USAGE
 size_t onode_mem(void)
 {
    return mem_usage_;
 }
-#endif
 
 
-//int read_osm_file(hpx_ctrl_t *ctl, bx_node_t **ntree, bx_node_t **wtree)
+void osm_read_exit(void)
+{
+   static short ae = 0;
+
+   if (!ae)
+   {
+      ae = 1;
+      if (atexit(osm_read_exit))
+         log_msg(LOG_ERR, "atexit(osm_read_exit) failed");
+      return;
+   }
+   log_msg(LOG_INFO, "onode_memory: %ld kByte", onode_mem() / 1024);
+}
+
+
 int read_osm_file(hpx_ctrl_t *ctl, bx_node_t **tree)
 {
    hpx_tag_t *tag;
@@ -105,11 +115,14 @@ int read_osm_file(hpx_ctrl_t *ctl, bx_node_t **tree)
                if (tlist->nsub >= tlist->msub)
                {
                   if (hpx_tree_resize(&tlist, 1) == -1)
-                     perror("hpx_tree_resize"), exit(EXIT_FAILURE);
+                     log_msg(LOG_ERR, "hpx_tree_resize failed at line %d", oline_),
+                     exit(EXIT_FAILURE);
                   if (hpx_tree_resize(&tlist->subtag[tlist->nsub], 0) == -1)
-                     perror("hpx_tree_resize"), exit(EXIT_FAILURE);
+                     log_msg(LOG_ERR, "hpx_tree_resize failed at line %d", oline_),
+                     exit(EXIT_FAILURE);
                   if ((tlist->subtag[tlist->nsub]->tag = hpx_tm_create(16)) == NULL)
-                     perror("hpx_tm_create"), exit(EXIT_FAILURE);
+                     log_msg(LOG_ERR, "hpx_tm_create failed at line %d", oline_),
+                     exit(EXIT_FAILURE);
                }
                tlist->subtag[tlist->nsub]->nsub = 0;
                tag = tlist->subtag[tlist->nsub]->tag;
@@ -123,7 +136,9 @@ int read_osm_file(hpx_ctrl_t *ctl, bx_node_t **tree)
 
                tr = bx_add_node(tree, nd.id);
                if ((ond = malloc(sizeof(*ond))) == NULL)
-                  perror("malloc"), exit(EXIT_FAILURE);
+                  log_msg(LOG_ERR, "failed to alloc struct onode at line %d: %s",
+                        strerror(errno), oline_),
+                  exit(EXIT_FAILURE);
 #ifdef MEM_USAGE
                mem_usage_ += sizeof(*ond);
 #endif
@@ -148,7 +163,9 @@ int read_osm_file(hpx_ctrl_t *ctl, bx_node_t **tree)
 
                tr = bx_add_node(tree, nd.id);
                if ((ond = malloc(sizeof(*ond))) == NULL)
-                  perror("malloc"), exit(EXIT_FAILURE);
+                  log_msg(LOG_ERR, "failed to alloc struct onode at line %d: %s",
+                        strerror(errno), oline_),
+                  exit(EXIT_FAILURE);
 #ifdef MEM_USAGE
                mem_usage_ += sizeof(*ond);
 #endif
@@ -165,10 +182,15 @@ int read_osm_file(hpx_ctrl_t *ctl, bx_node_t **tree)
                }
                
                if ((ond = realloc(ond, sizeof(*ond) + ond->tag_cnt * sizeof(struct otag))) == NULL)
-                  perror("realloc"), exit(EXIT_FAILURE);
+                  log_msg(LOG_ERR, "failed to realloc tags for struct onode at line %d: %s",
+                        strerror(errno), oline_),
+                  exit(EXIT_FAILURE);
 
                if ((ond->ref = malloc(ond->ref_cnt * sizeof(int64_t))) == NULL)
-                  perror("malloc"), exit(EXIT_FAILURE);
+                  log_msg(LOG_ERR, "failed to alloc refs for struct onode at line %d: %s",
+                        strerror(errno), oline_),
+                  exit(EXIT_FAILURE);
+
 #ifdef MEM_USAGE
                mem_usage_ += ond->ref_cnt * sizeof(int64_t) + ond->tag_cnt * sizeof(struct otag);
 #endif

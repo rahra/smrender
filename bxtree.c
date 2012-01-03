@@ -13,6 +13,21 @@ size_t bx_sizeof(void)
 }
 
 
+void bx_exit(void)
+{
+   static short ae = 0;
+
+   if (!ae)
+   {
+      ae = 1;
+      if (atexit(bx_exit))
+         log_msg(LOG_ERR, "atexit(bx_exit) failed");
+      return;
+   }
+   log_msg(LOG_INFO, "tree memory: %ld kByte", bx_sizeof() / 1024);
+}
+
+
 /*!
  * @param node double pointer to current node.
  * @param h hash value to store.
