@@ -143,6 +143,9 @@ int read_osm_file(hpx_ctrl_t *ctl, bx_node_t **tree)
             }
             else if (tag->type == HPX_CLOSE)
             {
+               if ((nd.type != OSM_NODE) && (nd.type != OSM_WAY))
+                  continue;
+
                tr = bx_add_node(tree, nd.id);
                if ((ond = malloc(sizeof(*ond))) == NULL)
                   perror("malloc"), exit(EXIT_FAILURE);

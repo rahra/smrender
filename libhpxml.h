@@ -31,10 +31,18 @@
 #define hpx_init_simple() hpx_init(0, 10*1024*1024)
 
 
+struct bstringl
+{
+   long len;
+   char *buf;
+};
+
+
 typedef struct hpx_ctrl
 {
    //! data buffer containing pointer and number of bytes in buffer
-   bstring_t buf;
+   //bstring_t buf;
+   struct bstringl buf;
    //! file descriptor of input file
    int fd;
    //! flag set if eof
