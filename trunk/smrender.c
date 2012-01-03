@@ -375,7 +375,7 @@ int print_onode(FILE *f, const struct onode *nd)
 
    for (i = 0; i < nd->tag_cnt; i++)
       fprintf(f, "<tag k=\"%.*s\" v=\"%.*s\"/>\n",
-            nd->otag[i].k.len, nd->otag[i].k.buf, nd->otag[i].v.len, nd->otag[i].v.buf);
+            (int) nd->otag[i].k.len, nd->otag[i].k.buf, (int) nd->otag[i].v.len, nd->otag[i].v.buf);
 
    for (i = 0; i < nd->ref_cnt; i++)
       fprintf(f, "<nd ref=\"%ld\"/>\n", nd->ref[i]);
@@ -599,6 +599,7 @@ void usage(const char *s)
          "   -i <osm input> ...... OSM input data (defaulta is stdin).\n"
          "   -l .................. Select landscape output.\n"
          "   -m <length> ......... Length of mean latitude in degrees.\n"
+         "   -M .................. Input file is memory mapped.\n"
          "   -r <rules file> ..... Rules file ('rules.osm' is default).\n"
          "   -s <scale> .......... Select scale of chart.\n"
          "   -o <image file> ..... Filename of output image (stdout is default).\n"
@@ -620,7 +621,7 @@ int main(int argc, char *argv[])
    char *cf = "rules.osm", *img_file = NULL, *osm_ifile = NULL, *osm_ofile = NULL;
    struct rdata *rd;
    struct timeval tv_start, tv_end;
-   int gen_grid = 1, prep_coast = 1, landscape = 0;
+   int gen_grid = 1, prep_coast = 1, landscape = 0, w_mmap = 0;
    char *paper = "A3";
 
    (void) gettimeofday(&tv_start, NULL);
@@ -629,7 +630,7 @@ int main(int argc, char *argv[])
    rd = init_rdata();
    set_util_rd(rd);
 
-   while ((n = getopt(argc, argv, "Cd:Ghi:lm:o:P:r:s:w:x:y:")) != -1)
+   while ((n = getopt(argc, argv, "Cd:Ghi:lm:Mo:P:r:s:w:x:y:")) != -1)
       switch (n)
       {
          case 'C':
@@ -658,6 +659,14 @@ int main(int argc, char *argv[])
             if ((rd->mean_lat_len = atoi(optarg)) <= 0)
                log_msg(LOG_ERR, "illegal argument for mean lat length %s", optarg),
                   exit(EXIT_FAILURE);
+            break;
+
+         case 'M':
+#ifndef WITH_MMAP
+            log_msg(LOG_ERR, "memory mapping support disable, recompile with WITH_MMAP");
+            exit(EXIT_FAILURE);
+#endif
+            w_mmap = 1;
             break;
 
          case 'l':
@@ -729,10 +738,16 @@ int main(int argc, char *argv[])
    if (fstat(fd, &st) == -1)
       perror("stat"), exit(EXIT_FAILURE);
 
+   if (w_mmap)
+   {
+      log_msg(LOG_INFO, "input file will be memory mapped with mmap()");
+      st.st_size = -st.st_size;
+   }
    if ((ctl = hpx_init(fd, st.st_size)) == NULL)
       perror("hpx_init_simple"), exit(EXIT_FAILURE);
 
-   log_msg(LOG_INFO, "reading osm data (file size %ld kb)", (long) st.st_size / 1024);
+   log_msg(LOG_INFO, "reading osm data (file size %ld kb, memory at %p)",
+         (long) labs(st.st_size) / 1024, ctl->buf.buf);
    (void) read_osm_file(ctl, &rd->obj);
    if (osm_ifile != NULL)
       (void) close(fd);

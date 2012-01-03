@@ -15,11 +15,16 @@
  * along with libhpxml. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include "smconfig.h"
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 #include <errno.h>
+#ifdef WITH_MMAP
+#include <sys/mman.h>
+#endif
 
 #include "bstring.h"
 #include "libhpxml.h"
@@ -388,24 +393,41 @@ int hpx_buf_reader(int fd, char *buf, int buflen)
 
 /*!
  *  @param fd Input file descriptor.
- *  @param len Read buffer length.
+ *  @param len Read buffer length. If len is negative, the file is memory mapped
+ *  with mmap(). This works only if it was compiled with WITH_MMAP.
  *  @param mattr Maximum number of attributes per tag.
  */
 hpx_ctrl_t *hpx_init(int fd, int len)
 {
    hpx_ctrl_t *ctl;
 
-   if ((ctl = malloc(sizeof(*ctl) + len)) == NULL)
+   if ((ctl = malloc(sizeof(*ctl) + (len < 0 ? 0 : len))) == NULL)
       return NULL;
 
    memset(ctl, 0, sizeof(*ctl));
+   ctl->fd = fd;
+   // init line counter
+   hpx_lineno_ = 1;
+
+   if (len < 0)
+   {
+#ifdef WITH_MMAP
+      ctl->len = ctl->buf.len = -len;
+      if ((ctl->buf.buf = mmap(NULL, ctl->len, PROT_READ | PROT_WRITE, MAP_PRIVATE, fd, 0)) == MAP_FAILED)
+      {
+         free(ctl);
+         return NULL;
+      }
+      return ctl;
+#else
+      free(ctl);
+      return NULL;
+#endif
+   }
+
    ctl->buf.buf = (char*) (ctl + 1);
    ctl->len = len;
    ctl->empty = 1;
-   ctl->fd = fd;
- 
-   // init line counter
-   hpx_lineno_ = 1;
 
    return ctl;
 }
