@@ -272,7 +272,7 @@ int cat_poly(struct rdata *);
 /* smgrid.c */
 void grid2(struct rdata*);
 
-extern int oline_;
+//extern int oline_;
 
 #endif
 

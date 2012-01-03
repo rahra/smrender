@@ -40,9 +40,7 @@
 #include "bxtree.h"
 
 
-int oline_ = 0;
-
-
+static int oline_ = 0;
 static size_t mem_usage_ = 0;
 
 
@@ -56,14 +54,17 @@ void osm_read_exit(void)
 {
    static short ae = 0;
 
-   if (!ae)
+   switch (ae)
    {
-      ae = 1;
-      if (atexit(osm_read_exit))
-         log_msg(LOG_ERR, "atexit(osm_read_exit) failed");
-      return;
+      case 0:
+         if (atexit(osm_read_exit))
+            log_msg(LOG_ERR, "atexit(osm_read_exit) failed");
+         break;
+
+      default:
+         log_msg(LOG_INFO, "onode_memory: %ld kByte, line %ld", onode_mem() / 1024, oline_);
    }
-   log_msg(LOG_INFO, "onode_memory: %ld kByte", onode_mem() / 1024);
+   ae++;
 }
 
 

@@ -17,14 +17,17 @@ void bx_exit(void)
 {
    static short ae = 0;
 
-   if (!ae)
+   switch (ae)
    {
-      ae = 1;
-      if (atexit(bx_exit))
-         log_msg(LOG_ERR, "atexit(bx_exit) failed");
-      return;
+      case 0:
+         if (atexit(bx_exit))
+            log_msg(LOG_ERR, "atexit(bx_exit) failed");
+         break;
+
+      default:
+         log_msg(LOG_INFO, "tree memory: %ld kByte", bx_sizeof() / 1024);
    }
-   log_msg(LOG_INFO, "tree memory: %ld kByte", bx_sizeof() / 1024);
+   ae++;
 }
 
 
