@@ -72,7 +72,7 @@ int read_osm_file(hpx_ctrl_t *ctl, bx_node_t **tree, struct rdata *rd)
 {
    hpx_tag_t *tag;
    bstring_t b;
-   int n = 0, i, j;
+   int n = 0, i, j, rcnt;
    struct osm_node nd;
    struct onode *ond;
    hpx_tree_t *tlist = NULL;
@@ -157,7 +157,6 @@ int read_osm_file(hpx_ctrl_t *ctl, bx_node_t **tree, struct rdata *rd)
                nd.type = n;
                if (!nd.id) nd.id = nid++;
 
-               tr = bx_add_node(tree, nd.id);
                if ((ond = malloc(sizeof(*ond))) == NULL)
                   log_msg(LOG_ERR, "failed to alloc struct onode at line %d: %s",
                         strerror(errno), oline_),
@@ -167,7 +166,7 @@ int read_osm_file(hpx_ctrl_t *ctl, bx_node_t **tree, struct rdata *rd)
 #endif
                memcpy(&ond->nd, &nd, sizeof(nd));
                memset(((char*) ond) + sizeof(nd), 0, sizeof(*ond) - sizeof(nd));
-               //put_object(ond);
+               tr = bx_add_node(tree, nd.id);
                if (tr->next[nd.type == OSM_WAY] != NULL)
                {
                   free(tr->next[nd.type == OSM_WAY]);
@@ -185,14 +184,10 @@ int read_osm_file(hpx_ctrl_t *ctl, bx_node_t **tree, struct rdata *rd)
                if ((nd.type != OSM_NODE) && (nd.type != OSM_WAY))
                   continue;
 
-               tr = bx_add_node(tree, nd.id);
                if ((ond = malloc(sizeof(*ond))) == NULL)
                   log_msg(LOG_ERR, "failed to alloc struct onode at line %d: %s",
                         strerror(errno), oline_),
                   exit(EXIT_FAILURE);
-#ifdef MEM_USAGE
-               mem_usage_ += sizeof(*ond);
-#endif
                memcpy(&ond->nd, &nd, sizeof(nd));
                memset(((char*) ond) + sizeof(nd), 0, sizeof(*ond) - sizeof(nd));
 
@@ -216,10 +211,10 @@ int read_osm_file(hpx_ctrl_t *ctl, bx_node_t **tree, struct rdata *rd)
                   exit(EXIT_FAILURE);
 
 #ifdef MEM_USAGE
-               mem_usage_ += ond->ref_cnt * sizeof(int64_t) + ond->tag_cnt * sizeof(struct otag);
+               mem_usage_ += sizeof(*ond) + ond->ref_cnt * sizeof(int64_t) + ond->tag_cnt * sizeof(struct otag);
 #endif
  
-               for (i = 0, ref = ond->ref, j = 0, ond->ref_cnt = 0; i < tlist->nsub; i++)
+               for (i = 0, ref = ond->ref, j = 0, rcnt = 0; i < tlist->nsub; i++)
                {
                   if (!bs_cmp(tlist->subtag[i]->tag->tag, "tag"))
                   {
@@ -239,21 +234,26 @@ int read_osm_file(hpx_ctrl_t *ctl, bx_node_t **tree, struct rdata *rd)
                            continue;
 #endif
                         ref++;
-                        ond->ref_cnt++;
+                        rcnt++;
                      }
                   }
                }
 
 #ifdef READ_FILTER
-               if ((rd != NULL) && (nd.type == OSM_WAY) && (ond->ref_cnt == 0))
+               if ((rd != NULL) && (nd.type == OSM_WAY) && (rcnt == 0))
                {
-                  log_debug("freeing empty way");
+                  //log_debug("freeing empty way");
+#ifdef MEM_USAGE
+                  mem_usage_ -= sizeof(*ond) + ond->ref_cnt * sizeof(int64_t) + ond->tag_cnt * sizeof(struct otag);
+#endif
                   free(ond->ref);
                   free(ond);
                }
                else
 #endif
                {
+                  ond->ref_cnt = rcnt;
+                  tr = bx_add_node(tree, nd.id);
                   if (tr->next[nd.type == OSM_WAY] != NULL)
                   {
                      free(tr->next[nd.type == OSM_WAY]);

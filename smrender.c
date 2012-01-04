@@ -771,6 +771,22 @@ int main(int argc, char *argv[])
    if (!gdFTUseFontConfig(1))
       log_msg(LOG_NOTICE, "fontconfig library not available");
 
+   if ((fd = open(cf, O_RDONLY)) == -1)
+         perror("open"), exit(EXIT_FAILURE);
+
+   if (fstat(fd, &st) == -1)
+      perror("stat"), exit(EXIT_FAILURE);
+
+   if ((cfctl = hpx_init(fd, st.st_size)) == NULL)
+      perror("hpx_init_simple"), exit(EXIT_FAILURE);
+
+   log_msg(LOG_INFO, "reading rules (file size %ld kb)", (long) st.st_size / 1024);
+   (void) read_osm_file(cfctl, &rd->rules, NULL);
+   (void) close(fd);
+   log_msg(LOG_INFO, "preparing rules");
+   traverse(rd->rules, 0, IDX_NODE, (tree_func_t) prepare_rules, rd, NULL);
+   traverse(rd->rules, 0, IDX_WAY, (tree_func_t) prepare_rules, rd, NULL);
+
    if ((osm_ifile != NULL) && ((fd = open(osm_ifile, O_RDONLY)) == -1))
          perror("open"), exit(EXIT_FAILURE);
 
@@ -791,19 +807,6 @@ int main(int argc, char *argv[])
    if (osm_ifile != NULL)
       (void) close(fd);
 
-   if ((fd = open(cf, O_RDONLY)) == -1)
-         perror("open"), exit(EXIT_FAILURE);
-
-   if (fstat(fd, &st) == -1)
-      perror("stat"), exit(EXIT_FAILURE);
-
-   if ((cfctl = hpx_init(fd, st.st_size)) == NULL)
-      perror("hpx_init_simple"), exit(EXIT_FAILURE);
-
-   log_msg(LOG_INFO, "reading rules (file size %ld kb)", (long) st.st_size / 1024);
-   (void) read_osm_file(cfctl, &rd->rules, NULL);
-   (void) close(fd);
-
    log_debug("tree memory used: %ld kb", (long) bx_sizeof() / 1024);
    log_debug("onode memory used: %ld kb", (long) onode_mem() / 1024);
 
@@ -820,10 +823,6 @@ int main(int argc, char *argv[])
          rd->ds.wcnt, rd->ds.min_wid, rd->ds.max_wid);
    log_msg(LOG_INFO, "left upper %.2f/%.2f, right bottom %.2f/%.2f",
          rd->ds.lu.lat, rd->ds.lu.lon, rd->ds.rb.lat, rd->ds.rb.lon);
-
-   log_msg(LOG_INFO, "preparing rules");
-   traverse(rd->rules, 0, IDX_NODE, (tree_func_t) prepare_rules, rd, NULL);
-   traverse(rd->rules, 0, IDX_WAY, (tree_func_t) prepare_rules, rd, NULL);
 
    if (prep_coast)
    {
