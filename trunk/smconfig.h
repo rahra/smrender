@@ -7,6 +7,7 @@
 #define bx_hash_t int64_t
 #define BX_RES 4
 #define WITH_MMAP
+#define READ_FILTER
 
 
 #endif

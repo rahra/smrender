@@ -219,6 +219,30 @@ int print_tree(struct onode *nd, struct rdata *rd, void *p)
 }
 
 
+int strip_ways(struct onode *w, struct rdata *rd, void *p)
+{
+   struct onode *n;
+   int i;
+
+   for (i = 0; i < w->ref_cnt; i++)
+   {
+      if ((n = get_object(OSM_NODE, w->ref[i])) == NULL)
+      {
+         memmove(&w->ref[i], &w->ref[i + 1], (w->ref_cnt - i - 1) * sizeof(int64_t));
+         w->ref_cnt--;
+         i--;
+      }
+   }
+
+   if (w->ref_cnt == 0)
+   {
+      log_debug("way %ld has no nodes", w->nd.id);
+   }
+
+   return 0;
+}
+
+
 int traverse(const bx_node_t *nt, int d, int idx, tree_func_t dhandler, struct rdata *rd, void *p)
 {
    int i, e, sidx, eidx;
@@ -763,7 +787,7 @@ int main(int argc, char *argv[])
 
    log_msg(LOG_INFO, "reading osm data (file size %ld kb, memory at %p)",
          (long) labs(st.st_size) / 1024, ctl->buf.buf);
-   (void) read_osm_file(ctl, &rd->obj);
+   (void) read_osm_file(ctl, &rd->obj, rd);
    if (osm_ifile != NULL)
       (void) close(fd);
 
@@ -777,11 +801,14 @@ int main(int argc, char *argv[])
       perror("hpx_init_simple"), exit(EXIT_FAILURE);
 
    log_msg(LOG_INFO, "reading rules (file size %ld kb)", (long) st.st_size / 1024);
-   (void) read_osm_file(cfctl, &rd->rules);
+   (void) read_osm_file(cfctl, &rd->rules, NULL);
    (void) close(fd);
 
    log_debug("tree memory used: %ld kb", (long) bx_sizeof() / 1024);
    log_debug("onode memory used: %ld kb", (long) onode_mem() / 1024);
+
+   log_msg(LOG_INFO, "stripping filtered way nodes");
+   traverse(rd->obj, 0, IDX_WAY, (tree_func_t) strip_ways, rd, NULL);
 
    log_msg(LOG_INFO, "gathering stats");
    init_stats(&rd->ds);

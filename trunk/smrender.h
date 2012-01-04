@@ -273,7 +273,7 @@ void set_const_tag(struct otag*, char*, char*);
 
 /* smloadosm.c */
 void osm_read_exit(void);
-int read_osm_file(hpx_ctrl_t*, bx_node_t**);
+int read_osm_file(hpx_ctrl_t*, bx_node_t**, struct rdata *rd);
 size_t onode_mem(void);
 
 /* smcoast.c */

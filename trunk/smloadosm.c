@@ -30,7 +30,7 @@
 #include <math.h>
 #include <sys/stat.h>
 #include <fcntl.h>
-#include <gd.h>
+//#include <gd.h>
 
 #include "smrender.h"
 #include "osm_inplace.h"
@@ -68,7 +68,7 @@ void osm_read_exit(void)
 }
 
 
-int read_osm_file(hpx_ctrl_t *ctl, bx_node_t **tree)
+int read_osm_file(hpx_ctrl_t *ctl, bx_node_t **tree, struct rdata *rd)
 {
    hpx_tag_t *tag;
    bstring_t b;
@@ -109,8 +109,19 @@ int read_osm_file(hpx_ctrl_t *ctl, bx_node_t **tree)
             if (tag->type == HPX_OPEN)
             {
                memset(&nd, 0, sizeof(nd));
-               nd.type = n;
                proc_osm_node(tag, &nd);
+#ifdef READ_FILTER
+               if ((rd != NULL) && (n == OSM_NODE))
+               {
+                  // skip nodes which are outside of bounding box
+                  if ((nd.lat > rd->y1c) || (nd.lat < rd->y2c) || (nd.lon > rd->x2c) || (nd.lon < rd->x1c))
+                  {
+                     //log_debug("skipping node line %ld", oline_);
+                     continue;
+                  }
+               }
+#endif
+               nd.type = n;
                if (!nd.id) nd.id = nid++;
 
                if (tlist->nsub >= tlist->msub)
@@ -131,8 +142,19 @@ int read_osm_file(hpx_ctrl_t *ctl, bx_node_t **tree)
             else if (tag->type == HPX_SINGLE)
             {
                memset(&nd, 0, sizeof(nd));
-               nd.type = n;
                proc_osm_node(tag, &nd);
+#ifdef READ_FILTER
+               if ((rd != NULL) && (n == OSM_NODE))
+               {
+                  // skip nodes which are outside of bounding box
+                  if ((nd.lat > rd->y1c) || (nd.lat < rd->y2c) || (nd.lon > rd->x2c) || (nd.lon < rd->x1c))
+                  {
+                     //log_debug("skipping node line %ld", oline_);
+                     continue;
+                  }
+               }
+#endif
+               nd.type = n;
                if (!nd.id) nd.id = nid++;
 
                tr = bx_add_node(tree, nd.id);
