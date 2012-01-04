@@ -1,5 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <errno.h>
+#include <string.h>
 
 #include "bxtree.h"
 
@@ -43,7 +45,9 @@ bx_node_t *bx_add_node0(bx_node_t **node, bx_hash_t h, bx_hash_t d)
    if (!*node)
    {
       if ((*node = calloc(1, sizeof(bx_node_t))) == NULL)
-         perror("add_node0:calloc"), exit(EXIT_FAILURE);
+         log_msg(LOG_ERR, "calloc failed in bx_add_node0() for hash 0x%016lx: %s",
+               (long) h, strerror(errno)),
+            exit(EXIT_FAILURE);
 #ifdef MEM_USAGE
       mem_usage_ += sizeof(bx_node_t);
 #endif

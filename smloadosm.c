@@ -30,6 +30,7 @@
 #include <math.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <signal.h>
 //#include <gd.h>
 
 #include "smrender.h"
@@ -40,8 +41,9 @@
 #include "bxtree.h"
 
 
-static int oline_ = 0;
+static size_t oline_ = 0;
 static size_t mem_usage_ = 0;
+static volatile sig_atomic_t usr1_ = 0;
 
 
 size_t onode_mem(void)
@@ -68,7 +70,27 @@ void osm_read_exit(void)
 }
 
 
-int read_osm_file(hpx_ctrl_t *ctl, bx_node_t **tree, struct rdata *rd)
+void usr1_handler(int sig)
+{
+   usr1_++;
+}
+
+
+void install_sigusr1(void)
+{
+   struct sigaction sa;
+
+   memset(&sa, 0, sizeof(sa));
+   sa.sa_handler = usr1_handler;
+
+   if (sigaction(SIGUSR1, &sa, NULL) == -1)
+      log_msg(LOG_WARNING, "SIGUSR1 handler cannot be installed: %s", strerror(errno));
+   else
+      log_msg(LOG_INFO, "SIGUSR1 installed (pid = %ld)", (long) getpid());
+}
+
+
+int read_osm_file(hpx_ctrl_t *ctl, bx_node_t **tree, struct filter *fi)
 {
    hpx_tag_t *tag;
    bstring_t b;
@@ -85,17 +107,23 @@ int read_osm_file(hpx_ctrl_t *ctl, bx_node_t **tree, struct rdata *rd)
    if ((tlist->tag = hpx_tm_create(16)) == NULL)
       perror("hpx_tm_create"), exit(EXIT_FAILURE);
 
-   oline_ = 0;
-
+   //oline_ = 0;
    tlist->nsub = 0;
    tag = tlist->tag;
    nd.type = OSM_NA;
 
    while (hpx_get_elem(ctl, &b, NULL, &tag->line) > 0)
    {
+      oline_ = tag->line;
+      if (usr1_)
+      {
+         usr1_ = 0;
+         log_msg(LOG_INFO, "onode_memory: %ld kByte, line %ld", onode_mem() / 1024, tag->line);
+      }
+
       if (!hpx_process_elem(b, tag))
       {
-         oline_++;
+         //oline_++;
 
          if (!bs_cmp(tag->tag, "node"))
             n = OSM_NODE;
@@ -111,10 +139,10 @@ int read_osm_file(hpx_ctrl_t *ctl, bx_node_t **tree, struct rdata *rd)
                memset(&nd, 0, sizeof(nd));
                proc_osm_node(tag, &nd);
 #ifdef READ_FILTER
-               if ((rd != NULL) && (n == OSM_NODE))
+               if ((fi != NULL) && (n == OSM_NODE))
                {
                   // skip nodes which are outside of bounding box
-                  if ((nd.lat > rd->y1c) || (nd.lat < rd->y2c) || (nd.lon > rd->x2c) || (nd.lon < rd->x1c))
+                  if (fi->use_bbox && ((nd.lat > fi->c1.lat) || (nd.lat < fi->c2.lat) || (nd.lon > fi->c2.lon) || (nd.lon < fi->c1.lon)))
                   {
                      //log_debug("skipping node line %ld", oline_);
                      continue;
@@ -127,13 +155,13 @@ int read_osm_file(hpx_ctrl_t *ctl, bx_node_t **tree, struct rdata *rd)
                if (tlist->nsub >= tlist->msub)
                {
                   if (hpx_tree_resize(&tlist, 1) == -1)
-                     log_msg(LOG_ERR, "hpx_tree_resize failed at line %d", oline_),
+                     log_msg(LOG_ERR, "hpx_tree_resize failed at line %d", tag->line),
                      exit(EXIT_FAILURE);
                   if (hpx_tree_resize(&tlist->subtag[tlist->nsub], 0) == -1)
-                     log_msg(LOG_ERR, "hpx_tree_resize failed at line %d", oline_),
+                     log_msg(LOG_ERR, "hpx_tree_resize failed at line %d", tag->line),
                      exit(EXIT_FAILURE);
                   if ((tlist->subtag[tlist->nsub]->tag = hpx_tm_create(16)) == NULL)
-                     log_msg(LOG_ERR, "hpx_tm_create failed at line %d", oline_),
+                     log_msg(LOG_ERR, "hpx_tm_create failed at line %d", tag->line),
                      exit(EXIT_FAILURE);
                }
                tlist->subtag[tlist->nsub]->nsub = 0;
@@ -144,10 +172,10 @@ int read_osm_file(hpx_ctrl_t *ctl, bx_node_t **tree, struct rdata *rd)
                memset(&nd, 0, sizeof(nd));
                proc_osm_node(tag, &nd);
 #ifdef READ_FILTER
-               if ((rd != NULL) && (n == OSM_NODE))
+               if ((fi != NULL) && (n == OSM_NODE))
                {
                   // skip nodes which are outside of bounding box
-                  if ((nd.lat > rd->y1c) || (nd.lat < rd->y2c) || (nd.lon > rd->x2c) || (nd.lon < rd->x1c))
+                  if (fi->use_bbox && ((nd.lat > fi->c1.lat) || (nd.lat < fi->c2.lat) || (nd.lon > fi->c2.lon) || (nd.lon < fi->c1.lon)))
                   {
                      //log_debug("skipping node line %ld", oline_);
                      continue;
@@ -159,7 +187,7 @@ int read_osm_file(hpx_ctrl_t *ctl, bx_node_t **tree, struct rdata *rd)
 
                if ((ond = malloc(sizeof(*ond))) == NULL)
                   log_msg(LOG_ERR, "failed to alloc struct onode at line %d: %s",
-                        strerror(errno), oline_),
+                        strerror(errno), tag->line),
                   exit(EXIT_FAILURE);
 #ifdef MEM_USAGE
                mem_usage_ += sizeof(*ond);
@@ -186,7 +214,7 @@ int read_osm_file(hpx_ctrl_t *ctl, bx_node_t **tree, struct rdata *rd)
 
                if ((ond = malloc(sizeof(*ond))) == NULL)
                   log_msg(LOG_ERR, "failed to alloc struct onode at line %d: %s",
-                        strerror(errno), oline_),
+                        strerror(errno), tag->line),
                   exit(EXIT_FAILURE);
                memcpy(&ond->nd, &nd, sizeof(nd));
                memset(((char*) ond) + sizeof(nd), 0, sizeof(*ond) - sizeof(nd));
@@ -202,12 +230,12 @@ int read_osm_file(hpx_ctrl_t *ctl, bx_node_t **tree, struct rdata *rd)
                
                if ((ond = realloc(ond, sizeof(*ond) + ond->tag_cnt * sizeof(struct otag))) == NULL)
                   log_msg(LOG_ERR, "failed to realloc tags for struct onode at line %d: %s",
-                        strerror(errno), oline_),
+                        strerror(errno), tag->line),
                   exit(EXIT_FAILURE);
 
                if ((ond->ref = malloc(ond->ref_cnt * sizeof(int64_t))) == NULL)
                   log_msg(LOG_ERR, "failed to alloc refs for struct onode at line %d: %s",
-                        strerror(errno), oline_),
+                        strerror(errno), tag->line),
                   exit(EXIT_FAILURE);
 
 #ifdef MEM_USAGE
@@ -240,7 +268,7 @@ int read_osm_file(hpx_ctrl_t *ctl, bx_node_t **tree, struct rdata *rd)
                }
 
 #ifdef READ_FILTER
-               if ((rd != NULL) && (nd.type == OSM_WAY) && (rcnt == 0))
+               if ((fi != NULL) && (nd.type == OSM_WAY) && (rcnt == 0))
                {
                   //log_debug("freeing empty way");
 #ifdef MEM_USAGE
