@@ -269,7 +269,7 @@ int bs_match(const bstring_t *dst, const bstring_t *pat, const struct specialTag
 }
 
 
-int bs_match_attr(const struct onode *nd, const struct otag *ot)
+int bs_match_attr(const struct onode *nd, const struct otag *ot, const struct stag *st)
 {
    int i, kmatch, vmatch;
 
@@ -277,20 +277,20 @@ int bs_match_attr(const struct onode *nd, const struct otag *ot)
    {
       kmatch = vmatch = 0;
 
-      kmatch = ot->k.len ? bs_match(&nd->otag[i].k, &ot->k, &ot->stk) : 1;
-      vmatch = ot->v.len ? bs_match(&nd->otag[i].v, &ot->v, &ot->stv) : 1;
+      kmatch = ot->k.len ? bs_match(&nd->otag[i].k, &ot->k, &st->stk) : 1;
+      vmatch = ot->v.len ? bs_match(&nd->otag[i].v, &ot->v, &st->stv) : 1;
 
-      if (kmatch && (ot->stk.type & SPECIAL_NOT))
+      if (kmatch && (st->stk.type & SPECIAL_NOT))
          return -1;
 
-      if (vmatch && (ot->stv.type & SPECIAL_NOT))
+      if (vmatch && (st->stv.type & SPECIAL_NOT))
          return -1;
 
       if (kmatch && vmatch)
          return i;
    }
 
-   if ((ot->stk.type & SPECIAL_NOT) || (ot->stv.type & SPECIAL_NOT))
+   if ((st->stk.type & SPECIAL_NOT) || (st->stv.type & SPECIAL_NOT))
       return INT_MAX;
 
    return -1;
@@ -303,8 +303,10 @@ int bs_match_attr(const struct onode *nd, const struct otag *ot)
 int match_attr(const struct onode *nd, const char *k, const char *v)
 {
    struct otag ot;
+   struct stag st;
 
    memset(&ot, 0, sizeof(ot));
+   memset(&st, 0, sizeof(st));
 
    if (k)
    {
@@ -317,6 +319,6 @@ int match_attr(const struct onode *nd, const char *k, const char *v)
       ot.v.buf = (char*) v;
    }
 
-   return bs_match_attr(nd, &ot);
+   return bs_match_attr(nd, &ot, &st);
 }
 

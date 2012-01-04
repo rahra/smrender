@@ -94,6 +94,10 @@ struct otag
 {
    bstring_t k;
    bstring_t v;
+};
+
+struct stag
+{
    struct specialTag stk;
    struct specialTag stv;
 };
@@ -159,6 +163,8 @@ struct rule
       struct actFunction func;
       struct actDraw draw;
    };
+   short tag_cnt;
+   struct stag stag[];
 };
 
 struct onode
@@ -172,8 +178,8 @@ struct onode
 
 struct orule
 {
-   struct rule rule;
    struct onode *ond;
+   struct rule rule;
 };
 
 struct grid
@@ -251,7 +257,7 @@ void mk_chart_coords(int, int, struct rdata*, double*, double*);
 
 /* smutil.c */
 int match_attr(const struct onode *, const char *, const char *);
-int bs_match_attr(const struct onode *, const struct otag *);
+int bs_match_attr(const struct onode *, const struct otag *, const struct stag*);
 int bs_match(const bstring_t *, const bstring_t *, const struct specialTag *);
 
 void set_util_rd(struct rdata*);
@@ -263,7 +269,6 @@ struct onode *get_object(int, int64_t);
 struct onode *malloc_object(int , int);
 int64_t unique_node_id(void);
 int64_t unique_way_id(void);
-//struct rdata *init_rdata(void);
 void set_const_tag(struct otag*, char*, char*);
 
 /* smloadosm.c */
