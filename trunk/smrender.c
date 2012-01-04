@@ -104,7 +104,7 @@ int apply_rules0(struct onode *nd, struct rdata *rd, struct orule *rl)
    //   return 0;
 
    for (i = 0; i < rl->ond->tag_cnt; i++)
-      if (bs_match_attr(nd, &rl->ond->otag[i]) == -1)
+      if (bs_match_attr(nd, &rl->ond->otag[i], &rl->rule.stag[i]) == -1)
          return 0;
 
    //fprintf(stderr, "node id %ld rule match %ld\n", nd->nd.id, mnd->nd.id);
@@ -157,7 +157,7 @@ int apply_wrules0(struct onode *nd, struct rdata *rd, struct orule *rl)
    //   return 0;
 
    for (i = 0; i < rl->ond->tag_cnt; i++)
-      if (bs_match_attr(nd, &rl->ond->otag[i]) == -1)
+      if (bs_match_attr(nd, &rl->ond->otag[i], &rl->rule.stag[i]) == -1)
          return 0;
 
    //fprintf(stderr, "way id %ld rule match %ld\n", nd->nd.id, mnd->nd.id);

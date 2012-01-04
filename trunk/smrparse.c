@@ -86,7 +86,7 @@ char *cfmt(double c, int d, char *s, int l)
 #endif
 
 
-int check_matchtype(bstring_t *b, struct specialTag *t)
+int parse_matchtype(bstring_t *b, struct specialTag *t)
 {
    t->type = 0;
 
@@ -235,11 +235,12 @@ struct orule *rule_alloc(struct rdata *rd, struct onode *nd)
    bx_node_t *bn;
    struct orule *rl;
 
-   if ((rl = malloc(sizeof(struct orule))) == NULL)
+   if ((rl = malloc(sizeof(struct orule) + sizeof(struct stag) * nd->tag_cnt)) == NULL)
       log_msg(LOG_ERR, "rule_alloc failed: %s", strerror(errno)),
          exit(EXIT_FAILURE);
    memset(&rl->rule, 0, sizeof(struct rule));
    rl->ond = nd;
+   rl->rule.tag_cnt = nd->tag_cnt;
 
    if ((bn = bx_get_node(rd->rules, nd->nd.id)) == NULL)
       log_msg(LOG_EMERG, "bx_get_node() returned NULL in rule_alloc()"),
@@ -261,9 +262,9 @@ int prepare_rules(struct onode *nd, struct rdata *rd, void *p)
 
    for (i = 0; i < rl->ond->tag_cnt; i++)
    {
-      if (check_matchtype(&rl->ond->otag[i].k, &rl->ond->otag[i].stk) == -1)
+      if (parse_matchtype(&rl->ond->otag[i].k, &rl->rule.stag[i].stk) == -1)
          return 0;
-      if (check_matchtype(&rl->ond->otag[i].v, &rl->ond->otag[i].stv) == -1)
+      if (parse_matchtype(&rl->ond->otag[i].v, &rl->rule.stag[i].stv) == -1)
          return 0;
    }
 
@@ -419,8 +420,12 @@ int prepare_rules(struct onode *nd, struct rdata *rd, void *p)
    // remove _action_ tag from tag list, i.e. move last element
    // to position of _action_ tag (order doesn't matter).
    if (i < rl->ond->tag_cnt - 1)
+   {
       memmove(&rl->ond->otag[i], &rl->ond->otag[rl->ond->tag_cnt - 1], sizeof(struct otag));
+      memmove(&rl->rule.stag[i], &rl->rule.stag[rl->ond->tag_cnt - 1], sizeof(struct stag));
+   }
    rl->ond->tag_cnt--;
+   rl->rule.tag_cnt--;
 
    return 0;
 }
