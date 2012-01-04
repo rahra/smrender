@@ -164,11 +164,16 @@ struct rule
 struct onode
 {
    struct osm_node nd;
-   struct rule rule;
    int ref_cnt;
    int64_t *ref;
    int tag_cnt;
    struct otag otag[];
+};
+
+struct orule
+{
+   struct rule rule;
+   struct onode *ond;
 };
 
 struct grid

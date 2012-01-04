@@ -89,11 +89,11 @@ char *cfmt(double c, int d, char *s, int l)
  *  @param rd Pointer to general rendering parameters.
  *  @param mnd Ruleset.
  */
-int apply_rules0(struct onode *nd, struct rdata *rd, struct onode *mnd)
+int apply_rules0(struct onode *nd, struct rdata *rd, struct orule *rl)
 {
    int i, e;
 
-   if (!mnd->rule.type)
+   if (!rl->rule.type)
    {
       //log_debug("ACT_NA rule ignored");
       return E_RTYPE_NA;
@@ -103,24 +103,24 @@ int apply_rules0(struct onode *nd, struct rdata *rd, struct onode *mnd)
    //if (!nd->tag_cnt)
    //   return 0;
 
-   for (i = 0; i < mnd->tag_cnt; i++)
-      if (bs_match_attr(nd, &mnd->otag[i]) == -1)
+   for (i = 0; i < rl->ond->tag_cnt; i++)
+      if (bs_match_attr(nd, &rl->ond->otag[i]) == -1)
          return 0;
 
    //fprintf(stderr, "node id %ld rule match %ld\n", nd->nd.id, mnd->nd.id);
 
-   switch (mnd->rule.type)
+   switch (rl->rule.type)
    {
       case ACT_IMG:
-         e = act_image(nd, rd, mnd);
+         e = act_image(nd, rd, rl);
          break;
 
       case ACT_CAP:
-         e = act_caption(nd, rd, mnd);
+         e = act_caption(nd, rd, rl);
          break;
 
       case ACT_FUNC:
-         e = mnd->rule.func.func(nd);
+         e = rl->rule.func.func(nd);
          break;
 
       case ACT_IGNORE:
@@ -129,18 +129,12 @@ int apply_rules0(struct onode *nd, struct rdata *rd, struct onode *mnd)
 
       default:
          e = E_ACT_NOT_IMPL;
-         log_warn("action type %d not implemented yet", mnd->rule.type);
+         log_warn("action type %d not implemented yet", rl->rule.type);
    }
 
    return e;
 }
 
-
-int apply_rules(struct onode *nd, struct rdata *rd, void *vp)
-{
-   log_debug("applying rule id 0x%016lx type %s(%d)", nd->nd.id, rule_type_str(nd->rule.type), nd->rule.type);
-   return traverse(rd->obj, 0, IDX_NODE, (tree_func_t) apply_rules0, rd, nd);
-}
 
 
 /*! Match and apply ruleset to node.
@@ -148,11 +142,11 @@ int apply_rules(struct onode *nd, struct rdata *rd, void *vp)
  *  @param rd Pointer to general rendering parameters.
  *  @param mnd Ruleset.
  */
-int apply_wrules0(struct onode *nd, struct rdata *rd, struct onode *mnd)
+int apply_wrules0(struct onode *nd, struct rdata *rd, struct orule *rl)
 {
    int i, e;
 
-   if (!mnd->rule.type)
+   if (!rl->rule.type)
    {
       //log_debug("ACT_NA rule ignored");
       return E_RTYPE_NA;
@@ -162,23 +156,23 @@ int apply_wrules0(struct onode *nd, struct rdata *rd, struct onode *mnd)
    //if (!nd->tag_cnt)
    //   return 0;
 
-   for (i = 0; i < mnd->tag_cnt; i++)
-      if (bs_match_attr(nd, &mnd->otag[i]) == -1)
+   for (i = 0; i < rl->ond->tag_cnt; i++)
+      if (bs_match_attr(nd, &rl->ond->otag[i]) == -1)
          return 0;
 
    //fprintf(stderr, "way id %ld rule match %ld\n", nd->nd.id, mnd->nd.id);
 
-   switch (mnd->rule.type)
+   switch (rl->rule.type)
    {
       case ACT_DRAW:
          if (nd->ref[0] == nd->ref[nd->ref_cnt - 1])
-            e = act_fill_poly(nd, rd, mnd);
+            e = act_fill_poly(nd, rd, rl);
          else
-            e = act_open_poly(nd, rd, mnd);
+            e = act_open_poly(nd, rd, rl);
          break;
 
       case ACT_FUNC:
-         e = mnd->rule.func.func(nd);
+         e = rl->rule.func.func(nd);
          break;
 
       case ACT_IGNORE:
@@ -187,19 +181,36 @@ int apply_wrules0(struct onode *nd, struct rdata *rd, struct onode *mnd)
 
       default:
          e = E_ACT_NOT_IMPL;
-         log_msg(LOG_WARN, "action type %d not implemented yet", mnd->rule.type);
+         log_msg(LOG_WARN, "action type %d not implemented yet", rl->rule.type);
    }
 
    return e;
 }
 
 
+int apply_rules(struct orule *rl, struct rdata *rd, void *vp)
+{
+   log_debug("applying rule id 0x%016lx type %s(%d)", rl->ond->nd.id, rule_type_str(rl->rule.type), rl->rule.type);
+
+   switch (rl->ond->nd.type)
+   {
+      case OSM_NODE:
+         return traverse(rd->obj, 0, IDX_NODE, (tree_func_t) apply_rules0, rd, rl);
+      case OSM_WAY:
+         return traverse(rd->obj, 0, IDX_WAY, (tree_func_t) apply_wrules0, rd, rl);
+      default:
+         log_debug("unknown rule type");
+   }
+   return 0;
+}
+
+/*
 int apply_wrules(struct onode *nd, struct rdata *rd, void *vp)
 {
    log_debug("applying rule id 0x%016lx type %s(%d)", nd->nd.id, rule_type_str(nd->rule.type), nd->rule.type);
    return traverse(rd->obj, 0, IDX_WAY, (tree_func_t) apply_wrules0, rd, nd);
 }
-
+*/
 
 int print_tree(struct onode *nd, struct rdata *rd, void *p)
 {
@@ -784,8 +795,8 @@ int main(int argc, char *argv[])
          rd->ds.lu.lat, rd->ds.lu.lon, rd->ds.rb.lat, rd->ds.rb.lon);
 
    log_msg(LOG_INFO, "preparing rules");
-   traverse(rd->rules, 0, IDX_NODE, prepare_rules, rd, NULL);
-   traverse(rd->rules, 0, IDX_WAY, prepare_rules, rd, NULL);
+   traverse(rd->rules, 0, IDX_NODE, (tree_func_t) prepare_rules, rd, NULL);
+   traverse(rd->rules, 0, IDX_WAY, (tree_func_t) prepare_rules, rd, NULL);
 
    if (prep_coast)
    {
@@ -800,9 +811,9 @@ int main(int argc, char *argv[])
    }
 
    log_msg(LOG_INFO, "rendering ways");
-   traverse(rd->rules, 0, IDX_WAY, apply_wrules, rd, NULL);
+   traverse(rd->rules, 0, IDX_WAY, (tree_func_t) apply_rules, rd, NULL);
    log_msg(LOG_INFO, "rendering nodes");
-   traverse(rd->rules, 0, IDX_NODE, apply_rules, rd, NULL);
+   traverse(rd->rules, 0, IDX_NODE, (tree_func_t) apply_rules, rd, NULL);
 
    save_osm(rd, osm_ofile);
    hpx_free(ctl);

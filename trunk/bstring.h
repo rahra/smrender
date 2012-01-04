@@ -19,6 +19,12 @@
 #define BSTRING_H
 
 
+typedef struct bstrings
+{
+   short len;
+   char *buf;
+} bstrings_t;
+
 typedef struct bstring
 {
    int len;

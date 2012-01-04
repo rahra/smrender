@@ -230,28 +230,51 @@ int parse_auto_rot(struct rdata *rd, const char *str, struct auto_rot *rot)
 }
 
 
+struct orule *rule_alloc(struct rdata *rd, struct onode *nd)
+{
+   bx_node_t *bn;
+   struct orule *rl;
+
+   if ((rl = malloc(sizeof(struct orule))) == NULL)
+      log_msg(LOG_ERR, "rule_alloc failed: %s", strerror(errno)),
+         exit(EXIT_FAILURE);
+   memset(&rl->rule, 0, sizeof(struct rule));
+   rl->ond = nd;
+
+   if ((bn = bx_get_node(rd->rules, nd->nd.id)) == NULL)
+      log_msg(LOG_EMERG, "bx_get_node() returned NULL in rule_alloc()"),
+         exit(EXIT_SUCCESS);
+
+   bn->next[nd->nd.type == OSM_WAY] = rl;
+   return rl;
+}
+
+
 int prepare_rules(struct onode *nd, struct rdata *rd, void *p)
 {
    char *s, *lib;
    FILE *f;
    int i;
+   struct orule *rl;
 
-   for (i = 0; i < nd->tag_cnt; i++)
+   rl = rule_alloc(rd, nd);
+
+   for (i = 0; i < rl->ond->tag_cnt; i++)
    {
-      if (check_matchtype(&nd->otag[i].k, &nd->otag[i].stk) == -1)
+      if (check_matchtype(&rl->ond->otag[i].k, &rl->ond->otag[i].stk) == -1)
          return 0;
-      if (check_matchtype(&nd->otag[i].v, &nd->otag[i].stv) == -1)
+      if (check_matchtype(&rl->ond->otag[i].v, &rl->ond->otag[i].stv) == -1)
          return 0;
    }
 
-   if ((i = match_attr(nd, "_action_", NULL)) == -1)
+   if ((i = match_attr(rl->ond, "_action_", NULL)) == -1)
    {
-      log_msg(LOG_WARN, "rule %ld has no action", nd->nd.id);
+      log_msg(LOG_WARN, "rule %ld has no action", rl->ond->nd.id);
       return 0;
    }
 
-   nd->otag[i].v.buf[nd->otag[i].v.len] = '\0';
-   s = strtok(nd->otag[i].v.buf, ":");
+   rl->ond->otag[i].v.buf[rl->ond->otag[i].v.len] = '\0';
+   s = strtok(rl->ond->otag[i].v.buf, ":");
    if (!strcmp(s, "img"))
    {
       if ((s = strtok(NULL, ":")) == NULL)
@@ -262,12 +285,12 @@ int prepare_rules(struct onode *nd, struct rdata *rd, void *p)
          return E_SYNTAX;
       }
 
-      nd->rule.img.angle = 0;
-      if ((nd->rule.img.img = gdImageCreateFromPng(f)) == NULL)
+      rl->rule.img.angle = 0;
+      if ((rl->rule.img.img = gdImageCreateFromPng(f)) == NULL)
          log_msg(LOG_WARN, "could not read PNG from %s", s);
       (void) fclose(f);
 
-      nd->rule.type = ACT_IMG;
+      rl->rule.type = ACT_IMG;
       log_debug("successfully imported PNG %s", s);
    }
    else if (!strcmp(s, "img-auto"))
@@ -280,39 +303,39 @@ int prepare_rules(struct onode *nd, struct rdata *rd, void *p)
          return 0;
       }
 
-      nd->rule.img.angle = NAN;
-      if ((nd->rule.img.img = gdImageCreateFromPng(f)) == NULL)
+      rl->rule.img.angle = NAN;
+      if ((rl->rule.img.img = gdImageCreateFromPng(f)) == NULL)
          log_msg(LOG_WARN, "could not read PNG from %s\n", s);
       (void) fclose(f);
 
-      nd->rule.type = ACT_IMG;
+      rl->rule.type = ACT_IMG;
       log_debug("img-auto, successfully imported PNG %s", s);
    }
    else if (!strcmp(s, "cap"))
    {
       if ((s = strtok(NULL, ",")) == NULL) return E_SYNTAX;
-      nd->rule.cap.font = s;
+      rl->rule.cap.font = s;
       if ((s = strtok(NULL, ",")) == NULL) return E_SYNTAX;
-      nd->rule.cap.size = atof(s);
+      rl->rule.cap.size = atof(s);
       if ((s = strtok(NULL, ",")) == NULL) return E_SYNTAX;
-      nd->rule.cap.pos = ppos(s);
+      rl->rule.cap.pos = ppos(s);
       if ((s = strtok(NULL, ",")) == NULL) return E_SYNTAX;
 
-      nd->rule.cap.col = parse_color(rd, s);
+      rl->rule.cap.col = parse_color(rd, s);
 
       if ((s = strtok(NULL, ",")) == NULL) return E_SYNTAX;
       if (!strncmp(s, "auto", 4))
       {
-         nd->rule.cap.angle = NAN;
-         parse_auto_rot(rd, s, &nd->rule.cap.rot);
-         log_debug("auto;%08x;%.1f;%.1f", nd->rule.cap.rot.autocol, nd->rule.cap.rot.weight, nd->rule.cap.rot.phase);
+         rl->rule.cap.angle = NAN;
+         parse_auto_rot(rd, s, &rl->rule.cap.rot);
+         log_debug("auto;%08x;%.1f;%.1f", rl->rule.cap.rot.autocol, rl->rule.cap.rot.weight, rl->rule.cap.rot.phase);
       }
       else
-         nd->rule.cap.angle = atof(s);
+         rl->rule.cap.angle = atof(s);
       if ((s = strtok(NULL, ",")) == NULL) return E_SYNTAX;
 
-      nd->rule.cap.key = s;
-      nd->rule.type = ACT_CAP;
+      rl->rule.cap.key = s;
+      rl->rule.type = ACT_CAP;
       log_debug("successfully parsed caption rule");
    }
    else if (!strcmp(s, "func"))
@@ -329,7 +352,7 @@ int prepare_rules(struct onode *nd, struct rdata *rd, void *p)
       }
 
       // Open shared library
-      if ((nd->rule.func.libhandle = dlopen(lib, RTLD_LAZY)) == NULL)
+      if ((rl->rule.func.libhandle = dlopen(lib, RTLD_LAZY)) == NULL)
       {
          log_msg(LOG_ERR, "could not open library: %s", dlerror());
          return 0;
@@ -338,7 +361,7 @@ int prepare_rules(struct onode *nd, struct rdata *rd, void *p)
       // Clear any existing error
       dlerror();
 
-      nd->rule.func.sym = dlsym(nd->rule.func.libhandle, s);
+      rl->rule.func.sym = dlsym(rl->rule.func.libhandle, s);
 
       // Check for errors
       if ((s = dlerror()) != NULL)
@@ -347,7 +370,7 @@ int prepare_rules(struct onode *nd, struct rdata *rd, void *p)
          return 0;
       }
 
-      nd->rule.type = ACT_FUNC;
+      rl->rule.type = ACT_FUNC;
       log_debug("successfully parsed function rule");
    }
    else if (!strcmp(s, "draw"))
@@ -361,13 +384,13 @@ int prepare_rules(struct onode *nd, struct rdata *rd, void *p)
       if (*s != ':')
       {
          s = strtok(s, ":");
-         if (parse_draw(s, &nd->rule.draw.fill, rd) == -1)
+         if (parse_draw(s, &rl->rule.draw.fill, rd) == -1)
             return E_SYNTAX;
-         nd->rule.draw.fill.used = 1;
+         rl->rule.draw.fill.used = 1;
          if ((s = strtok(NULL, ":")) != NULL)
          {
-            if (!parse_draw(s, &nd->rule.draw.border, rd))
-               nd->rule.draw.border.used = 1;
+            if (!parse_draw(s, &rl->rule.draw.border, rd))
+               rl->rule.draw.border.used = 1;
          }
       }
       else
@@ -377,16 +400,16 @@ int prepare_rules(struct onode *nd, struct rdata *rd, void *p)
             log_warn("syntax error in draw rule");
             return E_SYNTAX;
          }
-         if (!parse_draw(s + 1, &nd->rule.draw.border, rd))
-            nd->rule.draw.border.used = 1;
+         if (!parse_draw(s + 1, &rl->rule.draw.border, rd))
+            rl->rule.draw.border.used = 1;
       }
 
-      nd->rule.type = ACT_DRAW;
+      rl->rule.type = ACT_DRAW;
       log_debug("successfully parsed draw rule");
    }
    else if (!strcmp(s, "ignore"))
    {
-      nd->rule.type = ACT_IGNORE;
+      rl->rule.type = ACT_IGNORE;
    }
    else
    {
@@ -395,9 +418,9 @@ int prepare_rules(struct onode *nd, struct rdata *rd, void *p)
 
    // remove _action_ tag from tag list, i.e. move last element
    // to position of _action_ tag (order doesn't matter).
-   if (i < nd->tag_cnt - 1)
-      memmove(&nd->otag[i], &nd->otag[nd->tag_cnt - 1], sizeof(struct otag));
-   nd->tag_cnt--;
+   if (i < rl->ond->tag_cnt - 1)
+      memmove(&rl->ond->otag[i], &rl->ond->otag[rl->ond->tag_cnt - 1], sizeof(struct otag));
+   rl->ond->tag_cnt--;
 
    return 0;
 }
