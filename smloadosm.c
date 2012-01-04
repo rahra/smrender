@@ -219,7 +219,7 @@ int read_osm_file(hpx_ctrl_t *ctl, bx_node_t **tree, struct rdata *rd)
                mem_usage_ += ond->ref_cnt * sizeof(int64_t) + ond->tag_cnt * sizeof(struct otag);
 #endif
  
-               for (i = 0, ref = ond->ref, j = 0; i < tlist->nsub; i++)
+               for (i = 0, ref = ond->ref, j = 0, ond->ref_cnt = 0; i < tlist->nsub; i++)
                {
                   if (!bs_cmp(tlist->subtag[i]->tag->tag, "tag"))
                   {
@@ -231,22 +231,37 @@ int read_osm_file(hpx_ctrl_t *ctl, bx_node_t **tree, struct rdata *rd)
                   }
                   else if (!bs_cmp(tlist->subtag[i]->tag->tag, "nd"))
                   {
-                     if (get_value("ref", tlist->subtag[i]->tag, &b) == -1)
-                        *ref = -1;
-                     else
+                     if (get_value("ref", tlist->subtag[i]->tag, &b) != -1)
+                     {
                         *ref = bs_tol(b);
-
-                     ref++;
+#ifdef READ_FILTER
+                        if (get_object(OSM_NODE, *ref) == NULL)
+                           continue;
+#endif
+                        ref++;
+                        ond->ref_cnt++;
+                     }
                   }
                }
-               //put_object(ond);
-               if (tr->next[nd.type == OSM_WAY] != NULL)
+
+#ifdef READ_FILTER
+               if ((rd != NULL) && (nd.type == OSM_WAY) && (ond->ref_cnt == 0))
                {
-                  free(tr->next[nd.type == OSM_WAY]);
-                  // too much debugging if there are many duplicates
-                  //log_msg(LOG_ERR, "object %ld already exists, overwriting.", nd.id);
+                  log_debug("freeing empty way");
+                  free(ond->ref);
+                  free(ond);
                }
-               tr->next[nd.type == OSM_WAY] = ond;
+               else
+#endif
+               {
+                  if (tr->next[nd.type == OSM_WAY] != NULL)
+                  {
+                     free(tr->next[nd.type == OSM_WAY]);
+                     // too much debugging if there are many duplicates
+                     //log_msg(LOG_ERR, "object %ld already exists, overwriting.", nd.id);
+                  }
+                  tr->next[nd.type == OSM_WAY] = ond;
+               }
 
                // finally
                tlist->nsub = 0;
