@@ -351,7 +351,8 @@ void node_brg(struct pcoord *pc, struct coord *src, int64_t nid)
    struct onode *nd;
    struct coord dst;
 
-   nd = get_object(OSM_NODE, nid);
+   if ((nd = get_object(OSM_NODE, nid)) == NULL)
+      return;
    dst.lat = nd->nd.lat;
    dst.lon = nd->nd.lon;
    *pc = coord_diff(src, &dst);
