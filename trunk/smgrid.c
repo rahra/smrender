@@ -129,7 +129,7 @@ void geo_lon_ticks(struct rdata *rd, double b, double b1, double b2, double b3, 
    int bi, lon;
    char buf[32], *s;
 
-   bi = (lround(b * 600.0) / st) * st + (int) (rd->x1c * 600.0);
+   bi = (lround((b + rd->x1c) * 600.0) / st) * st;
    for (lon = bi + st; lon < (rd->x2c - b) * 600; lon += st)
    {
       if (lon % g)
@@ -166,6 +166,7 @@ void geo_lat_ticks(struct rdata *rd, double b, double b1, double b2, double b3, 
    bi = (lround((b + rd->y2c) * 600) / st) * st;
    for (lat = bi + st; lat < (rd->y1c - b) * 600; lat += st)
    {
+      //log_debug("grid: lat = %d", lat);
       if (lat % g)
       {
          geo_tick((double) lat / 600.0, rd->x1c + b3, (double) lat / 600.0,

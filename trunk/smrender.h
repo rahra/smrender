@@ -234,6 +234,16 @@ struct rdata
    //struct cb_func cb;
 };
 
+struct filter
+{
+   // c1 = left upper corner, c2 = right lower corner of bounding box
+   struct coord c1, c2;
+   // set use_bbox to 1 if bbox should be honored
+   int use_bbox;
+   // pointer to rules tree (or NULL if it should be ignored)
+   bx_node_t *rules;
+};
+
 enum {WHITE, YELLOW, BLACK, BLUE, MAGENTA, BROWN};
 enum {LAT, LON};
 enum {ACT_NA, ACT_IMG, ACT_CAP, ACT_FUNC, ACT_DRAW, ACT_IGNORE};
@@ -273,8 +283,9 @@ void set_const_tag(struct otag*, char*, char*);
 
 /* smloadosm.c */
 void osm_read_exit(void);
-int read_osm_file(hpx_ctrl_t*, bx_node_t**, struct rdata *rd);
+int read_osm_file(hpx_ctrl_t*, bx_node_t**, struct filter*);
 size_t onode_mem(void);
+void install_sigusr1(void);
 
 /* smcoast.c */
 int cat_poly(struct rdata *);

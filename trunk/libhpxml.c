@@ -283,6 +283,26 @@ int cblank(char *c)
 }
 
 
+/*! Works like cblank() but does not change any character.
+ * @param c Pointer to character.
+ * @return Returns 0 if character contains any of [ \t\r\n], otherwise 1.
+ */
+int cblank1(const char *c)
+{
+   switch (*c)
+   {
+      case '\n':
+         hpx_lineno_++;
+      case '\t':
+      case '\r':
+      case ' ':
+         return 0;
+   }
+
+   return 1;
+}
+
+
 /*! Returns length if tag.
  *  @param buf Pointer to buffer.
  *  @param len Length of buffer.
@@ -333,7 +353,7 @@ int count_literal(bstring_t b, int *nbc)
       if (*b.buf == '<')
          break;
 
-      *nbc += cblank(b.buf);
+      *nbc += cblank1(b.buf);
    }
 
    return i;

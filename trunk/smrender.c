@@ -307,7 +307,7 @@ int traverse(const bx_node_t *nt, int d, int idx, tree_func_t dhandler, struct r
 void print_rdata(FILE *f, const struct rdata *rd)
 {
    log_msg(LOG_NOTICE, "render data: left upper %.3f/%.3f, right bottom %.3f/%.3f",
-         rd->x1c, rd->y1c, rd->x2c, rd->y2c);
+         rd->y1c, rd->x1c, rd->y2c, rd->x2c);
    log_msg(LOG_NOTICE, "   mean_lat = %.3f°, mean_lat_len = %.3f° (%.1f nm)",
          rd->mean_lat, rd->mean_lat_len, rd->mean_lat_len * 60);
    log_msg(LOG_NOTICE, "   %dx%d px, dpi = %d, page size = %.1f x %.1f mm",
@@ -631,6 +631,7 @@ void usage(const char *s)
          "   -G .................. Do not generate grid nodes/ways.\n"
          "   -C .................. Do not close open coastline polygons.\n"
          "   -d <density> ........ Set image density (300 is default).\n"
+         "   -f .................. Use loading filter.\n"
          "   -i <osm input> ...... OSM input data (defaulta is stdin).\n"
          "   -l .................. Select landscape output.\n"
          "   -m <length> ......... Length of mean latitude in degrees.\n"
@@ -656,8 +657,9 @@ int main(int argc, char *argv[])
    char *cf = "rules.osm", *img_file = NULL, *osm_ifile = NULL, *osm_ofile = NULL;
    struct rdata *rd;
    struct timeval tv_start, tv_end;
-   int gen_grid = 1, prep_coast = 1, landscape = 0, w_mmap = 0;
+   int gen_grid = 1, prep_coast = 1, landscape = 0, w_mmap = 0, load_filter = 0;
    char *paper = "A3";
+   struct filter fi;
 
    (void) gettimeofday(&tv_start, NULL);
    init_log("stderr", LOG_DEBUG);
@@ -665,11 +667,13 @@ int main(int argc, char *argv[])
    rd = init_rdata();
    set_util_rd(rd);
 
+   install_sigusr1();
+
    // install exit handlers
    osm_read_exit();
    bx_exit();
 
-   while ((n = getopt(argc, argv, "Cd:Ghi:lm:Mo:P:r:s:w:x:y:")) != -1)
+   while ((n = getopt(argc, argv, "Cd:fGhi:lm:Mo:P:r:s:w:x:y:")) != -1)
       switch (n)
       {
          case 'C':
@@ -689,6 +693,10 @@ int main(int argc, char *argv[])
          case 'h':
             usage(argv[0]);
             exit(EXIT_SUCCESS);
+
+         case 'f':
+            load_filter = 1;
+            break;
 
          case 'i':
             osm_ifile = optarg;
@@ -755,7 +763,6 @@ int main(int argc, char *argv[])
       init_bbox_scale(rd);
    init_bbox_mll(rd);
 
-   //init_prj(rd, PRJ_MERC_PAGE);
    print_rdata(stderr, rd);
 
    // preparing image
@@ -803,7 +810,24 @@ int main(int argc, char *argv[])
 
    log_msg(LOG_INFO, "reading osm data (file size %ld kb, memory at %p)",
          (long) labs(st.st_size) / 1024, ctl->buf.buf);
-   (void) read_osm_file(ctl, &rd->obj, rd);
+
+   if (load_filter)
+   {
+      memset(&fi, 0, sizeof(fi));
+      fi.c1.lat = rd->y1c + rd->hc * 0.05;
+      fi.c1.lon = rd->x1c - rd->wc * 0.05;
+      fi.c2.lat = rd->y2c - rd->hc * 0.05;
+      fi.c2.lon = rd->x2c + rd->wc * 0.05;
+      fi.use_bbox = 1;
+      log_msg(LOG_INFO, "using input bounding box %.3f/%.3f - %.3f/%.3f",
+            fi.c1.lat, fi.c1.lon, fi.c2.lat, fi.c2.lon);
+      (void) read_osm_file(ctl, &rd->obj, &fi);
+   }
+   else
+   {
+      (void) read_osm_file(ctl, &rd->obj, NULL);
+   }
+
    if (osm_ifile != NULL)
       (void) close(fd);
 
