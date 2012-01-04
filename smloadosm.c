@@ -145,6 +145,7 @@ int read_osm_file(hpx_ctrl_t *ctl, bx_node_t **tree)
 #endif
                memcpy(&ond->nd, &nd, sizeof(nd));
                memset(((char*) ond) + sizeof(nd), 0, sizeof(*ond) - sizeof(nd));
+               //put_object(ond);
                if (tr->next[nd.type == OSM_WAY] != NULL)
                {
                   free(tr->next[nd.type == OSM_WAY]);
@@ -216,6 +217,7 @@ int read_osm_file(hpx_ctrl_t *ctl, bx_node_t **tree)
                      ref++;
                   }
                }
+               //put_object(ond);
                if (tr->next[nd.type == OSM_WAY] != NULL)
                {
                   free(tr->next[nd.type == OSM_WAY]);

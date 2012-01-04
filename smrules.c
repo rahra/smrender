@@ -50,21 +50,21 @@ void mk_paper_coords(double lat, double lon, struct rdata *rd, int *x, int *y)
 }
 
 
-int act_image(struct onode *nd, struct rdata *rd, struct onode *mnd)
+int act_image(struct onode *nd, struct rdata *rd, struct orule *rl)
 {
    int i, j, c, rx, ry, hx, hy, x, y;
    double a;
 
    mk_paper_coords(nd->nd.lat, nd->nd.lon, rd, &x, &y);
-   hx = gdImageSX(mnd->rule.img.img) / 2;
-   hy = gdImageSY(mnd->rule.img.img) / 2;
+   hx = gdImageSX(rl->rule.img.img) / 2;
+   hy = gdImageSY(rl->rule.img.img) / 2;
 
-   a = isnan(mnd->rule.img.angle) ? color_frequency(rd, x, y, hx, hy, rd->col[WHITE]) : 0;
+   a = isnan(rl->rule.img.angle) ? color_frequency(rd, x, y, hx, hy, rd->col[WHITE]) : 0;
    a = DEG2RAD(a);
 
-   for (j = 0; j < gdImageSY(mnd->rule.img.img); j++)
+   for (j = 0; j < gdImageSY(rl->rule.img.img); j++)
    {
-      for (i = 0; i < gdImageSX(mnd->rule.img.img); i++)
+      for (i = 0; i < gdImageSX(rl->rule.img.img); i++)
       {
          if (a != 0)
             rot_pos(i - hx, j - hy, a, &rx, &ry);
@@ -73,7 +73,7 @@ int act_image(struct onode *nd, struct rdata *rd, struct onode *mnd)
             rx = i - hx;
             ry = hy - j;
          }
-         c = gdImageGetPixel(mnd->rule.img.img, i, j);
+         c = gdImageGetPixel(rl->rule.img.img, i, j);
          gdImageSetPixel(rd->img, x + rx, y - ry, c);
       }
    }
@@ -132,7 +132,7 @@ double color_frequency_w(struct rdata *rd, int x, int y, int w, int h, const str
 
 double color_frequency(struct rdata *rd, int x, int y, int w, int h, int col)
 {
-   struct auto_rot rot = {rd->col[WHITE], 1, 0};
+   struct auto_rot rot = {0, rd->col[WHITE], 1};
 
    return color_frequency_w(rd, x, y, w, h, &rot);
 }
@@ -141,7 +141,7 @@ double color_frequency(struct rdata *rd, int x, int y, int w, int h, int col)
 #define POS_OFFSET MM2PX(1.3)
 #define MAX_OFFSET MM2PX(2.0)
 #define DIVX 3
-int act_caption(struct onode *nd, struct rdata *rd, struct onode *mnd)
+int act_caption(struct onode *nd, struct rdata *rd, struct orule *rl)
 {
    int br[8], n;
    char *s;
@@ -149,9 +149,9 @@ int act_caption(struct onode *nd, struct rdata *rd, struct onode *mnd)
    int x, y, rx, ry, ox, oy, off;
    double ma;
 
-   if ((n = match_attr(nd, mnd->rule.cap.key, NULL)) == -1)
+   if ((n = match_attr(nd, rl->rule.cap.key, NULL)) == -1)
    {
-      log_debug("node %ld has no caption tag '%s'", nd->nd.id, mnd->rule.cap.key);
+      log_debug("node %ld has no caption tag '%s'", nd->nd.id, rl->rule.cap.key);
       return 0;
    }
 
@@ -163,11 +163,11 @@ int act_caption(struct onode *nd, struct rdata *rd, struct onode *mnd)
 
    if (nd->otag[n].v.buf[nd->otag[n].v.len])
       nd->otag[n].v.buf[nd->otag[n].v.len] = '\0';
-   gdImageStringFTEx(NULL, br, mnd->rule.cap.col, mnd->rule.cap.font, mnd->rule.cap.size * 2.8699, 0, x, y, nd->otag[n].v.buf, &fte);
+   gdImageStringFTEx(NULL, br, rl->rule.cap.col, rl->rule.cap.font, rl->rule.cap.size * 2.8699, 0, x, y, nd->otag[n].v.buf, &fte);
 
-   if (isnan(mnd->rule.cap.angle))
+   if (isnan(rl->rule.cap.angle))
    {
-      ma = color_frequency_w(rd, x, y, br[4] - br[0] + MAX_OFFSET, br[1] - br[5], &mnd->rule.cap.rot);
+      ma = color_frequency_w(rd, x, y, br[4] - br[0] + MAX_OFFSET, br[1] - br[5], &rl->rule.cap.rot);
       off = cf_dist(rd, x, y, br[4] - br[0], br[1] - br[5], DEG2RAD(ma), rd->col[WHITE], MAX_OFFSET);
 
       oy =(br[1] - br[5]) / DIVX;
@@ -183,9 +183,9 @@ int act_caption(struct onode *nd, struct rdata *rd, struct onode *mnd)
    }
    else
    {
-      ma = mnd->rule.cap.angle;
+      ma = rl->rule.cap.angle;
 
-      switch (mnd->rule.cap.pos & 3)
+      switch (rl->rule.cap.pos & 3)
       {
          case POS_N:
             oy = 0;
@@ -199,7 +199,7 @@ int act_caption(struct onode *nd, struct rdata *rd, struct onode *mnd)
          default:
             oy = (br[3] - br[7]) / DIVX;
       }
-      switch (mnd->rule.cap.pos & 12)
+      switch (rl->rule.cap.pos & 12)
       {
          case POS_E:
             ox = 0;
@@ -219,7 +219,7 @@ int act_caption(struct onode *nd, struct rdata *rd, struct onode *mnd)
    rot_pos(ox, oy, DEG2RAD(ma), &rx, &ry);
    //fprintf(stderr, "dx = %d, dy = %d, rx = %d, ry = %d, ma = %.3f, off = %d, '%s'\n", br[0]-br[2],br[1]-br[5], rx, ry, ma, off, nd->otag[n].v.buf);
 
-   if ((s = gdImageStringFTEx(rd->img, br, mnd->rule.cap.col, mnd->rule.cap.font, mnd->rule.cap.size * 2.8699, DEG2RAD(ma), x + rx, y - ry, nd->otag[n].v.buf, &fte)) != NULL)
+   if ((s = gdImageStringFTEx(rd->img, br, rl->rule.cap.col, rl->rule.cap.font, rl->rule.cap.size * 2.8699, DEG2RAD(ma), x + rx, y - ry, nd->otag[n].v.buf, &fte)) != NULL)
       log_msg(LOG_ERR, "error rendering caption: %s", s);
 
 //   else
@@ -229,7 +229,7 @@ int act_caption(struct onode *nd, struct rdata *rd, struct onode *mnd)
 }
 
 
-int act_open_poly(struct onode *wy, struct rdata *rd, struct onode *mnd)
+int act_open_poly(struct onode *wy, struct rdata *rd, struct orule *rl)
 {
    int i;
    struct onode *nd;
@@ -248,7 +248,7 @@ int act_open_poly(struct onode *wy, struct rdata *rd, struct onode *mnd)
 }
 
 
-int act_fill_poly(struct onode *wy, struct rdata *rd, struct onode *mnd)
+int act_fill_poly(struct onode *wy, struct rdata *rd, struct orule *rl)
 {
    int i;
    struct onode *nd;
@@ -262,16 +262,16 @@ int act_fill_poly(struct onode *wy, struct rdata *rd, struct onode *mnd)
       mk_paper_coords(nd->nd.lat, nd->nd.lon, rd, &p[i].x, &p[i].y);
    }
 
-   if (mnd->rule.draw.fill.used)
+   if (rl->rule.draw.fill.used)
    {
-      if (mnd->rule.draw.fill.style != DRAW_TRANSPARENT)
-         gdImageFilledPolygon(rd->img, p, wy->ref_cnt, mnd->rule.draw.fill.col);
+      if (rl->rule.draw.fill.style != DRAW_TRANSPARENT)
+         gdImageFilledPolygon(rd->img, p, wy->ref_cnt, rl->rule.draw.fill.col);
    }
 
-   if (mnd->rule.draw.border.used)
+   if (rl->rule.draw.border.used)
    {
-      if (mnd->rule.draw.border.style != DRAW_TRANSPARENT)
-         gdImagePolygon(rd->img, p, wy->ref_cnt, mnd->rule.draw.border.col);
+      if (rl->rule.draw.border.style != DRAW_TRANSPARENT)
+         gdImagePolygon(rd->img, p, wy->ref_cnt, rl->rule.draw.border.col);
    }
 
    return 0;
