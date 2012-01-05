@@ -30,10 +30,10 @@
 #include "libhpxml.h"
 
 
-static size_t hpx_lineno_;
+static long hpx_lineno_;
 
 
-size_t hpx_lineno(void)
+long hpx_lineno(void)
 {
    return hpx_lineno_;
 }
@@ -367,7 +367,7 @@ int count_literal(bstring_t b, int *nbc)
  *  element. lno may be NULL.
  *  @return Length of element or -1 if element is unclosed.
  */
-int hpx_proc_buf(hpx_ctrl_t *ctl, bstring_t *b, size_t *lno)
+int hpx_proc_buf(hpx_ctrl_t *ctl, bstring_t *b, long *lno)
 {
    int i, s, n;
 
@@ -417,7 +417,7 @@ int hpx_buf_reader(int fd, char *buf, int buflen)
  *  with mmap(). This works only if it was compiled with WITH_MMAP.
  *  @param mattr Maximum number of attributes per tag.
  */
-hpx_ctrl_t *hpx_init(int fd, int len)
+hpx_ctrl_t *hpx_init(int fd, long len)
 {
    hpx_ctrl_t *ctl;
 
@@ -471,9 +471,9 @@ void hpx_free(hpx_ctrl_t *ctl)
  *  a valid bstring to the element. -1 is returned in case of error. On eof, 0
  *  is returned.
  */
-int hpx_get_elem(hpx_ctrl_t *ctl, bstring_t *b, int *in_tag, size_t *lno)
+int hpx_get_elem(hpx_ctrl_t *ctl, bstring_t *b, int *in_tag, long *lno)
 {
-   int s;
+   long s;
 
    for (;;)
    {

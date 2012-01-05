@@ -48,9 +48,9 @@ typedef struct hpx_ctrl
    //! flag set if eof
    int eof;
    //! total length of buffer
-   int len;
+   long len;
    //! current working position
-   int pos;
+   long pos;
    //! flag to deter if next element is in or out of tag
    int in_tag;
    //! flag set if data should be read from file
@@ -68,7 +68,7 @@ typedef struct hpx_tag
 {
    bstring_t tag;
    int type;
-   size_t line;
+   long line;
    int nattr;
    int mattr;
    hpx_attr_t attr[];
@@ -88,13 +88,13 @@ enum
 };
 
 
-size_t hpx_lineno(void);
+long hpx_lineno(void);
 void hpx_tm_free(hpx_tag_t *t);
 hpx_tag_t *hpx_tm_create(int n);
 int hpx_process_elem(bstring_t b, hpx_tag_t *p);
-hpx_ctrl_t *hpx_init(int fd, int len);
+hpx_ctrl_t *hpx_init(int fd, long len);
 void hpx_free(hpx_ctrl_t *ctl);
-int hpx_get_elem(hpx_ctrl_t *ctl, bstring_t *b, int *in_tag, size_t *lno);
+int hpx_get_elem(hpx_ctrl_t *ctl, bstring_t *b, int *in_tag, long *lno);
 int hpx_fprintf_tag(FILE *f, const hpx_tag_t *p);
 int hpx_tree_resize(hpx_tree_t **tl, int n);
 
