@@ -23,6 +23,7 @@
 #include <string.h>
 #include <gd.h>
 #include <syslog.h>
+#include <errno.h>
 
 #include "smrender.h"
 #include "smlog.h"
@@ -144,7 +145,7 @@ double color_frequency(struct rdata *rd, int x, int y, int w, int h, int col)
 int act_caption(struct onode *nd, struct rdata *rd, struct orule *rl)
 {
    int br[8], n;
-   char *s;
+   char *s, *v;
    gdFTStringExtra fte;
    int x, y, rx, ry, ox, oy, off;
    double ma;
@@ -162,8 +163,18 @@ int act_caption(struct onode *nd, struct rdata *rd, struct orule *rl)
    fte.hdpi = fte.vdpi = rd->dpi;
 
    if (nd->otag[n].v.buf[nd->otag[n].v.len])
-      nd->otag[n].v.buf[nd->otag[n].v.len] = '\0';
-   gdImageStringFTEx(NULL, br, rl->rule.cap.col, rl->rule.cap.font, rl->rule.cap.size * 2.8699, 0, x, y, nd->otag[n].v.buf, &fte);
+   {
+      //nd->otag[n].v.buf[nd->otag[n].v.len] = '\0';
+      // data must be copied since memory modification is not allowed
+      if ((v = malloc(nd->otag[n].v.len + 1)) == NULL)
+         log_msg(LOG_ERR, "failed to copy caption string: %s", strerror(errno)), exit(EXIT_FAILURE);
+      memcpy(v, nd->otag[n].v.buf, nd->otag[n].v.len);
+      v[nd->otag[n].v.len] = '\0';
+   }
+   else
+      v = nd->otag[n].v.buf;
+
+   gdImageStringFTEx(NULL, br, rl->rule.cap.col, rl->rule.cap.font, rl->rule.cap.size * 2.8699, 0, x, y, v, &fte);
 
    if (isnan(rl->rule.cap.angle))
    {
@@ -219,11 +230,14 @@ int act_caption(struct onode *nd, struct rdata *rd, struct orule *rl)
    rot_pos(ox, oy, DEG2RAD(ma), &rx, &ry);
    //fprintf(stderr, "dx = %d, dy = %d, rx = %d, ry = %d, ma = %.3f, off = %d, '%s'\n", br[0]-br[2],br[1]-br[5], rx, ry, ma, off, nd->otag[n].v.buf);
 
-   if ((s = gdImageStringFTEx(rd->img, br, rl->rule.cap.col, rl->rule.cap.font, rl->rule.cap.size * 2.8699, DEG2RAD(ma), x + rx, y - ry, nd->otag[n].v.buf, &fte)) != NULL)
+   if ((s = gdImageStringFTEx(rd->img, br, rl->rule.cap.col, rl->rule.cap.font, rl->rule.cap.size * 2.8699, DEG2RAD(ma), x + rx, y - ry, v, &fte)) != NULL)
       log_msg(LOG_ERR, "error rendering caption: %s", s);
 
 //   else
 //      fprintf(stderr, "printed %s at %d,%d\n", nd->otag[n].v.buf, x, y);
+
+   if (nd->otag[n].v.buf[nd->otag[n].v.len])
+      free(v);
 
    return 0;
 }

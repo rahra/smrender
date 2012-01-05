@@ -31,13 +31,6 @@
 #define hpx_init_simple() hpx_init(0, 10*1024*1024)
 
 
-struct bstringl
-{
-   long len;
-   char *buf;
-};
-
-
 typedef struct hpx_ctrl
 {
    //! data buffer containing pointer and number of bytes in buffer
@@ -46,15 +39,17 @@ typedef struct hpx_ctrl
    //! file descriptor of input file
    int fd;
    //! flag set if eof
-   int eof;
+   short eof;
    //! total length of buffer
    long len;
    //! current working position
    long pos;
    //! flag to deter if next element is in or out of tag
-   int in_tag;
+   short in_tag;
    //! flag set if data should be read from file
-   int empty;
+   short empty;
+   //! flag set if data is memory mapped
+   short mmap;
 } hpx_ctrl_t;
 
 typedef struct hpx_attr

@@ -31,6 +31,11 @@ typedef struct bstring
    char *buf;
 } bstring_t;
 
+typedef struct bstringl
+{
+   long len;
+   char *buf;
+} bstringl_t;
 
 int bs_advance(bstring_t *);
 int bs_advance2(bstring_t *);

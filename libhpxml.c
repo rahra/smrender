@@ -45,7 +45,7 @@ long hpx_lineno(void)
  */
 int skip_bblank(bstring_t *b)
 {
-   for (; isblank(*b->buf) && b->len; bs_advance(b));
+   for (; isspace(*b->buf) && b->len; bs_advance(b));
    return b->len;
 }
 
@@ -274,7 +274,9 @@ int cblank(char *c)
          hpx_lineno_++;
       case '\t':
       case '\r':
+#ifdef MODMEM
          *c = ' ';
+#endif
       case ' ':
          return 0;
    }
@@ -396,7 +398,8 @@ int hpx_proc_buf(hpx_ctrl_t *ctl, bstring_t *b, long *lno)
          return -1;
 
       // cut trailing white spaces
-      for (b->len = s; b->len && (b->buf[b->len - 1] == ' '); b->len--);
+      //for (b->len = s; b->len && (b->buf[b->len - 1] == ' '); b->len--);
+      for (b->len = s; b->len && isspace(b->buf[b->len - 1]); b->len--);
 
       s += i;
    }
@@ -433,11 +436,12 @@ hpx_ctrl_t *hpx_init(int fd, long len)
    {
 #ifdef WITH_MMAP
       ctl->len = ctl->buf.len = -len;
-      if ((ctl->buf.buf = mmap(NULL, ctl->len, PROT_READ | PROT_WRITE, MAP_PRIVATE, fd, 0)) == MAP_FAILED)
+      if ((ctl->buf.buf = mmap(NULL, ctl->len, PROT_READ, MAP_PRIVATE, fd, 0)) == MAP_FAILED)
       {
          free(ctl);
          return NULL;
       }
+      ctl->mmap = 1;
       return ctl;
 #else
       free(ctl);
@@ -479,26 +483,33 @@ int hpx_get_elem(hpx_ctrl_t *ctl, bstring_t *b, int *in_tag, long *lno)
    {
       if (ctl->empty)
       {
-         // move remaining data to the beginning of the buffer
-         ctl->buf.len -= ctl->pos;
-         memmove(ctl->buf.buf, ctl->buf.buf + ctl->pos, ctl->buf.len);
-         ctl->pos = 0;
-
-         // read new data from file
-         for (;;)
+         if (ctl->mmap)
          {
-            if ((s = read(ctl->fd, ctl->buf.buf + ctl->buf.len, ctl->len - ctl->buf.len)) != -1)
-               break;
-
-            if (errno != EINTR)
-               return -1;
-         }
-
-         if (!s)
             ctl->eof = 1;
+         }
+         else
+         {
+            // move remaining data to the beginning of the buffer
+            ctl->buf.len -= ctl->pos;
+            memmove(ctl->buf.buf, ctl->buf.buf + ctl->pos, ctl->buf.len);
+            ctl->pos = 0;
 
-         // adjust position pointers
-         ctl->buf.len += s;
+            // read new data from file
+            for (;;)
+            {
+               if ((s = read(ctl->fd, ctl->buf.buf + ctl->buf.len, ctl->len - ctl->buf.len)) != -1)
+                  break;
+
+               if (errno != EINTR)
+                  return -1;
+            }
+
+            if (!s)
+               ctl->eof = 1;
+
+            // adjust position pointers
+            ctl->buf.len += s;
+         }
          ctl->empty = 0;
       }
 
