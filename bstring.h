@@ -38,6 +38,7 @@ typedef struct bstringl
 } bstringl_t;
 
 int bs_advance(bstring_t *);
+int bs_advancel(bstringl_t *);
 int bs_advance2(bstring_t *);
 int bs_ncmp(bstring_t b, const char *s, int n);
 int bs_cmp(bstring_t b, const char *s);

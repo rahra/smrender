@@ -16,7 +16,7 @@
 # */
 
 CC	= gcc
-CFLAGS	= -g -Wall
+CFLAGS	= -O2 -g -Wall -D_GNU_SOURCE
 LDFLAGS	= -lm -lgd -ldl -Wl,-export-dynamic
 VER = smrender-r$(shell svnversion | tr -d M)
 
