@@ -31,6 +31,7 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <signal.h>
+#include <limits.h>
 //#include <gd.h>
 
 #include "smrender.h"
@@ -94,6 +95,7 @@ int read_osm_file(hpx_ctrl_t *ctl, bx_node_t **tree, struct filter *fi)
 {
    hpx_tag_t *tag;
    bstring_t b;
+   bstringl_t bl;
    int n = 0, i, j, rcnt;
    struct osm_node nd;
    struct onode *ond;
@@ -112,14 +114,20 @@ int read_osm_file(hpx_ctrl_t *ctl, bx_node_t **tree, struct filter *fi)
    tag = tlist->tag;
    nd.type = OSM_NA;
 
-   while (hpx_get_elem(ctl, &b, NULL, &tag->line) > 0)
+   while (hpx_get_elem(ctl, &bl, NULL, &tag->line) > 0)
    {
       oline_ = tag->line;
       if (usr1_)
       {
          usr1_ = 0;
          log_msg(LOG_INFO, "onode_memory: %ld kByte, line %ld", onode_mem() / 1024, tag->line);
+         log_msg(LOG_INFO, "ctl->pos = %ld, ctl->len = %ld, ctl->buf.len = %ld", ctl->pos, ctl->len, ctl->buf.len);
       }
+
+      if (bl.len > INT_MAX)
+         log_msg(LOG_ERR, "length type of bstring_t to small"), exit(EXIT_FAILURE);
+      b.len = bl.len;
+      b.buf = bl.buf;
 
       if (!hpx_process_elem(b, tag))
       {

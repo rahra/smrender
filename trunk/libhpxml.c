@@ -28,6 +28,7 @@
 
 #include "bstring.h"
 #include "libhpxml.h"
+#include "smlog.h"
 
 
 static long hpx_lineno_;
@@ -311,7 +312,7 @@ int cblank1(const char *c)
  *  @return Lendth of tag content including '<' and '>'. If return value > len,
  *  the tag is unclosed.
  */
-int count_tag(bstring_t b)
+int count_tag(bstringl_t b)
 {
    int i, c = 0;
 
@@ -341,7 +342,7 @@ int count_tag(bstring_t b)
  *  @param nbc Pointer to integer which counts non-blank characters.
  *  @return Length of literal. Return value == len if literal is unclosed.
  */
-int count_literal(bstring_t b, int *nbc)
+int count_literal(bstringl_t b, int *nbc)
 {
    int i, t;
 
@@ -369,7 +370,7 @@ int count_literal(bstring_t b, int *nbc)
  *  element. lno may be NULL.
  *  @return Length of element or -1 if element is unclosed.
  */
-int hpx_proc_buf(hpx_ctrl_t *ctl, bstring_t *b, long *lno)
+int hpx_proc_buf(hpx_ctrl_t *ctl, bstringl_t *b, long *lno)
 {
    int i, s, n;
 
@@ -386,7 +387,7 @@ int hpx_proc_buf(hpx_ctrl_t *ctl, bstring_t *b, long *lno)
    {
       // skip leading white spaces
       for (i = 0; i < b->len && !cblank(b->buf); i++)
-         bs_advance(b);
+         bs_advancel(b);
       if (i == b->len)
          return -1;
 
@@ -436,11 +437,13 @@ hpx_ctrl_t *hpx_init(int fd, long len)
    {
 #ifdef WITH_MMAP
       ctl->len = ctl->buf.len = -len;
-      if ((ctl->buf.buf = mmap(NULL, ctl->len, PROT_READ, MAP_PRIVATE, fd, 0)) == MAP_FAILED)
+      if ((ctl->buf.buf = mmap(NULL, ctl->len, PROT_READ, MAP_PRIVATE | MAP_NORESERVE, fd, 0)) == MAP_FAILED)
       {
          free(ctl);
          return NULL;
       }
+      //if (madvise(ctl->buf.buf, ctl->len, MADV_SEQUENTIAL) == -1)
+      //   log_msg(LOG_ERR, "madvise failed: %s", strerror(errno));
       ctl->mmap = 1;
       return ctl;
 #else
@@ -475,17 +478,30 @@ void hpx_free(hpx_ctrl_t *ctl)
  *  a valid bstring to the element. -1 is returned in case of error. On eof, 0
  *  is returned.
  */
-int hpx_get_elem(hpx_ctrl_t *ctl, bstring_t *b, int *in_tag, long *lno)
+int hpx_get_elem(hpx_ctrl_t *ctl, bstringl_t *b, int *in_tag, long *lno)
 {
+   static long lastpage = 0;
    long s;
 
    for (;;)
    {
+      if (ctl->mmap)
+      {
+         if (lastpage < (ctl->pos & ~0x1fffffffL))
+         {
+            if (madvise(ctl->buf.buf, ctl->pos & ~0xfffL, MADV_DONTNEED) == -1)
+               log_msg(LOG_ERR, "madvise failed: %s", strerror(errno));
+            lastpage = ctl->pos & ~0x1fffffffL;
+         }
+      }
+
       if (ctl->empty)
       {
          if (ctl->mmap)
          {
             ctl->eof = 1;
+            log_msg(LOG_DEBUG, "end of memory mapped area, buf.len = %ld, len = %ld, pos = %ld",
+                  ctl->buf.len, ctl->len, ctl->pos);
          }
          else
          {

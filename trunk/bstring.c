@@ -34,6 +34,14 @@ int bs_advance(bstring_t *b)
 }
 
 
+int bs_advancel(bstringl_t *b)
+{
+   b->buf++;
+   b->len--;
+   return b->len;
+}
+
+
 /*! This function is like bs_advance() but does safety checks on pointers and
  * buffer length.
  * @param b Pointer to bstring_t.
