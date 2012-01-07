@@ -485,6 +485,7 @@ int hpx_get_elem(hpx_ctrl_t *ctl, bstringl_t *b, int *in_tag, long *lno)
 
    for (;;)
    {
+#ifdef USE_MADVISE
       if (ctl->mmap)
       {
          if (lastpage < (ctl->pos & ~0x1fffffffL))
@@ -494,6 +495,7 @@ int hpx_get_elem(hpx_ctrl_t *ctl, bstringl_t *b, int *in_tag, long *lno)
             lastpage = ctl->pos & ~0x1fffffffL;
          }
       }
+#endif
 
       if (ctl->empty)
       {
