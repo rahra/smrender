@@ -16,7 +16,7 @@
 # */
 
 CC	= gcc
-CFLAGS = -g -O2 -fPIC -I.. -D_GNU_SOURCE
+CFLAGS = -g -O2 -fPIC -I.. -D_GNU_SOURCE -I/usr/local/include
 LDFLAGS = -lm
 
 all: libsmfilter.so

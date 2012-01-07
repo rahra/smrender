@@ -16,8 +16,10 @@
 # */
 
 CC	= gcc
-CFLAGS	= -O2 -g -Wall -D_GNU_SOURCE
-LDFLAGS	= -lm -lgd -ldl -Wl,-export-dynamic
+CFLAGS	= -O2 -g -Wall -D_GNU_SOURCE -I/usr/local/include
+#LDFLAGS	= -L/usr/local/lib -lm -lgd -ldl -Wl,-export-dynamic
+# FreeBSD provides dl-functions in libc
+LDFLAGS	= -L/usr/local/lib -lm -lgd -Wl,-export-dynamic
 VER = smrender-r$(shell svnversion | tr -d M)
 
 all: smrender libsmfilter.so
@@ -25,6 +27,7 @@ all: smrender libsmfilter.so
 smloadosm.o: smloadosm.c smrender.h
 
 smrender: smrender.o bstring.o osm_func.o libhpxml.o smlog.o bxtree.o smloadosm.o smath.o smcoast.o smutil.o smgrid.o smrules.o smrparse.o
+	gcc $(LDFLAGS) -o smrender smrender.o bstring.o osm_func.o libhpxml.o smlog.o bxtree.o smloadosm.o smath.o smcoast.o smutil.o smgrid.o smrules.o smrparse.o
 
 smgrid.o: smgrid.c
 
