@@ -54,6 +54,8 @@ typedef struct hpx_ctrl
    short mmap;
    //! pointer to madvise()'d region (MADV_WILLNEED)
    char *madv_ptr;
+   //! system page size
+   long pg_siz;
    //! length of advised region (multiple of sysconf(_SC_PAGESIZE))
    long pg_blk_siz;
 } hpx_ctrl_t;

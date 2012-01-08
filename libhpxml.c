@@ -448,12 +448,13 @@ hpx_ctrl_t *hpx_init(int fd, long len)
       }
       ctl->mmap = 1;
       ctl->madv_ptr = ctl->buf.buf;
-      if ((ctl->pg_blk_siz = sysconf(_SC_PAGESIZE)) == -1)
+      if ((ctl->pg_siz = sysconf(_SC_PAGESIZE)) == -1)
       {
          log_msg(LOG_ERR, "sysconf() failed: %s", strerror(errno));
-         ctl->pg_blk_siz = 0;
+         ctl->pg_siz = 0;
       }
-      ctl->pg_blk_siz *= MMAP_PAGES;
+      log_msg(LOG_INFO, "system pagesize = %ld kB", ctl->pg_siz / 1024);
+      ctl->pg_blk_siz = ctl->pg_siz * MMAP_PAGES;
       return ctl;
 #else
       errno = EINVAL;
@@ -494,21 +495,22 @@ int hpx_get_elem(hpx_ctrl_t *ctl, bstringl_t *b, int *in_tag, long *lno)
 
    for (;;)
    {
-#ifdef USE_MADVISE
+#ifdef WITH_MMAP
       if (ctl->mmap)
       {
          if ((ctl->buf.buf + ctl->pos) >= ctl->madv_ptr)
          {
-            if (madvise(ctl->madv_ptr, ctl->pg_blk_siz, MADV_WILLNEED) == -1)
+            s = ctl->madv_ptr + ctl->pg_blk_siz <= ctl->buf.buf + ctl->len ? ctl->pg_blk_siz : ctl->buf.buf + ctl->len - ctl->madv_ptr;
+            if (madvise(ctl->madv_ptr, s, MADV_WILLNEED) == -1)
                log_msg(LOG_ERR, "madvise(%p, %ld, MADV_WILLNEED) failed: %s",
                      ctl->madv_ptr, ctl->pg_blk_siz, strerror(errno));
             if ((ctl->madv_ptr - ctl->pg_blk_siz) >= ctl->buf.buf)
             {
-               if (madvise(ctl->madv_ptr, ctl->pg_blk_siz, MADV_DONTNEED) == -1)
+               if (madvise(ctl->madv_ptr - ctl->pg_blk_siz, ctl->pg_blk_siz, MADV_DONTNEED) == -1)
                   log_msg(LOG_ERR, "madvise(%p, %ld, MADV_DONTNEED) failed: %s",
                         ctl->madv_ptr, ctl->pg_blk_siz, strerror(errno));
             }
-            ctl->madv_ptr += ctl->blk_siz;
+            ctl->madv_ptr += ctl->pg_blk_siz;
          }
       }
 #endif
