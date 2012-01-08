@@ -417,9 +417,13 @@ int hpx_buf_reader(int fd, char *buf, int buflen)
 
 /*!
  *  @param fd Input file descriptor.
- *  @param len Read buffer length. If len is negative, the file is memory mapped
- *  with mmap(). This works only if it was compiled with WITH_MMAP.
+ *  @param len Read buffer length. If len is negative, the file is memory
+ *  mapped with mmap(). This works only if it was compiled with WITH_MMAP.
  *  @param mattr Maximum number of attributes per tag.
+ *  @return Pointer to allocated hpx_ctrl_t structure. On error NULL is
+ *  returned and errno is set. If compiled without WITH_MMAP and hpx_init() is
+ *  called with negative len parameter, NULL is returned and errno is set to
+ *  EINVAL.
  */
 hpx_ctrl_t *hpx_init(int fd, long len)
 {
@@ -442,11 +446,17 @@ hpx_ctrl_t *hpx_init(int fd, long len)
          free(ctl);
          return NULL;
       }
-      //if (madvise(ctl->buf.buf, ctl->len, MADV_SEQUENTIAL) == -1)
-      //   log_msg(LOG_ERR, "madvise failed: %s", strerror(errno));
       ctl->mmap = 1;
+      ctl->madv_ptr = ctl->buf.buf;
+      if ((ctl->pg_blk_siz = sysconf(_SC_PAGESIZE)) == -1)
+      {
+         log_msg(LOG_ERR, "sysconf() failed: %s", strerror(errno));
+         ctl->pg_blk_siz = 0;
+      }
+      ctl->pg_blk_siz *= MMAP_PAGES;
       return ctl;
 #else
+      errno = EINVAL;
       free(ctl);
       return NULL;
 #endif
@@ -480,7 +490,6 @@ void hpx_free(hpx_ctrl_t *ctl)
  */
 int hpx_get_elem(hpx_ctrl_t *ctl, bstringl_t *b, int *in_tag, long *lno)
 {
-   static long lastpage = 0;
    long s;
 
    for (;;)
@@ -488,11 +497,18 @@ int hpx_get_elem(hpx_ctrl_t *ctl, bstringl_t *b, int *in_tag, long *lno)
 #ifdef USE_MADVISE
       if (ctl->mmap)
       {
-         if (lastpage < (ctl->pos & ~0x1fffffffL))
+         if ((ctl->buf.buf + ctl->pos) >= ctl->madv_ptr)
          {
-            if (madvise(ctl->buf.buf, ctl->pos & ~0xfffL, MADV_DONTNEED) == -1)
-               log_msg(LOG_ERR, "madvise failed: %s", strerror(errno));
-            lastpage = ctl->pos & ~0x1fffffffL;
+            if (madvise(ctl->madv_ptr, ctl->pg_blk_siz, MADV_WILLNEED) == -1)
+               log_msg(LOG_ERR, "madvise(%p, %ld, MADV_WILLNEED) failed: %s",
+                     ctl->madv_ptr, ctl->pg_blk_siz, strerror(errno));
+            if ((ctl->madv_ptr - ctl->pg_blk_siz) >= ctl->buf.buf)
+            {
+               if (madvise(ctl->madv_ptr, ctl->pg_blk_siz, MADV_DONTNEED) == -1)
+                  log_msg(LOG_ERR, "madvise(%p, %ld, MADV_DONTNEED) failed: %s",
+                        ctl->madv_ptr, ctl->pg_blk_siz, strerror(errno));
+            }
+            ctl->madv_ptr += ctl->blk_siz;
          }
       }
 #endif

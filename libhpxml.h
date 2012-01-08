@@ -30,6 +30,8 @@
 
 #define hpx_init_simple() hpx_init(0, 10*1024*1024)
 
+#define MMAP_PAGES (1 << 15)
+
 
 typedef struct hpx_ctrl
 {
@@ -50,6 +52,10 @@ typedef struct hpx_ctrl
    short empty;
    //! flag set if data is memory mapped
    short mmap;
+   //! pointer to madvise()'d region (MADV_WILLNEED)
+   char *madv_ptr;
+   //! length of advised region (multiple of sysconf(_SC_PAGESIZE))
+   long pg_blk_siz;
 } hpx_ctrl_t;
 
 typedef struct hpx_attr

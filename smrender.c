@@ -433,12 +433,14 @@ int print_onode(FILE *f, const struct onode *nd)
 void init_stats(struct dstats *ds)
 {
    memset(ds, 0, sizeof(*ds));
-   ds->min_nid = ds->min_wid = (int64_t) 0x7fffffffffffffff;
-   ds->max_nid = ds->max_wid = (int64_t) 0x8000000000000000;
+   ds->min_nid = ds->min_wid = INT64_MAX;
+   ds->max_nid = ds->max_wid = INT64_MIN;
    ds->lu.lat = -90;
    ds->rb.lat = 90;
    ds->lu.lon = 180;
    ds->rb.lon = -180;
+   ds->lo_addr = (void*) (-1L);
+   ds->hi_addr = 0;
 }
 
  
@@ -460,6 +462,10 @@ int onode_stats(struct onode *nd, struct rdata *rd, struct dstats *ds)
       if (ds->min_wid > nd->nd.id) ds->min_wid = nd->nd.id;
       if (ds->max_wid < nd->nd.id) ds->max_wid = nd->nd.id;
    }
+   if ((void*) nd > ds->hi_addr)
+      ds->hi_addr = nd;
+   if ((void*) nd < ds->lo_addr)
+      ds->lo_addr = nd;
    return 0;
 }
 
@@ -841,12 +847,13 @@ int main(int argc, char *argv[])
    init_stats(&rd->ds);
    traverse(rd->obj, 0, IDX_WAY, (tree_func_t) onode_stats, rd, &rd->ds);
    traverse(rd->obj, 0, IDX_NODE, (tree_func_t) onode_stats, rd, &rd->ds);
-   log_msg(LOG_INFO, "ncnt = %ld, min_nid = %ld, max_nid = %ld",
+   log_msg(LOG_INFO, " ncnt = %ld, min_nid = %ld, max_nid = %ld",
          rd->ds.ncnt, rd->ds.min_nid, rd->ds.max_nid);
-   log_msg(LOG_INFO, "wcnt = %ld, min_wid = %ld, max_wid = %ld",
+   log_msg(LOG_INFO, " wcnt = %ld, min_wid = %ld, max_wid = %ld",
          rd->ds.wcnt, rd->ds.min_wid, rd->ds.max_wid);
-   log_msg(LOG_INFO, "left upper %.2f/%.2f, right bottom %.2f/%.2f",
+   log_msg(LOG_INFO, " left upper %.2f/%.2f, right bottom %.2f/%.2f",
          rd->ds.lu.lat, rd->ds.lu.lon, rd->ds.rb.lat, rd->ds.rb.lon);
+   log_msg(LOG_INFO, " lo_addr = %p, hi_addr = %p", rd->ds.lo_addr, rd->ds.hi_addr);
 
    if (prep_coast)
    {

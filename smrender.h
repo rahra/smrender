@@ -198,6 +198,7 @@ struct dstats
    int64_t max_nid;
    int64_t min_wid;
    int64_t max_wid;
+   void *lo_addr, *hi_addr;   // lowest and highest memory address
 };
 
 struct rdata

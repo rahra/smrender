@@ -364,8 +364,8 @@ int prepare_rules(struct onode *nd, struct rdata *rd, void *p)
 
       rl->rule.func.sym = dlsym(rl->rule.func.libhandle, s);
 
-      // Check for errors
-      if ((s = dlerror()) != NULL)
+      // Check for errors (BSD returns const char*, thus type is converted)
+      if ((s = (char*) dlerror()) != NULL)
       {
          log_msg(LOG_ERR, "error loading symbol from libary: %s", s);
          return 0;
