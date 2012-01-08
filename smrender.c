@@ -743,7 +743,7 @@ int main(int argc, char *argv[])
             break;
 
          case 'm':
-            if ((rd->mean_lat_len = atoi(optarg)) <= 0)
+            if ((rd->mean_lat_len = atof(optarg)) <= 0)
                log_msg(LOG_ERR, "illegal argument for mean lat length %s", optarg),
                   exit(EXIT_FAILURE);
             break;
