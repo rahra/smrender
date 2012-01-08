@@ -188,9 +188,15 @@ int apply_wrules0(struct onode *nd, struct rdata *rd, struct orule *rl)
 }
 
 
-int apply_rules(struct orule *rl, struct rdata *rd, void *vp)
+int apply_rules(struct orule *rl, struct rdata *rd, struct osm_node *nd)
 {
    log_debug("applying rule id 0x%016lx type %s(%d)", rl->ond->nd.id, rule_type_str(rl->rule.type), rl->rule.type);
+
+   if (nd != NULL)
+   {
+      if (rl->ond->nd.ver != nd->ver)
+         return 0;
+   }
 
    switch (rl->ond->nd.type)
    {
@@ -440,12 +446,14 @@ void init_stats(struct dstats *ds)
    ds->lu.lon = 180;
    ds->rb.lon = -180;
    ds->lo_addr = (void*) (-1L);
-   ds->hi_addr = 0;
+   //ds->hi_addr = 0;
 }
 
  
 int onode_stats(struct onode *nd, struct rdata *rd, struct dstats *ds)
 {
+   int i;
+
    if (nd->nd.type == OSM_NODE)
    {
       ds->ncnt++;
@@ -466,6 +474,20 @@ int onode_stats(struct onode *nd, struct rdata *rd, struct dstats *ds)
       ds->hi_addr = nd;
    if ((void*) nd < ds->lo_addr)
       ds->lo_addr = nd;
+
+   // look if version is registered
+   for (i = 0; i < ds->ver_cnt; i++)
+   {
+      if (ds->ver[i] == nd->nd.ver)
+         break;
+   }
+   //version was not found and array has enough entries
+   if ((i >= ds->ver_cnt) && (ds->ver_cnt < MAX_ITER))
+   {
+      ds->ver[ds->ver_cnt] = nd->nd.ver;
+      ds->ver_cnt++;
+   }
+
    return 0;
 }
 
@@ -654,6 +676,16 @@ void usage(const char *s)
 }
 
 
+int cmp_int(const int *a, const int *b)
+{
+   if (*a < *b)
+      return -1;
+   if (*a > *b)
+      return 1;
+   return 0;
+}
+
+
 int main(int argc, char *argv[])
 {
    hpx_ctrl_t *ctl, *cfctl;
@@ -666,6 +698,8 @@ int main(int argc, char *argv[])
    int gen_grid = 1, prep_coast = 1, landscape = 0, w_mmap = 0, load_filter = 0;
    char *paper = "A3";
    struct filter fi;
+   struct dstats rstats;
+   struct osm_node nd;
 
    (void) gettimeofday(&tv_start, NULL);
    init_log("stderr", LOG_DEBUG);
@@ -795,7 +829,16 @@ int main(int argc, char *argv[])
 
    log_msg(LOG_INFO, "reading rules (file size %ld kb)", (long) st.st_size / 1024);
    (void) read_osm_file(cfctl, &rd->rules, NULL);
-   (void) close(fd);
+   (void) close(cfctl->fd);
+
+   log_msg(LOG_INFO, "gathering rule stats");
+   init_stats(&rstats);
+   traverse(rd->rules, 0, IDX_WAY, (tree_func_t) onode_stats, rd, &rstats);
+   traverse(rd->rules, 0, IDX_NODE, (tree_func_t) onode_stats, rd, &rstats);
+   qsort(rstats.ver, rstats.ver_cnt, sizeof(int), (int(*)(const void*, const void*)) cmp_int);
+   for (n = 0; n < rstats.ver_cnt; n++)
+      log_msg(LOG_DEBUG, " rstats.ver[%d] = %d", n, rstats.ver[n]);
+ 
    log_msg(LOG_INFO, "preparing rules");
    traverse(rd->rules, 0, IDX_NODE, (tree_func_t) prepare_rules, rd, NULL);
    traverse(rd->rules, 0, IDX_WAY, (tree_func_t) prepare_rules, rd, NULL);
@@ -834,9 +877,6 @@ int main(int argc, char *argv[])
       (void) read_osm_file(ctl, &rd->obj, NULL);
    }
 
-   if (osm_ifile != NULL)
-      (void) close(fd);
-
    log_debug("tree memory used: %ld kb", (long) bx_sizeof() / 1024);
    log_debug("onode memory used: %ld kb", (long) onode_mem() / 1024);
 
@@ -867,12 +907,20 @@ int main(int argc, char *argv[])
       grid2(rd);
    }
 
-   log_msg(LOG_INFO, "rendering ways");
-   traverse(rd->rules, 0, IDX_WAY, (tree_func_t) apply_rules, rd, NULL);
-   log_msg(LOG_INFO, "rendering nodes");
-   traverse(rd->rules, 0, IDX_NODE, (tree_func_t) apply_rules, rd, NULL);
+   memset(&nd, 0, sizeof(nd));
+   for (n = 0; n < rstats.ver_cnt; n++)
+   {
+      log_msg(LOG_INFO, "rendering pass %d (ver = %d)", n, rstats.ver[n]);
+      nd.ver = rstats.ver[n];
+
+      log_msg(LOG_INFO, " ways...");
+      traverse(rd->rules, 0, IDX_WAY, (tree_func_t) apply_rules, rd, &nd);
+      log_msg(LOG_INFO, " nodes...");
+      traverse(rd->rules, 0, IDX_NODE, (tree_func_t) apply_rules, rd, &nd);
+   }
 
    save_osm(rd, osm_ofile);
+   (void) close(ctl->fd);
    hpx_free(ctl);
    hpx_free(cfctl);
 

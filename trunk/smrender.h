@@ -73,6 +73,8 @@
 #define MM2LAT(x) ((x) * (rd->y1c - rd->y2c) / PX2MM(rd->h))
 #define MM2LON(x) ((x) * (rd->x2c - rd->x1c) / PX2MM(rd->w))
 
+#define MAX_ITER 8
+
 
 typedef struct rdata rdata_t;
 typedef struct onode onode_t;
@@ -199,6 +201,8 @@ struct dstats
    int64_t min_wid;
    int64_t max_wid;
    void *lo_addr, *hi_addr;   // lowest and highest memory address
+   int ver_cnt;
+   int ver[MAX_ITER];
 };
 
 struct rdata
