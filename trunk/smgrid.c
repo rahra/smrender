@@ -215,9 +215,11 @@ void grid2(struct rdata *rd)
    geo_square(rd, G_MARGIN + G_TW + G_STW, "subticks_border");
 
    geo_lon_ticks(rd, MM2LON(G_MARGIN + G_TW + G_STW), MM2LAT(G_MARGIN),
-         MM2LAT(G_MARGIN + G_TW), MM2LAT(G_MARGIN + G_TW + G_STW), G_GRID * 600, G_TICKS * 600, G_STICKS * 600);
+         MM2LAT(G_MARGIN + G_TW), MM2LAT(G_MARGIN + G_TW + G_STW),
+         rd->grd.lon_g * 600, rd->grd.lon_ticks * 600, rd->grd.lon_sticks * 600);
    geo_lat_ticks(rd, MM2LAT(G_MARGIN + G_TW + G_STW), MM2LON(G_MARGIN),
-         MM2LON(G_MARGIN + G_TW), MM2LON(G_MARGIN + G_TW + G_STW), G_GRID * 600, G_TICKS * 600, G_STICKS * 600);
+         MM2LON(G_MARGIN + G_TW), MM2LON(G_MARGIN + G_TW + G_STW),
+         rd->grd.lat_g * 600, rd->grd.lat_ticks * 600, rd->grd.lat_sticks * 600);
    geo_legend(rd);
 }
 

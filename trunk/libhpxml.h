@@ -97,7 +97,8 @@ hpx_tag_t *hpx_tm_create(int n);
 int hpx_process_elem(bstring_t b, hpx_tag_t *p);
 hpx_ctrl_t *hpx_init(int fd, long len);
 void hpx_free(hpx_ctrl_t *ctl);
-int hpx_get_elem(hpx_ctrl_t *ctl, bstringl_t *b, int *in_tag, long *lno);
+int hpx_get_elem(hpx_ctrl_t *ctl, bstring_t *b, int *in_tag, long *lno);
+long hpx_get_eleml(hpx_ctrl_t *ctl, bstringl_t *b, int *in_tag, long *lno);
 int hpx_fprintf_tag(FILE *f, const hpx_tag_t *p);
 int hpx_tree_resize(hpx_tree_t **tl, int n);
 
