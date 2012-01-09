@@ -532,6 +532,9 @@ struct rdata *init_rdata(void)
 {
    memset(&rd_, 0, sizeof(rd_));
    rd_.dpi = 300;
+   rd_.grd.lat_ticks = rd_.grd.lon_ticks = G_TICKS;
+   rd_.grd.lat_sticks = rd_.grd.lon_sticks = G_STICKS;
+   rd_.grd.lat_g = rd_.grd.lon_g = G_GRID;
 
    return &rd_;
 }
@@ -602,9 +605,9 @@ void init_rd_paper(struct rdata *rd, const char *paper, int landscape)
    // A1 paper portrait (300dpi)
    //rd->h = 9933; rd->w = 7016; rd->dpi = 300;
 
-   rd->grd.lat_ticks = rd->grd.lon_ticks = G_TICKS;
-   rd->grd.lat_sticks = rd->grd.lon_sticks = G_STICKS;
-   rd->grd.lat_g = rd->grd.lon_g = G_GRID;
+   //rd->grd.lat_ticks = rd->grd.lon_ticks = G_TICKS;
+   //rd->grd.lat_sticks = rd->grd.lon_sticks = G_STICKS;
+   //rd->grd.lat_g = rd->grd.lon_g = G_GRID;
 
    // init callback function pointers
    //rd->cb.log_msg = log_msg;
@@ -655,11 +658,13 @@ void init_rd_image(struct rdata *rd)
 void usage(const char *s)
 {
    printf("Seamark renderer V1.1, (c) 2011, Bernhard R. Fischer, <bf@abenteuerland.at>.\n"
-         "usage: %s [OPTIONS]\n"
-         "   -G .................. Do not generate grid nodes/ways.\n"
+         "usage: %s -c <...> -(m|s) <...> [OPTIONS]\n"
+         "   -c <lat>:<lon> ...... coordinates if center point.\n"
          "   -C .................. Do not close open coastline polygons.\n"
          "   -d <density> ........ Set image density (300 is default).\n"
          "   -f .................. Use loading filter.\n"
+         "   -g <grd> ............ Distance of grid in degrees.\n"
+         "   -G .................. Do not generate grid nodes/ways.\n"
          "   -i <osm input> ...... OSM input data (defaulta is stdin).\n"
          "   -l .................. Select landscape output.\n"
          "   -m <length> ......... Length of mean latitude in degrees.\n"
@@ -668,9 +673,7 @@ void usage(const char *s)
          "   -s <scale> .......... Select scale of chart.\n"
          "   -o <image file> ..... Filename of output image (stdout is default).\n"
          "   -P <page format> .... Select output page format.\n"
-         "   -w <osm file> ....... Output OSM data to file.\n"
-         "   -x <longitude> ...... Longitude of center point.\n"
-         "   -y <latitude> ....... Latitude if center point.\n",
+         "   -w <osm file> ....... Output OSM data to file.\n",
          s
          );
 }
@@ -695,11 +698,12 @@ int main(int argc, char *argv[])
    char *cf = "rules.osm", *img_file = NULL, *osm_ifile = NULL, *osm_ofile = NULL;
    struct rdata *rd;
    struct timeval tv_start, tv_end;
-   int gen_grid = 1, prep_coast = 1, landscape = 0, w_mmap = 0, load_filter = 0;
+   int gen_grid = 1, prep_coast = 1, landscape = 0, w_mmap = 0, load_filter = 0, cset = 0;
    char *paper = "A3";
    struct filter fi;
    struct dstats rstats;
    struct osm_node nd;
+   char *s;
 
    (void) gettimeofday(&tv_start, NULL);
    init_log("stderr", LOG_DEBUG);
@@ -707,15 +711,19 @@ int main(int argc, char *argv[])
    rd = init_rdata();
    set_util_rd(rd);
 
-   install_sigusr1();
-
-   // install exit handlers
-   osm_read_exit();
-   bx_exit();
-
-   while ((n = getopt(argc, argv, "Cd:fGhi:lm:Mo:P:r:s:w:x:y:")) != -1)
+   while ((n = getopt(argc, argv, "c:Cd:fg:Ghi:lm:Mo:P:r:s:w:")) != -1)
       switch (n)
       {
+         case 'c':
+            if ((s = strtok(optarg, ":")) == NULL)
+               log_msg(LOG_ERR, "illegal coordinate paramter"), exit(EXIT_FAILURE);
+            rd->mean_lat = atof(s);
+            if ((s = strtok(NULL, ":")) == NULL)
+               log_msg(LOG_ERR, "illegal coordinate paramter"), exit(EXIT_FAILURE);
+            rd->mean_lon = atof(s);
+            cset = 1;
+            break;
+
          case 'C':
             prep_coast = 0;
             break;
@@ -724,6 +732,12 @@ int main(int argc, char *argv[])
             if ((rd->dpi = atoi(optarg)) <= 0)
                log_msg(LOG_ERR, "illegal dpi argument %s", optarg),
                   exit(EXIT_FAILURE);
+            break;
+
+         case 'g':
+            rd->grd.lat_g = rd->grd.lon_g = atof(optarg);
+            rd->grd.lat_ticks = rd->grd.lon_ticks = rd->grd.lat_g / 10;
+            rd->grd.lat_sticks = rd->grd.lon_sticks = rd->grd.lat_ticks / 4;
             break;
 
          case 'G':
@@ -781,14 +795,6 @@ int main(int argc, char *argv[])
          case 'w':
             osm_ofile = optarg;
             break;
-
-         case 'x':
-            rd->mean_lon = atof(optarg);
-            break;
-
-         case 'y':
-            rd->mean_lat = atof(optarg);
-            break;
       }
 
    if ((rd->scale != 0) && (rd->mean_lat_len != 0))
@@ -797,6 +803,15 @@ int main(int argc, char *argv[])
    if ((rd->scale == 0) && (rd->mean_lat_len == 0))
       log_msg(LOG_ERR, "either -s or -m is mandatory"),
          exit(EXIT_FAILURE);
+   if (!cset)
+      log_msg(LOG_ERR, "option -c is mandatory"),
+         exit(EXIT_FAILURE);
+
+   install_sigusr1();
+
+   // install exit handlers
+   osm_read_exit();
+   bx_exit();
 
    init_rd_paper(rd, paper, landscape);
    if (rd->mean_lat_len == 0)

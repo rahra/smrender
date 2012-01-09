@@ -19,6 +19,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <limits.h>
 #include <string.h>
 #include <unistd.h>
 #include <errno.h>
@@ -453,8 +454,9 @@ hpx_ctrl_t *hpx_init(int fd, long len)
          log_msg(LOG_ERR, "sysconf() failed: %s", strerror(errno));
          ctl->pg_siz = 0;
       }
-      log_msg(LOG_INFO, "system pagesize = %ld kB", ctl->pg_siz / 1024);
       ctl->pg_blk_siz = ctl->pg_siz * MMAP_PAGES;
+      log_msg(LOG_INFO, "system pagesize = %ld kB (read ahead %ld kB)",
+            ctl->pg_siz / 1024, ctl->pg_blk_siz / 1024);
       return ctl;
 #else
       errno = EINVAL;
@@ -489,7 +491,7 @@ void hpx_free(hpx_ctrl_t *ctl)
  *  a valid bstring to the element. -1 is returned in case of error. On eof, 0
  *  is returned.
  */
-int hpx_get_elem(hpx_ctrl_t *ctl, bstringl_t *b, int *in_tag, long *lno)
+long hpx_get_eleml(hpx_ctrl_t *ctl, bstringl_t *b, int *in_tag, long *lno)
 {
    long s;
 
@@ -577,6 +579,26 @@ int hpx_get_elem(hpx_ctrl_t *ctl, bstringl_t *b, int *in_tag, long *lno)
 
       ctl->empty = 1;
    }
+}
+
+
+int hpx_get_elem(hpx_ctrl_t *ctl, bstring_t *b, int *in_tag, long *lno)
+{
+   long e;
+   bstringl_t bl;
+
+   if ((e = hpx_get_eleml(ctl, &bl, in_tag, lno)) == -1)
+      return -1;
+
+   if (bl.len > INT_MAX)
+   {
+      errno = ERANGE;
+      return -1;
+   }
+
+   b->len = bl.len;
+   b->buf = bl.buf;
+   return e;
 }
 
 

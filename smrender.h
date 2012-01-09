@@ -46,8 +46,11 @@
 #define POS_E 4
 #define POS_W 8
 
+// distance of grid lines in degrees (should be multple of G_TICKS)
 #define G_GRID (10.0 / 60.0)
+// distance of axis ticks in degrees (should be multiple of G_STICKS)
 #define G_TICKS (1.0 / 60.0)
+// distance of axis subticks in degrees
 #define G_STICKS (G_TICKS / 4.0)
 // margin from paper edge to border of chart (mm)
 #define G_MARGIN 15.0

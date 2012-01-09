@@ -95,8 +95,7 @@ int read_osm_file(hpx_ctrl_t *ctl, bx_node_t **tree, struct filter *fi)
 {
    hpx_tag_t *tag;
    bstring_t b;
-   bstringl_t bl;
-   int n = 0, i, j, rcnt;
+   int n = 0, e, i, j, rcnt;
    struct osm_node nd;
    struct onode *ond;
    hpx_tree_t *tlist = NULL;
@@ -114,7 +113,7 @@ int read_osm_file(hpx_ctrl_t *ctl, bx_node_t **tree, struct filter *fi)
    tag = tlist->tag;
    nd.type = OSM_NA;
 
-   while (hpx_get_elem(ctl, &bl, NULL, &tag->line) > 0)
+   while ((e = hpx_get_elem(ctl, &b, NULL, &tag->line)) > 0)
    {
       oline_ = tag->line;
       if (usr1_)
@@ -123,11 +122,6 @@ int read_osm_file(hpx_ctrl_t *ctl, bx_node_t **tree, struct filter *fi)
          log_msg(LOG_INFO, "onode_memory: %ld kByte, line %ld", onode_mem() / 1024, tag->line);
          log_msg(LOG_INFO, "ctl->pos = %ld, ctl->len = %ld, ctl->buf.len = %ld", ctl->pos, ctl->len, ctl->buf.len);
       }
-
-      if (bl.len > INT_MAX)
-         log_msg(LOG_ERR, "length type of bstring_t to small"), exit(EXIT_FAILURE);
-      b.len = bl.len;
-      b.buf = bl.buf;
 
       if (!hpx_process_elem(b, tag))
       {
@@ -326,7 +320,10 @@ int read_osm_file(hpx_ctrl_t *ctl, bx_node_t **tree, struct filter *fi)
             tag = tlist->subtag[tlist->nsub]->tag;
          }
       }
-   }
+   } //while ((e = hpx_get_elem(ctl, &b, NULL, &tag->line)) > 0)
+
+   if (e == -1)
+      log_msg(LOG_ERR, "hpx_get_elem() failed: %s", strerror(errno));
 
    hpx_tm_free(tag);
 
