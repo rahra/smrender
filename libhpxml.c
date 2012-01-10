@@ -457,6 +457,14 @@ hpx_ctrl_t *hpx_init(int fd, long len)
       ctl->pg_blk_siz = ctl->pg_siz * MMAP_PAGES;
       log_msg(LOG_INFO, "system pagesize = %ld kB (read ahead %ld kB)",
             ctl->pg_siz / 1024, ctl->pg_blk_siz / 1024);
+
+      // advise 1st block
+      if (madvise(ctl->madv_ptr,
+               ctl->pg_blk_siz <= ctl->len ? ctl->pg_blk_siz : ctl->len,
+                     MADV_WILLNEED) == -1)
+         log_msg(LOG_ERR, "madvise(%p, %ld, MADV_WILLNEED) failed: %s",
+               ctl->madv_ptr, ctl->pg_blk_siz, strerror(errno));
+ 
       return ctl;
 #else
       errno = EINVAL;
@@ -507,19 +515,26 @@ long hpx_get_eleml(hpx_ctrl_t *ctl, bstringl_t *b, int *in_tag, long *lno)
       {
          if ((ctl->buf.buf + ctl->pos) >= ctl->madv_ptr)
          {
-            s = ctl->madv_ptr + ctl->pg_blk_siz <= ctl->buf.buf + ctl->len ? ctl->pg_blk_siz : ctl->buf.buf + ctl->len - ctl->madv_ptr;
-            if (madvise(ctl->madv_ptr, s, MADV_WILLNEED) == -1)
-               log_msg(LOG_ERR, "madvise(%p, %ld, MADV_WILLNEED) failed: %s",
-                     ctl->madv_ptr, ctl->pg_blk_siz, strerror(errno));
-            if ((ctl->madv_ptr - ctl->pg_blk_siz) >= ctl->buf.buf)
+            // pull in next block if it is available
+            if (ctl->buf.buf + ctl->len > ctl->madv_ptr + ctl->pg_blk_siz)
+            {
+               s = ctl->len - ctl->pos - ctl->pg_blk_siz >= ctl->pg_blk_siz ?
+                     ctl->pg_blk_siz : ctl->len - ctl->pos - ctl->pg_blk_siz;
+               if (madvise(ctl->madv_ptr + ctl->pg_blk_siz, s, MADV_WILLNEED) == -1)
+                  log_msg(LOG_ERR, "madvise(%p, %ld, MADV_WILLNEED) failed: %s",
+                        ctl->madv_ptr + ctl->pg_blk_siz, s, strerror(errno));
+            }
+            // mark previous block as unneeded
+            if (ctl->madv_ptr - ctl->pg_blk_siz >= ctl->buf.buf)
             {
                if (madvise(ctl->madv_ptr - ctl->pg_blk_siz, ctl->pg_blk_siz, MADV_DONTNEED) == -1)
                   log_msg(LOG_ERR, "madvise(%p, %ld, MADV_DONTNEED) failed: %s",
-                        ctl->madv_ptr, ctl->pg_blk_siz, strerror(errno));
+                        ctl->madv_ptr - ctl->pg_blk_siz, ctl->pg_blk_siz, strerror(errno));
+ 
             }
             ctl->madv_ptr += ctl->pg_blk_siz;
          }
-      }
+     }
 #endif
 
       if (ctl->empty)
