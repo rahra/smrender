@@ -144,6 +144,12 @@ struct actFunction
    void *libhandle;
 };
 
+struct actOutput
+{
+   //char *name;
+   FILE *fhandle;
+};
+
 struct drawStyle
 {
    int col;
@@ -167,6 +173,7 @@ struct rule
       struct actCaption cap;
       struct actFunction func;
       struct actDraw draw;
+      struct actOutput out;
    };
    short tag_cnt;
    struct stag stag[];
@@ -212,10 +219,7 @@ struct rdata
 {
    // root node of objects (nodes and ways)
    bx_node_t *obj;
-   // root nodes of node tree and way tree
-   //bx_node_t *nodes, *ways;
    // root nodes of node rules and way rules
-   //bx_node_t *nrules, *wrules;
    bx_node_t *rules;
    // pointer to image data
    gdImage *img;
@@ -238,8 +242,6 @@ struct rdata
    struct dstats ds;
    // image colors
    int col[6];
-   // callbacks for external function
-   //struct cb_func cb;
 };
 
 struct filter
@@ -254,7 +256,7 @@ struct filter
 
 enum {WHITE, YELLOW, BLACK, BLUE, MAGENTA, BROWN};
 enum {LAT, LON};
-enum {ACT_NA, ACT_IMG, ACT_CAP, ACT_FUNC, ACT_DRAW, ACT_IGNORE};
+enum {ACT_NA, ACT_IMG, ACT_CAP, ACT_FUNC, ACT_DRAW, ACT_IGNORE, ACT_OUTPUT};
 enum {DRAW_SOLID, DRAW_DASHED, DRAW_DOTTED, DRAW_TRANSPARENT};
 
 // select projection

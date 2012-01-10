@@ -29,8 +29,8 @@
 #include "smrparse.h"
 
 
-#define RULE_COUNT 6
-static const char *rule_type_[] = {"N/A", "ACT_IMG", "ACT_CAP", "ACT_FUNC", "ACT_DRAW", "ACT_IGNORE"};
+#define RULE_COUNT 7
+static const char *rule_type_[] = {"N/A", "ACT_IMG", "ACT_CAP", "ACT_FUNC", "ACT_DRAW", "ACT_IGNORE", "ACT_OUTPUT"};
 
 
 const char *rule_type_str(int n)
@@ -407,6 +407,21 @@ int prepare_rules(struct onode *nd, struct rdata *rd, void *p)
 
       rl->rule.type = ACT_DRAW;
       log_debug("successfully parsed draw rule");
+   }
+   else if (!strcmp(s, "out"))
+   {
+      if ((s = strtok(NULL, "")) == NULL)
+      {
+         log_warn("syntax error in out rule");
+         return E_SYNTAX;
+      }
+      if ((rl->rule.out.fhandle = fopen(s, "w")) == NULL)
+      {
+         log_msg(LOG_ERR, "error opening output file: %s", s);
+         return 0;
+      }
+      rl->rule.type = ACT_OUTPUT;
+      log_debug("successfully parsed output rule");
    }
    else if (!strcmp(s, "ignore"))
    {
