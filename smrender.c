@@ -123,6 +123,10 @@ int apply_rules0(struct onode *nd, struct rdata *rd, struct orule *rl)
          e = rl->rule.func.func(nd);
          break;
 
+      case ACT_OUTPUT:
+         e = act_output(nd, rl);
+         break;
+
       case ACT_IGNORE:
          e = -1;
          break;
@@ -173,6 +177,10 @@ int apply_wrules0(struct onode *nd, struct rdata *rd, struct orule *rl)
 
       case ACT_FUNC:
          e = rl->rule.func.func(nd);
+         break;
+
+      case ACT_OUTPUT:
+         e = act_output(nd, rl);
          break;
 
       case ACT_IGNORE:

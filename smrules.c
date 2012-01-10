@@ -403,3 +403,20 @@ int col_freq(struct rdata *rd, int x, int y, int w, int h, double a, int col)
    return c;
 }
 
+
+int act_output(struct onode *nd, struct orule *rl)
+{
+   struct onode *n;
+   int i;
+
+   for (i = 0; i < nd->ref_cnt; i++)
+   {
+      if ((n = get_object(OSM_NODE, nd->ref[i])) == NULL)
+         continue;
+      print_onode(rl->rule.out.fhandle, n);
+   }
+   print_onode(rl->rule.out.fhandle, nd);
+
+   return 0;
+}
+
