@@ -145,7 +145,12 @@
       <tag k='grid' v='text'/>
       <tag k='border' v='bottom'/>
    </node>
- 
+
+    <way>
+      <tag k='natural' v='coastline'/>
+      <tag k='generator' v='smrender'/>
+      <tag k='_action_' v='out:out.osm'/>
+   </way>
    <way>
       <tag k='natural' v='coastline'/>
       <tag k='_action_' v='draw:yellow:black'/>

@@ -24,6 +24,8 @@
 #include <string.h>
 #include "smrender.h"
 
+#define MIN10(x) round((x) * 600)
+
 
 void geo_description(double lat, double lon, char *text, char *pos)
 {
@@ -130,6 +132,8 @@ void geo_lon_ticks(struct rdata *rd, double b, double b1, double b2, double b3, 
    char buf[32], *s;
 
    bi = (lround((b + rd->x1c) * 600.0) / st) * st;
+   log_msg(LOG_DEBUG, "g = %d, t = %d, st = %d, bi = %d", g, t, st, bi);
+
    for (lon = bi + st; lon < (rd->x2c - b) * 600; lon += st)
    {
       if (lon % g)
@@ -164,6 +168,8 @@ void geo_lat_ticks(struct rdata *rd, double b, double b1, double b2, double b3, 
    char buf[32], *s;
 
    bi = (lround((b + rd->y2c) * 600) / st) * st;
+   log_msg(LOG_DEBUG, "g = %d, t = %d, st = %d, bi = %d", g, t, st, bi);
+
    for (lat = bi + st; lat < (rd->y1c - b) * 600; lat += st)
    {
       //log_debug("grid: lat = %d", lat);
@@ -216,10 +222,11 @@ void grid2(struct rdata *rd)
 
    geo_lon_ticks(rd, MM2LON(G_MARGIN + G_TW + G_STW), MM2LAT(G_MARGIN),
          MM2LAT(G_MARGIN + G_TW), MM2LAT(G_MARGIN + G_TW + G_STW),
-         rd->grd.lon_g * 600, rd->grd.lon_ticks * 600, rd->grd.lon_sticks * 600);
+         MIN10(rd->grd.lon_g), MIN10(rd->grd.lon_ticks), MIN10(rd->grd.lon_sticks));
    geo_lat_ticks(rd, MM2LAT(G_MARGIN + G_TW + G_STW), MM2LON(G_MARGIN),
          MM2LON(G_MARGIN + G_TW), MM2LON(G_MARGIN + G_TW + G_STW),
-         rd->grd.lat_g * 600, rd->grd.lat_ticks * 600, rd->grd.lat_sticks * 600);
+         MIN10(rd->grd.lat_g), MIN10(rd->grd.lat_ticks), MIN10(rd->grd.lat_sticks));
+
    geo_legend(rd);
 }
 

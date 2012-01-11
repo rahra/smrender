@@ -198,6 +198,8 @@ int apply_wrules0(struct onode *nd, struct rdata *rd, struct orule *rl)
 
 int apply_rules(struct orule *rl, struct rdata *rd, struct osm_node *nd)
 {
+   int e = 0;
+
    log_debug("applying rule id 0x%016lx type %s(%d)", rl->ond->nd.id, rule_type_str(rl->rule.type), rl->rule.type);
 
    if (nd != NULL)
@@ -209,13 +211,24 @@ int apply_rules(struct orule *rl, struct rdata *rd, struct osm_node *nd)
    switch (rl->ond->nd.type)
    {
       case OSM_NODE:
-         return traverse(rd->obj, 0, IDX_NODE, (tree_func_t) apply_rules0, rd, rl);
+         e = traverse(rd->obj, 0, IDX_NODE, (tree_func_t) apply_rules0, rd, rl);
+         break;
+
       case OSM_WAY:
-         return traverse(rd->obj, 0, IDX_WAY, (tree_func_t) apply_wrules0, rd, rl);
+         e = traverse(rd->obj, 0, IDX_WAY, (tree_func_t) apply_wrules0, rd, rl);
+         break;
+
       default:
          log_debug("unknown rule type");
    }
-   return 0;
+
+   if ((rl->rule.type == ACT_OUTPUT) && (rl->rule.out.fhandle != NULL))
+   {
+      fprintf(rl->rule.out.fhandle, "</osm>\n");
+      fclose(rl->rule.out.fhandle);
+   }
+
+   return e;
 }
 
 /*
@@ -745,7 +758,10 @@ int main(int argc, char *argv[])
          case 'g':
             rd->grd.lat_g = rd->grd.lon_g = atof(optarg);
             rd->grd.lat_ticks = rd->grd.lon_ticks = rd->grd.lat_g / 10;
-            rd->grd.lat_sticks = rd->grd.lon_sticks = rd->grd.lat_ticks / 4;
+            if (!((int) round(rd->grd.lat_ticks * 600) % 4))
+               rd->grd.lat_sticks = rd->grd.lon_sticks = rd->grd.lat_ticks / 4;
+            else
+               rd->grd.lat_sticks = rd->grd.lon_sticks = rd->grd.lat_ticks / 5;
             break;
 
          case 'G':
@@ -826,7 +842,10 @@ int main(int argc, char *argv[])
       init_bbox_scale(rd);
    init_bbox_mll(rd);
 
+   // FIXME: Why stderr?
    print_rdata(stderr, rd);
+
+   init_cat_poly(rd);
 
    // preparing image
    if ((rd->img = gdImageCreateTrueColor(rd->w, rd->h)) == NULL)

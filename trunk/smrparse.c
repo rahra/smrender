@@ -420,6 +420,7 @@ int prepare_rules(struct onode *nd, struct rdata *rd, void *p)
          log_msg(LOG_ERR, "error opening output file: %s", s);
          return 0;
       }
+      fprintf(rl->rule.out.fhandle, "<?xml version='1.0' encoding='UTF-8'?>\n<osm version='0.6' generator='smrender'>\n");
       rl->rule.type = ACT_OUTPUT;
       log_debug("successfully parsed output rule");
    }
