@@ -23,6 +23,25 @@
  *  @author Bernhard R. Fischer
  */
 
+/*
+ * 1) gather all open polygons
+ * 2) Create pdef list which contains all end points of open polygons (pdef_cnt = open_poly_cnt * 2)
+ * 3) Retrieve node ids from those points (each start and end point)
+ * 4) Sort pdef list by node id.
+ * 5) Set prev/next pointers in points of pdef list at neighboring points, i.e. if one start point has the same node id as the neighboring end point.
+ * 6) loop over all ways (loop_detect() returns number of open ways)
+ * 6.1) count nodes of "connected" (pointered) ways and detect if there is a loop (count_poly_ref() = 1 if loop, 0 if unclosed)
+ * 6.2) create new way with the according number of nodes (node count = sum of all connected ways) (create_new_coastline())
+ * 6.3) copy node ids of all connected ways to newly created way (join_open_poly()). Mark ways which have been processed as deleteable (from list). Mark those which are still open (i.e. not already looped) as open.
+ * 6.4) put new way to way pool.
+ * 7) Free list of pdef
+ * 8) create new pdef list with number of still open ways.
+ * 9) add all end points to pdef list and calculate bearing from center point (poly_get_brg() returns number of open ways)
+ * 10) sort points by bearing
+ * 11) connect_open()
+ * 11.1)
+ *
+ */
 #include <unistd.h>
 #include <string.h>
 #include <stdio.h>
@@ -74,6 +93,10 @@ struct pdef
 
 void node_brg(struct pcoord*, struct coord*, int64_t);
 void init_corner_brg(const struct rdata*, const struct coord*, struct corner_point*);
+
+
+static struct corner_point co_pt_[4];
+static struct coord center_;
 
 
 /*! This finds open polygons with tag natural=coastline and adds
@@ -139,33 +162,25 @@ struct pdef *poly_get_node_ids(const struct wlist *wl)
 }
 
 
-struct pdef *poly_get_brg(struct rdata *rd, struct wlist *wl, int ocnt)
+int poly_get_brg(struct pdef *pd, struct rdata *rd, struct wlist *wl, int ocnt)
 {
-   struct pdef *pd;
-   struct coord center = {rd->mean_lat, (rd->x1c + rd->x2c) / 2};
    int i, j;
 
-   if ((pd = calloc(ocnt * 2, sizeof(struct pdef))) == NULL)
-   {
-      log_msg(LOG_EMERG, "poly_get_brg(): %s", strerror(errno));
-      exit(EXIT_FAILURE);
-   }
-
-   for (i = 0, j = 0; (i < wl->ref_cnt) && ( j < ocnt); i++)
+   for (i = 0, j = 0; (i < wl->ref_cnt) && (j < ocnt); i++)
    {
       if (!wl->ref[i].open)
          continue;
 
-      node_brg(&pd[j].pc, &center, wl->ref[i].w->ref[0]);
+      node_brg(&pd[j].pc, &center_, wl->ref[i].w->ref[0]);
       pd[j].wl_index = i;
       pd[j].pn = 0;
-      node_brg(&pd[j + ocnt].pc, &center, wl->ref[i].w->ref[wl->ref[i].w->ref_cnt - 1]);
+      node_brg(&pd[j + ocnt].pc, &center_, wl->ref[i].w->ref[wl->ref[i].w->ref_cnt - 1]);
       pd[j + ocnt].wl_index = i;
       pd[j + ocnt].pn = wl->ref[i].w->ref_cnt - 1;
       j++;
    }
 
-   return pd;
+   return j;
 }
 
 
@@ -278,7 +293,7 @@ int loop_detect(struct wlist *wl)
          continue;
       }
 
-      // check if way is intermediate way
+      // check if way is intermediate way and continue in that case
       if (!ret && (wl->ref[i].prev != NULL))
       {
          //log_debug("way on wl_index %d is intermediate way", i);
@@ -327,6 +342,7 @@ int compare_pdef(const struct pdef *p1, const struct pdef *p2)
 void init_corner_brg(const struct rdata *rd, const struct coord *src, struct corner_point *co_pt)
 {
    struct coord corner_coord[4] = {{rd->y1c, rd->x2c}, {rd->y2c, rd->x2c}, {rd->y2c, rd->x1c}, {rd->y1c, rd->x1c}};
+   //struct coord corner_coord[4] = {{rd->y1c, rd->x2c}, {rd->y2c, rd->x2c}, {rd->y1c, rd->x1c}, {rd->y2c, rd->x1c}};
    int i;
 
    for (i = 0; i < 4; i++)
@@ -342,6 +358,7 @@ void init_corner_brg(const struct rdata *rd, const struct coord *src, struct cor
       set_const_tag(&co_pt[i].nd->otag[0], "grid", "pagecorner");
       set_const_tag(&co_pt[i].nd->otag[1], "generator", "smrender");
       put_object(co_pt[i].nd);
+      log_msg(LOG_DEBUG, "corner_point[%d].bearing = %f", i, co_pt[i].pc.bearing);
    }
 }
 
@@ -359,14 +376,18 @@ void node_brg(struct pcoord *pc, struct coord *src, int64_t nid)
 }
 
 
-void connect_open(struct rdata *rd, struct pdef *pd, struct wlist *wl, int ocnt)
+/*! Connect still unconnected ways.
+ *  @param rd Pointer to struct rdata.
+ *  @param pd Pointer to list of end points of type struct pdef.
+ *  @param wl Pointer to list of open ways.
+ *  @param ocnt number of end points within pd. Obviously, ocnt MUST be an even number.
+ *  @return 0 On success, -1 if connect_open() should be recalled with pd being resorted.
+ */
+int connect_open(struct rdata *rd, struct pdef *pd, struct wlist *wl, int ocnt)
 {
    int i, j, k, l;
    int64_t *ref;
-   struct corner_point co_pt[4];
-   struct coord center = {rd->mean_lat, (rd->x1c + rd->x2c) / 2};
-
-   init_corner_brg(rd, &center, co_pt);
+   struct corner_point *co_pt = co_pt_;
 
    for (i = 0; i < ocnt; i++)
    {
@@ -386,7 +407,7 @@ void connect_open(struct rdata *rd, struct pdef *pd, struct wlist *wl, int ocnt)
             continue;
          }
 
-         if (pd[i].wl_index == pd[j % ocnt].wl_index)
+         //if (pd[i].wl_index == pd[j % ocnt].wl_index)
          {
             // find next corner point for i
             for (k = 0; k < 4; k++)
@@ -401,27 +422,77 @@ void connect_open(struct rdata *rd, struct pdef *pd, struct wlist *wl, int ocnt)
             // add corner points to way
             for (; k < l; k++)
             {
+               // FIXME: realloc() and memmove() should be done outside of the loop
                if ((ref = realloc(wl->ref[pd[i].wl_index].w->ref, sizeof(int64_t) * (wl->ref[pd[i].wl_index].w->ref_cnt + 1))) == NULL)
                   log_msg(LOG_ERR, "realloc() failed: %s", strerror(errno)), exit(EXIT_FAILURE);
 
-               ref[wl->ref[pd[i].wl_index].w->ref_cnt] = co_pt[k % 4].nd->nd.id;
+               memmove(&ref[1], &ref[0], sizeof(int64_t) * wl->ref[pd[i].wl_index].w->ref_cnt); 
+               ref[0] = co_pt[k % 4].nd->nd.id;
                wl->ref[pd[i].wl_index].w->ref = ref;
                wl->ref[pd[i].wl_index].w->ref_cnt++;
                log_debug("added corner point %d", k % 4);
             }
 
-            if ((ref = realloc(wl->ref[pd[i].wl_index].w->ref, sizeof(int64_t) * (wl->ref[pd[i].wl_index].w->ref_cnt + 1))) == NULL)
-               log_msg(LOG_ERR, "realloc() failed: %s", strerror(errno)), exit(EXIT_FAILURE);
+            // if start and end point belong to same way close
+            if (pd[i].wl_index == pd[j % ocnt].wl_index)
+            {
+               if ((ref = realloc(wl->ref[pd[i].wl_index].w->ref, sizeof(int64_t) * (wl->ref[pd[i].wl_index].w->ref_cnt + 1))) == NULL)
+                  log_msg(LOG_ERR, "realloc() failed: %s", strerror(errno)), exit(EXIT_FAILURE);
 
-            ref[wl->ref[pd[i].wl_index].w->ref_cnt] = ref[0];
-            wl->ref[pd[i].wl_index].w->ref = ref;
-            wl->ref[pd[i].wl_index].w->ref_cnt++;
-            wl->ref[pd[i].wl_index].open = 0;
-            log_debug("way %ld (wl_index = %d) is now closed", wl->ref[pd[i].wl_index].w->nd.id, pd[i].wl_index);
+               //memmove(&ref[1], &ref[0], sizeof(int64_t) * wl->ref[pd[i].wl_index].w->ref_cnt); 
+               ref[wl->ref[pd[i].wl_index].w->ref_cnt] = ref[0];
+               wl->ref[pd[i].wl_index].w->ref = ref;
+               wl->ref[pd[i].wl_index].w->ref_cnt++;
+               wl->ref[pd[i].wl_index].open = 0;
+               log_debug("way %ld (wl_index = %d) is now closed", wl->ref[pd[i].wl_index].w->nd.id, pd[i].wl_index);
+            }
+            else
+            {
+               log_debug("pd[%d].wl_index(%d) != pd[%d].wl_index(%d)", i, pd[i].wl_index, j % ocnt, pd[j % ocnt].wl_index);
+               if ((ref = realloc(wl->ref[pd[i].wl_index].w->ref, sizeof(int64_t) * (wl->ref[pd[i].wl_index].w->ref_cnt + wl->ref[pd[j % ocnt].wl_index].w->ref_cnt))) == NULL)
+                  log_msg(LOG_ERR, "realloc() failed: %s", strerror(errno)), exit(EXIT_FAILURE);
+
+               // move refs from i^th way back
+               memmove(&ref[wl->ref[pd[j % ocnt].wl_index].w->ref_cnt], &ref[0], sizeof(int64_t) * wl->ref[pd[i].wl_index].w->ref_cnt); 
+               // copy refs from j^th way to the beginning of i^th way
+               memcpy(&ref[0], wl->ref[pd[j % ocnt].wl_index].w->ref, sizeof(int64_t) * wl->ref[pd[j % ocnt].wl_index].w->ref_cnt);
+               wl->ref[pd[i].wl_index].w->ref = ref;
+               wl->ref[pd[i].wl_index].w->ref_cnt += wl->ref[pd[j % ocnt].wl_index].w->ref_cnt;
+               // (pseudo) close j^th way
+               // FIXME: onode and its refs should be free()'d and removed from tree
+               wl->ref[pd[j % ocnt].wl_index].open = 0;
+               // find end-point of i^th way
+               for (k = 0; k < ocnt; k++)
+                  if ((pd[i].wl_index == pd[k].wl_index) && pd[k].pn)
+                  {
+                     // set point index of new end point of i^th way
+                     pd[k % ocnt].pn = wl->ref[pd[i].wl_index].w->ref_cnt - 1;
+                     break;
+                  }
+               // find start-point of j^th way
+               for (k = 0; k < ocnt; k++)
+                  if ((pd[j % ocnt].wl_index == pd[k].wl_index) && !pd[k].wl_index)
+                  {
+                     // set new start-point of i to start-point of j
+                     pd[i].pc = pd[k].pc;
+                     break;
+                  }
+               log_debug("way %ld (wl_index = %d) marked as closed, resorting pdef", wl->ref[pd[j % ocnt].wl_index].w->nd.id, pd[j % ocnt].wl_index);
+               return -1;
+            }
             break;
-         }
+         } //if (pd[i].wl_index == pd[j % ocnt].wl_index)
       }
    }
+   return 0;
+}
+
+
+void init_cat_poly(struct rdata *rd)
+{
+   center_.lat = rd->mean_lat;
+   center_.lon = rd->mean_lon;
+   init_corner_brg(rd, &center_, co_pt_);
 }
 
 
@@ -446,14 +517,22 @@ int cat_poly(struct rdata *rd)
    ocnt = loop_detect(wl);
    free(pd);
 
-   pd = poly_get_brg(rd, wl, ocnt);
-   ocnt *= 2;
-   qsort(pd, ocnt, sizeof(struct pdef), (int(*)(const void *, const void *)) compare_pdef);
+   if ((pd = calloc(ocnt << 1, sizeof(struct pdef))) == NULL)
+      log_msg(LOG_EMERG, "cat_poly()/calloc(): %s", strerror(errno)), exit(EXIT_FAILURE);
 
-   for (i = 0; i < ocnt; i++)
-      log_debug("%d: wl_index = %d, pn = %d, brg = %f", i, pd[i].wl_index, pd[i].pn, pd[i].pc.bearing);
+   poly_get_brg(pd, rd, wl, ocnt);
 
-   connect_open(rd, pd, wl, ocnt);
+   do
+   {
+      log_msg(LOG_DEBUG, "sorting pdef, ocnt = %d", ocnt << 1);
+      qsort(pd, ocnt << 1, sizeof(struct pdef), (int(*)(const void *, const void *)) compare_pdef);
+
+      for (i = 0; i < ocnt << 1; i++)
+         if (wl->ref[pd[i].wl_index].open)
+            log_debug("%d: wl_index = %d, pn = %d, wid = %ld, brg = %f", i, pd[i].wl_index, pd[i].pn, wl->ref[pd[i].wl_index].w->nd.id, pd[i].pc.bearing);
+   }
+   while (connect_open(rd, pd, wl, ocnt << 1));
+
    free(pd);
 
    free(wl);
