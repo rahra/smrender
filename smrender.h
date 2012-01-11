@@ -299,6 +299,7 @@ void install_sigusr1(void);
 
 /* smcoast.c */
 int cat_poly(struct rdata *);
+void init_cat_poly(struct rdata *);
 
 /* smgrid.c */
 void grid2(struct rdata*);
