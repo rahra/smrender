@@ -152,7 +152,7 @@ int act_caption(struct onode *nd, struct rdata *rd, struct orule *rl)
 
    if ((n = match_attr(nd, rl->rule.cap.key, NULL)) == -1)
    {
-      log_debug("node %ld has no caption tag '%s'", nd->nd.id, rl->rule.cap.key);
+      //log_debug("node %ld has no caption tag '%s'", nd->nd.id, rl->rule.cap.key);
       return 0;
    }
 
