@@ -10,12 +10,12 @@
       <tag k='_action_' v='img-auto:icons/Light_Magenta_90.png'/>
    </node>
    <node>
-      <tag k='seamark:light:range' v='>5.5<'/>
+      <tag k='seamark:light:range' v=']5.5['/>
       <tag k='seamark:type' v='light_minor'/>
       <tag k='_action_' v='img-auto:icons/Light_Magenta_90.png'/>
    </node>
    <node>
-      <tag k='seamark:light:range' v='>5.5<'/>
+      <tag k='seamark:light:range' v=']5.5['/>
       <tag k='seamark:type' v='light_minor'/>
       <tag k='_action_' v='img:icons/Light_Minor.png'/>
    </node>
@@ -63,7 +63,7 @@
    </node>
    <node>
       <tag k='_action_' v='cap:/usr/share/fonts/truetype/ttf-liberation/LiberationSans-Regular.ttf,1.2,cm,black,auto;white;0.7,seamark:light_character'/>
-      <tag k='seamark:light:range' v='>5.5<'/>
+      <tag k='seamark:light:range' v=']5.5['/>
       <tag k='seamark:type' v='light_minor'/>
    </node>
  
