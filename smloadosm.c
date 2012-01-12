@@ -102,6 +102,7 @@ int read_osm_file(hpx_ctrl_t *ctl, bx_node_t **tree, struct filter *fi)
    bx_node_t *tr;
    int64_t *ref;
    int64_t nid = INT64_MIN + 1;
+   time_t tim;
 
    if (hpx_tree_resize(&tlist, 0) == -1)
       perror("hpx_tree_resize"), exit(EXIT_FAILURE);
@@ -109,6 +110,7 @@ int read_osm_file(hpx_ctrl_t *ctl, bx_node_t **tree, struct filter *fi)
       perror("hpx_tm_create"), exit(EXIT_FAILURE);
 
    //oline_ = 0;
+   tim = time(NULL);
    tlist->nsub = 0;
    tag = tlist->tag;
    nd.type = OSM_NA;
@@ -119,7 +121,7 @@ int read_osm_file(hpx_ctrl_t *ctl, bx_node_t **tree, struct filter *fi)
       if (usr1_)
       {
          usr1_ = 0;
-         log_msg(LOG_INFO, "onode_memory: %ld kByte, line %ld", onode_mem() / 1024, tag->line);
+         log_msg(LOG_INFO, "onode_memory: %ld kByte, line %ld, %.2f MByte/s", onode_mem() / 1024, tag->line, ((double) ctl->pos / (double) (time(NULL) - tim)) / (double) (1024 * 1024));
          log_msg(LOG_INFO, "ctl->pos = %ld, ctl->len = %ld, ctl->buf.len = %ld", ctl->pos, ctl->len, ctl->buf.len);
       }
 
