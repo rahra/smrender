@@ -327,6 +327,9 @@ int read_osm_file(hpx_ctrl_t *ctl, bx_node_t **tree, struct filter *fi)
    if (e == -1)
       log_msg(LOG_ERR, "hpx_get_elem() failed: %s", strerror(errno));
 
+   log_msg(LOG_INFO, "onode_memory: %ld kByte, line %ld, %.2f MByte/s", onode_mem() / 1024, tag->line, ((double) ctl->pos / (double) (time(NULL) - tim)) / (double) (1024 * 1024));
+   log_msg(LOG_INFO, "ctl->pos = %ld, ctl->len = %ld, ctl->buf.len = %ld", ctl->pos, ctl->len, ctl->buf.len);
+ 
    hpx_tm_free(tag);
 
    return 0;
