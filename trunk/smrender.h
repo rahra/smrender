@@ -35,6 +35,8 @@
 
 #define SPECIAL_DIRECT 0x0000
 #define SPECIAL_REGEX 0x0001
+#define SPECIAL_GT 0x0002
+#define SPECIAL_LT 0x0003
 #define SPECIAL_INVERT 0x8000
 #define SPECIAL_NOT 0x4000
 #define SPECIAL_MASK 0x00ff
@@ -92,7 +94,11 @@ enum {E_SM_OK, E_RTYPE_NA, E_ACT_NOT_IMPL, E_SYNTAX, E_REF_ERR};
 struct specialTag
 {
    short type;
-   regex_t re;
+   union
+   {
+      regex_t re;
+      double val;
+   };
 };
 
 struct otag
