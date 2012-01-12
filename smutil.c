@@ -235,10 +235,17 @@ int bs_cmp2(const bstring_t *s1, const bstring_t *s2)
 }
 
 
+/*! Match a bstring to a pattern and tag special matching (such as regex) into consideration.
+ *  @param dst String to match.
+ *  @param pat Pattern which is applied to string dst.
+ *  @param st Definition of special match options.
+ *  @return On successful match, 1 is returned, otherwise 0.
+ */
 int bs_match(const bstring_t *dst, const bstring_t *pat, const struct specialTag *st)
 {
-   int r;
+   int r = 1;
    char buf[dst->len + 1];
+   double val;
 
    if (st == NULL)
       return bs_cmp2(dst, pat) == 0;
@@ -246,26 +253,30 @@ int bs_match(const bstring_t *dst, const bstring_t *pat, const struct specialTag
    if ((st->type & SPECIAL_MASK) == SPECIAL_DIRECT)
    {
       r = bs_cmp2(dst, pat);
-      if (st->type & SPECIAL_INVERT)
-         return r != 0;
-      else
-         return r == 0;
    }
-
-   if ((st->type & SPECIAL_MASK) == SPECIAL_REGEX)
+   else if ((st->type & SPECIAL_MASK) == SPECIAL_REGEX)
    {
       // FIXME: this could be avoid if tags are 0-terminated.
       memcpy(buf, dst->buf, dst->len);
       buf[dst->len] = '\0';
  
       r = regexec(&st->re, buf, 0, NULL, 0);
-      if (st->type & SPECIAL_INVERT)
-         return r != 0;
-      else
-         return r == 0;
+   }
+   else if ((st->type & SPECIAL_MASK) == SPECIAL_GT)
+   {
+      val = bs_tod(*dst);
+      r = val > st->val;
+   }
+   else if ((st->type & SPECIAL_MASK) == SPECIAL_LT)
+   {
+      val = bs_tod(*dst);
+      r = val < st->val;
    }
 
-   return 0;
+   if (st->type & SPECIAL_INVERT)
+      return r != 0;
+
+   return r == 0;
 }
 
 

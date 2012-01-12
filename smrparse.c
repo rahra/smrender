@@ -125,6 +125,32 @@ int parse_matchtype(bstring_t *b, struct specialTag *t)
          }
          t->type |= SPECIAL_REGEX;
       }
+      else if ((b->buf[0] == '>') && (b->buf[b->len - 1] == '>'))
+      {
+         log_debug("parsing GT rule");
+         b->buf[b->len - 1] = '\0';
+         b->buf++;
+         b->len -= 2;
+         errno = 0;
+         t->val = strtod(b->buf, NULL);
+         if (errno)
+            log_msg(LOG_ERR, "failed to convert value of GT rule: %s", strerror(errno));
+         else
+            t->type |= SPECIAL_GT;
+      }
+      else if ((b->buf[0] == '<') && (b->buf[b->len - 1] == '<'))
+      {
+         log_debug("parsing LT rule");
+         b->buf[b->len - 1] = '\0';
+         b->buf++;
+         b->len -= 2;
+         errno = 0;
+         t->val = strtod(b->buf, NULL);
+         if (errno)
+            log_msg(LOG_ERR, "failed to convert value of LT rule: %s", strerror(errno));
+         else
+            t->type |= SPECIAL_LT;
+      }
    }
 
    return 0;
