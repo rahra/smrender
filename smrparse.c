@@ -125,7 +125,7 @@ int parse_matchtype(bstring_t *b, struct specialTag *t)
          }
          t->type |= SPECIAL_REGEX;
       }
-      else if ((b->buf[0] == '>') && (b->buf[b->len - 1] == '>'))
+      else if ((b->buf[0] == '>') && (b->buf[b->len - 1] == '<'))
       {
          log_debug("parsing GT rule");
          b->buf[b->len - 1] = '\0';
@@ -138,7 +138,7 @@ int parse_matchtype(bstring_t *b, struct specialTag *t)
          else
             t->type |= SPECIAL_GT;
       }
-      else if ((b->buf[0] == '<') && (b->buf[b->len - 1] == '<'))
+      else if ((b->buf[0] == '<') && (b->buf[b->len - 1] == '>'))
       {
          log_debug("parsing LT rule");
          b->buf[b->len - 1] = '\0';
