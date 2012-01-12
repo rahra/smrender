@@ -471,7 +471,7 @@ int connect_open(struct rdata *rd, struct pdef *pd, struct wlist *wl, int ocnt)
                   }
                // find start-point of j^th way
                for (k = 0; k < ocnt; k++)
-                  if ((pd[j % ocnt].wl_index == pd[k].wl_index) && !pd[k].wl_index)
+                  if ((pd[j % ocnt].wl_index == pd[k].wl_index) && !pd[k].pn)
                   {
                      // set new start-point of i to start-point of j
                      pd[i].pc = pd[k].pc;
