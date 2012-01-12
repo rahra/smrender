@@ -265,12 +265,12 @@ int bs_match(const bstring_t *dst, const bstring_t *pat, const struct specialTag
    else if ((st->type & SPECIAL_MASK) == SPECIAL_GT)
    {
       val = bs_tod(*dst);
-      r = val > st->val;
+      r = !(val > st->val);
    }
    else if ((st->type & SPECIAL_MASK) == SPECIAL_LT)
    {
       val = bs_tod(*dst);
-      r = val < st->val;
+      r = !(val < st->val);
    }
 
    if (st->type & SPECIAL_INVERT)
