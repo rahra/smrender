@@ -231,13 +231,6 @@ int apply_rules(struct orule *rl, struct rdata *rd, struct osm_node *nd)
    return e;
 }
 
-/*
-int apply_wrules(struct onode *nd, struct rdata *rd, void *vp)
-{
-   log_debug("applying rule id 0x%016lx type %s(%d)", nd->nd.id, rule_type_str(nd->rule.type), nd->rule.type);
-   return traverse(rd->obj, 0, IDX_WAY, (tree_func_t) apply_wrules0, rd, nd);
-}
-*/
 
 int print_tree(struct onode *nd, struct rdata *rd, void *p)
 {
@@ -359,47 +352,6 @@ void init_bbox_mll(struct rdata *rd)
    rd->y2c = rd->mean_lat - rd->hc / 2.0;
    rd->scale = (rd->mean_lat_len * 60.0 * 1852 * 100 / 2.54) / ((double) rd->w / (double) rd->dpi);
 }
-
-
-void init_bbox_scale(struct rdata *rd)
-{
-   rd->mean_lat_len = rd->scale * ((double) rd->w / (double) rd->dpi) * 2.54 / (60.0 * 1852 * 100);
-}
-
-
-#if 0
-void init_prj(struct rdata *rd, int p)
-{
-   double y1, y2;
-
-   rd->mean_lat = (rd->y1c + rd->y2c) / 2;
-   switch (p)
-   {
-      case PRJ_MERC_PAGE:
-         rd->wc = rd->x2c - rd->x1c;
-         rd->mean_lat_len = rd->wc * cos(rd->mean_lat * M_PI / 180);
-         rd->hc = rd->mean_lat_len * rd->h / rd->w;
-         y1 = rd->mean_lat + rd->hc / 2.0;
-         y2 = rd->mean_lat - rd->hc / 2.0;
-         if ((y1 > rd->y1c) || (y2 < rd->y2c))
-            log_warn("window enlarged in latitude! This may result in incorrect rendering.");
-         rd->y1c = y1;
-         rd->y2c = y2;
-         break;
-
-      case PRJ_MERC_BB:
-         log_msg(LOG_ALERT, "projection PRJ_MERC_BB not implemented yet"), exit(EXIT_FAILURE);
-         break;
-
-      default:
-         rd->wc = rd->x2c - rd->x1c;
-         rd->mean_lat_len = rd->wc * cos(rd->mean_lat * M_PI / 180);
-         rd->hc = rd->y1c - rd->y2c;
-   }
-   rd->scale = (rd->mean_lat_len * 60.0 * 1852 * 100 / 2.54) / ((double) rd->w / (double) rd->dpi);
-
-}
-#endif
 
 
 int print_onode(FILE *f, const struct onode *nd)
@@ -536,19 +488,6 @@ int save_osm(struct rdata *rd, const char *s)
 }
 
 
-#if 0
-void swap_data(void *a, void *b, int n)
-{
-   char c[n];
-
-   memcpy(c, a, n);
-   memcpy(a, b, n);
-   memcpy(b, c, n);
-}
-#endif
-
-
-
 struct rdata *init_rdata(void)
 {
    memset(&rd_, 0, sizeof(rd_));
@@ -609,65 +548,6 @@ void init_rd_paper(struct rdata *rd, const char *paper, int landscape)
       rd->w = rd->h;
       rd->h = a4_w;
    }
-
-
-   // A3 paper portrait (300dpi)
-   //rd->w = 3507; rd->h = 4961; rd->dpi = 300;
-   // A4 paper portrait (300dpi)
-   //rd->w = 2480; rd->h = 3507; rd->dpi = 300;
-   // A4 paper landscape (300dpi)
-   //rd->h = 2480; rd->w = 3507; rd->dpi = 300;
-   // A4 paper portrait (600dpi)
-   //rd->w = 4961; rd->h = 7016; rd->dpi = 600;
-   // A2 paper landscape (300dpi)
-   //rd->w = 7016; rd->h = 4961; rd->dpi = 300;
-   // A1 paper landscape (300dpi)
-   //rd->w = 9933; rd->h = 7016; rd->dpi = 300;
-   // A1 paper portrait (300dpi)
-   //rd->h = 9933; rd->w = 7016; rd->dpi = 300;
-
-   //rd->grd.lat_ticks = rd->grd.lon_ticks = G_TICKS;
-   //rd->grd.lat_sticks = rd->grd.lon_sticks = G_STICKS;
-   //rd->grd.lat_g = rd->grd.lon_g = G_GRID;
-
-   // init callback function pointers
-   //rd->cb.log_msg = log_msg;
-   //rd->cb.get_object = get_object;
-   //rd->cb.put_object = put_object;
-   //rd->cb.malloc_object = malloc_object;
-   //rd->cb.match_attr = match_attr;
-
-   // this should be given by CLI arguments
-   /* porec.osm
-   rd->x1c = 13.53;
-   rd->y1c = 45.28;
-   rd->x2c = 13.63;
-   rd->y2c = 45.183; */
-
-   //dugi.osm
-   //rd->x1c = 14.72;
-   //rd->y1c = 44.23;
-   //rd->x2c = 15.29;
-   //rd->y2c = 43.96;
-
-   //croatia...osm
-   //rd->x1c = 13.9;
-   //rd->y1c = 45.75;
-   //rd->x2c = 15.4;
-   //rd->y2c = 43.0;
-
-   //croatia_big...osm
-   //rd->x1c = 13.5;
-   //rd->y1c = 45.5;
-   //rd->x2c = 15.5;
-   //rd->y2c = 43.5;
-
-   /* treasure_island
-   rd->x1c = 24.33;
-   rd->y1c = 37.51;
-   rd->x2c = 24.98;
-   rd->y2c = 37.16;
-   */
 }
 
 
@@ -686,12 +566,13 @@ void usage(const char *s)
          "   -f .................. Use loading filter.\n"
          "   -g <grd> ............ Distance of grid in degrees.\n"
          "   -G .................. Do not generate grid nodes/ways.\n"
-         "   -i <osm input> ...... OSM input data (defaulta is stdin).\n"
+         "   -i <osm input> ...... OSM input data (default is stdin).\n"
          "   -l .................. Select landscape output.\n"
-         "   -m <length> ......... Length of mean latitude in degrees.\n"
          "   -M .................. Input file is memory mapped.\n"
          "   -r <rules file> ..... Rules file ('rules.osm' is default).\n"
-         "   -s <scale> .......... Select scale of chart.\n"
+         "   -s (<scale>|<length>[dm])\n"
+         "                         Select scale of chart or length of mean latitude\n"
+         "                         (parallel) in nautical miles (m) or in degrees (d).\n"
          "   -o <image file> ..... Filename of output image (stdout is default).\n"
          "   -P <page format> .... Select output page format.\n"
          "   -w <osm file> ....... Output OSM data to file.\n",
@@ -725,6 +606,7 @@ int main(int argc, char *argv[])
    struct dstats rstats;
    struct osm_node nd;
    char *s;
+   double param;
 
    (void) gettimeofday(&tv_start, NULL);
    init_log("stderr", LOG_DEBUG);
@@ -732,7 +614,7 @@ int main(int argc, char *argv[])
    rd = init_rdata();
    set_util_rd(rd);
 
-   while ((n = getopt(argc, argv, "c:Cd:fg:Ghi:lm:Mo:P:r:s:w:")) != -1)
+   while ((n = getopt(argc, argv, "c:Cd:fg:Ghi:lMo:P:r:s:w:")) != -1)
       switch (n)
       {
          case 'c':
@@ -780,12 +662,6 @@ int main(int argc, char *argv[])
             osm_ifile = optarg;
             break;
 
-         case 'm':
-            if ((rd->mean_lat_len = atof(optarg)) <= 0)
-               log_msg(LOG_ERR, "illegal argument for mean lat length %s", optarg),
-                  exit(EXIT_FAILURE);
-            break;
-
          case 'M':
 #ifndef WITH_MMAP
             log_msg(LOG_ERR, "memory mapping support disable, recompile with WITH_MMAP");
@@ -811,8 +687,18 @@ int main(int argc, char *argv[])
             break;
 
          case 's':
-            if ((rd->scale = atof(optarg)) <= 0)
-               log_msg(LOG_ERR, "illegal scale argument %s", optarg),
+            if ((param = atof(optarg)) <= 0)
+               log_msg(LOG_ERR, "illegal argument for mean lat length %s", optarg),
+                  exit(EXIT_FAILURE);
+ 
+            if (isdigit(optarg[strlen(optarg) - 1]) || (optarg[strlen(optarg) - 1] == '.'))
+               rd->scale = param;
+            else if (optarg[strlen(optarg) - 1] == 'm')
+               rd->mean_lat_len = param / 60;
+            else if (optarg[strlen(optarg) - 1] == 'd')
+               rd->wc = param;
+            else
+               log_msg(LOG_ERR, "illegal parameter for option -s"),
                   exit(EXIT_FAILURE);
             break;
 
@@ -821,11 +707,8 @@ int main(int argc, char *argv[])
             break;
       }
 
-   if ((rd->scale != 0) && (rd->mean_lat_len != 0))
-      log_msg(LOG_ERR, "specifying scale AND mean latitude length is not allowed"),
-         exit(EXIT_FAILURE);
-   if ((rd->scale == 0) && (rd->mean_lat_len == 0))
-      log_msg(LOG_ERR, "either -s or -m is mandatory"),
+   if ((rd->scale == 0) && (rd->mean_lat_len == 0) && (rd->wc == 0))
+      log_msg(LOG_ERR, "option -s is mandatory"),
          exit(EXIT_FAILURE);
    if (!cset)
       log_msg(LOG_ERR, "option -c is mandatory"),
@@ -838,8 +721,12 @@ int main(int argc, char *argv[])
    bx_exit();
 
    init_rd_paper(rd, paper, landscape);
-   if (rd->mean_lat_len == 0)
-      init_bbox_scale(rd);
+
+   if (rd->scale > 0)
+      rd->mean_lat_len = rd->scale * ((double) rd->w / (double) rd->dpi) * 2.54 / (60.0 * 1852 * 100);
+   else if (rd->wc > 0)
+      rd->mean_lat_len  = rd->wc * cos(rd->mean_lat * M_PI / 180);
+
    init_bbox_mll(rd);
 
    // FIXME: Why stderr?
