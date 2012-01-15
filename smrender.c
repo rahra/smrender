@@ -732,7 +732,6 @@ int main(int argc, char *argv[])
    // FIXME: Why stderr?
    print_rdata(stderr, rd);
 
-   init_cat_poly(rd);
 
    // preparing image
    if ((rd->img = gdImageCreateTrueColor(rd->w, rd->h)) == NULL)
@@ -824,6 +823,7 @@ int main(int argc, char *argv[])
          rd->ds.lu.lat, rd->ds.lu.lon, rd->ds.rb.lat, rd->ds.rb.lon);
    log_msg(LOG_INFO, " lo_addr = %p, hi_addr = %p", rd->ds.lo_addr, rd->ds.hi_addr);
 
+   init_cat_poly(rd);
    if (prep_coast)
    {
       log_msg(LOG_INFO, "preparing coastline");
