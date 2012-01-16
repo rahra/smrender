@@ -83,12 +83,13 @@
 
    <node>
       <!-- 
-           cap:<fontfile>,<size in mm>,<alignement [ewc][nsm]>,<color>,<angle>,<keyname to print>
+           cap:<fontfile>,<size in mm>,<alignement [ewc][nsm]>,<color>,<angle>,<key>
            <angle>    := <angledef>[;<color>[;<weight>[;<phase>]]]
            <angledef> := "auto" | 0..360
            <color>    := "black" | "white" | "yellow" | "brown" | "blue" | "magenta"
            <weight>   := 0..1
            <phase>    := 0..360
+           <key>      := [*]<keyname to print>     // * means upper case
       -->
 
       <tag k='_action_' v='cap:/usr/share/fonts/truetype/ttf-liberation/LiberationSans-Regular.ttf,1.4,cm,black,auto;white;0.7,seamark:light_character'/>

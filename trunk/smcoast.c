@@ -534,7 +534,6 @@ int cat_poly(struct rdata *rd)
    while (connect_open(rd, pd, wl, ocnt << 1));
 
    free(pd);
-
    free(wl);
    return 0;
 }
