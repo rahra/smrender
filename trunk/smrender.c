@@ -120,7 +120,7 @@ int apply_rules0(struct onode *nd, struct rdata *rd, struct orule *rl)
          break;
 
       case ACT_FUNC:
-         e = rl->rule.func.func(nd);
+         e = rl->rule.func.main.func(nd);
          break;
 
       case ACT_OUTPUT:
@@ -176,7 +176,7 @@ int apply_wrules0(struct onode *nd, struct rdata *rd, struct orule *rl)
          break;
 
       case ACT_FUNC:
-         e = rl->rule.func.func(nd);
+         e = rl->rule.func.main.func(nd);
          break;
 
       case ACT_OUTPUT:
@@ -208,6 +208,10 @@ int apply_rules(struct orule *rl, struct rdata *rd, struct osm_node *nd)
          return 0;
    }
 
+   // call initialization rule of function rule if available
+   if ((rl->rule.type == ACT_FUNC) && (rl->rule.func.ini.func != NULL))
+      rl->rule.func.ini.func();
+
    switch (rl->ond->nd.type)
    {
       case OSM_NODE:
@@ -221,6 +225,10 @@ int apply_rules(struct orule *rl, struct rdata *rd, struct osm_node *nd)
       default:
          log_debug("unknown rule type");
    }
+
+   // call initialization rule of function rule if available
+   if ((rl->rule.type == ACT_FUNC) && (rl->rule.func.ini.func != NULL))
+      rl->rule.func.ini.func();
 
    if ((rl->rule.type == ACT_OUTPUT) && (rl->rule.out.fhandle != NULL))
    {
