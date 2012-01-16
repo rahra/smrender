@@ -312,7 +312,10 @@ int parse_func(struct actFunction *afn, const char *symstr)
    }
    else
    {
-      afn->parm = strtok_r(NULL, "", &sp);
+      if ((afn->parm = strtok_r(NULL, "", &sp)) != NULL)
+         // FIXME: error checking missing
+         afn->parm = strdup(afn->parm);
+      
       if (!strcmp(lib, "NULL"))
       {
          log_msg(LOG_INFO, "looking up function in memory linked code");
@@ -501,9 +504,15 @@ int prepare_rules(struct onode *nd, struct rdata *rd, void *p)
    }
    else if (!strcmp(s, "out"))
    {
-      if ((rl->rule.func.parm = strtok(NULL, "")) == NULL)
+      if ((s = strtok(NULL, "")) == NULL)
       {
          log_warn("syntax error in out rule");
+         return E_SYNTAX;
+      }
+
+      if (parse_output(&rl->rule.func, s))
+      {
+         log_msg(LOG_ERR, "error in parse_output()");
          return E_SYNTAX;
       }
 
@@ -511,12 +520,6 @@ int prepare_rules(struct onode *nd, struct rdata *rd, void *p)
       {
          rl->rule.func.parm = "/dev/null";
          log_msg(LOG_NOTICE, "output rule writing to '%s'", rl->rule.func.parm);
-      }
-
-      if (parse_output(&rl->rule.func, rl->rule.func.parm))
-      {
-         log_msg(LOG_ERR, "error in parse_output()");
-         return E_SYNTAX;
       }
 
       rl->rule.type = ACT_FUNC;
