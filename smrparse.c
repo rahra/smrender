@@ -345,7 +345,7 @@ int prepare_rules(struct onode *nd, struct rdata *rd, void *p)
       if ((s = strtok(NULL, ",")) == NULL) return E_SYNTAX;
       rl->rule.cap.size = atof(s);
       if ((s = strtok(NULL, ",")) == NULL) return E_SYNTAX;
-      rl->rule.cap.pos = ppos(s);
+      rl->rule.cap.pos |= ppos(s);
       if ((s = strtok(NULL, ",")) == NULL) return E_SYNTAX;
 
       rl->rule.cap.col = parse_color(rd, s);
@@ -360,7 +360,11 @@ int prepare_rules(struct onode *nd, struct rdata *rd, void *p)
       else
          rl->rule.cap.angle = atof(s);
       if ((s = strtok(NULL, ",")) == NULL) return E_SYNTAX;
-
+      if (*s == '*')
+      {
+         rl->rule.cap.pos |= POS_UC;
+         s++;
+      }
       rl->rule.cap.key = s;
       rl->rule.type = ACT_CAP;
       log_debug("successfully parsed caption rule");

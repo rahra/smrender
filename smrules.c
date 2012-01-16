@@ -24,6 +24,7 @@
 #include <gd.h>
 #include <syslog.h>
 #include <errno.h>
+#include <ctype.h>
 
 #include "smrender.h"
 #include "smlog.h"
@@ -156,13 +157,7 @@ int act_caption(struct onode *nd, struct rdata *rd, struct orule *rl)
       return 0;
    }
 
-   mk_paper_coords(nd->nd.lat, nd->nd.lon, rd, &x, &y);
-   memset(&fte, 0, sizeof(fte));
-   fte.flags = gdFTEX_RESOLUTION | gdFTEX_CHARMAP;
-   fte.charmap = gdFTEX_Unicode;
-   fte.hdpi = fte.vdpi = rd->dpi;
-
-   if (nd->otag[n].v.buf[nd->otag[n].v.len])
+   //if (nd->otag[n].v.buf[nd->otag[n].v.len])
    {
       //nd->otag[n].v.buf[nd->otag[n].v.len] = '\0';
       // data must be copied since memory modification is not allowed
@@ -171,9 +166,18 @@ int act_caption(struct onode *nd, struct rdata *rd, struct orule *rl)
       memcpy(v, nd->otag[n].v.buf, nd->otag[n].v.len);
       v[nd->otag[n].v.len] = '\0';
    }
-   else
-      v = nd->otag[n].v.buf;
+   //else
+   //   v = nd->otag[n].v.buf;
 
+   if (rl->rule.cap.pos & POS_UC)
+      for (x = 0; x < nd->otag[n].v.len; x++)
+         v[x] = toupper(v[x]);
+
+   mk_paper_coords(nd->nd.lat, nd->nd.lon, rd, &x, &y);
+   memset(&fte, 0, sizeof(fte));
+   fte.flags = gdFTEX_RESOLUTION | gdFTEX_CHARMAP;
+   fte.charmap = gdFTEX_Unicode;
+   fte.hdpi = fte.vdpi = rd->dpi;
    gdImageStringFTEx(NULL, br, rl->rule.cap.col, rl->rule.cap.font, rl->rule.cap.size * 2.8699, 0, x, y, v, &fte);
 
    if (isnan(rl->rule.cap.angle))
@@ -236,7 +240,7 @@ int act_caption(struct onode *nd, struct rdata *rd, struct orule *rl)
 //   else
 //      fprintf(stderr, "printed %s at %d,%d\n", nd->otag[n].v.buf, x, y);
 
-   if (nd->otag[n].v.buf[nd->otag[n].v.len])
+   //if (nd->otag[n].v.buf[nd->otag[n].v.len])
       free(v);
 
    return 0;

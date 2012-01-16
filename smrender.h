@@ -47,6 +47,7 @@
 #define POS_C 0
 #define POS_E 4
 #define POS_W 8
+#define POS_UC 16
 
 // distance of grid lines in degrees (should be multple of G_TICKS)
 #define G_GRID (10.0 / 60.0)
