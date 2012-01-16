@@ -123,6 +123,7 @@ int apply_rules0(struct onode *nd, struct rdata *rd, struct orule *rl)
          e = rl->rule.func.main.func(nd);
          break;
 
+         /*
       case ACT_OUTPUT:
          e = act_output(nd, rl);
          break;
@@ -130,6 +131,7 @@ int apply_rules0(struct onode *nd, struct rdata *rd, struct orule *rl)
       case ACT_IGNORE:
          e = -1;
          break;
+         */
 
       default:
          e = E_ACT_NOT_IMPL;
@@ -179,6 +181,7 @@ int apply_wrules0(struct onode *nd, struct rdata *rd, struct orule *rl)
          e = rl->rule.func.main.func(nd);
          break;
 
+         /*
       case ACT_OUTPUT:
          e = act_output(nd, rl);
          break;
@@ -186,6 +189,7 @@ int apply_wrules0(struct onode *nd, struct rdata *rd, struct orule *rl)
       case ACT_IGNORE:
          e = -1;
          break;
+         */
 
       default:
          e = E_ACT_NOT_IMPL;
@@ -210,7 +214,7 @@ int apply_rules(struct orule *rl, struct rdata *rd, struct osm_node *nd)
 
    // call initialization rule of function rule if available
    if ((rl->rule.type == ACT_FUNC) && (rl->rule.func.ini.func != NULL))
-      rl->rule.func.ini.func();
+      rl->rule.func.ini.func(rl->rule.func.parm);
 
    switch (rl->ond->nd.type)
    {
@@ -226,15 +230,15 @@ int apply_rules(struct orule *rl, struct rdata *rd, struct osm_node *nd)
          log_debug("unknown rule type");
    }
 
-   // call initialization rule of function rule if available
-   if ((rl->rule.type == ACT_FUNC) && (rl->rule.func.ini.func != NULL))
-      rl->rule.func.ini.func();
+   // call de-initialization rule of function rule if available
+   if ((rl->rule.type == ACT_FUNC) && (rl->rule.func.fini.func != NULL))
+      rl->rule.func.fini.func();
 
-   if ((rl->rule.type == ACT_OUTPUT) && (rl->rule.out.fhandle != NULL))
+   /*if ((rl->rule.type == ACT_OUTPUT) && (rl->rule.out.fhandle != NULL))
    {
       fprintf(rl->rule.out.fhandle, "</osm>\n");
       fclose(rl->rule.out.fhandle);
-   }
+   }*/
 
    return e;
 }

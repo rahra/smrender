@@ -153,9 +153,14 @@ struct actFunction
       ext_func_t func;
       void *sym;
    } main;
-   structor_t ini;
+   union
+   {
+      int (*func)(const char*);
+      void *sym;
+   } ini;
    structor_t fini;
    void *libhandle;
+   char *parm;
 };
 
 struct actOutput

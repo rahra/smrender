@@ -279,9 +279,9 @@ struct orule *rule_alloc(struct rdata *rd, struct onode *nd)
 
 int get_structor(void *lhandle, structor_t *stor, const char *sym, const char *trail)
 {
-   char buf[strlen(sym) + strlen(trail) + 2];
+   char buf[strlen(sym) + strlen(trail) + 1];
 
-   snprintf(buf, sizeof(buf), "%s_%s", sym, trail);
+   snprintf(buf, sizeof(buf), "%s%s", sym, trail);
    // Clear any existing error
    dlerror();
    stor->sym = dlsym(lhandle, buf);
@@ -289,14 +289,79 @@ int get_structor(void *lhandle, structor_t *stor, const char *sym, const char *t
    if (dlerror() == NULL)
       return 0;
 
-   log_msg(LOG_INFO, "no initialization function %s()", buf);
+   log_msg(LOG_INFO, "no structor %s()", buf);
    return -1;
+}
+
+
+int parse_func(struct actFunction *afn, const char *symstr)
+{
+   char buf[strlen(symstr) + 1];
+   char *func, *lib, *sp;
+
+   strcpy(buf, symstr);
+
+   if ((func = strtok_r(buf, "@", &sp)) == NULL)
+   {
+      log_msg(LOG_ERR, "syntax error in function rule");
+      return -1;
+   }
+   if ((lib = strtok_r(NULL, "?", &sp)) == NULL)
+   {
+      log_msg(LOG_INFO, "looking up function in memory linked code");
+   }
+   else
+   {
+      afn->parm = strtok_r(NULL, "", &sp);
+      if (!strcmp(lib, "NULL"))
+      {
+         log_msg(LOG_INFO, "looking up function in memory linked code");
+         lib = NULL;
+      }
+   }
+
+   // Open shared library
+   if ((afn->libhandle = dlopen(lib, RTLD_LAZY)) == NULL)
+   {
+      log_msg(LOG_ERR, "could not open library: %s", dlerror());
+      return -1;
+   }
+
+#if 0
+   // Clear any existing error
+   dlerror();
+   rl->rule.func.main.sym = dlsym(rl->rule.func.libhandle, func);
+   // Check for errors (BSD returns const char*, thus type is converted)
+   if ((s = (char*) dlerror()) != NULL)
+   {
+      log_msg(LOG_ERR, "error loading symbol from libary: %s", s);
+      return -1;
+   }
+#endif
+
+   if (get_structor(afn->libhandle, (structor_t*) &afn->main, func, ""))
+      return -1;
+
+   (void) get_structor(afn->libhandle, (structor_t*) &afn->ini, func, "_ini");
+   (void) get_structor(afn->libhandle, (structor_t*) &afn->fini, func, "_fini");
+
+   return 0;
+}
+
+
+int parse_output(struct actFunction *afn, const char *pstr)
+{
+#define OUTPUT_FUNC_STR "act_output@NULL?"
+   char buf[strlen(pstr) + strlen(OUTPUT_FUNC_STR) + 1];
+
+   snprintf(buf, sizeof(buf), "%s%s", OUTPUT_FUNC_STR, pstr);
+   return parse_func(afn, buf);
 }
 
 
 int prepare_rules(struct onode *nd, struct rdata *rd, void *p)
 {
-   char *s, *lib, *func;
+   char *s;
    FILE *f;
    int i;
    struct orule *rl;
@@ -388,36 +453,14 @@ int prepare_rules(struct onode *nd, struct rdata *rd, void *p)
    }
    else if (!strcmp(s, "func"))
    {
-      if ((func = strtok(NULL, "@")) == NULL)
+      if ((s = strtok(NULL, "")) == NULL)
       {
-         log_msg(LOG_ERR, "syntax error in function rule");
-         return E_SYNTAX;
-      }
-      if ((lib = strtok(NULL, "")) == NULL)
-      {
-         log_msg(LOG_ERR, "syntax error in function rule");
+         log_warn("syntax error in function rule");
          return E_SYNTAX;
       }
 
-      // Open shared library
-      if ((rl->rule.func.libhandle = dlopen(lib, RTLD_LAZY)) == NULL)
-      {
-         log_msg(LOG_ERR, "could not open library: %s", dlerror());
-         return 0;
-      }
-
-      // Clear any existing error
-      dlerror();
-      rl->rule.func.main.sym = dlsym(rl->rule.func.libhandle, func);
-      // Check for errors (BSD returns const char*, thus type is converted)
-      if ((s = (char*) dlerror()) != NULL)
-      {
-         log_msg(LOG_ERR, "error loading symbol from libary: %s", s);
-         return 0;
-      }
-
-      (void) get_structor(rl->rule.func.libhandle, &rl->rule.func.ini, func, "ini");
-      (void) get_structor(rl->rule.func.libhandle, &rl->rule.func.ini, func, "fini");
+      if (parse_func(&rl->rule.func, s))
+         return E_SYNTAX;
 
       rl->rule.type = ACT_FUNC;
       log_debug("successfully parsed function rule");
@@ -463,13 +506,20 @@ int prepare_rules(struct onode *nd, struct rdata *rd, void *p)
          log_warn("syntax error in out rule");
          return E_SYNTAX;
       }
-      if ((rl->rule.out.fhandle = fopen(s, "w")) == NULL)
+
+      if (parse_output(&rl->rule.func, s))
       {
-         log_msg(LOG_ERR, "error opening output file: %s", s);
-         return 0;
+         log_msg(LOG_ERR, "error in parse_output()");
+         return E_SYNTAX;
       }
-      fprintf(rl->rule.out.fhandle, "<?xml version='1.0' encoding='UTF-8'?>\n<osm version='0.6' generator='smrender'>\n");
-      rl->rule.type = ACT_OUTPUT;
+
+      if (rl->rule.func.parm == NULL)
+      {
+         rl->rule.func.parm = "/dev/null";
+         log_msg(LOG_NOTICE, "output rule writing to '%s'", rl->rule.func.parm);
+      }
+
+      rl->rule.type = ACT_FUNC;
       log_debug("successfully parsed output rule");
    }
    else if (!strcmp(s, "ignore"))

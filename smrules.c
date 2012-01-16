@@ -408,19 +408,48 @@ int col_freq(struct rdata *rd, int x, int y, int w, int h, double a, int col)
 }
 
 
-int act_output(struct onode *nd, struct orule *rl)
+static FILE *output_handle_;
+
+
+void act_output_ini(const char *parm)
+{
+   if ((output_handle_ = fopen(parm, "w")) == NULL)
+   {
+      log_msg(LOG_ERR, "error opening output file: %s", parm);
+      return;
+   }
+   fprintf(output_handle_, "<?xml version='1.0' encoding='UTF-8'?>\n<osm version='0.6' generator='smrender'>\n");
+}
+
+
+int act_output(struct onode *nd)
 {
    struct onode *n;
    int i;
+
+   if (output_handle_ == NULL)
+      return -1;
 
    for (i = 0; i < nd->ref_cnt; i++)
    {
       if ((n = get_object(OSM_NODE, nd->ref[i])) == NULL)
          continue;
-      print_onode(rl->rule.out.fhandle, n);
+      print_onode(output_handle_, n);
    }
-   print_onode(rl->rule.out.fhandle, nd);
+   print_onode(output_handle_, nd);
 
    return 0;
+}
+
+
+void act_output_fini(void)
+{
+   if (output_handle_ == NULL)
+      return;
+
+   fprintf(output_handle_, "</osm>\n");
+   fclose(output_handle_);
+   output_handle_ = NULL;
+   return;
 }
 
