@@ -86,7 +86,12 @@ typedef struct rdata rdata_t;
 typedef struct onode onode_t;
 typedef int (*tree_func_t)(struct onode*, struct rdata*, void*);
 typedef int (*ext_func_t)(struct onode*);
-
+typedef union structor
+{
+      void (*func)(void);
+      void *sym;
+} structor_t;
+ 
 // indexes to object tree
 enum {IDX_NODE, IDX_WAY};
 
@@ -147,7 +152,9 @@ struct actFunction
    {
       ext_func_t func;
       void *sym;
-   };
+   } main;
+   structor_t ini;
+   structor_t fini;
    void *libhandle;
 };
 

@@ -277,9 +277,26 @@ struct orule *rule_alloc(struct rdata *rd, struct onode *nd)
 }
 
 
+int get_structor(void *lhandle, structor_t *stor, const char *sym, const char *trail)
+{
+   char buf[strlen(sym) + strlen(trail) + 2];
+
+   snprintf(buf, sizeof(buf), "%s_%s", sym, trail);
+   // Clear any existing error
+   dlerror();
+   stor->sym = dlsym(lhandle, buf);
+   // Check for errors (BSD returns const char*, thus type is converted)
+   if (dlerror() == NULL)
+      return 0;
+
+   log_msg(LOG_INFO, "no initialization function %s()", buf);
+   return -1;
+}
+
+
 int prepare_rules(struct onode *nd, struct rdata *rd, void *p)
 {
-   char *s, *lib;
+   char *s, *lib, *func;
    FILE *f;
    int i;
    struct orule *rl;
@@ -371,7 +388,7 @@ int prepare_rules(struct onode *nd, struct rdata *rd, void *p)
    }
    else if (!strcmp(s, "func"))
    {
-      if ((s = strtok(NULL, "@")) == NULL)
+      if ((func = strtok(NULL, "@")) == NULL)
       {
          log_msg(LOG_ERR, "syntax error in function rule");
          return E_SYNTAX;
@@ -391,15 +408,16 @@ int prepare_rules(struct onode *nd, struct rdata *rd, void *p)
 
       // Clear any existing error
       dlerror();
-
-      rl->rule.func.sym = dlsym(rl->rule.func.libhandle, s);
-
+      rl->rule.func.main.sym = dlsym(rl->rule.func.libhandle, func);
       // Check for errors (BSD returns const char*, thus type is converted)
       if ((s = (char*) dlerror()) != NULL)
       {
          log_msg(LOG_ERR, "error loading symbol from libary: %s", s);
          return 0;
       }
+
+      (void) get_structor(rl->rule.func.libhandle, &rl->rule.func.ini, func, "ini");
+      (void) get_structor(rl->rule.func.libhandle, &rl->rule.func.ini, func, "fini");
 
       rl->rule.type = ACT_FUNC;
       log_debug("successfully parsed function rule");
