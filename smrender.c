@@ -84,6 +84,54 @@ char *cfmt(double c, int d, char *s, int l)
 }
 
 
+int poly_area(const struct onode *nd, double *ar)
+{
+   int i;
+   struct onode *n1, *n2;
+
+   if (nd->ref_cnt < 3)
+   {
+      log_msg(LOG_INFO, "too less nodes for polygon_area()");
+      return 2;
+   }
+
+   if (nd->ref[0] != nd->ref[nd->ref_cnt - 1])
+   {
+      log_msg(LOG_INFO, "polygon open");
+      return 1;
+   }
+
+   *ar = 0;
+   for (i = 0; i < nd->ref_cnt; i++)
+   {
+      n1 = get_object(OSM_NODE, nd->ref[i]);
+      n2 = get_object(OSM_NODE, nd->ref[(i + 1) % nd->ref_cnt]);
+
+      if ((n1 == NULL) || (n2 == NULL))
+      {
+         log_msg(LOG_ERR, "something is wrong with way %ld: node does not exist", nd->nd.id);
+         return -1;
+      }
+
+      *ar += (n1->nd.lat + n2->nd.lat) * (n1->nd.lon + n2->nd.lon) * cos(DEG2RAD((n1->nd.lat + n2->nd.lat) / 2));
+   }
+
+   *ar = fabs(*ar) / 2;
+   return 0;
+}
+
+
+int act_poly_area(const struct onode *nd)
+{
+   double ar;
+
+   if (!poly_area(nd, &ar))
+      log_msg(LOG_DEBUG, "poly_area of %ld = %f", nd->nd.id, ar);
+
+   return 0;
+}
+
+
 /*! Match and apply ruleset to node.
  *  @param nd Node which should be rendered.
  *  @param rd Pointer to general rendering parameters.
@@ -578,7 +626,6 @@ void usage(const char *s)
          "               <scale> Scale of chart.\n"
          "               <length> Length of mean meridian in either degrees ('d') or\n"
          "                        nautical miles ('m')\n"
-//         "   -c <lat>:<lon> ...... coordinates if center point.\n"
          "   -C .................. Do not close open coastline polygons.\n"
          "   -d <density> ........ Set image density (300 is default).\n"
          "   -f .................. Use loading filter.\n"
@@ -588,9 +635,6 @@ void usage(const char *s)
          "   -l .................. Select landscape output.\n"
          "   -M .................. Input file is memory mapped.\n"
          "   -r <rules file> ..... Rules file ('rules.osm' is default).\n"
-//         "   -s (<scale>|<length>[dm])\n"
-//         "                         Select scale of chart or length of mean latitude\n"
-//         "                         (parallel) in nautical miles (m) or in degrees (d).\n"
          "   -o <image file> ..... Filename of output image (stdout is default).\n"
          "   -P <page format> .... Select output page format.\n"
          "   -w <osm file> ....... Output OSM data to file.\n",
