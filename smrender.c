@@ -84,6 +84,11 @@ char *cfmt(double c, int d, char *s, int l)
 }
 
 
+/*! poly_area() calculates the area of a close polygon in nautical square miles.
+ *  @param nd Pointer to way.
+ *  @param ar Pointer to result variable.
+ *  @return returns 0 on success, 1 if way is open, and -1 in case of error.
+ */
 int poly_area(const struct onode *nd, double *ar)
 {
    int i;
@@ -92,7 +97,7 @@ int poly_area(const struct onode *nd, double *ar)
    if (nd->ref_cnt < 3)
    {
       log_msg(LOG_INFO, "too less nodes for polygon_area()");
-      return 2;
+      return 1;
    }
 
    if (nd->ref[0] != nd->ref[nd->ref_cnt - 1])
@@ -113,10 +118,11 @@ int poly_area(const struct onode *nd, double *ar)
          return -1;
       }
 
-      *ar += (n1->nd.lat + n2->nd.lat) * (n1->nd.lon + n2->nd.lon) * cos(DEG2RAD((n1->nd.lat + n2->nd.lat) / 2));
+      *ar += (n1->nd.lat + n2->nd.lat) * 
+             (n1->nd.lon * cos(DEG2RAD(n1->nd.lat)) - n2->nd.lon * cos(DEG2RAD(n2->nd.lat)));
    }
 
-   *ar = fabs(*ar) / 2;
+   *ar = fabs(*ar) / 2 * 60 * 60;
    return 0;
 }
 
@@ -134,6 +140,7 @@ int act_poly_area(struct onode *nd)
          log_msg(LOG_DEBUG, "could not realloc way");
          return 0;
       }
+      put_object(nd);
       snprintf(buf, sizeof(buf), "%f", ar);
       if ((s = strdup(buf)) == NULL)
       {
@@ -141,7 +148,7 @@ int act_poly_area(struct onode *nd)
          return 0;
       }
       set_const_tag(&nd->otag[nd->tag_cnt], "area", s);
-      put_object(nd);
+      nd->tag_cnt++;
    }
 
    return 0;
