@@ -121,12 +121,28 @@ int poly_area(const struct onode *nd, double *ar)
 }
 
 
-int act_poly_area(const struct onode *nd)
+int act_poly_area(struct onode *nd)
 {
    double ar;
+   char buf[256], *s;
 
    if (!poly_area(nd, &ar))
+   {
       log_msg(LOG_DEBUG, "poly_area of %ld = %f", nd->nd.id, ar);
+      if ((nd = realloc(nd, sizeof(struct onode) + sizeof(struct otag) * (nd->tag_cnt + 1))) == NULL)
+      {
+         log_msg(LOG_DEBUG, "could not realloc way");
+         return 0;
+      }
+      snprintf(buf, sizeof(buf), "%f", ar);
+      if ((s = strdup(buf)) == NULL)
+      {
+         log_msg(LOG_DEBUG, "could not strdup");
+         return 0;
+      }
+      set_const_tag(&nd->otag[nd->tag_cnt], "area", s);
+      put_object(nd);
+   }
 
    return 0;
 }
