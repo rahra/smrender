@@ -571,20 +571,26 @@ void init_rd_image(struct rdata *rd)
 void usage(const char *s)
 {
    printf("Seamark renderer V1.1, (c) 2011, Bernhard R. Fischer, <bf@abenteuerland.at>.\n"
-         "usage: %s -c <...> -(m|s) <...> [OPTIONS]\n"
-         "   -c <lat>:<lon> ...... coordinates if center point.\n"
+         "usage: %s [OPTIONS] <window>\n"
+         "   <window> := <lat>:<lon>:<size>\n"
+         "               <lat> and <lon> specify the coordinates of the centerpoint.\n"
+         "   <size>   := <scale> | <length>'d' | <length>'m'\n"
+         "               <scale> Scale of chart.\n"
+         "               <length> Length of mean meridian in either degrees ('d') or\n"
+         "                        nautical miles ('m')\n"
+//         "   -c <lat>:<lon> ...... coordinates if center point.\n"
          "   -C .................. Do not close open coastline polygons.\n"
          "   -d <density> ........ Set image density (300 is default).\n"
          "   -f .................. Use loading filter.\n"
-         "   -g <grd> ............ Distance of grid in degrees.\n"
+         "   -g <grd>[:<t>[:<s>]]  Distance of grid/ticks/subticks in minutes.\n"
          "   -G .................. Do not generate grid nodes/ways.\n"
          "   -i <osm input> ...... OSM input data (default is stdin).\n"
          "   -l .................. Select landscape output.\n"
          "   -M .................. Input file is memory mapped.\n"
          "   -r <rules file> ..... Rules file ('rules.osm' is default).\n"
-         "   -s (<scale>|<length>[dm])\n"
-         "                         Select scale of chart or length of mean latitude\n"
-         "                         (parallel) in nautical miles (m) or in degrees (d).\n"
+//         "   -s (<scale>|<length>[dm])\n"
+//         "                         Select scale of chart or length of mean latitude\n"
+//         "                         (parallel) in nautical miles (m) or in degrees (d).\n"
          "   -o <image file> ..... Filename of output image (stdout is default).\n"
          "   -P <page format> .... Select output page format.\n"
          "   -w <osm file> ....... Output OSM data to file.\n",
@@ -612,7 +618,7 @@ int main(int argc, char *argv[])
    char *cf = "rules.osm", *img_file = NULL, *osm_ifile = NULL, *osm_ofile = NULL;
    struct rdata *rd;
    struct timeval tv_start, tv_end;
-   int gen_grid = 1, prep_coast = 1, landscape = 0, w_mmap = 0, load_filter = 0, cset = 0;
+   int gen_grid = 1, prep_coast = 1, landscape = 0, w_mmap = 0, load_filter = 0;
    char *paper = "A3";
    struct filter fi;
    struct dstats rstats;
@@ -626,19 +632,9 @@ int main(int argc, char *argv[])
    rd = init_rdata();
    set_util_rd(rd);
 
-   while ((n = getopt(argc, argv, "c:Cd:fg:Ghi:lMo:P:r:s:w:")) != -1)
+   while ((n = getopt(argc, argv, "Cd:fg:Ghi:lMo:P:r:w:")) != -1)
       switch (n)
       {
-         case 'c':
-            if ((s = strtok(optarg, ":")) == NULL)
-               log_msg(LOG_ERR, "illegal coordinate paramter"), exit(EXIT_FAILURE);
-            rd->mean_lat = atof(s);
-            if ((s = strtok(NULL, ":")) == NULL)
-               log_msg(LOG_ERR, "illegal coordinate paramter"), exit(EXIT_FAILURE);
-            rd->mean_lon = atof(s);
-            cset = 1;
-            break;
-
          case 'C':
             prep_coast = 0;
             break;
@@ -650,12 +646,29 @@ int main(int argc, char *argv[])
             break;
 
          case 'g':
-            rd->grd.lat_g = rd->grd.lon_g = atof(optarg);
-            rd->grd.lat_ticks = rd->grd.lon_ticks = rd->grd.lat_g / 10;
-            if (!((int) round(rd->grd.lat_ticks * 600) % 4))
-               rd->grd.lat_sticks = rd->grd.lon_sticks = rd->grd.lat_ticks / 4;
-            else
-               rd->grd.lat_sticks = rd->grd.lon_sticks = rd->grd.lat_ticks / 5;
+            if ((s = strtok(optarg, ":")) == NULL)
+               log_msg(LOG_ERR, "ill grid parameter"), exit(EXIT_FAILURE);
+
+            rd->grd.lat_g = rd->grd.lon_g = atof(s) / 60;
+
+            if ((s = strtok(NULL, ":")) == NULL)
+            {
+               rd->grd.lat_ticks = rd->grd.lon_ticks = rd->grd.lat_g / 10;
+               break;
+            }
+            rd->grd.lat_ticks = rd->grd.lon_ticks = atof(s) / 60;
+
+
+            if ((s = strtok(NULL, ":")) == NULL)
+            {
+               if (!((int) round(rd->grd.lat_ticks * 600) % 4))
+                  rd->grd.lat_sticks = rd->grd.lon_sticks = rd->grd.lat_ticks / 4;
+               else
+                  rd->grd.lat_sticks = rd->grd.lon_sticks = rd->grd.lat_ticks / 5;
+               break;
+            }
+
+            rd->grd.lat_sticks = rd->grd.lon_sticks = atof(s) / 60;
             break;
 
          case 'G':
@@ -698,34 +711,35 @@ int main(int argc, char *argv[])
             cf = optarg;
             break;
 
-         case 's':
-            if ((param = atof(optarg)) <= 0)
-               log_msg(LOG_ERR, "illegal argument for mean lat length %s", optarg),
-                  exit(EXIT_FAILURE);
- 
-            if (isdigit(optarg[strlen(optarg) - 1]) || (optarg[strlen(optarg) - 1] == '.'))
-               rd->scale = param;
-            else if (optarg[strlen(optarg) - 1] == 'm')
-               rd->mean_lat_len = param / 60;
-            else if (optarg[strlen(optarg) - 1] == 'd')
-               rd->wc = param;
-            else
-               log_msg(LOG_ERR, "illegal parameter for option -s"),
-                  exit(EXIT_FAILURE);
-            break;
-
          case 'w':
             osm_ofile = optarg;
             break;
       }
 
-   if ((rd->scale == 0) && (rd->mean_lat_len == 0) && (rd->wc == 0))
-      log_msg(LOG_ERR, "option -s is mandatory"),
-         exit(EXIT_FAILURE);
-   if (!cset)
-      log_msg(LOG_ERR, "option -c is mandatory"),
-         exit(EXIT_FAILURE);
+   if (argv[optind] == NULL)
+      log_msg(LOG_ERR, "window parameter mandatory"), exit(EXIT_FAILURE);
 
+   if ((s = strtok(argv[optind], ":")) == NULL)
+      log_msg(LOG_ERR, "latitude paramter missing"), exit(EXIT_FAILURE);
+   rd->mean_lat = atof(s);
+   if ((s = strtok(NULL, ":")) == NULL)
+      log_msg(LOG_ERR, "longitude paramter missing"), exit(EXIT_FAILURE);
+   rd->mean_lon = atof(s);
+   if ((s = strtok(NULL, ":")) == NULL)
+      log_msg(LOG_ERR, "size parameter missing"), exit(EXIT_FAILURE);
+
+   if ((param = atof(s)) <= 0)
+      log_msg(LOG_ERR, "illegal size argument for"), exit(EXIT_FAILURE);
+ 
+   if (isdigit(s[strlen(s) - 1]) || (s[strlen(s) - 1] == '.'))
+      rd->scale = param;
+   else if (s[strlen(s) - 1] == 'm')
+      rd->mean_lat_len = param / 60;
+   else if (s[strlen(s) - 1] == 'd')
+      rd->wc = param;
+   else
+      log_msg(LOG_ERR, "illegal size parameter"), exit(EXIT_FAILURE);
+ 
    install_sigusr1();
 
    // install exit handlers
