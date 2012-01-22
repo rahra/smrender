@@ -91,13 +91,13 @@ int poly_area(const struct onode *nd, double *ar)
 
    if (nd->ref_cnt < 3)
    {
-      log_msg(LOG_INFO, "too less nodes for polygon_area()");
+      //log_msg(LOG_INFO, "too less nodes for polygon_area()");
       return 2;
    }
 
    if (nd->ref[0] != nd->ref[nd->ref_cnt - 1])
    {
-      log_msg(LOG_INFO, "polygon open");
+      //log_msg(LOG_INFO, "polygon open");
       return 1;
    }
 
@@ -160,6 +160,7 @@ int act_poly_centroid(struct onode *nd)
    if (poly_area(nd, &ar))
       return 0;
 
+   log_debug("centroid area %f", ar);
    ar *= 6;
    cx = cy = 0;
    for (i = 0; i < nd->ref_cnt; i++)
@@ -183,6 +184,7 @@ int act_poly_centroid(struct onode *nd)
    cy /= ar;
 
    n1 = malloc_object(1, 0);
+   n1->nd.type = OSM_NODE;
    n1->nd.id = unique_node_id();
    n1->nd.lat = cy / ar;
    n1->nd.lon = cx / ar / cos(DEG2RAD(n1->nd.lat));
@@ -199,6 +201,8 @@ int act_poly_centroid(struct onode *nd)
    set_const_tag(&nd->otag[0], "smrender:id:way", s);
    put_object(n1);
  
+   log_debug("centroid coords %f/%f", n1->nd.lat, n1->nd.lon);
+
    return 0;
 }
 
