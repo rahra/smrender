@@ -84,11 +84,6 @@ char *cfmt(double c, int d, char *s, int l)
 }
 
 
-/*! poly_area() calculates the area of a close polygon in nautical square miles.
- *  @param nd Pointer to way.
- *  @param ar Pointer to result variable.
- *  @return returns 0 on success, 1 if way is open, and -1 in case of error.
- */
 int poly_area(const struct onode *nd, double *ar)
 {
    int i;
@@ -97,7 +92,7 @@ int poly_area(const struct onode *nd, double *ar)
    if (nd->ref_cnt < 3)
    {
       log_msg(LOG_INFO, "too less nodes for polygon_area()");
-      return 1;
+      return 2;
    }
 
    if (nd->ref[0] != nd->ref[nd->ref_cnt - 1])
@@ -118,11 +113,10 @@ int poly_area(const struct onode *nd, double *ar)
          return -1;
       }
 
-      *ar += (n1->nd.lat + n2->nd.lat) * 
-             (n1->nd.lon * cos(DEG2RAD(n1->nd.lat)) - n2->nd.lon * cos(DEG2RAD(n2->nd.lat)));
+      *ar += (n1->nd.lat + n2->nd.lat) * (n1->nd.lon + n2->nd.lon) * cos(DEG2RAD((n1->nd.lat + n2->nd.lat) / 2));
    }
 
-   *ar = fabs(*ar) / 2 * 60 * 60;
+   *ar = *ar / 2;
    return 0;
 }
 
@@ -134,6 +128,7 @@ int act_poly_area(struct onode *nd)
 
    if (!poly_area(nd, &ar))
    {
+      ar = fabs(ar);
       log_msg(LOG_DEBUG, "poly_area of %ld = %f", nd->nd.id, ar);
       if ((nd = realloc(nd, sizeof(struct onode) + sizeof(struct otag) * (nd->tag_cnt + 1))) == NULL)
       {
@@ -147,10 +142,63 @@ int act_poly_area(struct onode *nd)
          log_msg(LOG_DEBUG, "could not strdup");
          return 0;
       }
-      set_const_tag(&nd->otag[nd->tag_cnt], "area", s);
+      set_const_tag(&nd->otag[nd->tag_cnt], "smrender:area", s);
       nd->tag_cnt++;
    }
 
+   return 0;
+}
+
+
+int act_poly_centroid(struct onode *nd)
+{
+   double ar, cx, cy, x1, x2, f;
+   struct onode *n1, *n2;
+   char buf[256], *s;
+   int i;
+
+   if (poly_area(nd, &ar))
+      return 0;
+
+   ar *= 6;
+   cx = cy = 0;
+   for (i = 0; i < nd->ref_cnt; i++)
+   {
+      n1 = get_object(OSM_NODE, nd->ref[i]);
+      n2 = get_object(OSM_NODE, nd->ref[(i + 1) % nd->ref_cnt]);
+
+      if ((n1 == NULL) || (n2 == NULL))
+      {
+         log_msg(LOG_ERR, "something is wrong with way %ld: node does not exist", nd->nd.id);
+         return -1;
+      }
+
+      x1 = n1->nd.lon * cos(DEG2RAD(n1->nd.lat));
+      x2 = n2->nd.lon * cos(DEG2RAD(n2->nd.lat));
+      f = x1 * n2->nd.lat - x2 * n1->nd.lat;
+      cx += (x1 + x2) * f;
+      cy += (n1->nd.lat + n2->nd.lat) * f;
+   }
+   cx /= ar;
+   cy /= ar;
+
+   n1 = malloc_object(1, 0);
+   n1->nd.id = unique_node_id();
+   n1->nd.lat = cy / ar;
+   n1->nd.lon = cx / ar / cos(DEG2RAD(n1->nd.lat));
+   n1->nd.ver = 1;
+   n1->nd.tim = time(NULL);
+
+   snprintf(buf, sizeof(buf), "%ld", nd->nd.id);
+   if ((s = strdup(buf)) == NULL)
+   {
+      free(n1);
+      log_msg(LOG_DEBUG, "could not strdup");
+      return 0;
+   }
+   set_const_tag(&nd->otag[0], "smrender:id:way", s);
+   put_object(n1);
+ 
    return 0;
 }
 
