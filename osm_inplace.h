@@ -43,7 +43,7 @@ struct osm_node
 {
    // osm data
    int64_t id;
-   float lat, lon;
+   double lat, lon;
    int ver, cs, uid;
    int vis;
    time_t tim;
