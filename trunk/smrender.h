@@ -293,6 +293,8 @@ int cf_dist(struct rdata *, int, int, int, int, double, int, int);
 double rot_pos(int, int, double, int *, int *);
 double color_frequency(struct rdata *, int, int, int, int, int);
 void mk_chart_coords(int, int, struct rdata*, double*, double*);
+int poly_area(const struct onode *, struct coord *, double *);
+
 
 /* smutil.c */
 int match_attr(const struct onode *, const char *, const char *);
@@ -319,6 +321,7 @@ void install_sigusr1(void);
 /* smcoast.c */
 int cat_poly(struct rdata *);
 void init_cat_poly(struct rdata *);
+int is_closed_poly(const struct onode *);
 
 /* smgrid.c */
 void grid2(struct rdata*);

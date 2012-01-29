@@ -99,6 +99,23 @@ static struct corner_point co_pt_[4];
 static struct coord center_;
 
 
+/*! Check if way is a closed polygon and is an area (i.e. it has at least 4 points)
+ *  @param w Pointer to way.
+ *  @return 1 if it is a closed area, 0 otherwise.
+ */
+int is_closed_poly(const struct onode *w)
+{
+   // check if it is an open polygon
+   if (w->ref_cnt < 4)
+      return 0;
+
+   if (w->ref[0] != w->ref[w->ref_cnt - 1])
+      return 0;
+
+   return 1;
+}
+
+
 /*! This finds open polygons with tag natural=coastline and adds
  *  the node references to the wlist structure.
  */

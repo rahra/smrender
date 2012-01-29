@@ -247,6 +247,44 @@ int act_caption(struct onode *nd, struct rdata *rd, struct orule *rl)
 }
 
 
+int act_wcaption(struct onode *w, struct rdata *rd, struct orule *rl)
+{
+   struct coord c;
+   double ar;
+   struct onode *n;
+   struct orule *r;
+   int e;
+
+   if (!is_closed_poly(w))
+      return 0;
+
+   if (poly_area(w, &c, &ar))
+      return 0;
+
+   if ((r = malloc(sizeof(struct orule) + sizeof(struct stag) * rl->rule.tag_cnt)) == NULL)
+   {
+      log_msg(LOG_ERR, "cannot malloc temp rule: %s", strerror(errno));
+      return -1;
+   }
+
+   memcpy(r, rl, sizeof(struct orule) + sizeof(struct stag) * rl->rule.tag_cnt);
+
+   n = malloc_object(w->tag_cnt, 0);
+   memcpy(n->otag, w->otag, sizeof(struct otag) * w->tag_cnt);
+   n->nd.type = OSM_NODE;
+   n->nd.lat = c.lat;
+   n->nd.lon = c.lon;
+   r->rule.cap.size = 100 * sqrt(ar / (rd->mean_lat_len * rd->hc * 3600));
+   log_debug("r->rule.cap.size = %f (%f 1/1000)", r->rule.cap.size, r->rule.cap.size / 100 * 1000);
+
+   e = act_caption(n, rd, r);
+
+   free(n);
+   free(r);
+   return e;
+}
+
+
 int act_open_poly(struct onode *wy, struct rdata *rd, struct orule *rl)
 {
    int i;
