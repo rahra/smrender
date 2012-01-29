@@ -48,6 +48,7 @@ void geo_description(double lat, double lon, char *text, char *pos)
 
 void geo_square(struct rdata *rd, double b, char *v)
 {
+   char buf[256];
    double lat[4] = {rd->y1c - MM2LAT(b), rd->y1c - MM2LAT(b), rd->y2c + MM2LAT(b), rd->y2c + MM2LAT(b)};
    double lon[4] = {rd->x1c + MM2LON(b), rd->x2c - MM2LON(b), rd->x2c - MM2LON(b), rd->x1c + MM2LON(b)};
    struct onode *n, *w;
@@ -64,7 +65,7 @@ void geo_square(struct rdata *rd, double b, char *v)
 
    for (i = 0; i < 4; i++)
    {
-      n = malloc_object(1, 0);
+      n = malloc_object(5, 0);
       n->nd.type = OSM_NODE;
       w->ref[i] = n->nd.id = unique_node_id();
       n->nd.tim = time(NULL);
@@ -72,6 +73,13 @@ void geo_square(struct rdata *rd, double b, char *v)
       n->nd.lat = lat[i];
       n->nd.lon = lon[i];
       set_const_tag(&n->otag[0], "generator", "smrender");
+      set_const_tag(&n->otag[1], "grid", v);
+      snprintf(buf, sizeof(buf), "%02.0f %c %.1f'", lat[i], lat[i] < 0 ? 'S' : 'N', (double) ((int) round(lat[i] * 600) % 600) / 10);
+      set_const_tag(&n->otag[2], "lat", strdup(buf));
+      snprintf(buf, sizeof(buf), "%03.0f %c %.1f'", lon[i], lon[i] < 0 ? 'W' : 'E', (double) ((int) round(lon[i] * 600) % 600) / 10);
+      set_const_tag(&n->otag[3], "lon", strdup(buf));
+      snprintf(buf, sizeof(buf), "%d", i);
+      set_const_tag(&n->otag[4], "pointindex", strdup(buf));
       put_object(n);
       log_debug("grid polygon lat/lon = %.8f/%.8f", n->nd.lat, n->nd.lon);
    }
@@ -205,7 +213,7 @@ void geo_legend(struct rdata *rd)
    int lat;
 
    lat = rd->mean_lat * 600.0;
-   snprintf(buf, sizeof(buf), "Mean Latitude %02d %c %.1f' Scale = 1:%.0f", lat / 600, lat < 0 ? 'S' : 'N', (double) (lat % 600) / 10, rd->scale);
+   snprintf(buf, sizeof(buf), "Mean Latitude %02d %c %.1f', Scale = 1:%.0f, %.1f x %.1f mm", lat / 600, lat < 0 ? 'S' : 'N', (double) (lat % 600) / 10, rd->scale, PX2MM(rd->w) - 2 * G_MARGIN, PX2MM(rd->h) - 2 * G_MARGIN);
    s = strdup(buf);
    geo_description(rd->y1c - MM2LAT(G_MARGIN), rd->x1c + rd->wc / 2, s, "top");
    geo_description(rd->y2c + MM2LAT(G_MARGIN + G_TW + G_STW), rd->x1c + rd->wc / 2, "Generated with /smrender/, author Bernhard R. Fischer, 2048R/5C5FFD47 &lt;bf@abenteuerland.at&gt;, data source: OSM.", "top");
