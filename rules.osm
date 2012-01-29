@@ -92,61 +92,70 @@
            <key>      := [*]<keyname to print>     // * means upper case
       -->
 
-      <tag k='_action_' v='cap:/usr/share/fonts/truetype/ttf-liberation/LiberationSans-Regular.ttf,1.4,cm,black,auto;white;0.7,seamark:light_character'/>
+      <!--<tag k='_action_' v='cap:/usr/share/fonts/truetype/ttf-liberation/LiberationSans-Regular.ttf,1.4,cm,black,auto;white;0.7,seamark:light_character'/>-->
+      <tag k='_action_' v='cap:sans-serif,1.4,cm,black,auto;white;0.7,seamark:light_character'/>
       <!-- <tag k='seamark:light:ref' v=''/> -->
       <tag k='seamark:light_character' v=''/>
    </node>
    <node>
-      <tag k='_action_' v='cap:/usr/share/fonts/truetype/ttf-liberation/LiberationSerif-Bold.ttf,1.8,cm,black,auto;yellow,name'/>
       <!-- <tag k='_action_' v='cap:/usr/share/fonts/truetype/freefont/FreeSerifBold.ttf,1.8,cm,black,auto,name'/> -->
+      <tag k='_action_' v='cap:serif:bold,1.8,cm,black,auto;yellow,name'/>
       <tag k='place' v='village'/>
    </node>
    <node>
-      <tag k='_action_' v='cap:/usr/share/fonts/truetype/ttf-liberation/LiberationSerif-Regular.ttf,1.5,cm,black,0,name'/>
+      <!--<tag k='_action_' v='cap:/usr/share/fonts/truetype/ttf-liberation/LiberationSerif-Regular.ttf,1.5,cm,black,0,name'/>-->
+      <tag k='_action_' v='cap:serif,1.5,cm,black,0,name'/>
       <tag k='place' v='hamlet'/>
    </node>
  
    <node>
-      <tag k='_action_' v='cap:/usr/share/fonts/truetype/ttf-liberation/LiberationSerif-Regular.ttf,1.2,n,black,0,name'/>
+      <!--<tag k='_action_' v='cap:/usr/share/fonts/truetype/ttf-liberation/LiberationSerif-Regular.ttf,1.2,n,black,0,name'/>-->
+      <tag k='_action_' v='cap:serif,1.2,n,black,0,name'/>
       <tag k='natural' v='peak'/>
    </node>
    <node>
-      <tag k='_action_' v='cap:/usr/share/fonts/truetype/ttf-liberation/LiberationSerif-Regular.ttf,1.2,s,black,0,ele'/>
+      <!--<tag k='_action_' v='cap:/usr/share/fonts/truetype/ttf-liberation/LiberationSerif-Regular.ttf,1.2,s,black,0,ele'/>-->
+      <tag k='_action_' v='cap:roman,1.2,s,black,0,ele'/>
       <tag k='natural' v='peak'/>
    </node>
    <node>
-      <tag k='_action_' v='cap:/usr/share/fonts/truetype/ttf-liberation/LiberationSans-Bold.ttf,2.5,cm,black,auto;yellow,name'/>
+      <tag k='_action_' v='cap:sans-serif:bold,2.5,cm,black,auto;yellow,name'/>
       <tag k='place' v='/island|city/'/>
    </node>
    <node>
-      <tag k='_action_' v='cap:/usr/share/fonts/truetype/ttf-liberation/LiberationSans-Bold.ttf,1.4,cm,black,auto;yellow,name'/>
+      <!--<tag k='_action_' v='cap:/usr/share/fonts/truetype/ttf-liberation/LiberationSans-Bold.ttf,1.4,cm,black,auto;yellow,name'/>-->
+      <tag k='_action_' v='cap:sans-serif:bold,1.4,cm,black,auto;yellow,name'/>
       <tag k='place' v='islet'/>
    </node>
     <node>
-      <tag k='_action_' v='cap:/usr/share/fonts/truetype/ttf-liberation/LiberationSans-Italic.ttf,1.4,cm,black,auto;white,name'/>
+       <!--<tag k='_action_' v='cap:/usr/share/fonts/truetype/ttf-liberation/LiberationSans-Italic.ttf,1.4,cm,black,auto;white,name'/>-->
+      <tag k='_action_' v='cap:sans-serif:italic,1.4,cm,black,auto;white,name'/>
       <tag k='natural' v='bay'/>
    </node>
    <node>
-      <tag k='_action_' v='cap:/usr/share/fonts/truetype/ttf-liberation/LiberationSans-Bold.ttf,4,cn,black,90,name'/>
+      <!--<tag k='_action_' v='cap:/usr/share/fonts/truetype/ttf-liberation/LiberationSans-Bold.ttf,4,cn,black,90,name'/>-->
+      <tag k='_action_' v='cap:sans-serif:bold,4,cn,black,90,name'/>
       <tag k='grid' v='text'/>
       <tag k='border' v='left'/>
    </node>
    <node>
-      <tag k='_action_' v='cap:/usr/share/fonts/truetype/ttf-liberation/LiberationSans-Bold.ttf,4,cn,black,270,name'/>
+      <!--<tag k='_action_' v='cap:/usr/share/fonts/truetype/ttf-liberation/LiberationSans-Bold.ttf,4,cn,black,270,name'/>-->
+      <tag k='_action_' v='cap:sans-serif:bold,4,cn,black,270,name'/>
       <tag k='grid' v='text'/>
       <tag k='border' v='right'/>
    </node>
    <node>
-      <tag k='_action_' v='cap:/usr/share/fonts/truetype/ttf-liberation/LiberationSans-Bold.ttf,4,cn,black,0,name'/>
+      <!--<tag k='_action_' v='cap:/usr/share/fonts/truetype/ttf-liberation/LiberationSans-Bold.ttf,4,cn,black,0,name'/>-->
+      <tag k='_action_' v='cap:sans-serif:bold,4,cn,black,0,name'/>
       <tag k='grid' v='text'/>
       <tag k='border' v='top'/>
    </node>
    <node>
-      <tag k='_action_' v='cap:/usr/share/fonts/truetype/ttf-liberation/LiberationSans-Bold.ttf,4,cs,black,0,name'/>
+      <!--<tag k='_action_' v='cap:/usr/share/fonts/truetype/ttf-liberation/LiberationSans-Bold.ttf,4,cs,black,0,name'/>-->
+      <tag k='_action_' v='cap:sans-serif,4,cs,black,0,name'/>
       <tag k='grid' v='text'/>
       <tag k='border' v='bottom'/>
    </node>
-
    <way>
       <tag k='natural' v='coastline'/>
       <tag k='_action_' v='func:act_poly_area'/>
@@ -155,7 +164,6 @@
       <tag k='natural' v='coastline'/>
       <tag k='_action_' v='func:act_poly_centroid'/>
    </way>
- 
    <!--
     <way>
       <tag k='natural' v='coastline'/>
@@ -196,5 +204,11 @@
       <tag k='grid' v=''/>
       <tag k='_action_' v='draw:black,0,transparent:black'/>
    </way>
+   <!--
+   <way>
+      <tag k='_action_' v='cap:sans-serif:bold,2.5,cm,black,0,name'/>
+      <tag k='place' v='island'/>
+   </way>
+   -->
 </osm>
 

@@ -84,43 +84,51 @@ char *cfmt(double c, int d, char *s, int l)
 }
 
 
-int poly_area(const struct onode *nd, double *ar)
+/*! Calculate the area and the centroid of a closed polygon.
+ *  @param w Pointer to closed polygon.
+ *  @param c Pointer to struct coord which will receive the coordinates of the centroid.
+ *  @param ar Pointer to variable which will receive the area of the polygon.
+ *  The result is the area measured in nautical square miles.
+ *  @return Returns 0 on success, -1 on error.
+ */
+int poly_area(const struct onode *w, struct coord *c, double *ar)
 {
-   int i;
+   double f, x[2];
    struct onode *n[2];
+   int i;
 
-   if (nd->ref_cnt < 3)
+   if ((n[1] = get_object(OSM_NODE, w->ref[0])) == NULL)
    {
-      //log_msg(LOG_INFO, "too less nodes for polygon_area()");
-      return 2;
-   }
-
-   if (nd->ref[0] != nd->ref[nd->ref_cnt - 1])
-   {
-      //log_msg(LOG_INFO, "polygon open");
-      return 1;
-   }
-
-   *ar = 0;
-   if ((n[1] = get_object(OSM_NODE, nd->ref[0])) == NULL)
-   {
-      log_msg(LOG_ERR, "something is wrong with way %ld: node does not exist", nd->nd.id);
+      log_msg(LOG_ERR, "something is wrong with way %ld: node does not exist", w->nd.id);
       return -1;
    }
 
-   for (i = 0; i < nd->ref_cnt - 1; i++)
+   *ar = 0;
+   c->lat = 0;
+   c->lon = 0;
+
+   for (i = 0; i < w->ref_cnt - 1; i++)
    {
       n[0] = n[1];
-      if ((n[1] = get_object(OSM_NODE, nd->ref[(i + 1) % nd->ref_cnt])) == NULL)
+      if ((n[1] = get_object(OSM_NODE, w->ref[i + 1])) == NULL)
       {
-         log_msg(LOG_ERR, "something is wrong with way %ld: node does not exist", nd->nd.id);
+         log_msg(LOG_ERR, "something is wrong with way %ld: node does not exist", w->nd.id);
          return -1;
       }
-      *ar += n[0]->nd.lon * cos(DEG2RAD(n[0]->nd.lat)) * n[1]->nd.lat -
-            n[1]->nd.lon * cos(DEG2RAD(n[1]->nd.lat)) * n[0]->nd.lat;
+
+      x[0] = n[0]->nd.lon * cos(DEG2RAD(n[0]->nd.lat));
+      x[1] = n[1]->nd.lon * cos(DEG2RAD(n[1]->nd.lat));
+      f = x[0] * n[1]->nd.lat - x[1] * n[0]->nd.lat;
+      c->lon += (x[0] + x[1]) * f;
+      c->lat += (n[0]->nd.lat + n[1]->nd.lat) * f;
+      *ar += f;
+      //log_debug("%d %f %f %f %f %f %f %f/%f %f/%f", i, f, sx, sy, cx, cy, ar, n[0]->nd.lon, n[0]->nd.lat, n[1]->nd.lon, n[1]->nd.lat);
    }
 
-   *ar = *ar / 2;
+   c->lat /= 3.0 * *ar;
+   c->lon /= 3.0 * *ar * cos(DEG2RAD(c->lat));
+   *ar = fabs(*ar) * 1800.0;
+
    return 0;
 }
 
@@ -128,11 +136,11 @@ int poly_area(const struct onode *nd, double *ar)
 int act_poly_area(struct onode *nd)
 {
    double ar;
+   struct coord c;
    char buf[256], *s;
 
-   if (!poly_area(nd, &ar))
+   if (!poly_area(nd, &c, &ar))
    {
-      ar = fabs(ar) * 60 * 60;
       log_msg(LOG_DEBUG, "poly_area of %ld = %f", nd->nd.id, ar);
       if ((nd = realloc(nd, sizeof(struct onode) + sizeof(struct otag) * (nd->tag_cnt + 1))) == NULL)
       {
@@ -140,7 +148,7 @@ int act_poly_area(struct onode *nd)
          return 0;
       }
       put_object(nd);
-      snprintf(buf, sizeof(buf), "%f", ar);
+      snprintf(buf, sizeof(buf), "%.8f", ar);
       if ((s = strdup(buf)) == NULL)
       {
          log_msg(LOG_DEBUG, "could not strdup");
@@ -156,99 +164,37 @@ int act_poly_area(struct onode *nd)
 
 int act_poly_centroid(struct onode *nd)
 {
-   double ar, cx, cy, f;
-   struct onode *n[2];
+   struct coord c;
+   double ar;
+   struct onode *n;
    char buf[256], *s;
-   int i;
 
-   //if (poly_area(nd, &ar))
-   //   return 0;
-
-   if (nd->ref_cnt < 3)
+   if (!is_closed_poly(nd))
       return 0;
 
-   if (nd->ref[0] != nd->ref[nd->ref_cnt - 1])
-      return 0;
-
-   ar = 0;
-   cx = cy = 0;
-
-   if ((n[1] = get_object(OSM_NODE, nd->ref[0])) == NULL)
-   {
-      log_msg(LOG_ERR, "something is wrong with way %ld: node does not exist", nd->nd.id);
+   if (poly_area(nd, &c, &ar))
       return -1;
-   }
 
-   for (i = 0; i < nd->ref_cnt - 1; i++)
-   {
-      n[0] = n[1];
-      if ((n[1] = get_object(OSM_NODE, nd->ref[(i + 1) % nd->ref_cnt])) == NULL)
-      {
-         log_msg(LOG_ERR, "something is wrong with way %ld: node does not exist", nd->nd.id);
-         return -1;
-      }
-
-      f = n[0]->nd.lon * n[1]->nd.lat - n[1]->nd.lon * n[0]->nd.lat;
-      cx += (n[0]->nd.lon + n[1]->nd.lon) * f;
-      cy += (n[0]->nd.lat + n[1]->nd.lat) * f;
-      ar += f;
-      //log_debug("%d %f %f %f %f %f %f %f/%f %f/%f", i, f, sx, sy, cx, cy, ar, n[0]->nd.lon, n[0]->nd.lat, n[1]->nd.lon, n[1]->nd.lat);
-   }
-
-   ar /= 2.0;
-   cx /= 6.0 * ar;
-   cy /= 6.0 * ar;
-
-   //log_debug("%d %f %f %f %f %f/%f %f/%f", i, f, cx, cy, ar, n[0]->nd.lon, n[0]->nd.lat, n[1]->nd.lon, n[1]->nd.lat);
- 
-#if 0
-   for (i = 0; i < nd->ref_cnt - 1; i++)
-   {
-      n1 = get_object(OSM_NODE, nd->ref[i]);
-      n2 = get_object(OSM_NODE, nd->ref[(i + 1) % nd->ref_cnt]);
-
-      if ((n1 == NULL) || (n2 == NULL))
-      {
-         log_msg(LOG_ERR, "something is wrong with way %ld: node does not exist", nd->nd.id);
-         return -1;
-      }
-
-      //x1 = n1->nd.lon * cos(DEG2RAD(n1->nd.lat));
-      x1 = n1->nd.lon;
-      //x2 = n2->nd.lon * cos(DEG2RAD(n2->nd.lat));
-      x2 = n2->nd.lon;
-      f = x1 * n2->nd.lat - x2 * n1->nd.lat;
-      cx += (x1 + x2) * f;
-      cy += (n1->nd.lat + n2->nd.lat) * f;
-      ar += x1 * n2->nd.lat - x2 * n1->nd.lat;
-   }
-   ar /= 2;
-   //ar = fabs(ar) / 2;
-   cx /= 6 * ar;
-   cy /= 6 * ar;
-#endif
-
-   n[0] = malloc_object(nd->tag_cnt + 1, 0);
-   n[0]->nd.type = OSM_NODE;
-   n[0]->nd.id = unique_node_id();
-   n[0]->nd.lat = cy;
-   //n1->nd.lon = cx / cos(DEG2RAD(n1->nd.lat));
-   n[0]->nd.lon = cx;
-   n[0]->nd.ver = 1;
-   n[0]->nd.tim = time(NULL);
+   n = malloc_object(nd->tag_cnt + 1, 0);
+   n->nd.type = OSM_NODE;
+   n->nd.id = unique_node_id();
+   n->nd.lat = c.lat;
+   n->nd.lon = c.lon;
+   n->nd.ver = 1;
+   n->nd.tim = time(NULL);
 
    snprintf(buf, sizeof(buf), "%ld", nd->nd.id);
    if ((s = strdup(buf)) == NULL)
    {
-      free(n[0]);
+      free(n);
       log_msg(LOG_DEBUG, "could not strdup");
       return 0;
    }
-   set_const_tag(&n[0]->otag[0], "smrender:id:way", s);
-   memcpy(&n[0]->otag[1], &nd->otag[0], sizeof(struct otag) * nd->tag_cnt);
-   put_object(n[0]);
+   set_const_tag(&n->otag[0], "smrender:id:way", s);
+   memcpy(&n->otag[1], &nd->otag[0], sizeof(struct otag) * nd->tag_cnt);
+   put_object(n);
  
-   log_debug("centroid %.3f/%.3f, ar = %f, way = %ld, node %ld", n[0]->nd.lat, n[0]->nd.lon, ar, nd->nd.id, n[0]->nd.id);
+   log_debug("centroid %.3f/%.3f, ar = %f, way = %ld, node %ld", n->nd.lat, n->nd.lon, ar, nd->nd.id, n->nd.id);
 
    return 0;
 }
@@ -349,6 +295,10 @@ int apply_wrules0(struct onode *nd, struct rdata *rd, struct orule *rl)
 
       case ACT_FUNC:
          e = rl->rule.func.main.func(nd);
+         break;
+
+      case ACT_CAP:
+         e = act_wcaption(nd, rd, rl);
          break;
 
          /*

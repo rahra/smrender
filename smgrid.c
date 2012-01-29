@@ -73,6 +73,7 @@ void geo_square(struct rdata *rd, double b, char *v)
       n->nd.lon = lon[i];
       set_const_tag(&n->otag[0], "generator", "smrender");
       put_object(n);
+      log_debug("grid polygon lat/lon = %.8f/%.8f", n->nd.lat, n->nd.lon);
    }
 
    w->ref[4] = w->ref[0];
