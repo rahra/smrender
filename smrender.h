@@ -320,7 +320,6 @@ size_t onode_mem(void);
 void install_sigusr1(void);
 
 /* smcoast.c */
-int cat_poly0(struct rdata *);
 void init_cat_poly(struct rdata *);
 int is_closed_poly(const struct onode *);
 

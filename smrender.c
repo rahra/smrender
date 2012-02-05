@@ -698,7 +698,6 @@ void usage(const char *s)
          "               <scale> Scale of chart.\n"
          "               <length> Length of mean meridian in either degrees ('d') or\n"
          "                        nautical miles ('m')\n"
-         "   -C .................. Do not close open coastline polygons.\n"
          "   -d <density> ........ Set image density (300 is default).\n"
          "   -f .................. Use loading filter.\n"
          "   -g <grd>[:<t>[:<s>]]  Distance of grid/ticks/subticks in minutes.\n"
@@ -734,7 +733,7 @@ int main(int argc, char *argv[])
    char *cf = "rules.osm", *img_file = NULL, *osm_ifile = NULL, *osm_ofile = NULL;
    struct rdata *rd;
    struct timeval tv_start, tv_end;
-   int gen_grid = 1, prep_coast = 1, landscape = 0, w_mmap = 0, load_filter = 0;
+   int gen_grid = 1, landscape = 0, w_mmap = 0, load_filter = 0;
    char *paper = "A3";
    struct filter fi;
    struct dstats rstats;
@@ -748,13 +747,9 @@ int main(int argc, char *argv[])
    rd = init_rdata();
    set_util_rd(rd);
 
-   while ((n = getopt(argc, argv, "Cd:fg:Ghi:lMo:P:r:w:")) != -1)
+   while ((n = getopt(argc, argv, "d:fg:Ghi:lMo:P:r:w:")) != -1)
       switch (n)
       {
-         case 'C':
-            prep_coast = 0;
-            break;
-
          case 'd':
             if ((rd->dpi = atoi(optarg)) <= 0)
                log_msg(LOG_ERR, "illegal dpi argument %s", optarg),
@@ -874,7 +869,6 @@ int main(int argc, char *argv[])
    // FIXME: Why stderr?
    print_rdata(stderr, rd);
 
-
    // preparing image
    if ((rd->img = gdImageCreateTrueColor(rd->w, rd->h)) == NULL)
       perror("gdImage"), exit(EXIT_FAILURE);
@@ -966,11 +960,6 @@ int main(int argc, char *argv[])
    log_msg(LOG_INFO, " lo_addr = %p, hi_addr = %p", rd->ds.lo_addr, rd->ds.hi_addr);
 
    init_cat_poly(rd);
-   /*if (prep_coast)
-   {
-      log_msg(LOG_INFO, "preparing coastline");
-      cat_poly0(rd);
-   }*/
 
    if (gen_grid)
    {
