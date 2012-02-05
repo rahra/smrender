@@ -1,5 +1,12 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <osm version='0.6'>
+    <node>
+       <!--<tag k='_action_' v='cap:/usr/share/fonts/truetype/ttf-liberation/LiberationSans-Italic.ttf,1.4,cm,black,auto
+;white,name'/>-->
+      <tag k='_action_' v='cap:sans-serif:italic,1.4,cm,black,auto;white,name'/>
+      <tag k='natural' v='bay'/>
+   </node>
+
    <node>
       <tag k='seamark:type' v=''/>
       <tag k='_action_' v='func:pchar@./libsmfilter.so'/>
@@ -85,6 +92,57 @@
       <tag k='/seamark:light:([0-9]+:)?range/' v=']7.5['/>
       <tag k='seamark:type' v='light_minor'/>
    </node>
+
+    <node>
+       <tag k='_action_' v='cap:sans-serif:bold,2,cn,black,0,name'/>
+       <tag k='grid' v='text'/>
+       <tag k='border' v='copyright'/>
+    </node>
+
+   <node>
+      <tag k='grid' v='outer_border'/>
+      <tag k='pointindex' v='0'/>
+      <tag k='_action_' v='cap:sans-serif,2,en,black,0,lat'/>
+   </node>
+    <node>
+      <tag k='grid' v='outer_border'/>
+      <tag k='pointindex' v='0'/>
+      <tag k='_action_' v='cap:sans-serif,2,wn,black,90,lon'/>
+   </node>
+ 
+   <node>
+      <tag k='grid' v='outer_border'/>
+      <tag k='pointindex' v='1'/>
+      <tag k='_action_' v='cap:sans-serif,2,wn,black,0,lat'/>
+   </node>
+    <node>
+      <tag k='grid' v='outer_border'/>
+      <tag k='pointindex' v='1'/>
+      <tag k='_action_' v='cap:sans-serif,2,en,black,270,lon'/>
+   </node>
+ 
+
+   <node>
+      <tag k='grid' v='outer_border'/>
+      <tag k='pointindex' v='2'/>
+      <tag k='_action_' v='cap:sans-serif,2,ws,black,0,lat'/>
+   </node>
+    <node>
+      <tag k='grid' v='outer_border'/>
+      <tag k='pointindex' v='2'/>
+      <tag k='_action_' v='cap:sans-serif,2,wn,black,270,lon'/>
+   </node>
+    <node>
+      <tag k='grid' v='outer_border'/>
+      <tag k='pointindex' v='3'/>
+      <tag k='_action_' v='cap:sans-serif,2,es,black,0,lat'/>
+   </node>
+    <node>
+      <tag k='grid' v='outer_border'/>
+      <tag k='pointindex' v='3'/>
+      <tag k='_action_' v='cap:sans-serif,2,en,black,90,lon'/>
+   </node>
+ 
  
    <way>
       <tag k='natural' v='coastline'/>

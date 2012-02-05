@@ -84,6 +84,7 @@
 
 typedef struct rdata rdata_t;
 typedef struct onode onode_t;
+typedef struct orule orule_t;
 typedef int (*tree_func_t)(struct onode*, struct rdata*, void*);
 typedef int (*ext_func_t)(struct onode*);
 typedef union structor
@@ -155,7 +156,7 @@ struct actFunction
    } main;
    union
    {
-      int (*func)(const char*);
+      int (*func)(const orule_t*);
       void *sym;
    } ini;
    structor_t fini;
@@ -319,7 +320,7 @@ size_t onode_mem(void);
 void install_sigusr1(void);
 
 /* smcoast.c */
-int cat_poly(struct rdata *);
+int cat_poly0(struct rdata *);
 void init_cat_poly(struct rdata *);
 int is_closed_poly(const struct onode *);
 

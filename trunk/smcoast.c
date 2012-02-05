@@ -97,6 +97,8 @@ void init_corner_brg(const struct rdata*, const struct coord*, struct corner_poi
 
 static struct corner_point co_pt_[4];
 static struct coord center_;
+static struct wlist *wl_ = NULL;
+static struct orule *rl_ = NULL;
 
 
 /*! Check if way is a closed polygon and is an area (i.e. it has at least 4 points)
@@ -119,16 +121,12 @@ int is_closed_poly(const struct onode *w)
 /*! This finds open polygons with tag natural=coastline and adds
  *  the node references to the wlist structure.
  */
-int gather_poly(struct onode *nd, struct rdata *rd, struct wlist **wl)
+int gather_poly0(struct onode *nd, struct wlist **wl)
 {
    // check if it is an open polygon
    if (nd->ref_cnt < 2)
       return 0;
    if (nd->ref[0] == nd->ref[nd->ref_cnt - 1])
-      return 0;
-
-   // check if it is a coastline
-   if (match_attr(nd, "natural", "coastline") == -1)
       return 0;
 
    // check if there's enough memory
@@ -144,6 +142,19 @@ int gather_poly(struct onode *nd, struct rdata *rd, struct wlist **wl)
    (*wl)->ref[(*wl)->ref_cnt].w = nd;
    (*wl)->ref_cnt++;
    return 0;
+}
+
+
+/*! This finds open polygons with tag natural=coastline and adds
+ *  the node references to the wlist structure.
+ */
+int gather_poly(struct onode *nd, struct rdata *rd, struct wlist **wl)
+{
+   // check if it is a coastline
+   if (match_attr(nd, "natural", "coastline") == -1)
+      return 0;
+
+   return gather_poly0(nd, wl);
 }
 
 
@@ -179,7 +190,7 @@ struct pdef *poly_get_node_ids(const struct wlist *wl)
 }
 
 
-int poly_get_brg(struct pdef *pd, struct rdata *rd, struct wlist *wl, int ocnt)
+int poly_get_brg(struct pdef *pd, struct wlist *wl, int ocnt)
 {
    int i, j;
 
@@ -254,13 +265,26 @@ struct onode *create_new_coastline(int ref_cnt)
 {
    struct onode *nd;
 
-   nd = malloc_object(2, ref_cnt);
-   nd->nd.type = OSM_WAY;
-   nd->nd.id = unique_way_id();
-   nd->nd.ver = 1;
-   nd->nd.tim = time(NULL);
-   set_const_tag(&nd->otag[0], "natural", "coastline");
-   set_const_tag(&nd->otag[1], "generator", "smrender");
+   if (rl_ == NULL)
+   {
+      nd = malloc_object(2, ref_cnt);
+      nd->nd.type = OSM_WAY;
+      nd->nd.id = unique_way_id();
+      nd->nd.ver = 1;
+      nd->nd.tim = time(NULL);
+      set_const_tag(&nd->otag[0], "generator", "smrender");
+      set_const_tag(&nd->otag[1], "natural", "coastline");
+   }
+   else
+   {
+      nd = malloc_object(rl_->ond->tag_cnt + 1, ref_cnt);
+      nd->nd.type = OSM_WAY;
+      nd->nd.id = unique_way_id();
+      nd->nd.ver = 1;
+      nd->nd.tim = time(NULL);
+      set_const_tag(&nd->otag[0], "generator", "smrender");
+      memcpy(&nd->otag[1], &rl_->ond->otag[0], sizeof(struct otag) * rl_->ond->tag_cnt);
+   }
 
    return nd;
 }
@@ -359,7 +383,6 @@ int compare_pdef(const struct pdef *p1, const struct pdef *p2)
 void init_corner_brg(const struct rdata *rd, const struct coord *src, struct corner_point *co_pt)
 {
    struct coord corner_coord[4] = {{rd->y1c, rd->x2c}, {rd->y2c, rd->x2c}, {rd->y2c, rd->x1c}, {rd->y1c, rd->x1c}};
-   //struct coord corner_coord[4] = {{rd->y1c, rd->x2c}, {rd->y2c, rd->x2c}, {rd->y1c, rd->x1c}, {rd->y2c, rd->x1c}};
    int i;
 
    for (i = 0; i < 4; i++)
@@ -400,7 +423,7 @@ void node_brg(struct pcoord *pc, struct coord *src, int64_t nid)
  *  @param ocnt number of end points within pd. Obviously, ocnt MUST be an even number.
  *  @return 0 On success, -1 if connect_open() should be recalled with pd being resorted.
  */
-int connect_open(struct rdata *rd, struct pdef *pd, struct wlist *wl, int ocnt)
+int connect_open(struct pdef *pd, struct wlist *wl, int ocnt)
 {
    int i, j, k, l;
    int64_t *ref;
@@ -513,7 +536,62 @@ void init_cat_poly(struct rdata *rd)
 }
 
 
-int cat_poly(struct rdata *rd)
+int cat_poly_ini(const orule_t *rl)
+{
+   struct wlist *wl;
+
+   if ((wl = malloc(sizeof(*wl) + INIT_MAX_REF * sizeof(struct poly))) == NULL)
+      perror("malloc"), exit(EXIT_FAILURE);
+
+   wl->ref_cnt = 0;
+   wl->max_ref = INIT_MAX_REF;
+   wl_ = wl;
+   rl_ = (orule_t*) rl;
+
+   return 0;
+}
+
+
+int cat_poly(struct onode *nd)
+{
+   return gather_poly0(nd, &wl_);
+}
+
+
+void cat_poly_fini(void)
+{
+   int i, ocnt;
+   struct wlist *wl = wl_;
+   struct pdef *pd;
+
+   pd = poly_get_node_ids(wl);
+   qsort(pd, wl->ref_cnt * 2, sizeof(struct pdef), (int(*)(const void *, const void *)) compare_pdef_nid);
+   poly_find_adj2(wl, pd);
+   ocnt = loop_detect(wl);
+   free(pd);
+
+   if ((pd = calloc(ocnt << 1, sizeof(struct pdef))) == NULL)
+      log_msg(LOG_EMERG, "cat_poly()/calloc(): %s", strerror(errno)), exit(EXIT_FAILURE);
+
+   poly_get_brg(pd, wl, ocnt);
+
+   do
+   {
+      log_msg(LOG_DEBUG, "sorting pdef, ocnt = %d", ocnt << 1);
+      qsort(pd, ocnt << 1, sizeof(struct pdef), (int(*)(const void *, const void *)) compare_pdef);
+
+      for (i = 0; i < ocnt << 1; i++)
+         if (wl->ref[pd[i].wl_index].open)
+            log_debug("%d: wl_index = %d, pn = %d, wid = %ld, brg = %f", i, pd[i].wl_index, pd[i].pn, wl->ref[pd[i].wl_index].w->nd.id, pd[i].pc.bearing);
+   }
+   while (connect_open(pd, wl, ocnt << 1));
+
+   free(pd);
+   free(wl);
+}
+
+
+int cat_poly0(struct rdata *rd)
 {
    int i, ocnt;
    struct wlist *wl;
@@ -537,7 +615,7 @@ int cat_poly(struct rdata *rd)
    if ((pd = calloc(ocnt << 1, sizeof(struct pdef))) == NULL)
       log_msg(LOG_EMERG, "cat_poly()/calloc(): %s", strerror(errno)), exit(EXIT_FAILURE);
 
-   poly_get_brg(pd, rd, wl, ocnt);
+   poly_get_brg(pd, wl, ocnt);
 
    do
    {
@@ -548,7 +626,7 @@ int cat_poly(struct rdata *rd)
          if (wl->ref[pd[i].wl_index].open)
             log_debug("%d: wl_index = %d, pn = %d, wid = %ld, brg = %f", i, pd[i].wl_index, pd[i].pn, wl->ref[pd[i].wl_index].w->nd.id, pd[i].pc.bearing);
    }
-   while (connect_open(rd, pd, wl, ocnt << 1));
+   while (connect_open(pd, wl, ocnt << 1));
 
    free(pd);
    free(wl);

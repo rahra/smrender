@@ -198,7 +198,16 @@
       <tag k='pointindex' v='3'/>
       <tag k='_action_' v='cap:sans-serif,2,en,black,90,lon'/>
    </node>
- 
+   <node>
+      <tag k='_action_' v='cap:sans-serif:bold,2,cn,black,0,name'/>
+      <tag k='grid' v='text'/>
+      <tag k='border' v='copyright'/>
+   </node>
+
+   <way>
+      <tag k='natural' v='coastline'/>
+      <tag k='_action_' v='func:cat_poly'/>
+   </way>
    <way>
       <tag k='natural' v='coastline'/>
       <tag k='_action_' v='func:act_poly_area'/>
