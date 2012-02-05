@@ -270,7 +270,7 @@ struct orule *rule_alloc(struct rdata *rd, struct onode *nd)
 
    if ((bn = bx_get_node(rd->rules, nd->nd.id)) == NULL)
       log_msg(LOG_EMERG, "bx_get_node() returned NULL in rule_alloc()"),
-         exit(EXIT_SUCCESS);
+         exit(EXIT_FAILURE);
 
    bn->next[nd->nd.type == OSM_WAY] = rl;
    return rl;
@@ -369,6 +369,7 @@ int prepare_rules(struct onode *nd, struct rdata *rd, void *p)
    int i;
    struct orule *rl;
 
+   log_debug("allocating rule 0x%016lx", nd->nd.id);
    rl = rule_alloc(rd, nd);
 
    for (i = 0; i < rl->ond->tag_cnt; i++)

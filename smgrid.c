@@ -215,7 +215,7 @@ void geo_legend(struct rdata *rd)
    int lat;
 
    lat = rd->mean_lat * T_RESCALE;
-   snprintf(buf, sizeof(buf), "Mean Latitude %02d %c %.1f', Scale = 1:%.0f, %.1f x %.1f mm", lat / T_RESCALE, lat < 0 ? 'S' : 'N', (double) (lat % T_RESCALE) / 10, rd->scale, PX2MM(rd->w) - 2 * G_MARGIN, PX2MM(rd->h) - 2 * G_MARGIN);
+   snprintf(buf, sizeof(buf), "Mean Latitude %02d %c %.1f', Scale = 1:%.0f, %.1f x %.1f mm", lat / T_RESCALE, lat < 0 ? 'S' : 'N', (double) (lat % T_RESCALE) / TM_RESCALE, rd->scale, PX2MM(rd->w) - 2 * G_MARGIN, PX2MM(rd->h) - 2 * G_MARGIN);
    s = strdup(buf);
    geo_description(rd->y1c - MM2LAT(G_MARGIN), rd->x1c + rd->wc / 2, s, "top");
    geo_description(rd->y2c + MM2LAT(G_MARGIN + G_TW + G_STW), rd->x1c + rd->wc / 2, "Generated with /smrender/, author Bernhard R. Fischer, 2048R/5C5FFD47 &lt;bf@abenteuerland.at&gt;, data source: OSM.", "copyright");

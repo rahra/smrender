@@ -449,11 +449,11 @@ int col_freq(struct rdata *rd, int x, int y, int w, int h, double a, int col)
 static FILE *output_handle_;
 
 
-void act_output_ini(const char *parm)
+void act_output_ini(const struct orule *rl)
 {
-   if ((output_handle_ = fopen(parm, "w")) == NULL)
+   if ((output_handle_ = fopen(rl->rule.func.parm, "w")) == NULL)
    {
-      log_msg(LOG_ERR, "error opening output file: %s", parm);
+      log_msg(LOG_ERR, "error opening output file: %s", rl->rule.func.parm);
       return;
    }
    fprintf(output_handle_, "<?xml version='1.0' encoding='UTF-8'?>\n<osm version='0.6' generator='smrender'>\n");

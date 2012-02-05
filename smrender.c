@@ -334,7 +334,7 @@ int apply_rules(struct orule *rl, struct rdata *rd, struct osm_node *nd)
 
    // call initialization rule of function rule if available
    if ((rl->rule.type == ACT_FUNC) && (rl->rule.func.ini.func != NULL))
-      rl->rule.func.ini.func(rl->rule.func.parm);
+      rl->rule.func.ini.func(rl);
 
    switch (rl->ond->nd.type)
    {
@@ -966,11 +966,11 @@ int main(int argc, char *argv[])
    log_msg(LOG_INFO, " lo_addr = %p, hi_addr = %p", rd->ds.lo_addr, rd->ds.hi_addr);
 
    init_cat_poly(rd);
-   if (prep_coast)
+   /*if (prep_coast)
    {
       log_msg(LOG_INFO, "preparing coastline");
-      cat_poly(rd);
-   }
+      cat_poly0(rd);
+   }*/
 
    if (gen_grid)
    {
