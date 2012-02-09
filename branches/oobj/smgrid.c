@@ -31,20 +31,19 @@
 
 void geo_description(double lat, double lon, char *text, char *pos)
 {
-   struct onode *n;
+   osm_node_t *n;
 
-   n = malloc_object(4, 0);
-   n->nd.type = OSM_NODE;
-   n->nd.id = unique_node_id();
-   n->nd.tim = time(NULL);
-   n->nd.ver = 1;
-   n->nd.lat = lat;
-   n->nd.lon = lon;
-   set_const_tag(&n->otag[0], "generator", "smrender");
-   set_const_tag(&n->otag[1], "grid", "text");
-   set_const_tag(&n->otag[2], "name", text);
-   set_const_tag(&n->otag[3], "border", pos);
-   put_object(n);
+   n = malloc_node(4);
+   n->obj.id = unique_node_id();
+   n->obj.tim = time(NULL);
+   n->obj.ver = 1;
+   n->lat = lat;
+   n->lon = lon;
+   set_const_tag(&n->obj.otag[0], "generator", "smrender");
+   set_const_tag(&n->obj.otag[1], "grid", "text");
+   set_const_tag(&n->obj.otag[2], "name", text);
+   set_const_tag(&n->obj.otag[3], "border", pos);
+   put_object((osm_obj_t*) n);
 }
 
 
@@ -53,37 +52,36 @@ void geo_square(struct rdata *rd, double b, char *v)
    char buf[256];
    double lat[4] = {rd->y1c - MM2LAT(b), rd->y1c - MM2LAT(b), rd->y2c + MM2LAT(b), rd->y2c + MM2LAT(b)};
    double lon[4] = {rd->x1c + MM2LON(b), rd->x2c - MM2LON(b), rd->x2c - MM2LON(b), rd->x1c + MM2LON(b)};
-   struct onode *n, *w;
+   osm_node_t *n;
+   osm_way_t *w;
    int i;
 
-   w = malloc_object(2, 5);
-   w->nd.type = OSM_WAY;
-   w->nd.id = unique_way_id();
-   w->nd.tim = time(NULL);
-   w->nd.ver = 1;
-   set_const_tag(&w->otag[0], "generator", "smrender");
-   set_const_tag(&w->otag[1], "grid", v);
-   put_object(w);
+   w = malloc_way(2, 5);
+   w->obj.id = unique_way_id();
+   w->obj.tim = time(NULL);
+   w->obj.ver = 1;
+   set_const_tag(&w->obj.otag[0], "generator", "smrender");
+   set_const_tag(&w->obj.otag[1], "grid", v);
+   put_object((osm_obj_t*) w);
 
    for (i = 0; i < 4; i++)
    {
-      n = malloc_object(5, 0);
-      n->nd.type = OSM_NODE;
-      w->ref[i] = n->nd.id = unique_node_id();
-      n->nd.tim = time(NULL);
-      n->nd.ver = 1;
-      n->nd.lat = lat[i];
-      n->nd.lon = lon[i];
-      set_const_tag(&n->otag[0], "generator", "smrender");
-      set_const_tag(&n->otag[1], "grid", v);
+      n = malloc_node(5);
+      w->ref[i] = n->obj.id = unique_node_id();
+      n->obj.tim = time(NULL);
+      n->obj.ver = 1;
+      n->lat = lat[i];
+      n->lon = lon[i];
+      set_const_tag(&n->obj.otag[0], "generator", "smrender");
+      set_const_tag(&n->obj.otag[1], "grid", v);
       snprintf(buf, sizeof(buf), "%02.0f %c %.1f'", lat[i], lat[i] < 0 ? 'S' : 'N', (double) ((int) round(lat[i] * T_RESCALE) % T_RESCALE) / TM_RESCALE);
-      set_const_tag(&n->otag[2], "lat", strdup(buf));
+      set_const_tag(&n->obj.otag[2], "lat", strdup(buf));
       snprintf(buf, sizeof(buf), "%03.0f %c %.1f'", lon[i], lon[i] < 0 ? 'W' : 'E', (double) ((int) round(lon[i] * T_RESCALE) % T_RESCALE) / TM_RESCALE);
-      set_const_tag(&n->otag[3], "lon", strdup(buf));
+      set_const_tag(&n->obj.otag[3], "lon", strdup(buf));
       snprintf(buf, sizeof(buf), "%d", i);
-      set_const_tag(&n->otag[4], "pointindex", strdup(buf));
-      put_object(n);
-      log_debug("grid polygon lat/lon = %.8f/%.8f", n->nd.lat, n->nd.lon);
+      set_const_tag(&n->obj.otag[4], "pointindex", strdup(buf));
+      put_object((osm_obj_t*) n);
+      log_debug("grid polygon lat/lon = %.8f/%.8f", n->lat, n->lon);
    }
 
    w->ref[4] = w->ref[0];
@@ -92,41 +90,35 @@ void geo_square(struct rdata *rd, double b, char *v)
 
 void geo_tick(double lat1, double lon1, double lat2, double lon2, char *v)
 {
-   struct onode *n, *w;
+   osm_node_t *n;
+   osm_way_t *w;
 
-   w = malloc_object(2, 2);
-   w->nd.type = OSM_WAY;
-   w->nd.id = unique_way_id();
-   w->nd.tim = time(NULL);
-   w->nd.ver = 1;
-   set_const_tag(&w->otag[0], "generator", "smrender");
+   w = malloc_way(2, 2);
+   w->obj.id = unique_way_id();
+   w->obj.tim = time(NULL);
+   w->obj.ver = 1;
+   set_const_tag(&w->obj.otag[0], "generator", "smrender");
    //set_const_tag(&w->otag[1], "grid", lon % t ? "subtick" : "tick");
-   set_const_tag(&w->otag[1], "grid", v);
-   put_object(w);
+   set_const_tag(&w->obj.otag[1], "grid", v);
+   put_object((osm_obj_t*) w);
 
-   n = malloc_object(1, 0);
-   n->nd.type = OSM_NODE;
-   w->ref[0] = n->nd.id = unique_node_id();
-   n->nd.tim = time(NULL);
-   n->nd.ver = 1;
-   //n->nd.lat = rd->y1c - b3;
-   n->nd.lat = lat1;
-   //n->nd.lon = (double) lon / T_RESCALE;
-   n->nd.lon = lon1;
-   set_const_tag(&n->otag[0], "generator", "smrender");
-   put_object(n);
+   n = malloc_node(1);
+   w->ref[0] = n->obj.id = unique_node_id();
+   n->obj.tim = time(NULL);
+   n->obj.ver = 1;
+   n->lat = lat1;
+   n->lon = lon1;
+   set_const_tag(&n->obj.otag[0], "generator", "smrender");
+   put_object((osm_obj_t*) n);
  
-   n = malloc_object(1, 0);
-   n->nd.type = OSM_NODE;
-   w->ref[1] = n->nd.id = unique_node_id();
-   n->nd.tim = time(NULL);
-   n->nd.ver = 1;
-   //n->nd.lat = rd->y1c - ((lon % t) ? b2 : b1);
-   n->nd.lat = lat2;
-   //n->nd.lon = (double) lon / T_RESCALE;
-   n->nd.lon = lon2;
-   set_const_tag(&n->otag[0], "generator", "smrender");
-   put_object(n);
+   n = malloc_node(1);
+   w->ref[1] = n->obj.id = unique_node_id();
+   n->obj.tim = time(NULL);
+   n->obj.ver = 1;
+   n->lat = lat2;
+   n->lon = lon2;
+   set_const_tag(&n->obj.otag[0], "generator", "smrender");
+   put_object((osm_obj_t*) n);
 }
 
 

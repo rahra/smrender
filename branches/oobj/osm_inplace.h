@@ -33,12 +33,67 @@
 
 #define get_v(x,y) get_value("v",x,y)
 
-enum {OSM_NA, OSM_NODE, OSM_WAY};
+enum {OSM_NA, OSM_NODE, OSM_WAY, OSM_REL};
 
 
-#define SIZEOF_OSM_NODE_S sizeof(struct osm_node)
+//#define SIZEOF_OSM_NODE_S sizeof(struct osm_node)
+#define SIZEOF_OSM_OBJ(x) ((x)->type == OSM_NODE ? sizeof(osm_node_t) : \
+                           (x)->type == OSM_WAY ? sizeof(osm_way_t) : \
+                           (x)->type == OSM_REL ? sizeof(osm_rel_t) : 0)
 
 
+struct otag
+{
+   bstring_t k, v;
+};
+
+typedef struct osm_obj
+{
+   short type;
+   short vis;
+   int64_t id;
+   int ver, cs, uid;
+   time_t tim;
+   short tag_cnt;
+   struct otag *otag;
+} osm_obj_t;
+
+typedef struct osm_node
+{
+   osm_obj_t obj;
+   double lat, lon;
+} osm_node_t;
+
+typedef struct osm_way
+{
+   osm_obj_t obj;
+   short ref_cnt;
+   int64_t *ref;
+} osm_way_t;
+
+struct rmember
+{
+   short mtype;
+   int64_t id;
+   int role;
+};
+
+typedef struct osm_rel
+{
+   osm_obj_t obj;
+   short mem_cnt;
+   struct rmember *mem;
+} osm_rel_t;
+
+typedef union osm_storage
+{
+   osm_obj_t o;
+   osm_node_t n;
+   osm_way_t w;
+   osm_rel_t r;
+} osm_storage_t;
+
+/*
 struct osm_node
 {
    // osm data
@@ -52,11 +107,14 @@ struct osm_node
    // osmx specific type
    int type;
 };
+*/
 
 time_t parse_time(bstring_t);
-int proc_osm_node(const hpx_tag_t*, struct osm_node*);
-struct osm_node *malloc_node(void);
+int proc_osm_node(const hpx_tag_t*, osm_obj_t*);
 int get_value(const char *k, hpx_tag_t *tag, bstring_t *b);
+void free_obj(osm_obj_t*);
+osm_node_t *malloc_node(short );
+osm_way_t *malloc_way(short , short );
 
 #endif
 

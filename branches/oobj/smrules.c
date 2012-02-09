@@ -52,12 +52,12 @@ void mk_paper_coords(double lat, double lon, struct rdata *rd, int *x, int *y)
 }
 
 
-int act_image(struct onode *nd, struct rdata *rd, struct orule *rl)
+int act_image(osm_node_t *n, struct rdata *rd, struct orule *rl)
 {
    int i, j, c, rx, ry, hx, hy, x, y;
    double a;
 
-   mk_paper_coords(nd->nd.lat, nd->nd.lon, rd, &x, &y);
+   mk_paper_coords(n->lat, n->lon, rd, &x, &y);
    hx = gdImageSX(rl->rule.img.img) / 2;
    hy = gdImageSY(rl->rule.img.img) / 2;
 
@@ -143,15 +143,15 @@ double color_frequency(struct rdata *rd, int x, int y, int w, int h, int col)
 #define POS_OFFSET MM2PX(1.3)
 #define MAX_OFFSET MM2PX(2.0)
 #define DIVX 3
-int act_caption(struct onode *nd, struct rdata *rd, struct orule *rl)
+int act_caption(osm_node_t *n, struct rdata *rd, struct orule *rl)
 {
-   int br[8], n;
+   int br[8], m;
    char *s, *v;
    gdFTStringExtra fte;
    int x, y, rx, ry, ox, oy, off;
    double ma;
 
-   if ((n = match_attr(nd, rl->rule.cap.key, NULL)) == -1)
+   if ((m = match_attr((osm_obj_t*) n, rl->rule.cap.key, NULL)) == -1)
    {
       //log_debug("node %ld has no caption tag '%s'", nd->nd.id, rl->rule.cap.key);
       return 0;
@@ -161,19 +161,19 @@ int act_caption(struct onode *nd, struct rdata *rd, struct orule *rl)
    {
       //nd->otag[n].v.buf[nd->otag[n].v.len] = '\0';
       // data must be copied since memory modification is not allowed
-      if ((v = malloc(nd->otag[n].v.len + 1)) == NULL)
+      if ((v = malloc(n->obj.otag[m].v.len + 1)) == NULL)
          log_msg(LOG_ERR, "failed to copy caption string: %s", strerror(errno)), exit(EXIT_FAILURE);
-      memcpy(v, nd->otag[n].v.buf, nd->otag[n].v.len);
-      v[nd->otag[n].v.len] = '\0';
+      memcpy(v, n->obj.otag[m].v.buf, n->obj.otag[m].v.len);
+      v[n->obj.otag[m].v.len] = '\0';
    }
    //else
    //   v = nd->otag[n].v.buf;
 
    if (rl->rule.cap.pos & POS_UC)
-      for (x = 0; x < nd->otag[n].v.len; x++)
+      for (x = 0; x < n->obj.otag[m].v.len; x++)
          v[x] = toupper(v[x]);
 
-   mk_paper_coords(nd->nd.lat, nd->nd.lon, rd, &x, &y);
+   mk_paper_coords(n->lat, n->lon, rd, &x, &y);
    memset(&fte, 0, sizeof(fte));
    fte.flags = gdFTEX_RESOLUTION | gdFTEX_CHARMAP;
    fte.charmap = gdFTEX_Unicode;
@@ -247,11 +247,11 @@ int act_caption(struct onode *nd, struct rdata *rd, struct orule *rl)
 }
 
 
-int act_wcaption(struct onode *w, struct rdata *rd, struct orule *rl)
+int act_wcaption(osm_way_t *w, struct rdata *rd, struct orule *rl)
 {
    struct coord c;
    double ar;
-   struct onode *n;
+   osm_node_t *n;
    struct orule *r;
    int e;
 
@@ -269,65 +269,63 @@ int act_wcaption(struct onode *w, struct rdata *rd, struct orule *rl)
 
    memcpy(r, rl, sizeof(struct orule) + sizeof(struct stag) * rl->rule.tag_cnt);
 
-   n = malloc_object(w->tag_cnt, 0);
-   memcpy(n->otag, w->otag, sizeof(struct otag) * w->tag_cnt);
-   n->nd.type = OSM_NODE;
-   n->nd.lat = c.lat;
-   n->nd.lon = c.lon;
+   n = malloc_node(w->obj.tag_cnt);
+   memcpy(n->obj.otag, w->obj.otag, sizeof(struct otag) * w->obj.tag_cnt);
+   n->lat = c.lat;
+   n->lon = c.lon;
    r->rule.cap.size = 100 * sqrt(ar / (rd->mean_lat_len * rd->hc * 3600));
    log_debug("r->rule.cap.size = %f (%f 1/1000)", r->rule.cap.size, r->rule.cap.size / 100 * 1000);
 
    e = act_caption(n, rd, r);
 
-   free(n);
-   free(r);
+   free_obj((osm_obj_t*) n);
    return e;
 }
 
 
-int act_open_poly(struct onode *wy, struct rdata *rd, struct orule *rl)
+int act_open_poly(osm_way_t *w, struct rdata *rd, struct orule *rl)
 {
    int i;
-   struct onode *nd;
-   gdPoint p[wy->ref_cnt];
+   osm_node_t *n;
+   gdPoint p[w->ref_cnt];
 
-   for (i = 0; i < wy->ref_cnt; i++)
+   for (i = 0; i < w->ref_cnt; i++)
    {
-      if ((nd = get_object(OSM_NODE, wy->ref[i])) == NULL)
+      if ((n = get_object(OSM_NODE, w->ref[i])) == NULL)
          return E_REF_ERR;
 
-      mk_paper_coords(nd->nd.lat, nd->nd.lon, rd, &p[i].x, &p[i].y);
+      mk_paper_coords(n->lat, n->lon, rd, &p[i].x, &p[i].y);
    }
 
-   gdImageOpenPolygon(rd->img, p, wy->ref_cnt, rd->col[BLACK]);
+   gdImageOpenPolygon(rd->img, p, w->ref_cnt, rd->col[BLACK]);
    return 0;
 }
 
 
-int act_fill_poly(struct onode *wy, struct rdata *rd, struct orule *rl)
+int act_fill_poly(osm_way_t *w, struct rdata *rd, struct orule *rl)
 {
    int i;
-   struct onode *nd;
-   gdPoint p[wy->ref_cnt];
+   osm_node_t *n;
+   gdPoint p[w->ref_cnt];
 
-   for (i = 0; i < wy->ref_cnt; i++)
+   for (i = 0; i < w->ref_cnt; i++)
    {
-      if ((nd = get_object(OSM_NODE, wy->ref[i])) == NULL)
+      if ((n = get_object(OSM_NODE, w->ref[i])) == NULL)
          return E_REF_ERR;
 
-      mk_paper_coords(nd->nd.lat, nd->nd.lon, rd, &p[i].x, &p[i].y);
+      mk_paper_coords(n->lat, n->lon, rd, &p[i].x, &p[i].y);
    }
 
    if (rl->rule.draw.fill.used)
    {
       if (rl->rule.draw.fill.style != DRAW_TRANSPARENT)
-         gdImageFilledPolygon(rd->img, p, wy->ref_cnt, rl->rule.draw.fill.col);
+         gdImageFilledPolygon(rd->img, p, w->ref_cnt, rl->rule.draw.fill.col);
    }
 
    if (rl->rule.draw.border.used)
    {
       if (rl->rule.draw.border.style != DRAW_TRANSPARENT)
-         gdImagePolygon(rd->img, p, wy->ref_cnt, rl->rule.draw.border.col);
+         gdImagePolygon(rd->img, p, w->ref_cnt, rl->rule.draw.border.col);
    }
 
    return 0;
@@ -460,21 +458,21 @@ void act_output_ini(const struct orule *rl)
 }
 
 
-int act_output(struct onode *nd)
+int act_output(osm_obj_t *o)
 {
-   struct onode *n;
+   osm_node_t *n;
    int i;
 
    if (output_handle_ == NULL)
       return -1;
 
-   for (i = 0; i < nd->ref_cnt; i++)
+   for (i = 0; i < ((osm_way_t*) o)->ref_cnt; i++)
    {
-      if ((n = get_object(OSM_NODE, nd->ref[i])) == NULL)
+      if ((n = get_object(OSM_NODE, ((osm_way_t*) o)->ref[i])) == NULL)
          continue;
-      print_onode(output_handle_, n);
+      print_onode(output_handle_, (osm_obj_t*) n);
    }
-   print_onode(output_handle_, nd);
+   print_onode(output_handle_, o);
 
    return 0;
 }

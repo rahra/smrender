@@ -85,8 +85,8 @@
 typedef struct rdata rdata_t;
 typedef struct onode onode_t;
 typedef struct orule orule_t;
-typedef int (*tree_func_t)(struct onode*, struct rdata*, void*);
-typedef int (*ext_func_t)(struct onode*);
+typedef int (*tree_func_t)(osm_obj_t*, struct rdata*, void*);
+typedef int (*ext_func_t)(osm_obj_t*);
 typedef union structor
 {
       void (*func)(void);
@@ -108,11 +108,11 @@ struct specialTag
    };
 };
 
-struct otag
+/* struct otag
 {
    bstring_t k;
    bstring_t v;
-};
+};*/
 
 struct stag
 {
@@ -199,18 +199,18 @@ struct rule
    struct stag stag[];
 };
 
-struct onode
+/*struct onode
 {
    struct osm_node nd;
    int ref_cnt;
    int64_t *ref;
    int tag_cnt;
    struct otag otag[];
-};
+};*/
 
 struct orule
 {
-   struct onode *ond;
+   osm_obj_t *oo;
    struct rule rule;
 };
 
@@ -288,27 +288,26 @@ enum {PRJ_DIRECT, PRJ_MERC_PAGE, PRJ_MERC_BB};
 
 /* smrender.c */
 int traverse(const bx_node_t*, int, int, tree_func_t, struct rdata*, void*);
-int print_onode(FILE *, const struct onode *);
+int print_onode(FILE *, const osm_obj_t*);
 int col_freq(struct rdata *, int, int, int, int, double, int);
 int cf_dist(struct rdata *, int, int, int, int, double, int, int);
 double rot_pos(int, int, double, int *, int *);
 double color_frequency(struct rdata *, int, int, int, int, int);
 void mk_chart_coords(int, int, struct rdata*, double*, double*);
-int poly_area(const struct onode *, struct coord *, double *);
+int poly_area(const osm_way_t*, struct coord *, double *);
 
 
 /* smutil.c */
-int match_attr(const struct onode *, const char *, const char *);
-int bs_match_attr(const struct onode *, const struct otag *, const struct stag*);
+int match_attr(const osm_obj_t*, const char *, const char *);
+int bs_match_attr(const osm_obj_t*, const struct otag *, const struct stag*);
 int bs_match(const bstring_t *, const bstring_t *, const struct specialTag *);
-
 void set_util_rd(struct rdata*);
 //void disable_put(void);
 int put_object0(bx_node_t**, int64_t, void*, int);
-int put_object(struct onode*);
+int put_object(osm_obj_t*);
 void *get_object0(bx_node_t*, int64_t, int);
-struct onode *get_object(int, int64_t);
-struct onode *malloc_object(int , int);
+void *get_object(int, int64_t);
+//struct onode *malloc_object(int , int);
 int64_t unique_node_id(void);
 int64_t unique_way_id(void);
 void set_const_tag(struct otag*, char*, char*);
@@ -321,7 +320,7 @@ void install_sigusr1(void);
 
 /* smcoast.c */
 void init_cat_poly(struct rdata *);
-int is_closed_poly(const struct onode *);
+int is_closed_poly(const osm_way_t*);
 
 /* smgrid.c */
 void grid2(struct rdata*);

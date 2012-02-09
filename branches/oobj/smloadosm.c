@@ -91,13 +91,37 @@ void install_sigusr1(void)
 }
 
 
+void assign_o(osm_obj_t *dst, const osm_obj_t *src)
+{
+   dst->vis = src->vis;
+   dst->id = src->id;
+   dst->ver = src->ver;
+   dst->cs = src->cs;
+   dst->uid = src->uid;
+   dst->tim = src->tim;
+
+   if ((src->type == dst->type) && (src->type == OSM_NODE))
+   {
+      ((osm_node_t*) dst)->lat = ((osm_node_t*) src)->lat;
+      ((osm_node_t*) dst)->lon = ((osm_node_t*) src)->lon;
+   }
+}
+
+
+void clear_ostor(osm_storage_t *o)
+{
+   memset(o, 0, sizeof(*o));
+}
+
+
 int read_osm_file(hpx_ctrl_t *ctl, bx_node_t **tree, struct filter *fi)
 {
    hpx_tag_t *tag;
    bstring_t b;
-   int n = 0, e, i, j, rcnt;
-   struct osm_node nd;
-   struct onode *ond;
+   int t = 0, e, i, j, rcnt;
+   osm_storage_t o;
+   osm_obj_t *obj;
+   //struct onode *ond;
    hpx_tree_t *tlist = NULL;
    bx_node_t *tr;
    int64_t *ref;
@@ -113,7 +137,7 @@ int read_osm_file(hpx_ctrl_t *ctl, bx_node_t **tree, struct filter *fi)
    tim = time(NULL);
    tlist->nsub = 0;
    tag = tlist->tag;
-   nd.type = OSM_NA;
+   clear_ostor(&o);
 
    while ((e = hpx_get_elem(ctl, &b, NULL, &tag->line)) > 0)
    {
@@ -130,31 +154,31 @@ int read_osm_file(hpx_ctrl_t *ctl, bx_node_t **tree, struct filter *fi)
          //oline_++;
 
          if (!bs_cmp(tag->tag, "node"))
-            n = OSM_NODE;
+            t = OSM_NODE;
          else if (!bs_cmp(tag->tag, "way"))
-            n = OSM_WAY;
+            t = OSM_WAY;
          else
-            n = 0;
+            t = 0;
 
-         if (n)
+         if (t)
          {
             if (tag->type == HPX_OPEN)
             {
-               memset(&nd, 0, sizeof(nd));
-               proc_osm_node(tag, &nd);
+               memset(&o, 0, sizeof(o));
+               proc_osm_node(tag, (osm_obj_t*) &o);
 #ifdef READ_FILTER
-               if ((fi != NULL) && (n == OSM_NODE))
+               if ((fi != NULL) && (t == OSM_NODE))
                {
                   // skip nodes which are outside of bounding box
-                  if (fi->use_bbox && ((nd.lat > fi->c1.lat) || (nd.lat < fi->c2.lat) || (nd.lon > fi->c2.lon) || (nd.lon < fi->c1.lon)))
+                  if (fi->use_bbox && ((o.n.lat > fi->c1.lat) || (o.n.lat < fi->c2.lat) || (o.n.lon > fi->c2.lon) || (o.n.lon < fi->c1.lon)))
                   {
                      //log_debug("skipping node line %ld", oline_);
                      continue;
                   }
                }
 #endif
-               nd.type = n;
-               if (!nd.id) nd.id = nid++;
+               o.o.type = t;
+               if (!o.o.id) o.o.id = nid++;
 
                if (tlist->nsub >= tlist->msub)
                {
@@ -173,87 +197,94 @@ int read_osm_file(hpx_ctrl_t *ctl, bx_node_t **tree, struct filter *fi)
             }
             else if (tag->type == HPX_SINGLE)
             {
-               memset(&nd, 0, sizeof(nd));
-               proc_osm_node(tag, &nd);
+               memset(&o, 0, sizeof(o));
+               proc_osm_node(tag, (osm_obj_t*) &o);
 #ifdef READ_FILTER
-               if ((fi != NULL) && (n == OSM_NODE))
+               if ((fi != NULL) && (t == OSM_NODE))
                {
                   // skip nodes which are outside of bounding box
-                  if (fi->use_bbox && ((nd.lat > fi->c1.lat) || (nd.lat < fi->c2.lat) || (nd.lon > fi->c2.lon) || (nd.lon < fi->c1.lon)))
+                  if (fi->use_bbox && ((o.n.lat > fi->c1.lat) || (o.n.lat < fi->c2.lat) || (o.n.lon > fi->c2.lon) || (o.n.lon < fi->c1.lon)))
                   {
                      //log_debug("skipping node line %ld", oline_);
                      continue;
                   }
                }
 #endif
-               nd.type = n;
-               if (!nd.id) nd.id = nid++;
+               o.o.type = t;
+               if (!o.o.id) o.o.id = nid++;
 
-               if ((ond = malloc(sizeof(*ond))) == NULL)
-                  log_msg(LOG_ERR, "failed to alloc struct onode at line %ld: %s",
-                        strerror(errno), tag->line),
-                  exit(EXIT_FAILURE);
-#ifdef MEM_USAGE
-               mem_usage_ += sizeof(*ond);
-#endif
-               memcpy(&ond->nd, &nd, sizeof(nd));
-               memset(((char*) ond) + sizeof(nd), 0, sizeof(*ond) - sizeof(nd));
-               tr = bx_add_node(tree, nd.id);
-               if (tr->next[nd.type == OSM_WAY] != NULL)
+               switch (o.o.type)
                {
-                  free(tr->next[nd.type == OSM_WAY]);
+                  case OSM_NODE:
+                     obj = (osm_obj_t*) malloc_node(0);
+                     break;
+
+                  case OSM_WAY:
+                     obj = (osm_obj_t*) malloc_way(0, 0);
+                     break;
+                     
+                  default:
+                     log_msg(LOG_ERR, "type %d no implemented yet", o.o.type);
+                     clear_ostor(&o);
+                     continue;
+
+               }
+               assign_o(obj, (osm_obj_t*) &o);
+
+               tr = bx_add_node(tree, o.o.id);
+               if (tr->next[o.o.type - 1] != NULL)
+               {
+                  free_obj(tr->next[o.o.type - 1]);
                   // too much debugging if there are many duplicates
                   //log_msg(LOG_ERR, "object %ld already exists, overwriting.", nd.id);
                }
-               tr->next[nd.type == OSM_WAY] = ond;
+               tr->next[o.o.type - 1] = obj;
 
                // finally
                tlist->nsub = 0;
-               nd.type = OSM_NA;
+               clear_ostor(&o);
             }
             else if (tag->type == HPX_CLOSE)
             {
-               if ((nd.type != OSM_NODE) && (nd.type != OSM_WAY))
+               if ((o.o.type != OSM_NODE) && (o.o.type != OSM_WAY))
                   continue;
-
-               if ((ond = malloc(sizeof(*ond))) == NULL)
-                  log_msg(LOG_ERR, "failed to alloc struct onode at line %ld: %s",
-                        strerror(errno), tag->line),
-                  exit(EXIT_FAILURE);
-               memcpy(&ond->nd, &nd, sizeof(nd));
-               memset(((char*) ond) + sizeof(nd), 0, sizeof(*ond) - sizeof(nd));
 
                // count 'nd' and 'tag' tags
                for (i = 0; i < tlist->nsub; i++)
                {
                   if (!bs_cmp(tlist->subtag[i]->tag->tag, "tag"))
-                     ond->tag_cnt++;
+                     o.o.tag_cnt++;
                   else if (!bs_cmp(tlist->subtag[i]->tag->tag, "nd"))
-                     ond->ref_cnt++;
+                     o.w.ref_cnt++;
                }
-               
-               if ((ond = realloc(ond, sizeof(*ond) + ond->tag_cnt * sizeof(struct otag))) == NULL)
-                  log_msg(LOG_ERR, "failed to realloc tags for struct onode at line %ld: %s",
-                        strerror(errno), tag->line),
-                  exit(EXIT_FAILURE);
 
-               if ((ond->ref = malloc(ond->ref_cnt * sizeof(int64_t))) == NULL)
-                  log_msg(LOG_ERR, "failed to alloc refs for struct onode at line %ld: %s",
-                        strerror(errno), tag->line),
-                  exit(EXIT_FAILURE);
+               switch (o.o.type)
+               {
+                  case OSM_NODE:
+                     obj = (osm_obj_t*) malloc_node(o.o.tag_cnt);
+                     break;
 
-#ifdef MEM_USAGE
-               mem_usage_ += sizeof(*ond) + ond->ref_cnt * sizeof(int64_t) + ond->tag_cnt * sizeof(struct otag);
-#endif
- 
-               for (i = 0, ref = ond->ref, j = 0, rcnt = 0; i < tlist->nsub; i++)
+                  case OSM_WAY:
+                     obj = (osm_obj_t*) malloc_way(o.o.tag_cnt, o.w.ref_cnt);
+                     break;
+                     
+                  default:
+                     log_msg(LOG_ERR, "type %d no implemented yet", o.o.type);
+                     clear_ostor(&o);
+                     continue;
+
+               }
+
+               assign_o(obj, (osm_obj_t*) &o);
+
+               for (i = 0, ref = ((osm_way_t*) obj)->ref, j = 0, rcnt = 0; i < tlist->nsub; i++)
                {
                   if (!bs_cmp(tlist->subtag[i]->tag->tag, "tag"))
                   {
-                     if (get_value("k", tlist->subtag[i]->tag, &ond->otag[j].k) == -1)
-                        memset(&ond->otag[j].k, 0, sizeof(bstring_t));
-                     if (get_value("v", tlist->subtag[i]->tag, &ond->otag[j].v) == -1)
-                        memset(&ond->otag[j].v, 0, sizeof(bstring_t));
+                     if (get_value("k", tlist->subtag[i]->tag, &obj->otag[j].k) == -1)
+                        memset(&obj->otag[j].k, 0, sizeof(bstring_t));
+                     if (get_value("v", tlist->subtag[i]->tag, &obj->otag[j].v) == -1)
+                        memset(&obj->otag[j].v, 0, sizeof(bstring_t));
                      j++;
                   }
                   else if (!bs_cmp(tlist->subtag[i]->tag->tag, "nd"))
@@ -272,38 +303,34 @@ int read_osm_file(hpx_ctrl_t *ctl, bx_node_t **tree, struct filter *fi)
                }
 
 #ifdef READ_FILTER
-               if ((fi != NULL) && (nd.type == OSM_WAY) && (rcnt == 0))
+               if ((fi != NULL) && (o.o.type == OSM_WAY) && (rcnt == 0))
                {
-                  //log_debug("freeing empty way");
-#ifdef MEM_USAGE
-                  mem_usage_ -= sizeof(*ond) + ond->ref_cnt * sizeof(int64_t) + ond->tag_cnt * sizeof(struct otag);
-#endif
-                  free(ond->ref);
-                  free(ond);
+                  free_obj(obj);
                }
                else
 #endif
                {
-                  ond->ref_cnt = rcnt;
-                  tr = bx_add_node(tree, nd.id);
-                  if (tr->next[nd.type == OSM_WAY] != NULL)
+                  if (o.o.type == OSM_WAY)
+                     ((osm_way_t*) obj)->ref_cnt = rcnt;
+                  tr = bx_add_node(tree, o.o.id);
+                  if (tr->next[o.o.type - 1] != NULL)
                   {
-                     free(tr->next[nd.type == OSM_WAY]);
+                     free_obj(tr->next[o.o.type - 1]);
                      // too much debugging if there are many duplicates
                      //log_msg(LOG_ERR, "object %ld already exists, overwriting.", nd.id);
                   }
-                  tr->next[nd.type == OSM_WAY] = ond;
+                  tr->next[o.o.type - 1] = obj;
                }
 
                // finally
                tlist->nsub = 0;
                tag = tlist->tag;
-               nd.type = OSM_NA;
+               clear_ostor(&o);
             }
             continue;
          } //if (!bs_cmp(tag->tag, "node"))
 
-         if ((nd.type != OSM_NODE) && (nd.type != OSM_WAY))
+         if ((o.o.type != OSM_NODE) && (o.o.type != OSM_WAY))
             continue;
 
          if (!bs_cmp(tag->tag, "tag") || !bs_cmp(tag->tag, "nd"))

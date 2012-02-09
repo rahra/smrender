@@ -138,7 +138,7 @@ int64_t unique_way_id(void)
    return rd->ds.min_wid;
 }
 
-
+/*
 struct onode *malloc_object(int tag_cnt, int ref_cnt)
 {
    struct onode *nd;
@@ -159,7 +159,7 @@ struct onode *malloc_object(int tag_cnt, int ref_cnt)
    nd->tag_cnt = tag_cnt;
    return nd;
 }
-
+*/
 
 int put_object0(bx_node_t **tree, int64_t id, void *p, int idx)
 {
@@ -187,9 +187,9 @@ int put_object0(bx_node_t **tree, int64_t id, void *p, int idx)
 }
 
 
-int put_object(struct onode *nd)
+int put_object(osm_obj_t *o)
 {
-   return put_object0(&rd->obj, nd->nd.id, nd, nd->nd.type == OSM_WAY);
+   return put_object0(&rd->obj, o->id, o, o->type - 1);
 }
 
 
@@ -218,9 +218,9 @@ void *get_object0(bx_node_t *tree, int64_t id, int idx)
 }
 
 
-struct onode *get_object(int type, int64_t id)
+void *get_object(int type, int64_t id)
 {
-   return get_object0(rd->obj, id, type == OSM_WAY);
+   return get_object0(rd->obj, id, type - 1);
 }
 
 
@@ -280,16 +280,16 @@ int bs_match(const bstring_t *dst, const bstring_t *pat, const struct specialTag
 }
 
 
-int bs_match_attr(const struct onode *nd, const struct otag *ot, const struct stag *st)
+int bs_match_attr(const osm_obj_t *o, const struct otag *ot, const struct stag *st)
 {
    int i, kmatch, vmatch;
 
-   for (i = 0; i < nd->tag_cnt; i++)
+   for (i = 0; i < o->tag_cnt; i++)
    {
       kmatch = vmatch = 0;
 
-      kmatch = ot->k.len ? bs_match(&nd->otag[i].k, &ot->k, &st->stk) : 1;
-      vmatch = ot->v.len ? bs_match(&nd->otag[i].v, &ot->v, &st->stv) : 1;
+      kmatch = ot->k.len ? bs_match(&o->otag[i].k, &ot->k, &st->stk) : 1;
+      vmatch = ot->v.len ? bs_match(&o->otag[i].v, &ot->v, &st->stv) : 1;
 
       if (kmatch && (st->stk.type & SPECIAL_NOT))
          return -1;
@@ -311,7 +311,7 @@ int bs_match_attr(const struct onode *nd, const struct otag *ot, const struct st
 /*! Match tag.
  *  @return -1 on error (no match), otherwise return number of tag which matches.
  */
-int match_attr(const struct onode *nd, const char *k, const char *v)
+int match_attr(const osm_obj_t *o, const char *k, const char *v)
 {
    struct otag ot;
    struct stag st;
@@ -330,6 +330,6 @@ int match_attr(const struct onode *nd, const char *k, const char *v)
       ot.v.buf = (char*) v;
    }
 
-   return bs_match_attr(nd, &ot, &st);
+   return bs_match_attr(o, &ot, &st);
 }
 

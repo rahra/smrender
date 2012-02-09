@@ -18,10 +18,12 @@
 #define _XOPEN_SOURCE
 #include <time.h>
 #include <string.h>
+#include <errno.h>
 
 #include "osm_inplace.h"
 #include "bstring.h"
 #include "libhpxml.h"
+#include "smlog.h"
 
 
 #define TLEN 20
@@ -57,49 +59,47 @@ time_t parse_time(bstring_t b)
 }
 
 
-int proc_osm_node(const hpx_tag_t *tag, struct osm_node *nd)
+int proc_osm_node(const hpx_tag_t *tag, osm_obj_t *o)
 {
    int i;
 
+   if (!bs_cmp(tag->tag, "node"))
+      o->type = OSM_NODE;
+   else if (!bs_cmp(tag->tag, "way"))
+      o->type = OSM_WAY;
+   else if (!bs_cmp(tag->tag, "relation"))
+      o->type = OSM_REL;
+   else 
+      return -1;
+
    for (i = 0; i < tag->nattr; i++)
    {
-      if (!bs_cmp(tag->attr[i].name, "lat"))
-         nd->lat = bs_tod(tag->attr[i].value);
-      else if (!bs_cmp(tag->attr[i].name, "lon"))
-         nd->lon = bs_tod(tag->attr[i].value);
-      else if (!bs_cmp(tag->attr[i].name, "id"))
-         nd->id = bs_tol(tag->attr[i].value);
+      if (o->type == OSM_NODE)
+      {
+         if (!bs_cmp(tag->attr[i].name, "lat"))
+            ((osm_node_t*) o)->lat = bs_tod(tag->attr[i].value);
+         else if (!bs_cmp(tag->attr[i].name, "lon"))
+            ((osm_node_t*) o)->lon = bs_tod(tag->attr[i].value);
+      }
+
+      if (!bs_cmp(tag->attr[i].name, "id"))
+         o->id = bs_tol(tag->attr[i].value);
       else if (!bs_cmp(tag->attr[i].name, "version"))
-         nd->ver = bs_tol(tag->attr[i].value);
+         o->ver = bs_tol(tag->attr[i].value);
       else if (!bs_cmp(tag->attr[i].name, "changeset"))
-         nd->cs = bs_tol(tag->attr[i].value);
+         o->cs = bs_tol(tag->attr[i].value);
       else if (!bs_cmp(tag->attr[i].name, "uid"))
-         nd->uid = bs_tol(tag->attr[i].value);
+         o->uid = bs_tol(tag->attr[i].value);
       else if (!bs_cmp(tag->attr[i].name, "timestamp"))
-         nd->tim = parse_time(tag->attr[i].value);
+         o->tim = parse_time(tag->attr[i].value);
    }
 
-   if (!nd->ver)
-      nd->ver = 1;
-   if (!nd->tim)
-      nd->tim = time(NULL);
+   if (!o->ver)
+      o->ver = 1;
+   if (!o->tim)
+      o->tim = time(NULL);
 
    return tag->type;
-}
-
-
-/*! Get memory for struct osm_node with tcnt tags.
- *  @param tcnt max number of tags.
- *  @return Pointer to structure or NULL in case of error.
- */
-struct osm_node *malloc_node(void)
-{
-   struct osm_node *nd;
-
-   if ((nd = malloc(sizeof(struct osm_node))) == NULL)
-      return NULL;
-
-   return nd;
 }
 
 
@@ -115,5 +115,58 @@ int get_value(const char *k, hpx_tag_t *tag, bstring_t *b)
       }
 
    return -1;
+}
+
+
+void free_obj(osm_obj_t *o)
+{
+   free(o->otag);
+   if (o->type == OSM_WAY)
+      free(((osm_way_t*) o)->ref);
+   //FIXME: osm_rel_t not implemented yet
+   //
+
+   free(o);
+}
+
+
+void *malloc_mem(size_t ele, short cnt)
+{
+   void *mem;
+
+   if ((mem = malloc(ele * cnt)) == NULL)
+      log_msg(LOG_ERR, "could not malloc_mem(): %s", strerror(errno)),
+      exit(EXIT_FAILURE);
+   return mem;
+}
+
+
+osm_node_t *malloc_node(short tag_cnt)
+{
+   osm_node_t *n;
+
+   if ((n = calloc(1, sizeof(osm_node_t))) == NULL)
+      log_msg(LOG_ERR, "could not malloc_node(): %s", strerror(errno)),
+      exit(EXIT_FAILURE);
+   n->obj.type = OSM_NODE;
+   n->obj.otag = malloc_mem(sizeof(struct otag), tag_cnt);
+   n->obj.tag_cnt = tag_cnt;
+   return n;
+}
+
+
+osm_way_t *malloc_way(short tag_cnt, short ref_cnt)
+{
+   osm_way_t *w;
+
+   if ((w = calloc(1, sizeof(osm_way_t))) == NULL)
+      log_msg(LOG_ERR, "could not malloc_way(): %s", strerror(errno)),
+      exit(EXIT_FAILURE);
+   w->obj.type = OSM_WAY;
+   w->obj.otag = malloc_mem(sizeof(struct otag), tag_cnt);
+   w->obj.tag_cnt = tag_cnt;
+   w->ref = malloc_mem(sizeof(int64_t), ref_cnt);
+   w->ref_cnt = ref_cnt;
+   return w;
 }
 

@@ -91,15 +91,15 @@ char *cfmt(double c, int d, char *s, int l)
  *  The result is the area measured in nautical square miles.
  *  @return Returns 0 on success, -1 on error.
  */
-int poly_area(const struct onode *w, struct coord *c, double *ar)
+int poly_area(const osm_way_t *w, struct coord *c, double *ar)
 {
    double f, x[2];
-   struct onode *n[2];
+   osm_node_t *n[2];
    int i;
 
-   if ((n[1] = get_object(OSM_NODE, w->ref[0])) == NULL)
+   if ((n[1] = (osm_node_t*) get_object(OSM_NODE, w->ref[0])) == NULL)
    {
-      log_msg(LOG_ERR, "something is wrong with way %ld: node does not exist", w->nd.id);
+      log_msg(LOG_ERR, "something is wrong with way %ld: node does not exist", w->obj.id);
       return -1;
    }
 
@@ -110,17 +110,17 @@ int poly_area(const struct onode *w, struct coord *c, double *ar)
    for (i = 0; i < w->ref_cnt - 1; i++)
    {
       n[0] = n[1];
-      if ((n[1] = get_object(OSM_NODE, w->ref[i + 1])) == NULL)
+      if ((n[1] = (osm_node_t*) get_object(OSM_NODE, w->ref[i + 1])) == NULL)
       {
-         log_msg(LOG_ERR, "something is wrong with way %ld: node does not exist", w->nd.id);
+         log_msg(LOG_ERR, "something is wrong with way %ld: node does not exist", w->obj.id);
          return -1;
       }
 
-      x[0] = n[0]->nd.lon * cos(DEG2RAD(n[0]->nd.lat));
-      x[1] = n[1]->nd.lon * cos(DEG2RAD(n[1]->nd.lat));
-      f = x[0] * n[1]->nd.lat - x[1] * n[0]->nd.lat;
+      x[0] = n[0]->lon * cos(DEG2RAD(n[0]->lat));
+      x[1] = n[1]->lon * cos(DEG2RAD(n[1]->lat));
+      f = x[0] * n[1]->lat - x[1] * n[0]->lat;
       c->lon += (x[0] + x[1]) * f;
-      c->lat += (n[0]->nd.lat + n[1]->nd.lat) * f;
+      c->lat += (n[0]->lat + n[1]->lat) * f;
       *ar += f;
       //log_debug("%d %f %f %f %f %f %f %f/%f %f/%f", i, f, sx, sy, cx, cy, ar, n[0]->nd.lon, n[0]->nd.lat, n[1]->nd.lon, n[1]->nd.lat);
    }
@@ -133,68 +133,68 @@ int poly_area(const struct onode *w, struct coord *c, double *ar)
 }
 
 
-int act_poly_area(struct onode *nd)
+int act_poly_area(osm_way_t *w)
 {
    double ar;
+   struct otag *ot;
    struct coord c;
    char buf[256], *s;
 
-   if (!poly_area(nd, &c, &ar))
+   if (!poly_area(w, &c, &ar))
    {
-      log_msg(LOG_DEBUG, "poly_area of %ld = %f", nd->nd.id, ar);
-      if ((nd = realloc(nd, sizeof(struct onode) + sizeof(struct otag) * (nd->tag_cnt + 1))) == NULL)
+      log_msg(LOG_DEBUG, "poly_area of %ld = %f", w->obj.id, ar);
+      if ((ot = realloc(w->obj.otag, sizeof(struct otag) * (w->obj.tag_cnt + 1))) == NULL)
       {
-         log_msg(LOG_DEBUG, "could not realloc way");
+         log_msg(LOG_DEBUG, "could not realloc tag list: %s", strerror(errno));
          return 0;
       }
-      put_object(nd);
+      w->obj.otag = ot;
       snprintf(buf, sizeof(buf), "%.8f", ar);
       if ((s = strdup(buf)) == NULL)
       {
          log_msg(LOG_DEBUG, "could not strdup");
          return 0;
       }
-      set_const_tag(&nd->otag[nd->tag_cnt], "smrender:area", s);
-      nd->tag_cnt++;
+      set_const_tag(&w->obj.otag[w->obj.tag_cnt], "smrender:area", s);
+      w->obj.tag_cnt++;
    }
 
    return 0;
 }
 
 
-int act_poly_centroid(struct onode *nd)
+int act_poly_centroid(osm_way_t *w)
 {
    struct coord c;
    double ar;
-   struct onode *n;
+   osm_node_t *n;
    char buf[256], *s;
 
-   if (!is_closed_poly(nd))
+   if (!is_closed_poly(w))
       return 0;
 
-   if (poly_area(nd, &c, &ar))
+   if (poly_area(w, &c, &ar))
       return -1;
 
-   n = malloc_object(nd->tag_cnt + 1, 0);
-   n->nd.type = OSM_NODE;
-   n->nd.id = unique_node_id();
-   n->nd.lat = c.lat;
-   n->nd.lon = c.lon;
-   n->nd.ver = 1;
-   n->nd.tim = time(NULL);
+   n = malloc_node(w->obj.tag_cnt + 1);
+   n->obj.id = unique_node_id();
+   n->obj.ver = 1;
+   n->obj.tim = time(NULL);
+   n->lat = c.lat;
+   n->lon = c.lon;
 
-   snprintf(buf, sizeof(buf), "%ld", nd->nd.id);
+   snprintf(buf, sizeof(buf), "%ld", w->obj.id);
    if ((s = strdup(buf)) == NULL)
    {
-      free(n);
-      log_msg(LOG_DEBUG, "could not strdup");
+      free_obj((osm_obj_t*) n);
+      log_msg(LOG_DEBUG, "could not strdup: %s", strerror(errno));
       return 0;
    }
-   set_const_tag(&n->otag[0], "smrender:id:way", s);
-   memcpy(&n->otag[1], &nd->otag[0], sizeof(struct otag) * nd->tag_cnt);
-   put_object(n);
+   set_const_tag(&n->obj.otag[0], "smrender:id:way", s);
+   memcpy(&n->obj.otag[1], &w->obj.otag[0], sizeof(struct otag) * w->obj.tag_cnt);
+   put_object((osm_obj_t*) n);
  
-   log_debug("centroid %.3f/%.3f, ar = %f, way = %ld, node %ld", n->nd.lat, n->nd.lon, ar, nd->nd.id, n->nd.id);
+   log_debug("centroid %.3f/%.3f, ar = %f, way = %ld, node %ld", n->lat, n->lon, ar, w->obj.id, n->obj.id);
 
    return 0;
 }
@@ -205,7 +205,7 @@ int act_poly_centroid(struct onode *nd)
  *  @param rd Pointer to general rendering parameters.
  *  @param mnd Ruleset.
  */
-int apply_rules0(struct onode *nd, struct rdata *rd, struct orule *rl)
+int apply_rules0(osm_node_t *n, struct rdata *rd, struct orule *rl)
 {
    int i, e;
 
@@ -219,8 +219,8 @@ int apply_rules0(struct onode *nd, struct rdata *rd, struct orule *rl)
    //if (!nd->tag_cnt)
    //   return 0;
 
-   for (i = 0; i < rl->ond->tag_cnt; i++)
-      if (bs_match_attr(nd, &rl->ond->otag[i], &rl->rule.stag[i]) == -1)
+   for (i = 0; i < rl->oo->tag_cnt; i++)
+      if (bs_match_attr((osm_obj_t*) n, &rl->oo->otag[i], &rl->rule.stag[i]) == -1)
          return 0;
 
    //fprintf(stderr, "node id %ld rule match %ld\n", nd->nd.id, mnd->nd.id);
@@ -228,15 +228,15 @@ int apply_rules0(struct onode *nd, struct rdata *rd, struct orule *rl)
    switch (rl->rule.type)
    {
       case ACT_IMG:
-         e = act_image(nd, rd, rl);
+         e = act_image(n, rd, rl);
          break;
 
       case ACT_CAP:
-         e = act_caption(nd, rd, rl);
+         e = act_caption(n, rd, rl);
          break;
 
       case ACT_FUNC:
-         e = rl->rule.func.main.func(nd);
+         e = rl->rule.func.main.func((osm_obj_t*) n);
          break;
 
          /*
@@ -264,7 +264,7 @@ int apply_rules0(struct onode *nd, struct rdata *rd, struct orule *rl)
  *  @param rd Pointer to general rendering parameters.
  *  @param mnd Ruleset.
  */
-int apply_wrules0(struct onode *nd, struct rdata *rd, struct orule *rl)
+int apply_wrules0(osm_way_t *w, struct rdata *rd, struct orule *rl)
 {
    int i, e;
 
@@ -278,8 +278,8 @@ int apply_wrules0(struct onode *nd, struct rdata *rd, struct orule *rl)
    //if (!nd->tag_cnt)
    //   return 0;
 
-   for (i = 0; i < rl->ond->tag_cnt; i++)
-      if (bs_match_attr(nd, &rl->ond->otag[i], &rl->rule.stag[i]) == -1)
+   for (i = 0; i < rl->oo->tag_cnt; i++)
+      if (bs_match_attr((osm_obj_t*) w, &rl->oo->otag[i], &rl->rule.stag[i]) == -1)
          return 0;
 
    //fprintf(stderr, "way id %ld rule match %ld\n", nd->nd.id, mnd->nd.id);
@@ -287,18 +287,18 @@ int apply_wrules0(struct onode *nd, struct rdata *rd, struct orule *rl)
    switch (rl->rule.type)
    {
       case ACT_DRAW:
-         if (nd->ref[0] == nd->ref[nd->ref_cnt - 1])
-            e = act_fill_poly(nd, rd, rl);
+         if (w->ref[0] == w->ref[w->ref_cnt - 1])
+            e = act_fill_poly(w, rd, rl);
          else
-            e = act_open_poly(nd, rd, rl);
+            e = act_open_poly(w, rd, rl);
          break;
 
       case ACT_FUNC:
-         e = rl->rule.func.main.func(nd);
+         e = rl->rule.func.main.func((osm_obj_t*) w);
          break;
 
       case ACT_CAP:
-         e = act_wcaption(nd, rd, rl);
+         e = act_wcaption(w, rd, rl);
          break;
 
          /*
@@ -320,15 +320,15 @@ int apply_wrules0(struct onode *nd, struct rdata *rd, struct orule *rl)
 }
 
 
-int apply_rules(struct orule *rl, struct rdata *rd, struct osm_node *nd)
+int apply_rules(struct orule *rl, struct rdata *rd, osm_node_t *n)
 {
    int e = 0;
 
-   log_debug("applying rule id 0x%016lx type %s(%d)", rl->ond->nd.id, rule_type_str(rl->rule.type), rl->rule.type);
+   log_debug("applying rule id 0x%016lx type %s(%d)", rl->oo->id, rule_type_str(rl->rule.type), rl->rule.type);
 
-   if (nd != NULL)
+   if (n != NULL)
    {
-      if (rl->ond->nd.ver != nd->ver)
+      if (rl->oo->ver != n->obj.ver)
          return 0;
    }
 
@@ -336,7 +336,7 @@ int apply_rules(struct orule *rl, struct rdata *rd, struct osm_node *nd)
    if ((rl->rule.type == ACT_FUNC) && (rl->rule.func.ini.func != NULL))
       rl->rule.func.ini.func(rl);
 
-   switch (rl->ond->nd.type)
+   switch (rl->oo->type)
    {
       case OSM_NODE:
          e = traverse(rd->obj, 0, IDX_NODE, (tree_func_t) apply_rules0, rd, rl);
@@ -354,24 +354,18 @@ int apply_rules(struct orule *rl, struct rdata *rd, struct osm_node *nd)
    if ((rl->rule.type == ACT_FUNC) && (rl->rule.func.fini.func != NULL))
       rl->rule.func.fini.func();
 
-   /*if ((rl->rule.type == ACT_OUTPUT) && (rl->rule.out.fhandle != NULL))
-   {
-      fprintf(rl->rule.out.fhandle, "</osm>\n");
-      fclose(rl->rule.out.fhandle);
-   }*/
-
    return e;
 }
 
 
-int print_tree(struct onode *nd, struct rdata *rd, void *p)
+int print_tree(osm_obj_t *o, struct rdata *rd, void *p)
 {
-   print_onode(p, nd);
+   print_onode(p, o);
    return 0;
 }
 
 
-int strip_ways(struct onode *w, struct rdata *rd, void *p)
+int strip_ways(osm_way_t *w, struct rdata *rd, void *p)
 {
    struct onode *n;
    int i;
@@ -388,7 +382,7 @@ int strip_ways(struct onode *w, struct rdata *rd, void *p)
 
    if (w->ref_cnt == 0)
    {
-      log_debug("way %ld has no nodes", w->nd.id);
+      log_debug("way %ld has no nodes", w->obj.id);
    }
 
    return 0;
@@ -486,53 +480,52 @@ void init_bbox_mll(struct rdata *rd)
 }
 
 
-int print_onode(FILE *f, const struct onode *nd)
+int print_onode(FILE *f, const osm_obj_t *o)
 {
    int i;
 #define TBUFLEN 24
    char ts[TBUFLEN] = "0000-00-00T00:00:00Z";
    struct tm *tm;
 
-   if (nd == NULL)
+   if (o == NULL)
    {
       log_warn("NULL pointer catched in print_onode()");
       return -1;
    }
 
-   if ((tm = gmtime(&nd->nd.tim)) != NULL)
+   if ((tm = gmtime(&o->tim)) != NULL)
       strftime(ts, sizeof(ts), "%Y-%m-%dT%H:%M:%SZ", tm);
 
-   switch (nd->nd.type)
+   switch (o->type)
    {
       case OSM_NODE:
          fprintf(f, "<node id=\"%ld\" version=\"%d\" lat=\"%f\" lon=\"%f\" timestamp=\"%s\" uid=\"%d\">\n",
-               nd->nd.id, nd->nd.ver, nd->nd.lat, nd->nd.lon, ts, nd->nd.uid);
+               o->id, o->ver, ((osm_node_t*) o)->lat, ((osm_node_t*) o)->lon, ts, o->uid);
          break;
 
       case OSM_WAY:
          fprintf(f, "<way id=\"%ld\" version=\"%d\" timestamp=\"%s\" uid=\"%d\">\n",
-               nd->nd.id, nd->nd.ver, ts, nd->nd.uid);
+               o->id, o->ver, ts, o->uid);
          break;
 
       default:
-         fprintf(f, "<!-- unknown node type: %d -->\n", nd->nd.type);
+         fprintf(f, "<!-- unknown node type: %d -->\n", o->type);
          return -1;
    }
 
-   for (i = 0; i < nd->tag_cnt; i++)
+   for (i = 0; i < o->tag_cnt; i++)
       fprintf(f, "<tag k=\"%.*s\" v=\"%.*s\"/>\n",
-            (int) nd->otag[i].k.len, nd->otag[i].k.buf, (int) nd->otag[i].v.len, nd->otag[i].v.buf);
+            (int) o->otag[i].k.len, o->otag[i].k.buf, (int) o->otag[i].v.len, o->otag[i].v.buf);
 
-   for (i = 0; i < nd->ref_cnt; i++)
-      fprintf(f, "<nd ref=\"%ld\"/>\n", nd->ref[i]);
-
-   switch (nd->nd.type)
+  switch (o->type)
    {
       case OSM_NODE:
          fprintf(f, "</node>\n");
          break;
 
       case OSM_WAY:
+         for (i = 0; i < ((osm_way_t*) o)->ref_cnt; i++)
+            fprintf(f, "<nd ref=\"%ld\"/>\n", ((osm_way_t*) o)->ref[i]);
          fprintf(f, "</way>\n");
          break;
    }
@@ -555,41 +548,47 @@ void init_stats(struct dstats *ds)
 }
 
  
-int onode_stats(struct onode *nd, struct rdata *rd, struct dstats *ds)
+void node_stats(osm_node_t *n, struct dstats *ds)
+{
+   ds->ncnt++;
+   if (ds->lu.lat < n->lat) ds->lu.lat = n->lat;
+   if (ds->lu.lon > n->lon) ds->lu.lon = n->lon;
+   if (ds->rb.lat > n->lat) ds->rb.lat = n->lat;
+   if (ds->rb.lon < n->lon) ds->rb.lon = n->lon;
+}
+
+int onode_stats(osm_obj_t *o, struct rdata *rd, struct dstats *ds)
 {
    int i;
 
-   if (nd->nd.type == OSM_NODE)
+   if (o->type == OSM_NODE)
    {
       ds->ncnt++;
-      if (ds->lu.lat < nd->nd.lat) ds->lu.lat = nd->nd.lat;
-      if (ds->lu.lon > nd->nd.lon) ds->lu.lon = nd->nd.lon;
-      if (ds->rb.lat > nd->nd.lat) ds->rb.lat = nd->nd.lat;
-      if (ds->rb.lon < nd->nd.lon) ds->rb.lon = nd->nd.lon;
-      if (ds->min_nid > nd->nd.id) ds->min_nid = nd->nd.id;
-      if (ds->max_nid < nd->nd.id) ds->max_nid = nd->nd.id;
+      node_stats((osm_node_t*) o, ds);
+      if (ds->min_nid > o->id) ds->min_nid = o->id;
+      if (ds->max_nid < o->id) ds->max_nid = o->id;
    }
-   else if (nd->nd.type == OSM_WAY)
+   else if (o->type == OSM_WAY)
    {
       ds->wcnt++;
-      if (ds->min_wid > nd->nd.id) ds->min_wid = nd->nd.id;
-      if (ds->max_wid < nd->nd.id) ds->max_wid = nd->nd.id;
+      if (ds->min_wid > o->id) ds->min_wid = o->id;
+      if (ds->max_wid < o->id) ds->max_wid = o->id;
    }
-   if ((void*) nd > ds->hi_addr)
-      ds->hi_addr = nd;
-   if ((void*) nd < ds->lo_addr)
-      ds->lo_addr = nd;
+   if ((void*) o > ds->hi_addr)
+      ds->hi_addr = o;
+   if ((void*) o < ds->lo_addr)
+      ds->lo_addr = o;
 
    // look if version is registered
    for (i = 0; i < ds->ver_cnt; i++)
    {
-      if (ds->ver[i] == nd->nd.ver)
+      if (ds->ver[i] == o->ver)
          break;
    }
    //version was not found and array has enough entries
    if ((i >= ds->ver_cnt) && (ds->ver_cnt < MAX_ITER))
    {
-      ds->ver[ds->ver_cnt] = nd->nd.ver;
+      ds->ver[ds->ver_cnt] = o->ver;
       ds->ver_cnt++;
    }
 
@@ -737,7 +736,8 @@ int main(int argc, char *argv[])
    char *paper = "A3";
    struct filter fi;
    struct dstats rstats;
-   struct osm_node nd;
+   //struct osm_node nd;
+   osm_obj_t o;
    char *s;
    double param;
 
@@ -967,16 +967,16 @@ int main(int argc, char *argv[])
       grid2(rd);
    }
 
-   memset(&nd, 0, sizeof(nd));
+   memset(&o, 0, sizeof(o));
    for (n = 0; n < rstats.ver_cnt; n++)
    {
       log_msg(LOG_INFO, "rendering pass %d (ver = %d)", n, rstats.ver[n]);
-      nd.ver = rstats.ver[n];
+      o.ver = rstats.ver[n];
 
       log_msg(LOG_INFO, " ways...");
-      traverse(rd->rules, 0, IDX_WAY, (tree_func_t) apply_rules, rd, &nd);
+      traverse(rd->rules, 0, IDX_WAY, (tree_func_t) apply_rules, rd, &o);
       log_msg(LOG_INFO, " nodes...");
-      traverse(rd->rules, 0, IDX_NODE, (tree_func_t) apply_rules, rd, &nd);
+      traverse(rd->rules, 0, IDX_NODE, (tree_func_t) apply_rules, rd, &o);
    }
 
    save_osm(rd, osm_ofile);
