@@ -31,6 +31,7 @@
 #include <sys/time.h>      // gettimeofday()
 #include <fcntl.h>         // stat()
 #include <syslog.h>
+#include <signal.h>
 
 #include "smrender.h"
 #include "libhpxml.h"
@@ -40,6 +41,27 @@
 
 
 static struct rdata rd_;
+static volatile sig_atomic_t int_ = 0;
+
+
+void int_handler(int sig)
+{
+   int_++;
+}
+
+
+void install_sigint(void)
+{
+   struct sigaction sa;
+
+   memset(&sa, 0, sizeof(sa));
+   sa.sa_handler = int_handler;
+
+   if (sigaction(SIGINT, &sa, NULL) == -1)
+      log_msg(LOG_WARNING, "SIGINT handler cannot be installed: %s", strerror(errno));
+   else
+      log_msg(LOG_INFO, "SIGINT installed (pid = %ld)", (long) getpid());
+}
 
 
 /*! Returns degrees and minutes of a fractional coordinate.
@@ -392,6 +414,17 @@ int strip_ways(osm_way_t *w, struct rdata *rd, void *p)
 int traverse(const bx_node_t *nt, int d, int idx, tree_func_t dhandler, struct rdata *rd, void *p)
 {
    int i, e, sidx, eidx;
+   static int sig_msg = 0;
+
+   if (int_)
+   {
+      if (!sig_msg)
+      {
+         sig_msg = 1;
+         log_msg(LOG_NOTICE, "SIGINT catched, breaking rendering recursion");
+      }
+      return 0;
+   }
 
    if (nt == NULL)
    {
@@ -883,7 +916,8 @@ int main(int argc, char *argv[])
       log_msg(LOG_NOTICE, "fontconfig library not available");
 
    if ((fd = open(cf, O_RDONLY)) == -1)
-         perror("open"), exit(EXIT_FAILURE);
+      log_msg(LOG_ERR, "cannot open file %s: %s", cf, strerror(errno)),
+         exit(EXIT_FAILURE);
 
    if (fstat(fd, &st) == -1)
       perror("stat"), exit(EXIT_FAILURE);
@@ -908,7 +942,8 @@ int main(int argc, char *argv[])
    traverse(rd->rules, 0, IDX_WAY, (tree_func_t) prepare_rules, rd, NULL);
 
    if ((osm_ifile != NULL) && ((fd = open(osm_ifile, O_RDONLY)) == -1))
-         perror("open"), exit(EXIT_FAILURE);
+      log_msg(LOG_ERR, "cannot open file %s: %s", osm_ifile, strerror(errno)),
+         exit(EXIT_FAILURE);
 
    if (fstat(fd, &st) == -1)
       perror("stat"), exit(EXIT_FAILURE);
@@ -967,8 +1002,10 @@ int main(int argc, char *argv[])
       grid2(rd);
    }
 
+   install_sigint();
+
    memset(&o, 0, sizeof(o));
-   for (n = 0; n < rstats.ver_cnt; n++)
+   for (n = 0; (n < rstats.ver_cnt) && !int_; n++)
    {
       log_msg(LOG_INFO, "rendering pass %d (ver = %d)", n, rstats.ver[n]);
       o.ver = rstats.ver[n];
@@ -978,6 +1015,7 @@ int main(int argc, char *argv[])
       log_msg(LOG_INFO, " nodes...");
       traverse(rd->rules, 0, IDX_NODE, (tree_func_t) apply_rules, rd, &o);
    }
+   int_ = 0;
 
    save_osm(rd, osm_ofile);
    (void) close(ctl->fd);

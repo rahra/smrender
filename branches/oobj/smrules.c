@@ -283,11 +283,10 @@ int act_wcaption(osm_way_t *w, struct rdata *rd, struct orule *rl)
 }
 
 
-int act_open_poly(osm_way_t *w, struct rdata *rd, struct orule *rl)
+int poly_mpcoords(osm_way_t *w, struct rdata *rd, gdPoint *p)
 {
    int i;
    osm_node_t *n;
-   gdPoint p[w->ref_cnt];
 
    for (i = 0; i < w->ref_cnt; i++)
    {
@@ -296,37 +295,78 @@ int act_open_poly(osm_way_t *w, struct rdata *rd, struct orule *rl)
 
       mk_paper_coords(n->lat, n->lon, rd, &p[i].x, &p[i].y);
    }
+   return 0;
+}
 
-   gdImageOpenPolygon(rd->img, p, w->ref_cnt, rd->col[BLACK]);
+
+int act_open_poly(osm_way_t *w, struct rdata *rd, struct orule *rl)
+{
+   int e, t;
+   gdPoint p[w->ref_cnt];
+
+   if ((e = poly_mpcoords(w, rd, p)))
+      return e;
+
+   // save thickness
+   e = rd->img->thick;
+
+   if (rl->rule.draw.border.used && (rl->rule.draw.border.style != DRAW_TRANSPARENT))
+   {
+
+      if (!(t = MM2PX(rl->rule.draw.border.width + rl->rule.draw.fill.width * (rl->rule.draw.fill.used != 0))))
+         t = 1;
+
+      gdImageSetThickness(rd->img, t);
+      gdImageSetAntiAliased(rd->img, rl->rule.draw.border.col);
+      gdImageOpenPolygon(rd->img, p, w->ref_cnt, gdAntiAliased);
+   }
+
+   if (rl->rule.draw.fill.used && (rl->rule.draw.fill.style != DRAW_TRANSPARENT))
+   {
+      if (!(t = MM2PX(rl->rule.draw.fill.width - rl->rule.draw.border.width * (rl->rule.draw.border.used != 0))))
+         t = 1;
+
+      gdImageSetThickness(rd->img, t);
+      gdImageSetAntiAliased(rd->img, rl->rule.draw.fill.col);
+      gdImageOpenPolygon(rd->img, p, w->ref_cnt, gdAntiAliased);
+   }
+
+   // restore thickness
+   gdImageSetThickness(rd->img, e);
+
    return 0;
 }
 
 
 int act_fill_poly(osm_way_t *w, struct rdata *rd, struct orule *rl)
 {
-   int i;
-   osm_node_t *n;
+   int e, t;
    gdPoint p[w->ref_cnt];
 
-   for (i = 0; i < w->ref_cnt; i++)
-   {
-      if ((n = get_object(OSM_NODE, w->ref[i])) == NULL)
-         return E_REF_ERR;
+   if ((e = poly_mpcoords(w, rd, p)))
+      return e;
 
-      mk_paper_coords(n->lat, n->lon, rd, &p[i].x, &p[i].y);
+   // save thickness
+   e = rd->img->thick;
+
+   if (rl->rule.draw.fill.used && (rl->rule.draw.fill.style != DRAW_TRANSPARENT))
+   {
+      gdImageSetAntiAliased(rd->img, rl->rule.draw.fill.col);
+      gdImageFilledPolygon(rd->img, p, w->ref_cnt, gdAntiAliased);
    }
 
-   if (rl->rule.draw.fill.used)
+   if (rl->rule.draw.border.used && (rl->rule.draw.border.style != DRAW_TRANSPARENT))
    {
-      if (rl->rule.draw.fill.style != DRAW_TRANSPARENT)
-         gdImageFilledPolygon(rd->img, p, w->ref_cnt, rl->rule.draw.fill.col);
+      if (!(t = MM2PX(rl->rule.draw.border.width)))
+         t = 1;
+
+      gdImageSetThickness(rd->img, t);
+      gdImageSetAntiAliased(rd->img, rl->rule.draw.border.col);
+      gdImagePolygon(rd->img, p, w->ref_cnt, gdAntiAliased);
    }
 
-   if (rl->rule.draw.border.used)
-   {
-      if (rl->rule.draw.border.style != DRAW_TRANSPARENT)
-         gdImagePolygon(rd->img, p, w->ref_cnt, rl->rule.draw.border.col);
-   }
+   // restore thickness
+   gdImageSetThickness(rd->img, e);
 
    return 0;
 }

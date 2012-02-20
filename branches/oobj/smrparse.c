@@ -174,10 +174,26 @@ short ppos(const char *s)
 
 int parse_color(const struct rdata *rd, const char *s)
 {
+   long c;
+
    if (*s == '#')
    {
-      log_msg(LOG_WARN, "HTML color style (%s) not supported yet, defaulting to black", s);
-      return rd->col[BLACK];
+      s++;
+      if (strlen(s) != 6)
+      {
+         log_msg(LOG_WARN, "format error in HTML color '#%s'", s);
+         return rd->col[BLACK];
+      }
+
+      errno = 0;
+      c = strtol(s, NULL, 16);
+      if (errno)
+      {
+         log_msg(LOG_WARN, "cannot convert HTML color '#%s': %s", s, strerror(errno));
+         return rd->col[BLACK];
+      }
+
+      return gdImageColorResolve(rd->img, (c >> 16) & 0xff, (c >> 8) & 0xff, c & 0xff);
    }
    if (!strcmp(s, "white"))
       return rd->col[WHITE];
