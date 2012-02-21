@@ -67,7 +67,7 @@ typedef struct osm_node
 typedef struct osm_way
 {
    osm_obj_t obj;
-   short ref_cnt;
+   int ref_cnt;
    int64_t *ref;
 } osm_way_t;
 
@@ -114,7 +114,7 @@ int proc_osm_node(const hpx_tag_t*, osm_obj_t*);
 int get_value(const char *k, hpx_tag_t *tag, bstring_t *b);
 void free_obj(osm_obj_t*);
 osm_node_t *malloc_node(short );
-osm_way_t *malloc_way(short , short );
+osm_way_t *malloc_way(short , int );
 
 #endif
 

@@ -130,7 +130,7 @@ void free_obj(osm_obj_t *o)
 }
 
 
-void *malloc_mem(size_t ele, short cnt)
+void *malloc_mem(size_t ele, int cnt)
 {
    void *mem;
 
@@ -155,7 +155,7 @@ osm_node_t *malloc_node(short tag_cnt)
 }
 
 
-osm_way_t *malloc_way(short tag_cnt, short ref_cnt)
+osm_way_t *malloc_way(short tag_cnt, int ref_cnt)
 {
    osm_way_t *w;
 
