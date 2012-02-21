@@ -315,7 +315,6 @@ void set_const_tag(struct otag*, char*, char*);
 /* smloadosm.c */
 void osm_read_exit(void);
 int read_osm_file(hpx_ctrl_t*, bx_node_t**, struct filter*);
-size_t onode_mem(void);
 void install_sigusr1(void);
 
 /* smcoast.c */

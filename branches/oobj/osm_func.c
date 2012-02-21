@@ -30,6 +30,16 @@
 #define BS_ADV(x, y) x.buf += y;\
                      x.len -= y
 
+
+static size_t mem_usage_ = 0;
+
+
+size_t onode_mem(void)
+{
+   return mem_usage_;
+}
+
+
 time_t parse_time(bstring_t b)
 {
    //2006-09-29T15:02:52Z
@@ -137,6 +147,7 @@ void *malloc_mem(size_t ele, int cnt)
    if ((mem = malloc(ele * cnt)) == NULL)
       log_msg(LOG_ERR, "could not malloc_mem(): %s", strerror(errno)),
       exit(EXIT_FAILURE);
+   mem_usage_ += ele *cnt;
    return mem;
 }
 
@@ -151,6 +162,7 @@ osm_node_t *malloc_node(short tag_cnt)
    n->obj.type = OSM_NODE;
    n->obj.otag = malloc_mem(sizeof(struct otag), tag_cnt);
    n->obj.tag_cnt = tag_cnt;
+   mem_usage_ += sizeof(osm_node_t);
    return n;
 }
 
@@ -167,6 +179,7 @@ osm_way_t *malloc_way(short tag_cnt, int ref_cnt)
    w->obj.tag_cnt = tag_cnt;
    w->ref = malloc_mem(sizeof(int64_t), ref_cnt);
    w->ref_cnt = ref_cnt;
+   mem_usage_ += sizeof(osm_way_t);
    return w;
 }
 

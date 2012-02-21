@@ -43,14 +43,7 @@
 
 
 static size_t oline_ = 0;
-static size_t mem_usage_ = 0;
 static volatile sig_atomic_t usr1_ = 0;
-
-
-size_t onode_mem(void)
-{
-   return mem_usage_;
-}
 
 
 void osm_read_exit(void)
