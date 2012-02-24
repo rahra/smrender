@@ -669,10 +669,30 @@ struct rdata *init_rdata(void)
  */
 void init_rd_paper(struct rdata *rd, const char *paper, int landscape)
 {
+   char buf[strlen(paper) + 1], *s;
    double a4_w, a4_h;
 
    a4_w = MM2PX(210);
    a4_h = MM2PX(296.9848);
+
+   if (strchr(paper, 'x'))
+   {
+      strcpy(buf, paper);
+      if ((s = strtok(buf, "x")) == NULL)
+         log_msg(LOG_ERR, "strtok returned NULL"),
+            exit(EXIT_FAILURE);
+      rd->w = MM2PX(atof(s));
+      if ((s = strtok(NULL, "x")) == NULL)
+         log_msg(LOG_ERR, "format error in page size: '%s'", paper),
+            exit(EXIT_FAILURE);
+      rd->h = MM2PX(atof(s));
+      
+      if ((rd->w <= 0) || (rd->h <= 0))
+         log_msg(LOG_ERR, "page width and height must be a decimal value greater than 0"),
+            exit(EXIT_FAILURE);
+
+      return;
+   }
 
    if (!strcasecmp(paper, "A4"))
    {
