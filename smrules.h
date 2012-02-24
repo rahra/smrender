@@ -2,11 +2,11 @@
 #define SMRULES_H
 
 
-int act_image(struct onode*, struct rdata*, struct orule*);
-int act_caption(struct onode*, struct rdata*, struct orule*);
-int act_wcaption(struct onode*, struct rdata*, struct orule*);
-int act_open_poly(struct onode*, struct rdata*, struct orule*);
-int act_fill_poly(struct onode*, struct rdata*, struct orule*);
+int act_image(osm_node_t*, struct rdata*, struct orule*);
+int act_caption(osm_node_t*, struct rdata*, struct orule*);
+int act_wcaption(osm_way_t*, struct rdata*, struct orule*);
+int act_open_poly(osm_way_t*, struct rdata*, struct orule*);
+int act_fill_poly(osm_way_t*, struct rdata*, struct orule*);
 
 #endif
 

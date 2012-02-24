@@ -19,9 +19,9 @@ enum { SEAMARK_LIGHT_CHARACTER, SEAMARK_LIGHT_OBJECT, SEAMARK_LIGHT_RADIAL,
 
 
 static char *smstrdup(const char *);
-static int get_sectors(const struct onode *, struct sector *sec, int nmax);
+static int get_sectors(const osm_obj_t*, struct sector *sec, int nmax);
 static void node_calc(const struct osm_node *nd, double r, double a, double *lat, double *lon);
-static int sector_calc3(const struct onode *, const struct sector *, bstring_t);
+static int sector_calc3(const osm_node_t*, const struct sector *, bstring_t);
 static void init_sector(struct sector *sec);
 static int proc_sfrac(struct sector *sec);
 static const char *color(int);
@@ -101,51 +101,47 @@ void __attribute__ ((destructor)) fini_libsmfilter(void)
  * combined tag of several light attributes.
  * The function is intended to be called by a rule action.
  */
-int pchar(struct onode *nd)
+int pchar(osm_obj_t *o)
 {
    char lchar[8] = "", group[8] = "", period[8] = "", range[8] = "", col[8] = "", buf[256];
    int n;
-   struct onode *node;
+   osm_node_t *node;
+   //struct onode *node;
+   struct otag *ot;
 
-   if ((n = match_attr(nd, "seamark:light:group", NULL)) != -1)
-      snprintf(group, sizeof(group), "(%.*s)", nd->otag[n].v.len, nd->otag[n].v.buf);
-   if ((n = match_attr(nd, "seamark:light:period", NULL)) != -1)
-      snprintf(period, sizeof(period), " %.*ss", nd->otag[n].v.len, nd->otag[n].v.buf);
-   if ((n = match_attr(nd, "seamark:light:range", NULL)) != -1)
-      snprintf(range, sizeof(range), " %.*sM", nd->otag[n].v.len, nd->otag[n].v.buf);
-   if ((n = match_attr(nd, "seamark:light:character", NULL)) != -1)
-      snprintf(lchar, sizeof(lchar), "%.*s%s", nd->otag[n].v.len, nd->otag[n].v.buf, group[0] == '\0' ? "." : "");
-   if ((n = match_attr(nd, "seamark:light:colour", NULL)) != -1)
+   if ((n = match_attr(o, "seamark:light:group", NULL)) != -1)
+      snprintf(group, sizeof(group), "(%.*s)", o->otag[n].v.len, o->otag[n].v.buf);
+   if ((n = match_attr(o, "seamark:light:period", NULL)) != -1)
+      snprintf(period, sizeof(period), " %.*ss", o->otag[n].v.len, o->otag[n].v.buf);
+   if ((n = match_attr(o, "seamark:light:range", NULL)) != -1)
+      snprintf(range, sizeof(range), " %.*sM", o->otag[n].v.len, o->otag[n].v.buf);
+   if ((n = match_attr(o, "seamark:light:character", NULL)) != -1)
+      snprintf(lchar, sizeof(lchar), "%.*s%s", o->otag[n].v.len, o->otag[n].v.buf, group[0] == '\0' ? "." : "");
+   if ((n = match_attr(o, "seamark:light:colour", NULL)) != -1)
    {
-      if ((n = parse_color(nd->otag[n].v)) != -1)
+      if ((n = parse_color(o->otag[n].v)) != -1)
          snprintf(col, sizeof(col), "%s.",  col_abbr_[n]);
    }
 
    if (!snprintf(buf, sizeof(buf), "%s%s%s%s%s", lchar, group, col, period, range))
       return 0;
     
-   if ((node = realloc(nd, sizeof(struct onode) + sizeof(struct otag) * (nd->tag_cnt + 1) + sizeof(int64_t) * nd->ref_cnt)) == NULL)
+   if ((ot = realloc(o->otag, sizeof(struct otag) * (o->tag_cnt + 1))) == NULL)
    {
       log_msg(LOG_ERR, "could not realloc new node: %s", strerror(errno));
       return -1;
    }
 
-   // check of realloc changed address
-   if (node != nd)
-   {
-      nd = node;
-      // if realloc changed address re-put it into tree of nodes
-      (void) put_object(nd);
-   }
+   o->otag = ot;
 
    // clear additional otag structure
-   memset(&nd->otag[nd->tag_cnt], 0, sizeof(struct otag));
+   memset(&o->otag[o->tag_cnt], 0, sizeof(struct otag));
    // add key and value to new tag structure
-   nd->otag[nd->tag_cnt].v.buf = smstrdup(buf);
-   nd->otag[nd->tag_cnt].v.len = strlen(buf);
-   nd->otag[nd->tag_cnt].k.buf = tag_heap_[SEAMARK_LIGHT_CHARACTER];
-   nd->otag[nd->tag_cnt].k.len = strlen(tag_heap_[SEAMARK_LIGHT_CHARACTER]);
-   nd->tag_cnt++;
+   o->otag[o->tag_cnt].v.buf = smstrdup(buf);
+   o->otag[o->tag_cnt].v.len = strlen(buf);
+   o->otag[o->tag_cnt].k.buf = tag_heap_[SEAMARK_LIGHT_CHARACTER];
+   o->otag[o->tag_cnt].k.len = strlen(tag_heap_[SEAMARK_LIGHT_CHARACTER]);
+   o->tag_cnt++;
 
    return 0;
 }
@@ -156,17 +152,17 @@ int pchar(struct onode *nd)
  * library for smrender. The code was changed as less as possible.
  * The function is intended to be called by a rule action.
  */
-int vsector(struct onode *ond)
+int vsector(osm_obj_t *o)
 {
    int i, j, n, k;
    struct sector sec[MAX_SEC];
-   struct osm_node *nd = &ond->nd;
+   //struct osm_node *nd = &ond->nd;
    bstring_t b = {0, ""};
 
    for (i = 0; i < MAX_SEC; i++)
       init_sector(&sec[i]);
 
-   if (!(i = get_sectors(ond, sec, MAX_SEC)))
+   if (!(i = get_sectors(o, sec, MAX_SEC)))
       return 0;
 
    for (i = 0, n = 0; i < MAX_SEC; i++)
@@ -180,7 +176,7 @@ int vsector(struct onode *ond)
          // been accidently imported with the LoL import.
          if (i && (sec[i].start == sec[i].end) && (sec[i].start == sec[0].dir))
          {
-            log_msg(LOG_INFO, "deprecated feature: %d:sector_start == %d:sector_end == orientation (node %ld)", sec[i].nr, sec[i].nr, nd->id);
+            log_msg(LOG_INFO, "deprecated feature: %d:sector_start == %d:sector_end == orientation (node %ld)", sec[i].nr, sec[i].nr, o->id);
             sec[i].used = 0;
             continue;
          }
@@ -188,7 +184,7 @@ int vsector(struct onode *ond)
          if ((!isnan(sec[i].dir) && (sec[i].cat != CAT_DIR)) ||
               (isnan(sec[i].dir) && (sec[i].cat == CAT_DIR)))
          {
-            log_msg(LOG_WARNING, "sector %d has incomplete definition of directional light (node %ld)", sec[i].nr, nd->id);
+            log_msg(LOG_WARNING, "sector %d has incomplete definition of directional light (node %ld)", sec[i].nr, o->id);
             sec[i].dir = NAN;
             sec[i].cat = 0;
             sec[i].used = 0;
@@ -207,14 +203,14 @@ int vsector(struct onode *ond)
             }
             else
             {
-               log_msg(LOG_WARNING, "sector %d of node %ld seems to lack start/end angle", sec[i].nr, nd->id);
+               log_msg(LOG_WARNING, "sector %d of node %ld seems to lack start/end angle", sec[i].nr, o->id);
                sec[i].used = 0;
                continue;
             }
          }
          else if (isnan(sec[i].start) || isnan(sec[i].end))
          {
-            log_msg(LOG_WARNING, "sector %d of node %ld has either no start or no end angle!", sec[i].nr, nd->id);
+            log_msg(LOG_WARNING, "sector %d of node %ld has either no start or no end angle!", sec[i].nr, o->id);
             sec[i].used = 0;
             continue;
          }
@@ -256,12 +252,12 @@ int vsector(struct onode *ond)
       {
          if (proc_sfrac(&sec[i]) == -1)
          {
-            log_msg(LOG_WARNING, "negative angle definition is just allowed in last segment! (sector %d node %ld)", sec[i].nr, nd->id);
+            log_msg(LOG_WARNING, "negative angle definition is just allowed in last segment! (sector %d node %ld)", sec[i].nr, o->id);
             continue;
          }
          //printf("   <!-- [%d]: start = %.2f, end = %.2f, col = %d, r = %.2f, nr = %d -->\n",
          //   i, sec[i].start, sec[i].end, sec[i].col, sec[i].r, sec[i].nr);
-         if (sector_calc3(ond, &sec[i], b))
+         if (sector_calc3((osm_node_t*) o, &sec[i], b))
             log_msg(LOG_ERR, "sector_calc3 failed: %s", strerror(errno));
 
          if (sec[i].col[1] != -1)
@@ -272,7 +268,7 @@ int vsector(struct onode *ond)
                for (k = 0; k < sec[i].fused; k++)
                   sec[i].sf[k].r -= altr_[j];
                sec[i].al++;
-               if (sector_calc3(ond, &sec[i], b))
+               if (sector_calc3((osm_node_t*) o, &sec[i], b))
                   log_msg(LOG_ERR, "sector_calc3 failed: %s", strerror(errno));
             }
          }
@@ -411,19 +407,19 @@ static int find_sep(bstring_t *c)
  *  @return Number of elements touched in sec array.
  */
 //int get_sectors(const hpx_tree_t *t, struct sector *sec, int nmax)
-static int get_sectors(const struct onode *nd, struct sector *sec, int nmax)
+static int get_sectors(const osm_obj_t *o, struct sector *sec, int nmax)
 {
    int i, j, l;      //!< loop variables
    int n = 0;        //!< sector counter
    int k;            //!< sector number
    bstring_t b, c;   //!< temporary bstrings
 
-   for (i = 0; i < nd->tag_cnt; i++)
+   for (i = 0; i < o->tag_cnt; i++)
    {
             k = 0;
-            if (!bs_cmp(nd->otag[i].k, "seamark:light:orientation"))
+            if (!bs_cmp(o->otag[i].k, "seamark:light:orientation"))
             {
-                  (sec + k)->dir = bs_tod(nd->otag[i].v);
+                  (sec + k)->dir = bs_tod(o->otag[i].v);
                   if (!(sec + k)->used)
                   {
                      n++;
@@ -431,9 +427,9 @@ static int get_sectors(const struct onode *nd, struct sector *sec, int nmax)
                      (sec + k)->nr = k;
                   }
             }
-            else if (!bs_cmp(nd->otag[i].k, "seamark:light:category"))
+            else if (!bs_cmp(o->otag[i].k, "seamark:light:category"))
             {
-                  if (!bs_cmp(nd->otag[i].v, "directional"))
+                  if (!bs_cmp(o->otag[i].v, "directional"))
                   {
                      (sec + k)->cat = CAT_DIR;
                      if (!(sec + k)->used)
@@ -444,12 +440,12 @@ static int get_sectors(const struct onode *nd, struct sector *sec, int nmax)
                      }
                   }
             }
-            else if (!bs_cmp(nd->otag[i].k, "seamark:light:colour"))
+            else if (!bs_cmp(o->otag[i].k, "seamark:light:colour"))
             {
                k = 0;
                   for (l = 0; col_[l]; l++)
                   {
-                     if (!bs_cmp(nd->otag[i].v, col_[l]))
+                     if (!bs_cmp(o->otag[i].v, col_[l]))
                      {
                         (sec + k)->col[0] = l;
                         break;
@@ -463,30 +459,30 @@ static int get_sectors(const struct onode *nd, struct sector *sec, int nmax)
                      continue;
                   }
             }
-            else if (!bs_cmp(nd->otag[i].k, "seamark:light:character"))
+            else if (!bs_cmp(o->otag[i].k, "seamark:light:character"))
             {
 
-               (sec + k)->lc.lc = nd->otag[i].v;
+               (sec + k)->lc.lc = o->otag[i].v;
                continue;
             }
-            else if (!bs_cmp(nd->otag[i].k, "seamark:light:period"))
+            else if (!bs_cmp(o->otag[i].k, "seamark:light:period"))
             {
-                  (sec + k)->lc.period = bs_tol(nd->otag[i].v);
+                  (sec + k)->lc.period = bs_tol(o->otag[i].v);
                continue;
             }
-            else if (!bs_cmp(nd->otag[i].k, "seamark:light:range"))
+            else if (!bs_cmp(o->otag[i].k, "seamark:light:range"))
             {
-                  (sec + k)->lc.range = bs_tol(nd->otag[i].v);
+                  (sec + k)->lc.range = bs_tol(o->otag[i].v);
                continue;
             }
-            else if (!bs_cmp(nd->otag[i].k, "seamark:light:group"))
+            else if (!bs_cmp(o->otag[i].k, "seamark:light:group"))
             {
-                  (sec + k)->lc.group = bs_tol(nd->otag[i].v);
+                  (sec + k)->lc.group = bs_tol(o->otag[i].v);
                continue;
             }
-            else if ((nd->otag[i].k.len > 14) && !strncmp(nd->otag[i].k.buf, "seamark:light:", 14))
+            else if ((o->otag[i].k.len > 14) && !strncmp(o->otag[i].k.buf, "seamark:light:", 14))
             {
-               b = nd->otag[i].k;
+               b = o->otag[i].k;
                b.len -= 14;
                b.buf += 14;
 
@@ -513,15 +509,15 @@ static int get_sectors(const struct onode *nd, struct sector *sec, int nmax)
 
                if (!bs_cmp(b, "sector_start"))
                {
-                  (sec + k)->start = bs_tod(nd->otag[i].v);
+                  (sec + k)->start = bs_tod(o->otag[i].v);
                }
                else if (!bs_cmp(b, "sector_end"))
                {
-                  (sec + k)->end = bs_tod(nd->otag[i].v);
+                  (sec + k)->end = bs_tod(o->otag[i].v);
                }
                else if (!bs_cmp(b, "colour"))
                {
-                  c = nd->otag[i].v;
+                  c = o->otag[i].v;
                   for (l = 0; col_[l]; l++)
                   {
                      if (!bs_ncmp(c, col_[l], strlen(col_[l])))
@@ -561,7 +557,7 @@ static int get_sectors(const struct onode *nd, struct sector *sec, int nmax)
                }
                else if (!bs_cmp(b, "radius"))
                {
-                  c = nd->otag[i].v;
+                  c = o->otag[i].v;
 
                   if (!c.len)
                      continue;
@@ -628,11 +624,11 @@ static int get_sectors(const struct onode *nd, struct sector *sec, int nmax)
                }
                else if (!bs_cmp(b, "orientation"))
                {
-                  (sec + k)->dir = bs_tod(nd->otag[i].v);
+                  (sec + k)->dir = bs_tod(o->otag[i].v);
                }
                else if (!bs_cmp(b, "category"))
                {
-                  if (bs_cmp(nd->otag[i].v, "directional"))
+                  if (bs_cmp(o->otag[i].v, "directional"))
                      continue;
                   (sec + k)->cat = CAT_DIR;
                }
@@ -655,29 +651,31 @@ static int get_sectors(const struct onode *nd, struct sector *sec, int nmax)
 }
 
 
-static void node_calc(const struct osm_node *nd, double r, double a, double *lat, double *lon)
+static void node_calc(const osm_node_t *n, double r, double a, double *lat, double *lon)
 {
    *lat = r * sin(a);
-   *lon = r * cos(a) / cos(DEG2RAD(nd->lat));
+   *lon = r * cos(a) / cos(DEG2RAD(n->lat));
 }
 
 
-static int sector_calc3(const struct onode *nd, const struct sector *sec, bstring_t st)
+static int sector_calc3(const osm_node_t *n, const struct sector *sec, bstring_t st)
 {
    double lat[3], lon[3], d, s, e, w, la, lo;
    int64_t id[5], sn;
-   int i, j, k, n;
+   int i, j, k;
    char buf[256];
-   struct onode *node;
+   //struct onode *node;
+   osm_node_t *node;
+   osm_way_t *wy;
    bstring_t obj;
 
    // get tag seamark:type of object
-   if ((n = match_attr(nd, "seamark:type", NULL)) == -1)
+   if ((i = match_attr((osm_obj_t*) n, "seamark:type", NULL)) == -1)
    {
-      log_msg(LOG_WARNING, "sector_calc3 was called with object (%ld) w/o tag 'seamark:type'", nd->nd.id);
+      log_msg(LOG_WARNING, "sector_calc3 was called with object (%ld) w/o tag 'seamark:type'", n->obj.id);
       return -1;
    }
-   obj = nd->otag[n].v;
+   obj = n->obj.otag[i].v;
  
    for (i = 0; i < sec->fused; i++)
    {
@@ -685,87 +683,82 @@ static int sector_calc3(const struct onode *nd, const struct sector *sec, bstrin
       e = M_PI - DEG2RAD(sec->sf[i].end) + M_PI_2;
 
       // node and radial way of sector_start
-      node_calc(&nd->nd, sec->sf[i].r / 60.0, s, &lat[0], &lon[0]);
-      if ((node = malloc_object(0, 0)) == NULL) return -1;
-      id[0] = node->nd.id = unique_node_id();
-      node->nd.type = OSM_NODE;
-      node->nd.lat = lat[0] + nd->nd.lat;
-      node->nd.lon = lon[0] + nd->nd.lon;
-      node->nd.tim = nd->nd.tim;
-      node->nd.ver = 1;
-      put_object(node);
+      node_calc(n, sec->sf[i].r / 60.0, s, &lat[0], &lon[0]);
+      node = malloc_node(0);
+      id[0] = node->obj.id = unique_node_id();
+      node->lat = lat[0] + n->lat;
+      node->lon = lon[0] + n->lon;
+      node->obj.tim = n->obj.tim;
+      node->obj.ver = 1;
+      put_object((osm_obj_t*) node);
 
       if (sec->sf[i].startr)
       {
-         if ((node = malloc_object(2, 2)) == NULL) return -1;
-         node->nd.id = unique_way_id();
-         node->nd.type = OSM_WAY;
-         node->nd.tim = nd->nd.tim;
-         node->nd.ver = 1;
-         node->ref[0] = nd->nd.id;
-         node->ref[1] = id[0];
-         node->otag[0].k.buf = tag_heap_[SEAMARK_LIGHT_RADIAL];
-         node->otag[0].k.len = strlen(tag_heap_[SEAMARK_LIGHT_RADIAL]);
+         wy = malloc_way(2, 2);
+         wy->obj.id = unique_way_id();
+         wy->obj.tim = n->obj.tim;
+         wy->obj.ver = 1;
+         wy->ref[0] = n->obj.id;
+         wy->ref[1] = id[0];
+         wy->obj.otag[0].k.buf = tag_heap_[SEAMARK_LIGHT_RADIAL];
+         wy->obj.otag[0].k.len = strlen(tag_heap_[SEAMARK_LIGHT_RADIAL]);
          snprintf(buf, sizeof(buf), "%d", sec->nr);
-         node->otag[0].v.buf = smstrdup(buf);
-         node->otag[0].v.len = strlen(buf);
-         node->otag[1].k.buf = tag_heap_[SEAMARK_LIGHT_OBJECT];
-         node->otag[1].k.len = strlen(tag_heap_[SEAMARK_LIGHT_OBJECT]);
-         node->otag[1].v = obj;
-         put_object(node);
+         wy->obj.otag[0].v.buf = smstrdup(buf);
+         wy->obj.otag[0].v.len = strlen(buf);
+         wy->obj.otag[1].k.buf = tag_heap_[SEAMARK_LIGHT_OBJECT];
+         wy->obj.otag[1].k.len = strlen(tag_heap_[SEAMARK_LIGHT_OBJECT]);
+         wy->obj.otag[1].v = obj;
+         put_object((osm_obj_t*) wy);
       }
 
       // if radii of two segments differ and they are not suppressed then draw a radial line
       // (id[1] still contains end node of previous segment)
       if (i && (sec->sf[i].r != sec->sf[i - 1].r) && (sec->sf[i].type != ARC_SUPPRESS) && (sec->sf[i - 1].type != ARC_SUPPRESS))
       {
-         if ((node = malloc_object(2, 2)) == NULL) return -1;
-         node->nd.id = unique_way_id();
-         node->nd.type = OSM_WAY;
-         node->nd.tim = nd->nd.tim;
-         node->nd.ver = 1;
-         node->ref[0] = id[1];
-         node->ref[1] = id[0];
-         node->otag[0].k.buf = tag_heap_[SEAMARK_LIGHT_RADIAL];
-         node->otag[0].k.len = strlen(tag_heap_[SEAMARK_LIGHT_RADIAL]);
+         wy = malloc_way(2, 2);
+         wy->obj.id = unique_way_id();
+         wy->obj.tim = n->obj.tim;
+         wy->obj.ver = 1;
+         wy->ref[0] = id[1];
+         wy->ref[1] = id[0];
+         wy->obj.otag[0].k.buf = tag_heap_[SEAMARK_LIGHT_RADIAL];
+         wy->obj.otag[0].k.len = strlen(tag_heap_[SEAMARK_LIGHT_RADIAL]);
          snprintf(buf, sizeof(buf), "%d", sec->nr);
-         node->otag[0].v.buf = smstrdup(buf);
-         node->otag[0].v.len = strlen(buf);
-         node->otag[1].k.buf = tag_heap_[SEAMARK_LIGHT_OBJECT];
-         node->otag[1].k.len = strlen(tag_heap_[SEAMARK_LIGHT_OBJECT]);
-         node->otag[1].v = obj;
-         put_object(node);
+         wy->obj.otag[0].v.buf = smstrdup(buf);
+         wy->obj.otag[0].v.len = strlen(buf);
+         wy->obj.otag[1].k.buf = tag_heap_[SEAMARK_LIGHT_OBJECT];
+         wy->obj.otag[1].k.len = strlen(tag_heap_[SEAMARK_LIGHT_OBJECT]);
+         wy->obj.otag[1].v = obj;
+         put_object((osm_obj_t*) wy);
       }
            
       // node and radial way of sector_end
-      node_calc(&nd->nd, sec->sf[i].r / 60.0, e, &lat[1], &lon[1]);
-      if ((node = malloc_object(0, 0)) == NULL) return -1;
-      id[1] = node->nd.id = unique_node_id();
-      node->nd.type = OSM_NODE;
-      node->nd.lat = lat[1] + nd->nd.lat;
-      node->nd.lon = lon[1] + nd->nd.lon;
-      node->nd.tim = nd->nd.tim;
-      node->nd.ver = 1;
-      put_object(node);
+      node_calc(n, sec->sf[i].r / 60.0, e, &lat[1], &lon[1]);
+      node = malloc_node(0);
+      id[1] = node->obj.id = unique_node_id();
+      node->lat = lat[1] + n->lat;
+      node->lon = lon[1] + n->lon;
+      node->obj.tim = n->obj.tim;
+      node->obj.ver = 1;
+      put_object((osm_obj_t*) node);
 
       if (sec->sf[i].endr)
       {
-         if ((node = malloc_object(2, 2)) == NULL) return -1;
-         node->nd.id = unique_way_id();
-         node->nd.type = OSM_WAY;
-         node->nd.tim = nd->nd.tim;
-         node->nd.ver = 1;
-         node->ref[0] = nd->nd.id;
-         node->ref[1] = id[1];
-         node->otag[0].k.buf = tag_heap_[SEAMARK_LIGHT_RADIAL];
-         node->otag[0].k.len = strlen(tag_heap_[SEAMARK_LIGHT_RADIAL]);
+         wy = malloc_way(2, 2);
+         wy->obj.id = unique_way_id();
+         wy->obj.tim = n->obj.tim;
+         wy->obj.ver = 1;
+         wy->ref[0] = n->obj.id;
+         wy->ref[1] = id[1];
+         wy->obj.otag[0].k.buf = tag_heap_[SEAMARK_LIGHT_RADIAL];
+         wy->obj.otag[0].k.len = strlen(tag_heap_[SEAMARK_LIGHT_RADIAL]);
          snprintf(buf, sizeof(buf), "%d", sec->nr);
-         node->otag[0].v.buf = smstrdup(buf);
-         node->otag[0].v.len = strlen(buf);
-         node->otag[1].k.buf = tag_heap_[SEAMARK_LIGHT_OBJECT];
-         node->otag[1].k.len = strlen(tag_heap_[SEAMARK_LIGHT_OBJECT]);
-         node->otag[1].v = obj;
-         put_object(node);
+         wy->obj.otag[0].v.buf = smstrdup(buf);
+         wy->obj.otag[0].v.len = strlen(buf);
+         wy->obj.otag[1].k.buf = tag_heap_[SEAMARK_LIGHT_OBJECT];
+         wy->obj.otag[1].k.len = strlen(tag_heap_[SEAMARK_LIGHT_OBJECT]);
+         wy->obj.otag[1].v = obj;
+         put_object((osm_obj_t*) wy);
       }
 
       // do not generate arc if radius is explicitly set to 0 or type of arc is
@@ -787,60 +780,58 @@ static int sector_calc3(const struct onode *nd, const struct sector *sec, bstrin
       // make nodes of arc
       for (w = s - d, sn = 0, j = 0; w > e; w -= d, j++)
       {
-         node_calc(&nd->nd, sec->sf[i].r / 60.0, w, &la, &lo);
-         if ((node = malloc_object(0, 0)) == NULL) return -1;
-         node->nd.id = unique_node_id();
-         if (!sn) sn = node->nd.id;
-         node->nd.type = OSM_NODE;
-         node->nd.lat = la + nd->nd.lat;
-         node->nd.lon = lo + nd->nd.lon;
-         node->nd.tim = nd->nd.tim;
-         node->nd.ver = 1;
-         put_object(node);
+         node_calc(n, sec->sf[i].r / 60.0, w, &la, &lo);
+         node = malloc_node(0);
+         node->obj.id = unique_node_id();
+         if (!sn) sn = node->obj.id;
+         node->lat = la + n->lat;
+         node->lon = lo + n->lon;
+         node->obj.tim = n->obj.tim;
+         node->obj.ver = 1;
+         put_object((osm_obj_t*) node);
       }
 
       // connect nodes of arc to a way
-      if ((node = malloc_object(4, j + 2)) == NULL) return -1;
+      wy = malloc_way(4, j + 2);
       id[3] = unique_way_id();
-      node->nd.id = id[3];
-      node->nd.type = OSM_WAY;
-      node->nd.tim = nd->nd.tim;
-      node->nd.ver = 1;
-      node->otag[0].k.buf = tag_heap_[SEAMARK_LIGHT_SECTOR_NR];
-      node->otag[0].k.len = strlen(tag_heap_[SEAMARK_LIGHT_SECTOR_NR]);
+      wy->obj.id = id[3];
+      wy->obj.tim = n->obj.tim;
+      wy->obj.ver = 1;
+      wy->obj.otag[0].k.buf = tag_heap_[SEAMARK_LIGHT_SECTOR_NR];
+      wy->obj.otag[0].k.len = strlen(tag_heap_[SEAMARK_LIGHT_SECTOR_NR]);
       snprintf(buf, sizeof(buf), "%d", sec->nr);
-      node->otag[0].v.buf = smstrdup(buf);
-      node->otag[0].v.len = strlen(buf);
-      node->otag[1].k.buf = tag_heap_[SEAMARK_LIGHT_OBJECT];
-      node->otag[1].k.len = strlen(tag_heap_[SEAMARK_LIGHT_OBJECT]);
-      node->otag[1].v = obj;
+      wy->obj.otag[0].v.buf = smstrdup(buf);
+      wy->obj.otag[0].v.len = strlen(buf);
+      wy->obj.otag[1].k.buf = tag_heap_[SEAMARK_LIGHT_OBJECT];
+      wy->obj.otag[1].k.len = strlen(tag_heap_[SEAMARK_LIGHT_OBJECT]);
+      wy->obj.otag[1].v = obj;
 
-      node->otag[2].k.buf = tag_heap_[SEAMARK_ARC_STYLE];
-      node->otag[2].k.len = strlen(tag_heap_[SEAMARK_ARC_STYLE]);
-      node->otag[2].v.buf = atype_heap_[sec->sf[i].type];
-      node->otag[2].v.len = strlen(atype_heap_[sec->sf[i].type]);
+      wy->obj.otag[2].k.buf = tag_heap_[SEAMARK_ARC_STYLE];
+      wy->obj.otag[2].k.len = strlen(tag_heap_[SEAMARK_ARC_STYLE]);
+      wy->obj.otag[2].v.buf = atype_heap_[sec->sf[i].type];
+      wy->obj.otag[2].v.len = strlen(atype_heap_[sec->sf[i].type]);
 
       if (sec->al)
       {
          snprintf(buf, sizeof(buf), "%s%d", tag_heap_[SEAMARK_LIGHT_ARC_AL], sec->al);
-         node->otag[3].k.buf = smstrdup(buf);
-         node->otag[3].k.len = strlen(buf);
-         node->otag[3].v.buf = col_heap_[sec->col[1]];
-         node->otag[3].v.len = strlen(col_heap_[sec->col[1]]);
+         wy->obj.otag[3].k.buf = smstrdup(buf);
+         wy->obj.otag[3].k.len = strlen(buf);
+         wy->obj.otag[3].v.buf = col_heap_[sec->col[1]];
+         wy->obj.otag[3].v.len = strlen(col_heap_[sec->col[1]]);
       }
       else
       {
-         node->otag[3].k.buf = tag_heap_[SEAMARK_LIGHT_ARC];
-         node->otag[3].k.len = strlen(tag_heap_[SEAMARK_LIGHT_ARC]);
-         node->otag[3].v.buf = col_heap_[sec->col[0]];
-         node->otag[3].v.len = strlen(col_heap_[sec->col[0]]);
+         wy->obj.otag[3].k.buf = tag_heap_[SEAMARK_LIGHT_ARC];
+         wy->obj.otag[3].k.len = strlen(tag_heap_[SEAMARK_LIGHT_ARC]);
+         wy->obj.otag[3].v.buf = col_heap_[sec->col[0]];
+         wy->obj.otag[3].v.len = strlen(col_heap_[sec->col[0]]);
       }
 
-      node->ref[0] = id[0];
-      node->ref[node->ref_cnt - 1] = id[1];
+      wy->ref[0] = id[0];
+      wy->ref[wy->ref_cnt - 1] = id[1];
       for (k = 0; k < j; sn--, k++)
-         node->ref[k + 1] = sn;
-      put_object(node);
+         wy->ref[k + 1] = sn;
+      put_object((osm_obj_t*) wy);
    }
 
    return 0;
