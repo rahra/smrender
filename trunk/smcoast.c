@@ -61,14 +61,14 @@
 struct corner_point
 {
    struct pcoord pc;
-   struct onode *nd;
+   osm_node_t *n;
 };
 
 
 struct poly
 {
    struct poly *next, *prev;
-   struct onode *w;
+   osm_way_t *w;
    short del;           // 1 if element should be removed from list
    short open;          // 1 if element is connected but still open way
 };
@@ -105,7 +105,7 @@ static struct orule *rl_ = NULL;
  *  @param w Pointer to way.
  *  @return 1 if it is a closed area, 0 otherwise.
  */
-int is_closed_poly(const struct onode *w)
+int is_closed_poly(const osm_way_t *w)
 {
    // check if it is an open polygon
    if (w->ref_cnt < 4)
@@ -121,12 +121,12 @@ int is_closed_poly(const struct onode *w)
 /*! This finds open polygons with tag natural=coastline and adds
  *  the node references to the wlist structure.
  */
-int gather_poly0(struct onode *nd, struct wlist **wl)
+int gather_poly0(osm_way_t *w, struct wlist **wl)
 {
    // check if it is an open polygon
-   if (nd->ref_cnt < 2)
+   if (w->ref_cnt < 2)
       return 0;
-   if (nd->ref[0] == nd->ref[nd->ref_cnt - 1])
+   if (w->ref[0] == w->ref[w->ref_cnt - 1])
       return 0;
 
    // check if there's enough memory
@@ -139,7 +139,7 @@ int gather_poly0(struct onode *nd, struct wlist **wl)
 
    // add way to list
    memset(&(*wl)->ref[(*wl)->ref_cnt], 0, sizeof(struct poly));
-   (*wl)->ref[(*wl)->ref_cnt].w = nd;
+   (*wl)->ref[(*wl)->ref_cnt].w = w;
    (*wl)->ref_cnt++;
    return 0;
 }
@@ -248,31 +248,30 @@ int count_poly_refs(struct poly *pl, int *cnt)
 }
 
 
-struct onode *create_new_coastline(int ref_cnt)
+osm_way_t *create_new_coastline(int ref_cnt)
 {
-   struct onode *nd;
+   osm_way_t *w;
 
    if (rl_ == NULL)
    {
-      nd = malloc_object(1, ref_cnt);
+      w = malloc_way(1, ref_cnt);
    }
    else
    {
-      nd = malloc_object(rl_->ond->tag_cnt + 1, ref_cnt);
-      memcpy(&nd->otag[1], &rl_->ond->otag[0], sizeof(struct otag) * rl_->ond->tag_cnt);
+      w = malloc_way(rl_->oo->tag_cnt + 1, ref_cnt);
+      memcpy(&w->obj.otag[1], &rl_->oo->otag[0], sizeof(struct otag) * rl_->oo->tag_cnt);
    }
 
-   nd->nd.type = OSM_WAY;
-   nd->nd.id = unique_way_id();
-   nd->nd.ver = 1;
-   nd->nd.tim = time(NULL);
-   set_const_tag(&nd->otag[0], "generator", "smrender");
+   w->obj.id = unique_way_id();
+   w->obj.ver = 1;
+   w->obj.tim = time(NULL);
+   set_const_tag(&w->obj.otag[0], "generator", "smrender");
  
-   return nd;
+   return w;
 }
 
 
-int join_open_poly(struct poly *pl, struct onode *nd)
+int join_open_poly(struct poly *pl, osm_way_t *w)
 {
    int pos, wcnt = 0;
    struct poly *list;
@@ -280,7 +279,7 @@ int join_open_poly(struct poly *pl, struct onode *nd)
    for (list = pl, pos = 0; list != NULL; list = list->next, wcnt++)
    {
       // copy all node refs...
-      memcpy(&nd->ref[pos], list->w->ref, list->w->ref_cnt * sizeof(int64_t));
+      memcpy(&w->ref[pos], list->w->ref, list->w->ref_cnt * sizeof(int64_t));
       // ...but increase position by one less to overwrite last element with next
       pos += list->w->ref_cnt - 1;
 
@@ -302,7 +301,7 @@ int join_open_poly(struct poly *pl, struct onode *nd)
 
 int loop_detect(struct wlist *wl)
 {
-   struct onode *nd;
+   osm_way_t *w;
    int i, cnt, ret, ocnt = 0;
 
    for (i = 0; i < wl->ref_cnt; i++)
@@ -324,16 +323,16 @@ int loop_detect(struct wlist *wl)
       }
 
       log_debug("waylist: wl_index %d (start = %p, cnt = %d, loop = %d)", i, &wl->ref[i], cnt, ret);
-      nd = create_new_coastline(cnt);
-      cnt = join_open_poly(&wl->ref[i], nd);
-      put_object(nd);
+      w = create_new_coastline(cnt);
+      cnt = join_open_poly(&wl->ref[i], w);
+      put_object((osm_obj_t*) w);
       log_debug("%d ways joined", cnt);
 
       // if it is not a loop, than it is a starting open way
       if (!ret)
       {
          wl->ref[i].open = 1;
-         wl->ref[i].w = nd;
+         wl->ref[i].w = w;
          ocnt++;
       }
    }
@@ -370,16 +369,15 @@ void init_corner_brg(const struct rdata *rd, const struct coord *src, struct cor
    for (i = 0; i < 4; i++)
    {
       co_pt[i].pc = coord_diff(src, &corner_coord[i]);
-      co_pt[i].nd = malloc_object(2, 0);
-      co_pt[i].nd->nd.id = unique_node_id();
-      co_pt[i].nd->nd.type = OSM_NODE;
-      co_pt[i].nd->nd.ver = 1;
-      co_pt[i].nd->nd.tim = time(NULL);
-      co_pt[i].nd->nd.lat = corner_coord[i].lat;
-      co_pt[i].nd->nd.lon = corner_coord[i].lon;
-      set_const_tag(&co_pt[i].nd->otag[0], "grid", "pagecorner");
-      set_const_tag(&co_pt[i].nd->otag[1], "generator", "smrender");
-      put_object(co_pt[i].nd);
+      co_pt[i].n = malloc_node(2);
+      co_pt[i].n->obj.id = unique_node_id();
+      co_pt[i].n->obj.ver = 1;
+      co_pt[i].n->obj.tim = time(NULL);
+      co_pt[i].n->lat = corner_coord[i].lat;
+      co_pt[i].n->lon = corner_coord[i].lon;
+      set_const_tag(&co_pt[i].n->obj.otag[0], "grid", "pagecorner");
+      set_const_tag(&co_pt[i].n->obj.otag[1], "generator", "smrender");
+      put_object((osm_obj_t*) co_pt[i].n);
       log_msg(LOG_DEBUG, "corner_point[%d].bearing = %f", i, co_pt[i].pc.bearing);
    }
 }
@@ -387,13 +385,13 @@ void init_corner_brg(const struct rdata *rd, const struct coord *src, struct cor
 
 void node_brg(struct pcoord *pc, struct coord *src, int64_t nid)
 {
-   struct onode *nd;
+   osm_node_t *n;
    struct coord dst;
 
-   if ((nd = get_object(OSM_NODE, nid)) == NULL)
+   if ((n = get_object(OSM_NODE, nid)) == NULL)
       return;
-   dst.lat = nd->nd.lat;
-   dst.lon = nd->nd.lon;
+   dst.lat = n->lat;
+   dst.lon = n->lon;
    *pc = coord_diff(src, &dst);
 }
 
@@ -449,7 +447,7 @@ int connect_open(struct pdef *pd, struct wlist *wl, int ocnt)
                   log_msg(LOG_ERR, "realloc() failed: %s", strerror(errno)), exit(EXIT_FAILURE);
 
                memmove(&ref[1], &ref[0], sizeof(int64_t) * wl->ref[pd[i].wl_index].w->ref_cnt); 
-               ref[0] = co_pt[k % 4].nd->nd.id;
+               ref[0] = co_pt[k % 4].n->obj.id;
                wl->ref[pd[i].wl_index].w->ref = ref;
                wl->ref[pd[i].wl_index].w->ref_cnt++;
                log_debug("added corner point %d", k % 4);
@@ -466,7 +464,7 @@ int connect_open(struct pdef *pd, struct wlist *wl, int ocnt)
                wl->ref[pd[i].wl_index].w->ref = ref;
                wl->ref[pd[i].wl_index].w->ref_cnt++;
                wl->ref[pd[i].wl_index].open = 0;
-               log_debug("way %ld (wl_index = %d) is now closed", wl->ref[pd[i].wl_index].w->nd.id, pd[i].wl_index);
+               log_debug("way %ld (wl_index = %d) is now closed", wl->ref[pd[i].wl_index].w->obj.id, pd[i].wl_index);
             }
             else
             {
@@ -499,7 +497,7 @@ int connect_open(struct pdef *pd, struct wlist *wl, int ocnt)
                      pd[i].pc = pd[k].pc;
                      break;
                   }
-               log_debug("way %ld (wl_index = %d) marked as closed, resorting pdef", wl->ref[pd[j % ocnt].wl_index].w->nd.id, pd[j % ocnt].wl_index);
+               log_debug("way %ld (wl_index = %d) marked as closed, resorting pdef", wl->ref[pd[j % ocnt].wl_index].w->obj.id, pd[j % ocnt].wl_index);
                return -1;
             }
             break;
@@ -534,9 +532,9 @@ int cat_poly_ini(const orule_t *rl)
 }
 
 
-int cat_poly(struct onode *nd)
+int cat_poly(osm_obj_t *o)
 {
-   return gather_poly0(nd, &wl_);
+   return gather_poly0((osm_way_t*) o, &wl_);
 }
 
 
@@ -564,7 +562,7 @@ void cat_poly_fini(void)
 
       for (i = 0; i < ocnt << 1; i++)
          if (wl->ref[pd[i].wl_index].open)
-            log_debug("%d: wl_index = %d, pn = %d, wid = %ld, brg = %f", i, pd[i].wl_index, pd[i].pn, wl->ref[pd[i].wl_index].w->nd.id, pd[i].pc.bearing);
+            log_debug("%d: wl_index = %d, pn = %d, wid = %ld, brg = %f", i, pd[i].wl_index, pd[i].pn, wl->ref[pd[i].wl_index].w->obj.id, pd[i].pc.bearing);
    }
    while (connect_open(pd, wl, ocnt << 1));
 

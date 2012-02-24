@@ -246,7 +246,7 @@
    </way>
    <way>
       <tag k='natural' v='water'/>
-      <tag k='_action_' v='draw:blue:black'/>
+      <tag k='_action_' v='draw:blue:#000080'/>
    </way>
    <way>
       <tag k='waterway' v=''/>

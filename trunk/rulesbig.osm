@@ -142,8 +142,11 @@
       <tag k='pointindex' v='3'/>
       <tag k='_action_' v='cap:sans-serif,2,en,black,90,lon'/>
    </node>
- 
- 
+  
+   <way>
+      <tag k='natural' v='coastline'/>
+      <tag k='_action_' v='func:cat_poly'/>
+   </way>
    <way>
       <tag k='natural' v='coastline'/>
       <tag k='_action_' v='draw:yellow:black'/>
@@ -166,11 +169,11 @@
    </way>
    <way>
       <tag k='natural' v='water'/>
-      <tag k='_action_' v='draw:blue:black'/>
+      <tag k='_action_' v='draw:blue:#000080'/>
    </way>
    <way>
       <tag k='waterway' v=''/>
-      <tag k='_action_' v='draw:blue:blue'/>
+      <tag k='_action_' v='draw:blue:black'/>
    </way>
    <way>
       <tag k='grid' v=''/>
