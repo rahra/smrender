@@ -56,6 +56,7 @@ void install_sigint(void)
 
    memset(&sa, 0, sizeof(sa));
    sa.sa_handler = int_handler;
+   sa.sa_flags = SA_RESETHAND;
 
    if (sigaction(SIGINT, &sa, NULL) == -1)
       log_msg(LOG_WARNING, "SIGINT handler cannot be installed: %s", strerror(errno));
