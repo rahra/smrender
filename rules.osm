@@ -36,6 +36,22 @@
       <tag k='seamark:type' v='beacon_cardinal' />
    </node>
    <node>
+      <tag k='_action_' v='img:icons/Cardinal_Beacon_East.png'/>
+      <tag k='seamark:beacon_cardinal:category' v='east' />
+      <tag k='seamark:type' v='beacon_cardinal' />
+   </node>
+    <node>
+      <tag k='_action_' v='img:icons/Cardinal_Beacon_South.png'/>
+      <tag k='seamark:beacon_cardinal:category' v='south' />
+      <tag k='seamark:type' v='beacon_cardinal' />
+   </node>
+    <node>
+      <tag k='_action_' v='img:icons/Cardinal_Beacon_North.png'/>
+      <tag k='seamark:beacon_cardinal:category' v='north' />
+      <tag k='seamark:type' v='beacon_cardinal' />
+   </node>
+ 
+   <node>
       <tag k='_action_' v='img:icons/Light_House.png'/>
       <tag k='/^seamark:light.*/' v=''/>
       <tag k='seamark:type' v='landmark' />
@@ -120,11 +136,16 @@
    </node>
    <node>
       <tag k='_action_' v='cap:sans-serif:bold,2.5,cm,black,auto;yellow,name'/>
-      <tag k='place' v='/island|city/'/>
+      <tag k='place' v='city'/>
    </node>
    <node>
+      <tag k='_action_' v='cap:sans-serif:bold,2.5,cm,black,auto;yellow,*name'/>
+      <tag k='place' v='island'/>
+   </node>
+ 
+   <node>
       <!--<tag k='_action_' v='cap:/usr/share/fonts/truetype/ttf-liberation/LiberationSans-Bold.ttf,1.4,cm,black,auto;yellow,name'/>-->
-      <tag k='_action_' v='cap:sans-serif:bold,1.4,cm,black,auto;yellow,name'/>
+      <tag k='_action_' v='cap:sans-serif:bold,1.4,cm,black,auto;yellow,*name'/>
       <tag k='place' v='islet'/>
    </node>
     <node>

@@ -74,9 +74,9 @@ void geo_square(struct rdata *rd, double b, char *v)
       n->lon = lon[i];
       set_const_tag(&n->obj.otag[0], "generator", "smrender");
       set_const_tag(&n->obj.otag[1], "grid", v);
-      snprintf(buf, sizeof(buf), "%02.0f %c %.1f'", lat[i], lat[i] < 0 ? 'S' : 'N', (double) ((int) round(lat[i] * T_RESCALE) % T_RESCALE) / TM_RESCALE);
+      snprintf(buf, sizeof(buf), "%02d %c %.1f'", (int) lat[i], lat[i] < 0 ? 'S' : 'N', (double) ((int) round(lat[i] * T_RESCALE) % T_RESCALE) / TM_RESCALE);
       set_const_tag(&n->obj.otag[2], "lat", strdup(buf));
-      snprintf(buf, sizeof(buf), "%03.0f %c %.1f'", lon[i], lon[i] < 0 ? 'W' : 'E', (double) ((int) round(lon[i] * T_RESCALE) % T_RESCALE) / TM_RESCALE);
+      snprintf(buf, sizeof(buf), "%03d %c %.1f'", (int) lon[i], lon[i] < 0 ? 'W' : 'E', (double) ((int) round(lon[i] * T_RESCALE) % T_RESCALE) / TM_RESCALE);
       set_const_tag(&n->obj.otag[3], "lon", strdup(buf));
       snprintf(buf, sizeof(buf), "%d", i);
       set_const_tag(&n->obj.otag[4], "pointindex", strdup(buf));
@@ -211,6 +211,7 @@ void geo_legend(struct rdata *rd)
    s = strdup(buf);
    geo_description(rd->y1c - MM2LAT(G_MARGIN), rd->x1c + rd->wc / 2, s, "top");
    geo_description(rd->y2c + MM2LAT(G_MARGIN + G_TW + G_STW), rd->x1c + rd->wc / 2, "Generated with /smrender/, author Bernhard R. Fischer, 2048R/5C5FFD47 &lt;bf@abenteuerland.at&gt;, data source: OSM.", "copyright");
+   geo_description(rd->y2c + MM2LAT(G_MARGIN - G_TW), rd->x1c + rd->wc / 2, rd->cmdline, "copyright");
 }
 
 /*! ...
