@@ -17,7 +17,7 @@
 
 CC	= gcc
 CFLAGS = -g -O2 -fPIC -I..
-LDFLAGS = -lm
+LDFLAGS =
 LIBNAME = libskel
 
 all: $(LIBNAME).so
