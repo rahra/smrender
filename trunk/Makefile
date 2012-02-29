@@ -27,8 +27,8 @@ all: smrender libsmfilter.so
 
 smloadosm.o: smloadosm.c smrender.h
 
-smrender: smrender.o bstring.o osm_func.o libhpxml.o smlog.o bxtree.o smloadosm.o smath.o smcoast.o smutil.o smgrid.o smrules.o smrparse.o smreg.o MurmurHash2_64.o
-	gcc $(LDFLAGS) -o smrender smrender.o bstring.o osm_func.o libhpxml.o smlog.o bxtree.o smloadosm.o smath.o smcoast.o smutil.o smgrid.o smrules.o smrparse.o smreg.o MurmurHash2_64.o
+smrender: smrender.o bstring.o osm_func.o libhpxml.o smlog.o bxtree.o smloadosm.o smath.o smcoast.o smutil.o smgrid.o smrules.o smrparse.o smreg.o MurmurHash2_64.o smfunc.o
+	gcc $(LDFLAGS) -o smrender smrender.o bstring.o osm_func.o libhpxml.o smlog.o bxtree.o smloadosm.o smath.o smcoast.o smutil.o smgrid.o smrules.o smrparse.o smreg.o MurmurHash2_64.o smfunc.o
 
 MurmurHash2_64.o: MurmurHash2_64.c MurmurHash2_64.h
 
@@ -57,6 +57,8 @@ smcoast.o: smcoast.c smrender.h smath.h
 smrules.o: smrules.c smrender.h
 
 smrparse.o: smrparse.c smrparse.h
+
+smfunc.o: smfunc.c
 
 libsmfilter.so:
 	make -C libsmfilter

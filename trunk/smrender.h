@@ -241,9 +241,7 @@ struct rdata
    bx_node_t *obj;
    // root nodes of node rules and way rules
    bx_node_t *rules;
-   // pointer to image data
-   gdImage *img;
-   // left upper and right bottom coordinates
+  // left upper and right bottom coordinates
    double x1c, y1c, x2c, y2c;
    // coordinate with/height (wc=x2c-x1c, hc=y1c-y2c)
    double wc, hc;
@@ -260,6 +258,12 @@ struct rdata
    struct grid grd;
    // node/way stats
    struct dstats ds;
+   // pointer to cmd line string
+   char *cmdline;
+
+   // ***** this id libgd2 specific ***** 
+   // pointer to image data
+   gdImage *img;
    // image colors
    int col[6];
 };

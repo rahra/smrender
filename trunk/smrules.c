@@ -274,6 +274,10 @@ int act_wcaption(osm_way_t *w, struct rdata *rd, struct orule *rl)
    n->lat = c.lat;
    n->lon = c.lon;
    r->rule.cap.size = 100 * sqrt(ar / (rd->mean_lat_len * rd->hc * 3600));
+#define MIN_AUTO_SIZE 0.7
+#define MAX_AUTO_SIZE 12.0
+   if (r->rule.cap.size < MIN_AUTO_SIZE) r->rule.cap.size = MIN_AUTO_SIZE;
+   if (r->rule.cap.size > MAX_AUTO_SIZE) r->rule.cap.size = MAX_AUTO_SIZE;
    log_debug("r->rule.cap.size = %f (%f 1/1000)", r->rule.cap.size, r->rule.cap.size / 100 * 1000);
 
    e = act_caption(n, rd, r);
@@ -481,51 +485,5 @@ int col_freq(struct rdata *rd, int x, int y, int w, int h, double a, int col)
       }
 
    return c;
-}
-
-
-static FILE *output_handle_;
-
-
-void act_output_ini(const struct orule *rl)
-{
-   if ((output_handle_ = fopen(rl->rule.func.parm, "w")) == NULL)
-   {
-      log_msg(LOG_ERR, "error opening output file: %s", rl->rule.func.parm);
-      return;
-   }
-   fprintf(output_handle_, "<?xml version='1.0' encoding='UTF-8'?>\n<osm version='0.6' generator='smrender'>\n");
-}
-
-
-int act_output(osm_obj_t *o)
-{
-   osm_node_t *n;
-   int i;
-
-   if (output_handle_ == NULL)
-      return -1;
-
-   for (i = 0; i < ((osm_way_t*) o)->ref_cnt; i++)
-   {
-      if ((n = get_object(OSM_NODE, ((osm_way_t*) o)->ref[i])) == NULL)
-         continue;
-      print_onode(output_handle_, (osm_obj_t*) n);
-   }
-   print_onode(output_handle_, o);
-
-   return 0;
-}
-
-
-void act_output_fini(void)
-{
-   if (output_handle_ == NULL)
-      return;
-
-   fprintf(output_handle_, "</osm>\n");
-   fclose(output_handle_);
-   output_handle_ = NULL;
-   return;
 }
 
