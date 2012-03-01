@@ -30,10 +30,10 @@ static void sort_sectors(struct sector *, int);
 static int parse_color(bstring_t);
 
 
-static double arc_div_ = ARC_DIV;
-static double arc_max_ = ARC_MAX;
-static double sec_radius_ = SEC_RADIUS;
-static double dir_arc_ = DIR_ARC;
+static double arc_div_ = ARC_DIV;         // param 'd'
+static double arc_max_ = ARC_MAX;         // param 'a'
+static double sec_radius_ = SEC_RADIUS;   // param 'r'
+static double dir_arc_ = DIR_ARC;         // param 'b'
 static int untagged_circle_ = 0;
 
 static const double altr_[] = {0.005, 0.005, 0.01, 0.005};
@@ -45,10 +45,17 @@ static const char *tag_[] = { "seamark:light_character",
    "seamark:light:object", "seamark:light_radial", "seamark:light:sector_nr",
    "seamark:arc_style", "seamark:light_arc_al", "seamark:light_arc", NULL};
 
+#ifdef COPY_TO_HEAP
 static char *col_heap_[COL_CNT];
 static char *col_abbr_heap_[COL_ABBR_CNT];
 static char *atype_heap_[ATYPE_CNT];
 static char *tag_heap_[TAG_CNT];
+#else
+#define col_heap_ (char*)col_
+#define col_abbr_heap_ (char*)col_abbr_
+#define atype_heap_ (char*)atype_
+#define tag_heap_ (char*)tag_
+#endif
 
 
 /*! Library constructor. String constants which are returned to load program
@@ -60,6 +67,7 @@ void __attribute__ ((constructor)) init_libsmfilter(void)
 
    log_msg(LOG_INFO, "initializing libsmfilter");
 
+#ifdef COPY_TO_HEAP
    for (i = 0; i <= COL_CNT; i++)
    {
       col_heap_[i] = smstrdup(col_[i]);
@@ -73,6 +81,7 @@ void __attribute__ ((constructor)) init_libsmfilter(void)
    {
       tag_heap_[i] = smstrdup(tag_[i]);
    }
+#endif
 }
 
 
@@ -80,6 +89,7 @@ void __attribute__ ((destructor)) fini_libsmfilter(void)
 {
    int i;
 
+#ifdef COPY_TO_HEAP
    for (i = 0; i < COL_CNT; i++)
    {
       free(col_heap_[i]);
@@ -93,6 +103,8 @@ void __attribute__ ((destructor)) fini_libsmfilter(void)
    {
       free(tag_heap_[i]);
    }
+#endif
+
    log_msg(LOG_INFO, "libsmfilter unloading");
 }
 
@@ -144,6 +156,61 @@ int pchar(osm_obj_t *o)
    o->tag_cnt++;
 
    return 0;
+}
+
+
+int set_on_match(const char *s, const char *k, const char *v, double *a)
+{
+   int r;
+
+   if ((r = strcmp(s, k)) != 0)
+      return r;
+
+   *a = atof(v);
+   return 0;
+}
+
+
+void vsector_ini(orule_t *r)
+{
+   char *k, *v, *s, *buf;
+
+   // Reinitialize global variable to their defaults if no parameter is
+   // supplied.
+   if (r->rule.func.parm == NULL)
+   {
+      arc_div_ = ARC_DIV;
+      arc_max_ = ARC_MAX;
+      sec_radius_ = SEC_RADIUS;
+      dir_arc_ = DIR_ARC;
+   }
+   else
+   { 
+      if ((buf = strdup(r->rule.func.parm)) == NULL)
+         log_msg(LOG_ERR, "strdup(): %s", strerror(errno)),
+         exit(EXIT_FAILURE);
+      log_msg(LOG_DEBUG, "parsing param string '%s'", buf);
+      if ((k = strtok_r(buf, "=", &s)) != NULL)
+      {
+         for (;;)
+         {
+            if ((v = strtok_r(NULL, ",", &s)) == NULL)
+               break;
+
+            set_on_match("a", k, v, &arc_max_);
+            set_on_match("b", k, v, &dir_arc_);
+            set_on_match("d", k, v, &arc_div_);
+            set_on_match("r", k, v, &sec_radius_);
+
+            if ((k = strtok_r(NULL, "=", &s)) == NULL)
+               break;
+         }
+      }
+      free(buf);
+   }
+
+   log_msg(LOG_INFO, "arc_max_(a) = %.2f, dir_arc_(b) = %.2f, arc_div_(d) = %.2f, sec_radius_(r) = %.2f",
+         arc_max_, dir_arc_, arc_div_, sec_radius_);
 }
 
 
