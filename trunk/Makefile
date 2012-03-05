@@ -18,8 +18,6 @@
 CC	= gcc
 CFLAGS	= -O2 -g -Wall -D_GNU_SOURCE -I/usr/local/include
 LDFLAGS	= -L/usr/local/lib -lm -lgd -Wl,-export-dynamic
-# FreeBSD provides dl-functions in libdl
-#LDFLAGS	= -L/usr/local/lib -ldl -lm -lgd -Wl,-export-dynamic
 VER = smrender-r$(shell svnversion | tr -d M)
 
 all: smrender libsmfilter.so
