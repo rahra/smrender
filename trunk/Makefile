@@ -72,9 +72,10 @@ dist: smrender libsmfilter.so
 	if test -e $(VER) ; then \
 		rm -r $(VER) ; \
 	fi
-	mkdir $(VER) $(VER)/libsmfilter
+	mkdir $(VER) $(VER)/libsmfilter $(VER)/libskel
 	cp *.c *.h smrender Makefile $(VER)
 	cp libsmfilter/libsmfilter.so* libsmfilter/*.c libsmfilter/*.h libsmfilter/Makefile $(VER)/libsmfilter
+	cp libskel/libskel.so* libskel/libskel.c libskel/Makfile $(VER)/libskel
 	tar cvfj $(VER).tbz2 $(VER)
 
 .PHONY: clean dist
