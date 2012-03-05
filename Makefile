@@ -16,11 +16,10 @@
 # */
 
 CC	= gcc
-CFLAGS	= -g -Wall -D_GNU_SOURCE -I/usr/local/include
-#CFLAGS	= -O2 -g -Wall -I/usr/local/include
-#LDFLAGS	= -L/usr/local/lib -lm -lgd -ldl -Wl,-export-dynamic
-# FreeBSD provides dl-functions in libc
+CFLAGS	= -O2 -g -Wall -D_GNU_SOURCE -I/usr/local/include
 LDFLAGS	= -L/usr/local/lib -lm -lgd -Wl,-export-dynamic
+# FreeBSD provides dl-functions in libdl
+#LDFLAGS	= -L/usr/local/lib -ldl -lm -lgd -Wl,-export-dynamic
 VER = smrender-r$(shell svnversion | tr -d M)
 
 all: smrender libsmfilter.so
@@ -75,7 +74,7 @@ dist: smrender libsmfilter.so
 	mkdir $(VER) $(VER)/libsmfilter $(VER)/libskel
 	cp *.c *.h smrender Makefile $(VER)
 	cp libsmfilter/libsmfilter.so* libsmfilter/*.c libsmfilter/*.h libsmfilter/Makefile $(VER)/libsmfilter
-	cp libskel/libskel.so* libskel/libskel.c libskel/Makfile $(VER)/libskel
+	cp libskel/libskel.so* libskel/libskel.c libskel/Makefile $(VER)/libskel
 	tar cvfj $(VER).tbz2 $(VER)
 
 .PHONY: clean dist
