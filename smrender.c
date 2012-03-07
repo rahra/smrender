@@ -44,6 +44,12 @@ static struct rdata rd_;
 static volatile sig_atomic_t int_ = 0;
 
 
+struct rdata *get_rdata(void)
+{
+   return &rd_;
+}
+
+
 void int_handler(int sig)
 {
    int_++;
@@ -803,8 +809,12 @@ int main(int argc, char *argv[])
       }
 
    if (argv[optind] == NULL)
-      log_msg(LOG_ERR, "window parameter mandatory"), exit(EXIT_FAILURE);
-
+   {
+      log_msg(LOG_NOTICE, "window parameter missing, setting defaults 0:0:100000");
+      rd->scale = 100000;
+   }
+   else
+   {
    if ((s = strtok(argv[optind], ":")) == NULL)
       log_msg(LOG_ERR, "latitude paramter missing"), exit(EXIT_FAILURE);
    rd->mean_lat = atof(s);
@@ -825,6 +835,7 @@ int main(int argc, char *argv[])
       rd->wc = param;
    else
       log_msg(LOG_ERR, "illegal size parameter"), exit(EXIT_FAILURE);
+   }
  
    install_sigusr1();
 
@@ -935,8 +946,6 @@ int main(int argc, char *argv[])
    log_msg(LOG_INFO, " left upper %.2f/%.2f, right bottom %.2f/%.2f",
          rd->ds.lu.lat, rd->ds.lu.lon, rd->ds.rb.lat, rd->ds.rb.lon);
    log_msg(LOG_INFO, " lo_addr = %p, hi_addr = %p", rd->ds.lo_addr, rd->ds.hi_addr);
-
-   init_cat_poly(rd);
 
    if (gen_grid)
    {
