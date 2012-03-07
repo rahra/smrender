@@ -299,6 +299,7 @@ double rot_pos(int, int, double, int *, int *);
 double color_frequency(struct rdata *, int, int, int, int, int);
 void mk_chart_coords(int, int, struct rdata*, double*, double*);
 int poly_area(const osm_way_t*, struct coord *, double *);
+struct rdata *get_rdata(void);
 
 
 /* smutil.c */
@@ -322,7 +323,6 @@ int read_osm_file(hpx_ctrl_t*, bx_node_t**, struct filter*);
 void install_sigusr1(void);
 
 /* smcoast.c */
-void init_cat_poly(struct rdata *);
 int is_closed_poly(const osm_way_t*);
 
 /* smgrid.c */

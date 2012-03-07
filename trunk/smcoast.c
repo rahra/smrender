@@ -508,8 +508,16 @@ int connect_open(struct pdef *pd, struct wlist *wl, int ocnt)
 }
 
 
-void init_cat_poly(struct rdata *rd)
+void init_cat_poly(void)
 {
+   static int call_once = 0;
+   struct rdata *rd;
+
+   if (call_once)
+      return;
+
+   call_once = 1;
+   rd = get_rdata();
    center_.lat = rd->mean_lat;
    center_.lon = rd->mean_lon;
    init_corner_brg(rd, &center_, co_pt_);
@@ -527,6 +535,8 @@ int cat_poly_ini(const orule_t *rl)
    wl->max_ref = INIT_MAX_REF;
    wl_ = wl;
    rl_ = (orule_t*) rl;
+
+   init_cat_poly();
 
    return 0;
 }
