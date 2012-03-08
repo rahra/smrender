@@ -138,16 +138,17 @@
       <tag k='_action_' v='cap:sans-serif:bold,2.5,cm,black,auto;yellow,name'/>
       <tag k='place' v='city'/>
    </node>
+   <!--
    <node>
       <tag k='_action_' v='cap:sans-serif:bold,2.5,cm,black,auto;yellow,*name'/>
       <tag k='place' v='island'/>
    </node>
  
    <node>
-      <!--<tag k='_action_' v='cap:/usr/share/fonts/truetype/ttf-liberation/LiberationSans-Bold.ttf,1.4,cm,black,auto;yellow,name'/>-->
       <tag k='_action_' v='cap:sans-serif:bold,1.4,cm,black,auto;yellow,*name'/>
       <tag k='place' v='islet'/>
    </node>
+   -->
     <node>
        <!--<tag k='_action_' v='cap:/usr/share/fonts/truetype/ttf-liberation/LiberationSans-Italic.ttf,1.4,cm,black,auto;white,name'/>-->
       <tag k='_action_' v='cap:sans-serif:italic,1.4,cm,black,auto;white,name'/>
@@ -277,11 +278,9 @@
       <tag k='grid' v=''/>
       <tag k='_action_' v='draw:black,0,transparent:black'/>
    </way>
-   <!--
    <way>
       <tag k='_action_' v='cap:sans-serif:bold,2.5,cm,black,0,name'/>
-      <tag k='place' v='island'/>
+      <tag k='place' v='/island|islet/'/>
    </way>
-   -->
 </osm>
 
