@@ -16,7 +16,7 @@
 # */
 
 CC	= gcc
-CFLAGS = -g -O2 -fPIC -I..
+CFLAGS = -g -O2 -fPIC -I../src
 LDFLAGS =
 LIBNAME = libskel
 
@@ -33,7 +33,7 @@ $(LIBNAME).so: $(LIBNAME).so.1
 	fi
 
 clean:
-	rm -f *.o *.so *.so.1
+	rm -f *.o *.so *.so.1.0.1
 
 .PHONY: clean
 
