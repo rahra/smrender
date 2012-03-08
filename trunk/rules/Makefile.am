@@ -1,3 +1,2 @@
-rulesdir = $(datadir)/smrender
-rules_DATA = rules.osm rulesbig.osm
+EXTRA_DIST = rules.osm rulesbig.osm
 
