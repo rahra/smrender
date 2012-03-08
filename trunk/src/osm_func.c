@@ -15,7 +15,10 @@
  * along with smfilter. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#define _XOPEN_SOURCE
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
+
 #include <time.h>
 #include <string.h>
 #include <errno.h>
@@ -48,7 +51,7 @@ time_t parse_time(bstring_t b)
    if (b.len != TLEN)
       return -1;
 
-#ifdef HAS_STRPTIME
+#ifdef HAVE_STRPTIME
    (void) strptime(b.buf, "%Y-%m-%dT%T%z", &tm);
 #else
    tm.tm_year = bs_tol(b) - 1900;

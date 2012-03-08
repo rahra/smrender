@@ -9,6 +9,8 @@ AC_SEARCH_LIBS([sin], [m])
 AC_SEARCH_LIBS([gdImageSetPixel], [gd])
 AC_SEARCH_LIBS([dlopen], [dl])
 
+AC_CHECK_FUNCS([strptime])
+
 AC_CONFIG_FILES([Makefile src/Makefile libsmfilter/Makefile libskel/Makefile])
 AC_OUTPUT
 

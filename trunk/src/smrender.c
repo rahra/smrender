@@ -20,6 +20,11 @@
  *
  *  @author Bernhard R. Fischer
  */
+
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
+
 #include <stdio.h>
 #include <stdint.h>
 #include <unistd.h>
@@ -633,7 +638,7 @@ void init_rd_image(struct rdata *rd)
 
 void usage(const char *s)
 {
-   printf("Seamark renderer V1.1, (c) 2011, Bernhard R. Fischer, <bf@abenteuerland.at>.\n"
+   printf("Seamark renderer V" PACKAGE_VERSION ", (c) 2011-2012, Bernhard R. Fischer, <bf@abenteuerland.at>.\n"
          "usage: %s [OPTIONS] <window>\n"
          "   <window> := <lat>:<lon>:<size>\n"
          "               <lat> and <lon> specify the coordinates of the centerpoint.\n"
