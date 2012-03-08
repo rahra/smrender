@@ -9,7 +9,7 @@
 
    <node>
       <tag k='seamark:type' v=''/>
-      <tag k='_action_' v='func:pchar@./libsmfilter.so'/>
+      <tag k='_action_' v='func:pchar@libsmfilter.so'/>
    </node>
    <node>
       <tag k='/^seamark:light:.*/' v=''/>
