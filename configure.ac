@@ -15,6 +15,6 @@ AC_SEARCH_LIBS([dlopen], [dl])
 
 AC_CHECK_FUNCS([strptime])
 
-AC_CONFIG_FILES([Makefile src/Makefile libsmfilter/Makefile libskel/Makefile])
+AC_CONFIG_FILES([Makefile src/Makefile libsmfilter/Makefile libskel/Makefile rules/Makefile])
 AC_OUTPUT
 
