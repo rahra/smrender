@@ -6,14 +6,17 @@ AC_PROG_CC
 AC_CONFIG_HEADERS([config.h])
 
 AX_CHECK_GD
-#CFLAGS="$CFLAGS $GD_CFLAGS"
-#LDFLAGS="$LDFLAGS $GD_LDFLAGS $GD_LIBS"
 
 #AC_SEARCH_LIBS([gdImageSetPixel], [gd])
 AC_SEARCH_LIBS([sin], [m])
 AC_SEARCH_LIBS([dlopen], [dl])
 
 AC_CHECK_FUNCS([strptime])
+
+if test -n "$export_dynamic_flag_spec" ; then
+   exp_dyn=`eval echo $export_dynamic_flag_spec`
+   AC_SUBST([EXP_DYN], [["$exp_dyn"]])
+fi
 
 AC_CONFIG_FILES([Makefile src/Makefile libsmfilter/Makefile libskel/Makefile rules/Makefile])
 AC_OUTPUT

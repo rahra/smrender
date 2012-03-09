@@ -278,7 +278,7 @@ int act_wcaption(osm_way_t *w, struct rdata *rd, struct orule *rl)
 #define MAX_AUTO_SIZE 12.0
    if (r->rule.cap.size < MIN_AUTO_SIZE) r->rule.cap.size = MIN_AUTO_SIZE;
    if (r->rule.cap.size > MAX_AUTO_SIZE) r->rule.cap.size = MAX_AUTO_SIZE;
-   log_debug("r->rule.cap.size = %f (%f 1/1000)", r->rule.cap.size, r->rule.cap.size / 100 * 1000);
+   //log_debug("r->rule.cap.size = %f (%f 1/1000)", r->rule.cap.size, r->rule.cap.size / 100 * 1000);
 
    e = act_caption(n, rd, r);
 

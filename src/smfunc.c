@@ -132,7 +132,7 @@ int act_poly_area(osm_way_t *w)
 
    if (!poly_area(w, &c, &ar))
    {
-      log_msg(LOG_DEBUG, "poly_area of %ld = %f", w->obj.id, ar);
+      //log_msg(LOG_DEBUG, "poly_area of %ld = %f", w->obj.id, ar);
       if ((ot = realloc(w->obj.otag, sizeof(struct otag) * (w->obj.tag_cnt + 1))) == NULL)
       {
          log_msg(LOG_DEBUG, "could not realloc tag list: %s", strerror(errno));
@@ -184,7 +184,7 @@ int act_poly_centroid(osm_way_t *w)
    memcpy(&n->obj.otag[1], &w->obj.otag[0], sizeof(struct otag) * w->obj.tag_cnt);
    put_object((osm_obj_t*) n);
  
-   log_debug("centroid %.3f/%.3f, ar = %f, way = %ld, node %ld", n->lat, n->lon, ar, w->obj.id, n->obj.id);
+   //log_debug("centroid %.3f/%.3f, ar = %f, way = %ld, node %ld", n->lat, n->lon, ar, w->obj.id, n->obj.id);
 
    return 0;
 }

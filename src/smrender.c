@@ -429,12 +429,12 @@ int print_onode(FILE *f, const osm_obj_t *o)
    {
       case OSM_NODE:
          fprintf(f, "<node id=\"%ld\" version=\"%d\" lat=\"%f\" lon=\"%f\" timestamp=\"%s\" uid=\"%d\">\n",
-               o->id, o->ver, ((osm_node_t*) o)->lat, ((osm_node_t*) o)->lon, ts, o->uid);
+               (long) o->id, o->ver, ((osm_node_t*) o)->lat, ((osm_node_t*) o)->lon, ts, o->uid);
          break;
 
       case OSM_WAY:
          fprintf(f, "<way id=\"%ld\" version=\"%d\" timestamp=\"%s\" uid=\"%d\">\n",
-               o->id, o->ver, ts, o->uid);
+               (long) o->id, o->ver, ts, o->uid);
          break;
 
       default:
@@ -454,7 +454,7 @@ int print_onode(FILE *f, const osm_obj_t *o)
 
       case OSM_WAY:
          for (i = 0; i < ((osm_way_t*) o)->ref_cnt; i++)
-            fprintf(f, "<nd ref=\"%ld\"/>\n", ((osm_way_t*) o)->ref[i]);
+            fprintf(f, "<nd ref=\"%ld\"/>\n", (long) ((osm_way_t*) o)->ref[i]);
          fprintf(f, "</way>\n");
          break;
    }
