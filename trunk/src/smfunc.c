@@ -76,8 +76,11 @@ void act_output_fini(void)
 
 /*! Calculate the area and the centroid of a closed polygon.
  *  @param w Pointer to closed polygon.
- *  @param c Pointer to struct coord which will receive the coordinates of the centroid.
+ *  @param c Pointer to struct coord which will receive the coordinates of the
+ *  centroid.
  *  @param ar Pointer to variable which will receive the area of the polygon.
+ *  If ar is positive, the nodes of the polygon are order counterclockwise, if
+ *  ar is negative they are ordered clockwise.
  *  The result is the area measured in nautical square miles.
  *  @return Returns 0 on success, -1 on error.
  */
@@ -86,6 +89,12 @@ int poly_area(const osm_way_t *w, struct coord *c, double *ar)
    double f, x[2];
    osm_node_t *n[2];
    int i;
+
+   if (!is_closed_poly(w))
+   {
+      log_msg(LOG_DEBUG, "poly_area() only allowed on closed polygons");
+      return -1;
+   }
 
    if ((n[1] = (osm_node_t*) get_object(OSM_NODE, w->ref[0])) == NULL)
    {
@@ -117,7 +126,7 @@ int poly_area(const osm_way_t *w, struct coord *c, double *ar)
 
    c->lat /= 3.0 * *ar;
    c->lon /= 3.0 * *ar * cos(DEG2RAD(c->lat));
-   *ar = fabs(*ar) * 1800.0;
+   *ar = *ar * 1800.0;
 
    return 0;
 }

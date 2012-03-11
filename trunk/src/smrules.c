@@ -273,7 +273,7 @@ int act_wcaption(osm_way_t *w, struct rdata *rd, struct orule *rl)
    memcpy(n->obj.otag, w->obj.otag, sizeof(struct otag) * w->obj.tag_cnt);
    n->lat = c.lat;
    n->lon = c.lon;
-   r->rule.cap.size = 100 * sqrt(ar / (rd->mean_lat_len * rd->hc * 3600));
+   r->rule.cap.size = 100 * sqrt(fabs(ar) / (rd->mean_lat_len * rd->hc * 3600));
 #define MIN_AUTO_SIZE 0.7
 #define MAX_AUTO_SIZE 12.0
    if (r->rule.cap.size < MIN_AUTO_SIZE) r->rule.cap.size = MIN_AUTO_SIZE;
