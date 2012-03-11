@@ -67,10 +67,12 @@ struct corner_point
 
 struct poly
 {
-   struct poly *next, *prev;
+   struct poly *next, *prev;  // cat_poly:
    osm_way_t *w;
-   short del;           // 1 if element should be removed from list
-   short open;          // 1 if element is connected but still open way
+   short del;                 // cat_poly: 1 if element should be removed from list
+   short open;                // cat_poly: 1 if element is connected but still open way
+   double area;               // gen_layer: area of polygon
+   short cw;                 // 1 if polygon is clockwise, otherwise 0
 };
 
 struct wlist
@@ -118,17 +120,18 @@ int is_closed_poly(const osm_way_t *w)
 }
 
 
-/*! This finds open polygons with tag natural=coastline and adds
- *  the node references to the wlist structure.
+/*! This collects open polygons and adds the node references to the wlist
+ * structure.
  */
 int gather_poly0(osm_way_t *w, struct wlist **wl)
 {
+   /*
    // check if it is an open polygon
    if (w->ref_cnt < 2)
       return 0;
    if (w->ref[0] == w->ref[w->ref_cnt - 1])
       return 0;
-
+*/
    // check if there's enough memory
    if ((*wl)->ref_cnt >= (*wl)->max_ref)
    {
@@ -544,6 +547,12 @@ int cat_poly_ini(const orule_t *rl)
 
 int cat_poly(osm_obj_t *o)
 {
+   // check if it is an open polygon
+   if (((osm_way_t*) o)->ref_cnt < 2)
+      return 0;
+   if (((osm_way_t*) o)->ref[0] == ((osm_way_t*) o)->ref[((osm_way_t*) o)->ref_cnt - 1])
+      return 0;
+
    return gather_poly0((osm_way_t*) o, &wl_);
 }
 
@@ -577,6 +586,81 @@ void cat_poly_fini(void)
    while (connect_open(pd, wl, ocnt << 1));
 
    free(pd);
+   free(wl);
+}
+
+
+int compare_poly_area(const struct poly *p1, const struct poly *p2)
+{
+   if (p1->area > p2->area)
+      return -1;
+   if (p1->area < p2->area)
+      return 1;
+   return 0;
+}
+
+
+int gen_layer_ini(const orule_t *rl)
+{
+   return cat_poly_ini(rl);
+}
+
+
+int gen_layer(osm_obj_t *o)
+{
+   if (!is_closed_poly((osm_way_t*) o))
+      return 0;
+
+   return gather_poly0((osm_way_t*) o, &wl_);
+}
+
+
+void gen_layer_fini(void)
+{
+   osm_way_t *w;
+   orule_t rl;
+   struct wlist *wl = wl_;
+   struct coord c;
+   struct rdata *rd;
+   int i;
+ 
+   for (i = 0; i < wl->ref_cnt; i++)
+   {
+      poly_area(wl->ref[i].w, &c, &wl->ref[i].area);
+      if (wl->ref[i].area < 0)
+      {
+         wl->ref[i].area = fabs(wl->ref[i].area);
+         wl->ref[i].cw = 1;
+      }
+   }
+
+   qsort(wl->ref, wl->ref_cnt, sizeof(struct poly), (int(*)(const void *, const void *)) compare_poly_area);
+
+   rd = get_rdata();
+   memset(&rl, 0, sizeof(rl));
+   rl.rule.type = ACT_DRAW;
+   rl.rule.draw.fill.used = 1;
+   rl.rule.draw.border.used = 1;
+   rl.rule.draw.border.col = rd->col[BLACK];
+
+   for (i = 0; i < wl->ref_cnt; i++)
+   {
+      /*
+      w = malloc_way(wl->ref[i].w->obj.tag_cnt + 1, wl->ref[i].w->ref_cnt);
+      w->obj.id = unique_way_id();
+      memcpy(w->ref, wl->ref[i].w->ref, wl->ref[i].w->ref_cnt * sizeof(int64_t));
+      memcpy(w->obj.otag, wl->ref[i].w->obj.otag, wl->ref[i].w->obj.tag_cnt * sizeof(struct otag));
+      set_const_tag(&w->obj.otag[w->obj.tag_cnt - 1], "smrender:clockwise", wl->ref[i].cw ? "1" : "0");
+      put_object((osm_obj_t*) w);
+      */
+
+      log_msg(LOG_DEBUG, "gen_layer_fini: way %ld, area = %f, cw = %d",
+            (long) wl->ref[i].w->obj.id, wl->ref[i].area, wl->ref[i].cw);
+
+      rl.rule.draw.fill.col = wl->ref[i].cw ? rd->col[WHITE] :  rd->col[BLUE];
+      (void) act_fill_poly(wl->ref[i].w, rd, &rl);
+   }
+
    free(wl);
 }
 
