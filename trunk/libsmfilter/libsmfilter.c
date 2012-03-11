@@ -24,8 +24,10 @@ static void node_calc(const struct osm_node *nd, double r, double a, double *lat
 static int sector_calc3(const osm_node_t*, const struct sector *, bstring_t);
 static void init_sector(struct sector *sec);
 static int proc_sfrac(struct sector *sec);
+#ifdef COPY_TO_HEAP
 static const char *color(int);
 static const char *color_abbr(int);
+#endif
 static void sort_sectors(struct sector *, int);
 static int parse_color(bstring_t);
 
@@ -63,11 +65,9 @@ static char *tag_heap_[TAG_CNT];
  */
 void __attribute__ ((constructor)) init_libsmfilter(void)
 {
+#ifdef COPY_TO_HEAP
    int i;
 
-   log_msg(LOG_INFO, "initializing libsmfilter");
-
-#ifdef COPY_TO_HEAP
    for (i = 0; i <= COL_CNT; i++)
    {
       col_heap_[i] = smstrdup(col_[i]);
@@ -82,14 +82,16 @@ void __attribute__ ((constructor)) init_libsmfilter(void)
       tag_heap_[i] = smstrdup(tag_[i]);
    }
 #endif
+
+   log_msg(LOG_INFO, "libsmfilter initialized");
 }
 
 
 void __attribute__ ((destructor)) fini_libsmfilter(void)
 {
+#ifdef COPY_TO_HEAP
    int i;
 
-#ifdef COPY_TO_HEAP
    for (i = 0; i < COL_CNT; i++)
    {
       free(col_heap_[i]);
@@ -117,7 +119,7 @@ int pchar(osm_obj_t *o)
 {
    char lchar[8] = "", group[8] = "", period[8] = "", range[8] = "", col[8] = "", buf[256];
    int n;
-   osm_node_t *node;
+   //osm_node_t *node;
    //struct onode *node;
    struct otag *ot;
 
@@ -341,6 +343,8 @@ int vsector(osm_obj_t *o)
          }
       }
    } // for (i = 0; n && i < MAX_SEC; i++)
+
+   return 0;
 }
 
 
@@ -389,7 +393,8 @@ static void sort_sectors(struct sector *sec, int n)
       }
 }
 
-
+ 
+#ifdef COPY_TO_HEAP
 static const char *color_abbr(int n)
 {
    if ((n < 0) || (n >= COL_CNT))
@@ -404,6 +409,7 @@ static const char *color(int n)
       return NULL;
    return col_[n];
 }
+#endif
 
 
 /*! Test if bstring is numeric. It tests for the following expression:
@@ -476,7 +482,7 @@ static int find_sep(bstring_t *c)
 //int get_sectors(const hpx_tree_t *t, struct sector *sec, int nmax)
 static int get_sectors(const osm_obj_t *o, struct sector *sec, int nmax)
 {
-   int i, j, l;      //!< loop variables
+   int i, l;      //!< loop variables
    int n = 0;        //!< sector counter
    int k;            //!< sector number
    bstring_t b, c;   //!< temporary bstrings
