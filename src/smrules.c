@@ -303,6 +303,53 @@ int poly_mpcoords(osm_way_t *w, struct rdata *rd, gdPoint *p)
 }
 
 
+int set_style(struct rdata *rd, int style)
+{
+#define MAX_STYLE_BUF 300
+#define STYLE_SHORT_LEN 0.4
+#define STYLE_LONG_LEN 1.2
+   static int sdef[MAX_STYLE_BUF];
+   int len, i;
+
+   if (MM2PX(STYLE_LONG_LEN) + MM2PX(STYLE_SHORT_LEN) >= MAX_STYLE_BUF)
+   {
+      log_msg(LOG_CRIT, "style buffer to small for %d dpi, increase MAX_STYLE_BUF", (int) rd->dpi);
+      return -1;
+   }
+
+   switch (style)
+   {
+      case DRAW_SOLID:
+         sdef[0] = gdAntiAliased;
+         len = 1;
+         break;
+
+      case DRAW_DOTTED:
+         len = 0;
+         for (i = 0; i < MM2PX(STYLE_SHORT_LEN); i++, len++)
+            sdef[len] = gdAntiAliased;
+         for (i = 0; i < MM2PX(STYLE_SHORT_LEN); i++, len++)
+            sdef[len] = gdTransparent;
+         break;
+
+      case DRAW_DASHED:
+         len = 0;
+         for (i = 0; i < MM2PX(STYLE_LONG_LEN); i++, len++)
+            sdef[len] = gdAntiAliased;
+         for (i = 0; i < MM2PX(STYLE_SHORT_LEN); i++, len++)
+            sdef[len] = gdTransparent;
+         break;
+
+      default:
+         log_msg(LOG_EMERG, "unknown drawing style %d!", style);
+         return -1;
+   }
+
+   gdImageSetStyle(rd->img, sdef, len);
+   return 0;
+}
+
+
 int act_open_poly(osm_way_t *w, struct rdata *rd, struct orule *rl)
 {
    int e, t;
@@ -322,7 +369,15 @@ int act_open_poly(osm_way_t *w, struct rdata *rd, struct orule *rl)
 
       gdImageSetThickness(rd->img, t);
       gdImageSetAntiAliased(rd->img, rl->rule.draw.border.col);
-      gdImageOpenPolygon(rd->img, p, w->ref_cnt, gdAntiAliased);
+      if (rl->rule.draw.border.style == DRAW_SOLID)
+      {
+         gdImageOpenPolygon(rd->img, p, w->ref_cnt, gdAntiAliased);
+      }
+      else
+      {
+         (void) set_style(rd, rl->rule.draw.border.style);
+         gdImageOpenPolygon(rd->img, p, w->ref_cnt, gdStyled);
+      }
    }
 
    if (rl->rule.draw.fill.used && (rl->rule.draw.fill.style != DRAW_TRANSPARENT))
@@ -332,7 +387,15 @@ int act_open_poly(osm_way_t *w, struct rdata *rd, struct orule *rl)
 
       gdImageSetThickness(rd->img, t);
       gdImageSetAntiAliased(rd->img, rl->rule.draw.fill.col);
-      gdImageOpenPolygon(rd->img, p, w->ref_cnt, gdAntiAliased);
+      if (rl->rule.draw.fill.style == DRAW_SOLID)
+      {
+         gdImageOpenPolygon(rd->img, p, w->ref_cnt, gdAntiAliased);
+      }
+      else
+      {
+         (void) set_style(rd, rl->rule.draw.fill.style);
+         gdImageOpenPolygon(rd->img, p, w->ref_cnt, gdStyled);
+      }
    }
 
    // restore thickness
@@ -366,7 +429,15 @@ int act_fill_poly(osm_way_t *w, struct rdata *rd, struct orule *rl)
 
       gdImageSetThickness(rd->img, t);
       gdImageSetAntiAliased(rd->img, rl->rule.draw.border.col);
-      gdImagePolygon(rd->img, p, w->ref_cnt, gdAntiAliased);
+      if (rl->rule.draw.border.style == DRAW_SOLID)
+      {
+         gdImageOpenPolygon(rd->img, p, w->ref_cnt, gdAntiAliased);
+      }
+      else
+      {
+         (void) set_style(rd, rl->rule.draw.border.style);
+         gdImagePolygon(rd->img, p, w->ref_cnt, gdStyled);
+      }
    }
 
    // restore thickness
