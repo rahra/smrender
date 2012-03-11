@@ -54,31 +54,16 @@ void mk_paper_coords(double lat, double lon, struct rdata *rd, int *x, int *y)
 
 int act_image(osm_node_t *n, struct rdata *rd, struct orule *rl)
 {
-   int i, j, c, rx, ry, hx, hy, x, y;
+   int hx, hy, x, y;
    double a;
 
    mk_paper_coords(n->lat, n->lon, rd, &x, &y);
    hx = gdImageSX(rl->rule.img.img) / 2;
    hy = gdImageSY(rl->rule.img.img) / 2;
-
    a = isnan(rl->rule.img.angle) ? color_frequency(rd, x, y, hx, hy, rd->col[WHITE]) : 0;
-   a = DEG2RAD(a);
 
-   for (j = 0; j < gdImageSY(rl->rule.img.img); j++)
-   {
-      for (i = 0; i < gdImageSX(rl->rule.img.img); i++)
-      {
-         if (a != 0)
-            rot_pos(i - hx, j - hy, a, &rx, &ry);
-         else
-         {
-            rx = i - hx;
-            ry = hy - j;
-         }
-         c = gdImageGetPixel(rl->rule.img.img, i, j);
-         gdImageSetPixel(rd->img, x + rx, y - ry, c);
-      }
-   }
+   gdImageCopyRotated(rd->img, rl->rule.img.img, x, y, 0, 0,
+         gdImageSX(rl->rule.img.img), gdImageSY(rl->rule.img.img), round(a));
 
    return 0;
 }

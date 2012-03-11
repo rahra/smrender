@@ -48,6 +48,7 @@
 #include <errno.h>
 
 #include "smrender.h"
+#include "smrparse.h"
 #include "smlog.h"
 #include "smath.h"
 #include "bxtree.h"
@@ -101,6 +102,7 @@ static struct corner_point co_pt_[4];
 static struct coord center_;
 static struct wlist *wl_ = NULL;
 static struct orule *rl_ = NULL;
+static int fg_;
 
 
 /*! Check if way is a closed polygon and is an area (i.e. it has at least 4 points)
@@ -602,6 +604,13 @@ int compare_poly_area(const struct poly *p1, const struct poly *p2)
 
 int gen_layer_ini(const orule_t *rl)
 {
+   struct rdata *rd = get_rdata();
+
+   if (rl->rule.func.parm != NULL)
+      fg_ = parse_color(rd, rl->rule.func.parm);
+   else
+      fg_ = rd->col[BLACK];
+
    return cat_poly_ini(rl);
 }
 
@@ -615,14 +624,29 @@ int gen_layer(osm_obj_t *o)
 }
 
 
+void poly_fill(struct rdata *rd, gdImage *img, osm_way_t *w, int c)
+{
+   int e;
+   gdPoint p[w->ref_cnt];
+
+   if ((e = poly_mpcoords(w, rd, p)))
+   {
+      log_msg(LOG_CRIT, "poly_mpcoords returned %d, skipping", e);
+      return;
+   }
+
+   gdImageFilledPolygon(img, p, w->ref_cnt, c);
+}
+
+ 
 void gen_layer_fini(void)
 {
-   osm_way_t *w;
-   orule_t rl;
    struct wlist *wl = wl_;
    struct coord c;
    struct rdata *rd;
    int i;
+   gdImage *img;
+   int fg, bg;
  
    for (i = 0; i < wl->ref_cnt; i++)
    {
@@ -637,29 +661,18 @@ void gen_layer_fini(void)
    qsort(wl->ref, wl->ref_cnt, sizeof(struct poly), (int(*)(const void *, const void *)) compare_poly_area);
 
    rd = get_rdata();
-   memset(&rl, 0, sizeof(rl));
-   rl.rule.type = ACT_DRAW;
-   rl.rule.draw.fill.used = 1;
-   rl.rule.draw.border.used = 1;
-   rl.rule.draw.border.col = rd->col[BLACK];
+   img = gdImageCreateTrueColor(gdImageSX(rd->img), gdImageSY(rd->img));
+   bg = rd->col[WHITE];
+   fg = fg_;
+   gdImageColorTransparent(img, bg);
+   gdImageSetAntiAliased(img, fg);
+   gdImageFilledRectangle(img, 0, 0, gdImageSX(img), gdImageSY(img), bg);
 
    for (i = 0; i < wl->ref_cnt; i++)
-   {
-      /*
-      w = malloc_way(wl->ref[i].w->obj.tag_cnt + 1, wl->ref[i].w->ref_cnt);
-      w->obj.id = unique_way_id();
-      memcpy(w->ref, wl->ref[i].w->ref, wl->ref[i].w->ref_cnt * sizeof(int64_t));
-      memcpy(w->obj.otag, wl->ref[i].w->obj.otag, wl->ref[i].w->obj.tag_cnt * sizeof(struct otag));
-      set_const_tag(&w->obj.otag[w->obj.tag_cnt - 1], "smrender:clockwise", wl->ref[i].cw ? "1" : "0");
-      put_object((osm_obj_t*) w);
-      */
+      poly_fill(rd, img, wl->ref[i].w, wl->ref[i].cw ? bg : gdAntiAliased);
 
-      log_msg(LOG_DEBUG, "gen_layer_fini: way %ld, area = %f, cw = %d",
-            (long) wl->ref[i].w->obj.id, wl->ref[i].area, wl->ref[i].cw);
-
-      rl.rule.draw.fill.col = wl->ref[i].cw ? rd->col[WHITE] :  rd->col[BLUE];
-      (void) act_fill_poly(wl->ref[i].w, rd, &rl);
-   }
+   gdImageCopy(rd->img, img, 0, 0, 0, 0, gdImageSX(img), gdImageSY(img));
+   gdImageDestroy(img);
 
    free(wl);
 }
