@@ -265,7 +265,7 @@ struct rdata
    // pointer to image data
    gdImage *img;
    // image colors
-   int col[6];
+   int col[7];
 };
 
 struct filter
@@ -278,7 +278,7 @@ struct filter
    bx_node_t *rules;
 };
 
-enum {WHITE, YELLOW, BLACK, BLUE, MAGENTA, BROWN};
+enum {WHITE, YELLOW, BLACK, BLUE, MAGENTA, BROWN, TRANSPARENT};
 enum {LAT, LON};
 enum {ACT_NA, ACT_IMG, ACT_CAP, ACT_FUNC, ACT_DRAW, ACT_IGNORE, ACT_OUTPUT};
 enum {DRAW_SOLID, DRAW_DASHED, DRAW_DOTTED, DRAW_TRANSPARENT};
