@@ -19,6 +19,9 @@
 #include "config.h"
 #endif
 
+#ifndef _XOPEN_SOURCE
+#define _XOPEN_SOURCE
+#endif
 #include <time.h>
 #include <string.h>
 #include <errno.h>

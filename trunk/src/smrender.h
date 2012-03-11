@@ -328,6 +328,9 @@ int is_closed_poly(const osm_way_t*);
 /* smgrid.c */
 void grid2(struct rdata*);
 
+/* smrules.c */
+int poly_mpcoords(osm_way_t*, struct rdata*, gdPoint *);
+
 //extern int oline_;
 
 #endif
