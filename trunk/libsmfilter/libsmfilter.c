@@ -1084,3 +1084,34 @@ static int proc_sfrac(struct sector *sec)
    return 0;
 }
 
+
+int sounding(osm_obj_t *o)
+{
+   osm_node_t *n;
+   osm_way_t *w;
+   int i, cnt = 30;
+   double r = 0.1;
+
+   if (o->type != OSM_NODE)
+      return -1;
+
+   w = malloc_way(o->tag_cnt, cnt + 1);
+   w->obj.id = unique_way_id();
+   memcpy(w->obj.otag, o->otag, o->tag_cnt * sizeof(struct otag));
+ 
+   for (i = 0; i < cnt; i++)
+   {
+      n = malloc_node(0);
+      n->obj.id = unique_node_id();
+      w->ref[i] = n->obj.id;
+      node_calc((osm_node_t*) o, r / 60.0, i * 2.0 * M_PI / cnt, &n->lat, &n->lon);
+      n->lat += ((osm_node_t*) o)->lat;
+      n->lon += ((osm_node_t*) o)->lon;
+      put_object((osm_obj_t*) n);
+   }
+   w->ref[i] = w->ref[0];
+   put_object((osm_obj_t*) w);
+
+   return 0;
+}
+
