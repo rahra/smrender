@@ -204,10 +204,13 @@ int act_poly_centroid(osm_way_t *w)
 }
 
 
-void reverse_way(osm_way_t *w)
+int reverse_way(osm_way_t *w)
 {
    int i;
    int64_t ref;
+
+   if (!is_closed_poly(w))
+      return 0;
 
    for (i = 1; i <= w->ref_cnt / 2 - 1; i++)
    {
@@ -215,6 +218,7 @@ void reverse_way(osm_way_t *w)
       w->ref[i] = w->ref[w->ref_cnt - i - 1];
       w->ref[w->ref_cnt - i - 1] = ref;
    }
+   return 0;
 }
 
 
@@ -230,7 +234,7 @@ int set_way_direction(osm_way_t *w, int dir)
       return -1;
 
    if (((ar < 0) && (dir == DIR_CCW)) || ((ar > 0) && (dir == DIR_CW)))
-      reverse_way(w);
+      return reverse_way(w);
 
    return 0;
 }
