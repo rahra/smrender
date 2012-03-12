@@ -28,7 +28,12 @@
 #include "smlog.h"
 
 
+#define DIR_CW 0
+#define DIR_CCW 1
+
+
 static FILE *output_handle_;
+static osm_obj_t *o_;
 
 
 void act_output_ini(const struct orule *rl)
@@ -194,6 +199,106 @@ int act_poly_centroid(osm_way_t *w)
    put_object((osm_obj_t*) n);
  
    //log_debug("centroid %.3f/%.3f, ar = %f, way = %ld, node %ld", n->lat, n->lon, ar, w->obj.id, n->obj.id);
+
+   return 0;
+}
+
+
+void reverse_way(osm_way_t *w)
+{
+   int i;
+   int64_t ref;
+
+   for (i = 1; i <= w->ref_cnt / 2 - 1; i++)
+   {
+      ref = w->ref[i];
+      w->ref[i] = w->ref[w->ref_cnt - i - 1];
+      w->ref[w->ref_cnt - i - 1] = ref;
+   }
+}
+
+
+int set_way_direction(osm_way_t *w, int dir)
+{
+   struct coord c;
+   double ar;
+
+   if (!is_closed_poly(w))
+      return 0;
+
+   if (poly_area(w, &c, &ar))
+      return -1;
+
+   if (((ar < 0) && (dir == DIR_CCW)) || ((ar > 0) && (dir == DIR_CW)))
+      reverse_way(w);
+
+   return 0;
+}
+
+
+int set_ccw(osm_way_t *w)
+{
+   return set_way_direction(w, DIR_CCW);
+}
+
+
+int set_cw(osm_way_t *w)
+{
+   return set_way_direction(w, DIR_CW);
+}
+
+
+void set_tags_ini(const struct orule *rl)
+{
+   orule_t *or;
+   int64_t templ_id;
+
+   o_ = NULL;
+   if (rl->rule.func.parm == NULL)
+   {
+      log_msg(LOG_WARN, "set_tags requires ID of OSM object");
+      return;
+   }
+
+   if (!(templ_id = atol(rl->rule.func.parm)))
+   {
+      log_msg(LOG_WARN, "set_tags requires ID of OSM object != 0");
+      return;
+   }
+
+   if ((or = get_object0(get_rdata()->rules, templ_id, rl->oo->type - 1)) == NULL)
+   {
+      log_msg(LOG_WARN, "there is no rule of type %d with id 0x%016x", rl->oo->type, templ_id);
+      return;
+   }
+
+   if ((o_ = or->oo) == NULL)
+   {
+      log_msg(LOG_CRIT, "rule has no object");
+      return;
+   }
+}
+
+
+int set_tags(osm_obj_t *o)
+{
+   struct otag *ot;
+
+   if (o_ == NULL)
+   {
+      log_msg(LOG_CRIT, "NULL pointer to template object");
+      return -1;
+   }
+
+   if ((ot = realloc(o->otag, sizeof(struct otag) * (o->tag_cnt + o_->tag_cnt))) == NULL)
+   {
+      log_msg(LOG_CRIT, "Cannot realloc tag memory: %s", strerror(errno));
+      return -1;
+   }
+
+   o->otag = ot;
+   memcpy(&o->otag[o->tag_cnt], o_->otag, sizeof(struct otag) * o_->tag_cnt);
+   o->tag_cnt += o_->tag_cnt;
 
    return 0;
 }

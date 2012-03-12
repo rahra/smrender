@@ -29,8 +29,8 @@
 #include "smrparse.h"
 
 
-#define RULE_COUNT 7
-static const char *rule_type_[] = {"N/A", "ACT_IMG", "ACT_CAP", "ACT_FUNC", "ACT_DRAW", "ACT_IGNORE", "ACT_OUTPUT"};
+//#define RULE_COUNT 8
+static const char *rule_type_[] = {"N/A", "ACT_IMG", "ACT_CAP", "ACT_FUNC", "ACT_DRAW", "ACT_IGNORE", "ACT_OUTPUT", "ACT_SETTAGS"};
 
 
 const char *rule_type_str(int n)
@@ -368,13 +368,13 @@ int parse_func(struct actFunction *afn, const char *symstr)
 }
 
 
-int parse_output(struct actFunction *afn, const char *pstr)
+int parse_to_func(struct actFunction *afn, const char *pstr, const char *fstr)
 {
-#define OUTPUT_FUNC_STR "act_output@NULL?"
-   char buf[strlen(pstr) + strlen(OUTPUT_FUNC_STR) + 1];
+   char buf[strlen(pstr) + strlen(fstr) + 1];
 
-   snprintf(buf, sizeof(buf), "%s%s", OUTPUT_FUNC_STR, pstr);
+   snprintf(buf, sizeof(buf), "%s%s", fstr, pstr);
    return parse_func(afn, buf);
+
 }
 
 
@@ -398,7 +398,7 @@ int prepare_rules(osm_obj_t *o, struct rdata *rd, void *p)
 
    if ((i = match_attr(rl->oo, "_action_", NULL)) == -1)
    {
-      log_msg(LOG_WARN, "rule %ld has no action", rl->oo->id);
+      log_msg(LOG_WARN, "rule %ld has no action, it may be used as template", rl->oo->id);
       return 0;
    }
 
@@ -527,9 +527,9 @@ int prepare_rules(osm_obj_t *o, struct rdata *rd, void *p)
          return E_SYNTAX;
       }
 
-      if (parse_output(&rl->rule.func, s))
+      if (parse_to_func(&rl->rule.func, s, "act_output@NULL?"))
       {
-         log_msg(LOG_ERR, "error in parse_output()");
+         log_msg(LOG_ERR, "error in parse_to_func()");
          return E_SYNTAX;
       }
 
@@ -541,6 +541,46 @@ int prepare_rules(osm_obj_t *o, struct rdata *rd, void *p)
 
       rl->rule.type = ACT_FUNC;
       log_debug("successfully parsed output rule");
+   }
+   else if (!strcmp(s, "settags"))
+   {
+      if ((s = strtok(NULL, "")) == NULL)
+      {
+         log_warn("syntax error in settags rule");
+         return E_SYNTAX;
+      }
+
+      if (parse_to_func(&rl->rule.func, s, "set_tags@NULL?"))
+      {
+         log_msg(LOG_ERR, "error in parse_to_func()");
+         return E_SYNTAX;
+      }
+
+      if (rl->rule.func.parm == NULL)
+      {
+         log_msg(LOG_WARN, "settags requires an argument");
+         return E_SYNTAX;
+      }
+
+      rl->rule.type = ACT_FUNC;
+      log_debug("successfully parsed settags rule");
+   }
+   else if (!strcmp(s, "mskfill"))
+   {
+      if ((s = strtok(NULL, "")) == NULL)
+      {
+         log_warn("syntax error in mask fill rule");
+         return E_SYNTAX;
+      }
+
+      if (parse_to_func(&rl->rule.func, s, "gen_layer@NULL?"))
+      {
+         log_msg(LOG_ERR, "error in parse_to_func()");
+         return E_SYNTAX;
+      }
+
+      rl->rule.type = ACT_FUNC;
+      log_debug("successfully parsed mask fill rule");
    }
    else if (!strcmp(s, "ignore"))
    {
