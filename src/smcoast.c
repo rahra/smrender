@@ -648,6 +648,12 @@ void gen_layer_fini(void)
    gdImage *img;
    int fg, bg;
  
+   if (!wl->ref_cnt)
+   {
+      free(wl);
+      return;
+   }
+
    for (i = 0; i < wl->ref_cnt; i++)
    {
       poly_area(wl->ref[i].w, &c, &wl->ref[i].area);
@@ -666,7 +672,7 @@ void gen_layer_fini(void)
    fg = fg_;
    gdImageColorTransparent(img, bg);
    gdImageSetAntiAliased(img, fg);
-   gdImageFilledRectangle(img, 0, 0, gdImageSX(img), gdImageSY(img), bg);
+   gdImageFilledRectangle(img, 0, 0, gdImageSX(img), gdImageSY(img), wl->ref[0].cw ? gdAntiAliased : bg);
 
    for (i = 0; i < wl->ref_cnt; i++)
       poly_fill(rd, img, wl->ref[i].w, wl->ref[i].cw ? bg : gdAntiAliased);

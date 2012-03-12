@@ -1,8 +1,11 @@
-AC_INIT([smrender], [1.1], [bf@abenteuerland.at])
+AC_PREREQ(2.67)
+define([svnversion], esyscmd([sh -c "echo -n $(( `svnversion | tr -d 'M'` + 1 ))"]))dnl
+AC_INIT([smrender], [[1.1.r]svnversion], [bf@abenteuerland.at])
 AC_CONFIG_MACRO_DIR([m4])
 AM_INIT_AUTOMAKE([foreign -Wall -Werror])
 LT_INIT
-AC_SUBST([CFLAGS], [["$CFLAGS -Wall"]])
+#AC_SUBST([CFLAGS], [["$CFLAGS -Wall"]])
+AC_SUBST([CFLAGS], [["-g -Wall"]])
 AC_PROG_CC
 AC_CONFIG_HEADERS([config.h])
 
