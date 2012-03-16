@@ -698,8 +698,7 @@ void add_blind_node(const struct coord *c)
 #define SQR(a) ((a) * (a))
 #define HYPOT(a,b) sqrt(SQR(a) + SQR(b))
 #define MAX_DEVIATION 0.00041666
-//#define MAX_DEVIATION 1.0
-#define MAX_ITERATION 10
+#define MAX_ITERATION 3
 #define MAX_CFAC 2.0
 
 
@@ -778,8 +777,8 @@ void node_to_circle(osm_node_t *n, const struct coord *c, double r, double k, in
       n->lat = c->lat - k * e;
       n->obj.ver++;
    }
-   log_msg(LOG_DEBUG, "clon=%f, clat=%f, nlon=%f, nlat=%f, r=%f, k=%f, e=%f, sgn=%d",
-         c->lon, c->lat, n->lon, n->lat, r, k, e, sgn);
+//   log_msg(LOG_DEBUG, "clon=%f, clat=%f, nlon=%f, nlat=%f, r=%f, k=%f, e=%f, sgn=%d",
+//         c->lon, c->lat, n->lon, n->lat, r, k, e, sgn);
 }
 
 
@@ -828,28 +827,29 @@ void circle_calc(osm_node_t **n, osm_node_t **s)
    {
    //if (!isnan(r) && !isnan(k[i]))
    //if (!isnan(r))
-   if (isnormal(r))
-   {
-      //add_blind_node(&c);
-      t = HYPOT(p[i].lon - c.lon, p[i].lat - c.lat);
-      node_to_circle(n[i], &c, r - t > MAX_DEVIATION ? t + MAX_DEVIATION : r, k[i], c.lon < p[i].lon ? -1 : 1);
-      //t = HYPOT(p[1].lon - c.lon, p[1].lat - c.lat);
-      //node_to_circle(n[1], &c, r > MAX_DEVIATION ? t + MAX_DEVIATION : r, k[1], c.lon < p[1].lon ? -1 : 1);
-   }
-   else
-   {
-      log_msg(LOG_DEBUG, "nan");
-      avg_point(n[i], &p[i]);
-      //avg_point(n[1], &p[1]);
-   }
+      if (isnormal(r))
+      {
+         //add_blind_node(&c);
+         t = HYPOT(p[i].lon - c.lon, p[i].lat - c.lat);
+         node_to_circle(n[i], &c, r - t > MAX_DEVIATION ? t + MAX_DEVIATION : r, k[i], c.lon < p[i].lon ? -1 : 1);
+         //t = HYPOT(p[1].lon - c.lon, p[1].lat - c.lat);
+         //node_to_circle(n[1], &c, r > MAX_DEVIATION ? t + MAX_DEVIATION : r, k[1], c.lon < p[1].lon ? -1 : 1);
+      }
+      else
+      {
+         log_msg(LOG_DEBUG, "nan");
+         avg_point(n[i], &p[i]);
+         //avg_point(n[1], &p[1]);
+      }
    }
 }
 
 
-osm_way_t *refine_poly0(osm_way_t *w)
+int refine_poly0(osm_way_t *w)
 {
    osm_node_t *n[w->ref_cnt - 1], *s[w->ref_cnt];
    osm_way_t *v;
+   int64_t *ref;
    int i;
 
    // get existing nodes
@@ -857,7 +857,7 @@ osm_way_t *refine_poly0(osm_way_t *w)
       if ((s[i] = get_object(OSM_NODE, w->ref[i])) == NULL)
       {
          log_msg(LOG_EMERG, "get_object() returned NULL pointer");
-         return NULL;
+         return 1;
       }
 
    // get new nodes
@@ -867,21 +867,33 @@ osm_way_t *refine_poly0(osm_way_t *w)
    for (i = 0; i < w->ref_cnt - 2; i++)
       circle_calc(&n[i], &s[i]);
 
-   v = malloc_way(w->obj.tag_cnt + 1, w->ref_cnt * 2 - 1);
-   v->obj.id = unique_way_id();
+   //v = malloc_way(w->obj.tag_cnt + 1, w->ref_cnt * 2 - 1);
+   //v->obj.id = unique_way_id();
+   if ((ref = malloc(sizeof(int64_t) * (w->ref_cnt * 2 - 1))) == NULL)
+   {
+      log_msg(LOG_ERR, "malloc for new nodelist failed: %s", strerror(errno));
+      return 1;
+   }
 
    for (i = 0; i < w->ref_cnt - 1; i++)
    {
-      v->ref[i * 2] = w->ref[i];
-      v->ref[i * 2 + 1] = n[i]->obj.id = unique_node_id();
+      //v->ref[i * 2] = w->ref[i];
+      ref[i * 2] = w->ref[i];
+      //v->ref[i * 2 + 1] = n[i]->obj.id = unique_node_id();
+      ref[i * 2 + 1] = n[i]->obj.id = unique_node_id();
       put_object((osm_obj_t*) n[i]);
    }
-   v->ref[i * 2] = w->ref[i];
-   memcpy(v->obj.otag, w->obj.otag, sizeof(struct otag) * w->obj.tag_cnt);
-   set_const_tag(&v->obj.otag[v->obj.tag_cnt - 1], "smrender:func", "refine_poly");
-   put_object((osm_obj_t*) v);
+   ref[i * 2] = w->ref[i];
 
-   return v;
+   free(w->ref);
+   w->ref = ref;
+   w->ref_cnt = w->ref_cnt * 2 - 1;
+
+   /*memcpy(v->obj.otag, w->obj.otag, sizeof(struct otag) * w->obj.tag_cnt);
+   set_const_tag(&v->obj.otag[v->obj.tag_cnt - 1], "smrender:func", "refine_poly");
+   put_object((osm_obj_t*) v);*/
+
+   return 0;
 }
 
 
@@ -896,8 +908,8 @@ int refine_poly(osm_way_t *w)
    if (norm_adj_line_len(w))
       return 1;
 
-   for (i = 0, v = w; i < max_iter; i++)
-      if ((v = refine_poly0(v)) == NULL)
+   for (i = 0; i < max_iter; i++)
+      if (refine_poly0(w))
          return 1;
 
    return 0;
