@@ -870,7 +870,8 @@ int main(int argc, char *argv[])
    rd->col[BROWN] = gdImageColorAllocate(rd->img, 154, 42, 2);
    rd->col[TRANSPARENT] = gdTransparent;
    gdImageFill(rd->img, 0, 0, rd->col[WHITE]);
-   if (!gdFTUseFontConfig(1))
+#define gdImageFTUseFontConfig gdFTUseFontConfig
+   if (!gdImageFTUseFontConfig(1))
       log_msg(LOG_NOTICE, "fontconfig library not available");
 
    if ((fd = open(cf, O_RDONLY)) == -1)

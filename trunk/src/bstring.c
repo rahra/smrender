@@ -151,32 +151,3 @@ double bs_tod(bstring_t b)
    return d;
 }
 
-
-#ifdef TEST_BSTRING
-#include <stdio.h>
-
-int main(int argc, char *argv[])
-{
-   char s[] = "-47.234hhu djj";
-   bstring_t b;
-   double d;
-   long l;
-   int c[3];
-
-   b.buf = s;
-   b.len = 7;
-
-   d = bs_tod(b);
-   l = bs_tol(b);
-
-   c[0] = bs_cmp(b, "-33");
-   c[1] = bs_cmp(b, "-47.234");
-   c[2] = bs_cmp(b, "absnn");
-
-   printf("%f, %ld, [%d,%d,%d]\n", d, l, c[0], c[1], c[2]);
-
-   return 0;
-}
-
-#endif
-
