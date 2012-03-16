@@ -683,3 +683,223 @@ void gen_layer_fini(void)
    free(wl);
 }
 
+
+void add_blind_node(const struct coord *c)
+{
+   osm_node_t *n = malloc_node(0);
+
+   n->obj.id = unique_node_id();
+   n->lat = c->lat;
+   n->lon = c->lon;
+   put_object((osm_obj_t*) n);
+}
+
+
+#define SQR(a) ((a) * (a))
+#define HYPOT(a,b) sqrt(SQR(a) + SQR(b))
+#define MAX_DEVIATION 0.00041666
+//#define MAX_DEVIATION 1.0
+#define MAX_ITERATION 10
+#define MAX_CFAC 2.0
+
+
+osm_node_t *split_line(osm_node_t **s)
+{
+   osm_node_t *n = malloc_node(0);
+   n->obj.id = unique_node_id();
+   n->lat = (s[0]->lat + s[1]->lat) / 2;
+   n->lon = (s[0]->lon + s[1]->lon) / 2;
+   return n;
+}
+
+
+int norm_adj_line_len(osm_way_t *w)
+{
+   osm_node_t *n[3];
+   osm_node_t *m;
+   int64_t *ref;
+   double l[2];
+   int i, j;
+
+   log_msg(LOG_WARN, "norm_adj_line_len broken");
+   return 0;
+
+   for (i = 0; i < w->ref_cnt - 2; i++)
+   {
+      for (j = 0; j < 3; j++)
+         if ((n[j] = get_object(OSM_NODE, w->ref[i + j])) == NULL)
+            return -1;
+
+      l[0] = HYPOT(n[0]->lon - n[1]->lon, n[0]->lat - n[1]->lat);
+      l[1] = HYPOT(n[1]->lon - n[2]->lon, n[1]->lat - n[2]->lat);
+
+      if (l[0] > MAX_CFAC * l[1])
+         j = 0;
+      else if (l[1] > MAX_CFAC * l[0])
+         j = 1;
+      else
+         continue;
+      
+      m = split_line(&n[j]);
+      if ((ref = realloc(w->ref, sizeof(int64_t) * (w->ref_cnt + 1))) == NULL)
+      {
+         log_msg(LOG_ERR, "could not enlarge reflist of way %ld: %s", (long) w->obj.id, strerror(errno));
+         return -1;
+      }
+      memmove(&ref[i + j + 1], &ref[i + j], sizeof(int64_t) * (w->ref_cnt - i - j));
+      ref[i + j] = m->obj.id;
+      put_object((osm_obj_t*) m);
+      w->ref = ref;
+      w->ref_cnt++;
+
+      //if (j) i--;
+   }
+   return 0;
+}
+
+
+/*! 
+ *  @param sgn Sign; this may be 1 or -1.
+ */
+void node_to_circle(osm_node_t *n, const struct coord *c, double r, double k, int sgn)
+{
+   double e;
+
+   e = sgn * sqrt(SQR(r) / (1 + SQR(k)));
+
+   if (n->obj.ver)
+   {
+      n->lon = ((c->lon - e) + n->lon) / 2;
+      n->lat = ((c->lat - k * e) + n->lat) / 2;
+   }
+   else
+   {
+      n->lon = c->lon - e;
+      n->lat = c->lat - k * e;
+      n->obj.ver++;
+   }
+   log_msg(LOG_DEBUG, "clon=%f, clat=%f, nlon=%f, nlat=%f, r=%f, k=%f, e=%f, sgn=%d",
+         c->lon, c->lat, n->lon, n->lat, r, k, e, sgn);
+}
+
+
+void avg_point(osm_node_t *n, const struct coord *p)
+{
+   if (n->obj.ver)
+   {
+      n->lat = (p->lat + n->lat) / 2;
+      n->lon = (p->lon + n->lon) / 2;
+   }
+   else
+   {
+      n->lat = p->lat;
+      n->lon = p->lon;
+      n->obj.ver++;
+   }
+}
+
+
+/*! Calculate two nodes n which are on the same circle as three nodes s.
+ *  @param n Array of two node pointers which will receive the result.
+ *  @param s Array of three nodes which are the source of calculation.
+ */
+void circle_calc(osm_node_t **n, osm_node_t **s)
+{
+   int i;
+   double k[2], d[2], r, t;
+   struct coord c, p[2];
+
+   for (i = 0; i < 2; i++)
+   {
+      p[i].lat = (s[i]->lat + s[i + 1]->lat) / 2;
+      p[i].lon = (s[i]->lon + s[i + 1]->lon) / 2;
+      k[i] = -(s[i + 1]->lon - s[i]->lon) / (s[i + 1]->lat - s[i]->lat);
+      //d[i] = (s[i]->lat + s[i + 1]->lat) / 2 - k[i] * (s[i]->lon + s[i + 1]->lon) / 2;
+      d[i] = p[i].lat - k[i] * p[i].lon;
+   }
+
+   // center point
+   c.lon = (d[1] - d[0]) / (k[0] - k[1]);
+   c.lat = k[0] * c.lon + d[0];
+    // radius
+   r = HYPOT(s[0]->lon - c.lon, s[0]->lat - c.lat);
+   
+   for (i = 0; i < 2; i++)
+   {
+   //if (!isnan(r) && !isnan(k[i]))
+   //if (!isnan(r))
+   if (isnormal(r))
+   {
+      //add_blind_node(&c);
+      t = HYPOT(p[i].lon - c.lon, p[i].lat - c.lat);
+      node_to_circle(n[i], &c, r - t > MAX_DEVIATION ? t + MAX_DEVIATION : r, k[i], c.lon < p[i].lon ? -1 : 1);
+      //t = HYPOT(p[1].lon - c.lon, p[1].lat - c.lat);
+      //node_to_circle(n[1], &c, r > MAX_DEVIATION ? t + MAX_DEVIATION : r, k[1], c.lon < p[1].lon ? -1 : 1);
+   }
+   else
+   {
+      log_msg(LOG_DEBUG, "nan");
+      avg_point(n[i], &p[i]);
+      //avg_point(n[1], &p[1]);
+   }
+   }
+}
+
+
+osm_way_t *refine_poly0(osm_way_t *w)
+{
+   osm_node_t *n[w->ref_cnt - 1], *s[w->ref_cnt];
+   osm_way_t *v;
+   int i;
+
+   // get existing nodes
+   for (i = 0; i < w->ref_cnt; i++)
+      if ((s[i] = get_object(OSM_NODE, w->ref[i])) == NULL)
+      {
+         log_msg(LOG_EMERG, "get_object() returned NULL pointer");
+         return NULL;
+      }
+
+   // get new nodes
+   for (i = 0; i < w->ref_cnt - 1; i++)
+      n[i] = malloc_node(0);
+
+   for (i = 0; i < w->ref_cnt - 2; i++)
+      circle_calc(&n[i], &s[i]);
+
+   v = malloc_way(w->obj.tag_cnt + 1, w->ref_cnt * 2 - 1);
+   v->obj.id = unique_way_id();
+
+   for (i = 0; i < w->ref_cnt - 1; i++)
+   {
+      v->ref[i * 2] = w->ref[i];
+      v->ref[i * 2 + 1] = n[i]->obj.id = unique_node_id();
+      put_object((osm_obj_t*) n[i]);
+   }
+   v->ref[i * 2] = w->ref[i];
+   memcpy(v->obj.otag, w->obj.otag, sizeof(struct otag) * w->obj.tag_cnt);
+   set_const_tag(&v->obj.otag[v->obj.tag_cnt - 1], "smrender:func", "refine_poly");
+   put_object((osm_obj_t*) v);
+
+   return v;
+}
+
+
+int refine_poly(osm_way_t *w)
+{
+   int i, max_iter = MAX_ITERATION;
+   osm_way_t *v;
+
+   if (w->obj.type != OSM_WAY)
+      return 1;
+
+   if (norm_adj_line_len(w))
+      return 1;
+
+   for (i = 0, v = w; i < max_iter; i++)
+      if ((v = refine_poly0(v)) == NULL)
+         return 1;
+
+   return 0;
+}
+
