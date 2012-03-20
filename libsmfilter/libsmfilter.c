@@ -175,41 +175,10 @@ int set_on_match(const char *s, const char *k, const char *v, double *a)
 
 void vsector_ini(orule_t *r)
 {
-   char *k, *v, *s, *buf;
-
-   // Reinitialize global variable to their defaults if no parameter is
-   // supplied.
-   if (r->rule.func.parm == NULL)
-   {
-      arc_div_ = ARC_DIV;
-      arc_max_ = ARC_MAX;
-      sec_radius_ = SEC_RADIUS;
-      dir_arc_ = DIR_ARC;
-   }
-   else
-   { 
-      if ((buf = strdup(r->rule.func.parm)) == NULL)
-         log_msg(LOG_ERR, "strdup(): %s", strerror(errno)),
-         exit(EXIT_FAILURE);
-      log_msg(LOG_DEBUG, "parsing param string '%s'", buf);
-      if ((k = strtok_r(buf, "=", &s)) != NULL)
-      {
-         for (;;)
-         {
-            if ((v = strtok_r(NULL, ",", &s)) == NULL)
-               break;
-
-            set_on_match("a", k, v, &arc_max_);
-            set_on_match("b", k, v, &dir_arc_);
-            set_on_match("d", k, v, &arc_div_);
-            set_on_match("r", k, v, &sec_radius_);
-
-            if ((k = strtok_r(NULL, "=", &s)) == NULL)
-               break;
-         }
-      }
-      free(buf);
-   }
+   arc_max_ = get_param("a", &arc_max_, r->rule.func.fp) == NULL ? ARC_MAX : arc_max_;
+   dir_arc_ = get_param("b", &dir_arc_, r->rule.func.fp) == NULL ? DIR_ARC : dir_arc_;
+   arc_div_ = get_param("d", &arc_div_, r->rule.func.fp) == NULL ? ARC_DIV : arc_div_;
+   sec_radius_ = get_param("r", &sec_radius_, r->rule.func.fp) == NULL ? SEC_RADIUS : sec_radius_;
 
    log_msg(LOG_INFO, "arc_max_(a) = %.2f, dir_arc_(b) = %.2f, arc_div_(d) = %.2f, sec_radius_(r) = %.2f",
          arc_max_, dir_arc_, arc_div_, sec_radius_);

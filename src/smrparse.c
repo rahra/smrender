@@ -316,21 +316,50 @@ int parse_func(struct actFunction *afn, const char *symstr)
    char *func, *lib, *sp;
 
    strcpy(buf, symstr);
+   if ((afn->parm = strchr(symstr, '?')) != NULL)
+   {
+      buf[afn->parm - symstr] = '\0';
+      afn->parm++;
+      if ((afn->parm = strdup(afn->parm)) == NULL)
+      {
+         log_msg(LOG_ERR, "strdup in parse_func failed: %s", strerror(errno));
+         return 1;
+      }
+      if ((afn->parm0 = strdup(afn->parm)) == NULL)
+      {
+         log_msg(LOG_ERR, "strdup in parse_func failed: %s", strerror(errno));
+         return 1;
+      }
+      afn->fp = parse_fparam(afn->parm0);
+   }
 
    if ((func = strtok_r(buf, "@", &sp)) == NULL)
    {
       log_msg(LOG_ERR, "syntax error in function rule");
       return -1;
    }
+
    if ((lib = strtok_r(NULL, "?", &sp)) == NULL)
    {
       log_msg(LOG_INFO, "looking up function in memory linked code");
    }
+   else if (!strcmp(lib, "NULL"))
+   {
+      log_msg(LOG_INFO, "looking up function in memory linked code");
+      lib = NULL;
+   }
+ 
+#if 0
    else
    {
       if ((afn->parm = strtok_r(NULL, "", &sp)) != NULL)
+      {
          // FIXME: error checking missing
          afn->parm = strdup(afn->parm);
+         afn->fp = parse_fparam(afn->parm);
+      }
+      else
+         afn->fp = NULL;
       
       if (!strcmp(lib, "NULL"))
       {
@@ -338,6 +367,7 @@ int parse_func(struct actFunction *afn, const char *symstr)
          lib = NULL;
       }
    }
+#endif
 
    // Open shared library
    if ((afn->libhandle = dlopen(lib, RTLD_LAZY)) == NULL)
@@ -602,5 +632,75 @@ int prepare_rules(osm_obj_t *o, struct rdata *rd, void *p)
    rl->rule.tag_cnt--;
 
    return 0;
+}
+
+
+void free_fparam(fparam_t **fp)
+{
+   fparam_t **fp0 = fp;
+
+   // free string buffer (should be first attribute);
+   if (*fp != NULL)
+      free((*fp)->attr);
+
+   // free fparam_t's
+   for (; *fp != NULL; fp++)
+      free(*fp);
+
+   // free pointer list
+   free(fp0);
+}
+
+
+fparam_t **parse_fparam(char *parm)
+{
+   fparam_t **fp, **fp0;
+   char *s, *sp0, *sp1;
+   int cnt;
+
+   if ((fp = malloc(sizeof(fparam_t*))) == NULL)
+      return NULL;
+   *fp = NULL;
+
+   for (s = strtok_r(parm, ",", &sp0), cnt = 0; s != NULL; s = strtok_r(NULL, ",", &sp0), cnt++)
+   {
+      if ((fp0 = realloc(fp, sizeof(fparam_t*) * (cnt + 2))) == NULL)
+      {
+         log_msg(LOG_ERR, "realloc in parse_fparam failed: %s", strerror(errno));
+         break;
+      }
+      fp = fp0;
+      if ((fp[cnt] = malloc(sizeof(fparam_t))) == NULL)
+      {
+         log_msg(LOG_ERR, "malloc in parse_fparam failed: %s", strerror(errno));
+         break;
+      }
+      memset(fp[cnt], 0, sizeof(fparam_t));
+
+      fp[cnt]->attr = strtok_r(s, "=", &sp1);
+      if ((fp[cnt]->val = strtok_r(NULL, "=", &sp1)) != NULL)
+         fp[cnt]->dval = atol(fp[cnt]->val);
+      fp[cnt + 1] = NULL;
+   }
+
+   return fp;
+}
+
+
+char *get_param(const char *attr, double *dval, fparam_t **fp)
+{
+   if ((fp == NULL) || (attr == NULL))
+      return NULL;
+
+   for (; *fp != NULL; fp++)
+   {
+      if (!strcmp(attr, (*fp)->attr))
+      {
+         if (dval != NULL)
+            *dval = (*fp)->dval;
+         return (*fp)->val;
+      }
+   }
+   return NULL;
 }
 

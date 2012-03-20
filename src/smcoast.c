@@ -103,6 +103,8 @@ static struct coord center_;
 static struct wlist *wl_ = NULL;
 static struct orule *rl_ = NULL;
 static int fg_;
+static double deviation_;
+static int iteration_;
 
 
 /*! Check if way is a closed polygon and is an area (i.e. it has at least 4 points)
@@ -697,11 +699,12 @@ void add_blind_node(const struct coord *c)
 
 #define SQR(a) ((a) * (a))
 #define HYPOT(a,b) sqrt(SQR(a) + SQR(b))
-#define MAX_DEVIATION 0.00041666
+#define MAX_DEVIATION 50
 #define MAX_ITERATION 3
 #define MAX_CFAC 2.0
 
 
+#if 0
 osm_node_t *split_line(osm_node_t **s)
 {
    osm_node_t *n = malloc_node(0);
@@ -711,7 +714,7 @@ osm_node_t *split_line(osm_node_t **s)
    return n;
 }
 
-
+// FIXME: this does not work yet
 int norm_adj_line_len(osm_way_t *w)
 {
    osm_node_t *n[3];
@@ -755,6 +758,7 @@ int norm_adj_line_len(osm_way_t *w)
    }
    return 0;
 }
+#endif
 
 
 /*! 
@@ -777,8 +781,6 @@ void node_to_circle(osm_node_t *n, const struct coord *c, double r, double k, in
       n->lat = c->lat - k * e;
       n->obj.ver++;
    }
-//   log_msg(LOG_DEBUG, "clon=%f, clat=%f, nlon=%f, nlat=%f, r=%f, k=%f, e=%f, sgn=%d",
-//         c->lon, c->lat, n->lon, n->lat, r, k, e, sgn);
 }
 
 
@@ -813,7 +815,6 @@ void circle_calc(osm_node_t **n, osm_node_t **s)
       p[i].lat = (s[i]->lat + s[i + 1]->lat) / 2;
       p[i].lon = (s[i]->lon + s[i + 1]->lon) / 2;
       k[i] = -(s[i + 1]->lon - s[i]->lon) / (s[i + 1]->lat - s[i]->lat);
-      //d[i] = (s[i]->lat + s[i + 1]->lat) / 2 - k[i] * (s[i]->lon + s[i + 1]->lon) / 2;
       d[i] = p[i].lat - k[i] * p[i].lon;
    }
 
@@ -825,21 +826,15 @@ void circle_calc(osm_node_t **n, osm_node_t **s)
    
    for (i = 0; i < 2; i++)
    {
-   //if (!isnan(r) && !isnan(k[i]))
-   //if (!isnan(r))
       if (isnormal(r))
       {
          //add_blind_node(&c);
          t = HYPOT(p[i].lon - c.lon, p[i].lat - c.lat);
-         node_to_circle(n[i], &c, r - t > MAX_DEVIATION ? t + MAX_DEVIATION : r, k[i], c.lon < p[i].lon ? -1 : 1);
-         //t = HYPOT(p[1].lon - c.lon, p[1].lat - c.lat);
-         //node_to_circle(n[1], &c, r > MAX_DEVIATION ? t + MAX_DEVIATION : r, k[1], c.lon < p[1].lon ? -1 : 1);
+         node_to_circle(n[i], &c, r - t > deviation_ ? t + deviation_ : r, k[i], c.lon < p[i].lon ? -1 : 1);
       }
       else
       {
-         log_msg(LOG_DEBUG, "nan");
          avg_point(n[i], &p[i]);
-         //avg_point(n[1], &p[1]);
       }
    }
 }
@@ -848,7 +843,6 @@ void circle_calc(osm_node_t **n, osm_node_t **s)
 int refine_poly0(osm_way_t *w)
 {
    osm_node_t *n[w->ref_cnt - 1], *s[w->ref_cnt];
-   osm_way_t *v;
    int64_t *ref;
    int i;
 
@@ -867,8 +861,6 @@ int refine_poly0(osm_way_t *w)
    for (i = 0; i < w->ref_cnt - 2; i++)
       circle_calc(&n[i], &s[i]);
 
-   //v = malloc_way(w->obj.tag_cnt + 1, w->ref_cnt * 2 - 1);
-   //v->obj.id = unique_way_id();
    if ((ref = malloc(sizeof(int64_t) * (w->ref_cnt * 2 - 1))) == NULL)
    {
       log_msg(LOG_ERR, "malloc for new nodelist failed: %s", strerror(errno));
@@ -877,9 +869,7 @@ int refine_poly0(osm_way_t *w)
 
    for (i = 0; i < w->ref_cnt - 1; i++)
    {
-      //v->ref[i * 2] = w->ref[i];
       ref[i * 2] = w->ref[i];
-      //v->ref[i * 2 + 1] = n[i]->obj.id = unique_node_id();
       ref[i * 2 + 1] = n[i]->obj.id = unique_node_id();
       put_object((osm_obj_t*) n[i]);
    }
@@ -889,26 +879,34 @@ int refine_poly0(osm_way_t *w)
    w->ref = ref;
    w->ref_cnt = w->ref_cnt * 2 - 1;
 
-   /*memcpy(v->obj.otag, w->obj.otag, sizeof(struct otag) * w->obj.tag_cnt);
-   set_const_tag(&v->obj.otag[v->obj.tag_cnt - 1], "smrender:func", "refine_poly");
-   put_object((osm_obj_t*) v);*/
+   return 0;
+}
 
+
+int refine_poly_ini(const orule_t *rl)
+{
+   double it;
+
+   if (get_param("iteration", &it, rl->rule.func.fp) == NULL)
+      it = MAX_ITERATION;
+   iteration_ = round(it);
+   if (get_param("deviation", &deviation_, rl->rule.func.fp) == NULL)
+      deviation_ = MAX_DEVIATION;
+
+   deviation_ /= (1852.0 * 60.0);
+   log_msg(LOG_INFO, "refine_poly using iteration = %d, deviation = %.1f", iteration_, deviation_ * 1852.0 * 60.0);
    return 0;
 }
 
 
 int refine_poly(osm_way_t *w)
 {
-   int i, max_iter = MAX_ITERATION;
-   osm_way_t *v;
+   int i;
 
    if (w->obj.type != OSM_WAY)
       return 1;
 
-   if (norm_adj_line_len(w))
-      return 1;
-
-   for (i = 0; i < max_iter; i++)
+   for (i = 0; i < iteration_; i++)
       if (refine_poly0(w))
          return 1;
 
