@@ -38,7 +38,7 @@ static double sec_radius_ = SEC_RADIUS;   // param 'r'
 static double dir_arc_ = DIR_ARC;         // param 'b'
 static int untagged_circle_ = 0;
 
-static const double altr_[] = {0.005, 0.005, 0.01, 0.005};
+static const double altr_[] = {0.003, 0.0035, 0.009, 0.005};
 
 static const char *col_[] = {"white", "red", "green", "yellow", "orange", "blue", "violet", "amber", NULL};
 static const char *col_abbr_[] = {"W", "R", "G", "Y", "Or", "Bu", "Vi", "Am", NULL};
@@ -734,7 +734,7 @@ static int sector_calc3(const osm_node_t *n, const struct sector *sec, bstring_t
       node->obj.ver = 1;
       put_object((osm_obj_t*) node);
 
-      if (sec->sf[i].startr)
+      if (sec->sf[i].startr && !(sec->sf[i].start == 0.0 && sec->sf[i].end == 360.0))
       {
          wy = malloc_way(2, 2);
          wy->obj.id = unique_way_id();
@@ -784,7 +784,7 @@ static int sector_calc3(const osm_node_t *n, const struct sector *sec, bstring_t
       node->obj.ver = 1;
       put_object((osm_obj_t*) node);
 
-      if (sec->sf[i].endr)
+      if (sec->sf[i].endr && !(sec->sf[i].start == 0.0 && sec->sf[i].end == 360.0))
       {
          wy = malloc_way(2, 2);
          wy->obj.id = unique_way_id();
