@@ -228,6 +228,10 @@
 
    <way>
       <tag k='natural' v='coastline'/>
+      <tag k='_action_' v='func:refine_poly'/>
+   </way>
+   <way>
+      <tag k='natural' v='coastline'/>
       <tag k='_action_' v='func:cat_poly'/>
    </way>
    <way>
