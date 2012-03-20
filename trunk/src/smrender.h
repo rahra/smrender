@@ -98,6 +98,13 @@ enum {IDX_NODE, IDX_WAY};
 
 enum {E_SM_OK, E_RTYPE_NA, E_ACT_NOT_IMPL, E_SYNTAX, E_REF_ERR};
 
+typedef struct fparam
+{
+   char *attr;
+   char *val;
+   double dval;
+} fparam_t;
+
 struct specialTag
 {
    short type;
@@ -160,8 +167,10 @@ struct actFunction
       void *sym;
    } ini;
    structor_t fini;
-   void *libhandle;
-   char *parm;
+   void *libhandle;  // pointer to lib base
+   char *parm;       // function argument string
+   char *parm0;      // mem buf for fparam_t's (don't touch)
+   fparam_t **fp;    // pointer list to function arguments
 };
 
 struct actOutput
@@ -330,6 +339,9 @@ void grid2(struct rdata*);
 
 /* smrules.c */
 int poly_mpcoords(osm_way_t*, struct rdata*, gdPoint *);
+
+/* smrparse.c */
+char *get_param(const char*, double*, fparam_t**);
 
 //extern int oline_;
 
