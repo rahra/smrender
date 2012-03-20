@@ -1,5 +1,6 @@
-SUBDIRS = src libsmfilter libskel rules
+SUBDIRS = src libsmfilter libskel
 ACLOCAL_AMFLAGS = -I m4
-rulesdir = $(datadir)/smrender
-dist_rules_DATA = rules/rules.osm rules/rulesbig.osm
+rules_datadir = $(datadir)/smrender
+dist_rules_data_DATA = rules/rules.osm rules/rulesbig.osm
+dist_bin_SCRIPTS = tools/smfilter2
 
