@@ -248,7 +248,7 @@ int apply_rules(struct orule *rl, struct rdata *rd, osm_node_t *n)
          return 0;
    }
 
-   log_debug("applying rule id 0x%016lx type %s(%d)", rl->oo->id, rule_type_str(rl->rule.type), rl->rule.type);
+   log_debug("applying rule id 0x%016lx type %s(%d)", (long) rl->oo->id, rule_type_str(rl->rule.type), rl->rule.type);
    // call initialization rule of function rule if available
    if ((rl->rule.type == ACT_FUNC) && (rl->rule.func.ini.func != NULL))
       rl->rule.func.ini.func(rl);

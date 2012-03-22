@@ -187,7 +187,7 @@ int act_poly_centroid(osm_way_t *w)
    n->lat = c.lat;
    n->lon = c.lon;
 
-   snprintf(buf, sizeof(buf), "%ld", w->obj.id);
+   snprintf(buf, sizeof(buf), "%ld", (long) w->obj.id);
    if ((s = strdup(buf)) == NULL)
    {
       free_obj((osm_obj_t*) n);
