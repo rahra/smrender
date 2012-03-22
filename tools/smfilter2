@@ -6,7 +6,7 @@
 # @author Bernhard R. Fischer
 #
 
-RULES=`mktemp`
+RULES=`mktemp smf.XXXXXXXXXX`
 
 param=""
 while getopts "a:b:d:r:" c
