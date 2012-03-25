@@ -679,7 +679,7 @@ fparam_t **parse_fparam(char *parm)
 
       fp[cnt]->attr = strtok_r(s, "=", &sp1);
       if ((fp[cnt]->val = strtok_r(NULL, "=", &sp1)) != NULL)
-         fp[cnt]->dval = atol(fp[cnt]->val);
+         fp[cnt]->dval = atof(fp[cnt]->val);
       fp[cnt + 1] = NULL;
    }
 
