@@ -5,7 +5,7 @@ AC_CONFIG_MACRO_DIR([m4])
 AM_INIT_AUTOMAKE([foreign -Wall -Werror])
 LT_INIT
 #AC_SUBST([CFLAGS], [["$CFLAGS -Wall"]])
-AC_SUBST([CFLAGS], [["-g -Wall"]])
+AC_SUBST([CFLAGS], [["-g -Wall -O2"]])
 AC_PROG_CC
 AC_CONFIG_HEADERS([config.h])
 
