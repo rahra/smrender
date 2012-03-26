@@ -22,6 +22,8 @@ if test -n "$export_dynamic_flag_spec" ; then
    AC_SUBST([EXP_DYN], [["$exp_dyn"]])
 fi
 
-AC_CONFIG_FILES([Makefile src/Makefile libsmfilter/Makefile libskel/Makefile])
+AC_SUBST([SMFILTER_NAME], [["libsmfilter$shrext_cmds"]])
+
+AC_CONFIG_FILES([Makefile src/Makefile libsmfilter/Makefile libskel/Makefile tools/smfilter2])
 AC_OUTPUT
 
