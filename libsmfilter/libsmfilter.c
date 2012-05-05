@@ -270,7 +270,7 @@ int vsector(osm_obj_t *o)
          sec[i].mean = (sec[i].start + sec[i].end) / 2;
          continue;
       }
-      memcpy(&sec[i], &sec[i + 1], sizeof(struct sector) * (MAX_SEC - i - 1));
+      memmove(&sec[i], &sec[i + 1], sizeof(struct sector) * (MAX_SEC - i - 1));
       init_sector(&sec[MAX_SEC - 1]);
       i--;
       j--;
