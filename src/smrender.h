@@ -95,8 +95,18 @@ typedef union structor
  
 // indexes to object tree
 enum {IDX_NODE, IDX_WAY};
-
 enum {E_SM_OK, E_RTYPE_NA, E_ACT_NOT_IMPL, E_SYNTAX, E_REF_ERR};
+enum {WHITE, YELLOW, BLACK, BLUE, MAGENTA, BROWN, TRANSPARENT, BGCOLOR, MAX_COLOR};
+enum {LAT, LON};
+enum {ACT_NA, ACT_IMG, ACT_CAP, ACT_FUNC, ACT_DRAW, ACT_IGNORE, ACT_OUTPUT, ACT_SETTAGS, RULE_COUNT};
+enum {DRAW_SOLID, DRAW_DASHED, DRAW_DOTTED, DRAW_TRANSPARENT};
+
+// select projection
+// PRJ_DIRECT directly projects the bounding box onto the image.
+// PRJ_MERC_PAGE chooses the largest possible bb withing the given bb to fit into the image.
+// PRJ_MERC_BB chooses the image size being selected depending on the given bb.
+enum {PRJ_DIRECT, PRJ_MERC_PAGE, PRJ_MERC_BB};
+
 
 typedef struct fparam
 {
@@ -274,7 +284,7 @@ struct rdata
    // pointer to image data
    gdImage *img;
    // image colors
-   int col[7];
+   int col[MAX_COLOR];
 };
 
 struct filter
@@ -286,17 +296,6 @@ struct filter
    // pointer to rules tree (or NULL if it should be ignored)
    bx_node_t *rules;
 };
-
-enum {WHITE, YELLOW, BLACK, BLUE, MAGENTA, BROWN, TRANSPARENT};
-enum {LAT, LON};
-enum {ACT_NA, ACT_IMG, ACT_CAP, ACT_FUNC, ACT_DRAW, ACT_IGNORE, ACT_OUTPUT, ACT_SETTAGS, RULE_COUNT};
-enum {DRAW_SOLID, DRAW_DASHED, DRAW_DOTTED, DRAW_TRANSPARENT};
-
-// select projection
-// PRJ_DIRECT directly projects the bounding box onto the image.
-// PRJ_MERC_PAGE chooses the largest possible bb withing the given bb to fit into the image.
-// PRJ_MERC_BB chooses the image size being selected depending on the given bb.
-enum {PRJ_DIRECT, PRJ_MERC_PAGE, PRJ_MERC_BB};
 
 
 /* smrender.c */

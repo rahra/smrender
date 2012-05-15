@@ -645,6 +645,7 @@ void usage(const char *s)
          "               <scale> Scale of chart.\n"
          "               <length> Length of mean meridian in either degrees ('d') or\n"
          "                        nautical miles ('m')\n"
+         "   -b <color> .......... Choose background color ('white' is default).\n"
          "   -d <density> ........ Set image density (300 is default).\n"
          "   -f .................. Use loading filter.\n"
          "   -g <grd>[:<t>[:<s>]]  Distance of grid/ticks/subticks in minutes.\n"
@@ -717,7 +718,7 @@ int main(int argc, char *argv[])
    struct rdata *rd;
    struct timeval tv_start, tv_end;
    int gen_grid = 1, landscape = 0, w_mmap = 0, load_filter = 0;
-   char *paper = "A3";
+   char *paper = "A3", *bg = NULL;
    struct filter fi;
    struct dstats rstats;
    //struct osm_node nd;
@@ -732,9 +733,13 @@ int main(int argc, char *argv[])
    set_util_rd(rd);
    rd->cmdline = mk_cmd_line((const char**) argv);
 
-   while ((n = getopt(argc, argv, "d:fg:Ghi:lMo:P:r:w:")) != -1)
+   while ((n = getopt(argc, argv, "b:d:fg:Ghi:lMo:P:r:w:")) != -1)
       switch (n)
       {
+         case 'b':
+            bg = optarg;
+            break;
+
          case 'd':
             if ((rd->dpi = atoi(optarg)) <= 0)
                log_msg(LOG_ERR, "illegal dpi argument %s", optarg),
@@ -869,7 +874,11 @@ int main(int argc, char *argv[])
    rd->col[MAGENTA] = gdImageColorAllocate(rd->img, 120, 8, 44);
    rd->col[BROWN] = gdImageColorAllocate(rd->img, 154, 42, 2);
    rd->col[TRANSPARENT] = gdTransparent;
-   gdImageFill(rd->img, 0, 0, rd->col[WHITE]);
+
+   rd->col[BGCOLOR] = bg == NULL ? rd->col[WHITE] : parse_color(rd, bg);
+   log_msg(LOG_DEBUG, "background color is set to 0x%08x", rd->col[BGCOLOR]);
+   gdImageFill(rd->img, 0, 0, rd->col[BGCOLOR]);
+
 #define gdImageFTUseFontConfig gdFTUseFontConfig
    if (!gdImageFTUseFontConfig(1))
       log_msg(LOG_NOTICE, "fontconfig library not available");
