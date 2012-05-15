@@ -288,7 +288,7 @@ int poly_mpcoords(osm_way_t *w, struct rdata *rd, gdPoint *p)
 }
 
 
-int set_style(struct rdata *rd, int style)
+int set_style(struct rdata *rd, int style, int col)
 {
 #define MAX_STYLE_BUF 300
 #define STYLE_SHORT_LEN 0.4
@@ -305,14 +305,14 @@ int set_style(struct rdata *rd, int style)
    switch (style)
    {
       case DRAW_SOLID:
-         sdef[0] = gdAntiAliased;
+         sdef[0] = col;
          len = 1;
          break;
 
       case DRAW_DOTTED:
          len = 0;
          for (i = 0; i < MM2PX(STYLE_SHORT_LEN); i++, len++)
-            sdef[len] = gdAntiAliased;
+            sdef[len] = col;
          for (i = 0; i < MM2PX(STYLE_SHORT_LEN); i++, len++)
             sdef[len] = gdTransparent;
          break;
@@ -320,7 +320,7 @@ int set_style(struct rdata *rd, int style)
       case DRAW_DASHED:
          len = 0;
          for (i = 0; i < MM2PX(STYLE_LONG_LEN); i++, len++)
-            sdef[len] = gdAntiAliased;
+            sdef[len] = col;
          for (i = 0; i < MM2PX(STYLE_SHORT_LEN); i++, len++)
             sdef[len] = gdTransparent;
          break;
@@ -337,7 +337,7 @@ int set_style(struct rdata *rd, int style)
 
 int act_open_poly(osm_way_t *w, struct rdata *rd, struct orule *rl)
 {
-   int e, t;
+   int e, t, c;
    gdPoint p[w->ref_cnt];
 
    if ((e = poly_mpcoords(w, rd, p)))
@@ -354,13 +354,15 @@ int act_open_poly(osm_way_t *w, struct rdata *rd, struct orule *rl)
 
       gdImageSetThickness(rd->img, t);
       gdImageSetAntiAliased(rd->img, rl->rule.draw.border.col);
+      // this is a bugfix for libgd: antialised lines with a thickness > 1 do not work
+      c = t > 1 ? rl->rule.draw.border.col : gdAntiAliased;
       if (rl->rule.draw.border.style == DRAW_SOLID)
       {
-         gdImageOpenPolygon(rd->img, p, w->ref_cnt, gdAntiAliased);
+         gdImageOpenPolygon(rd->img, p, w->ref_cnt, c);
       }
       else
       {
-         (void) set_style(rd, rl->rule.draw.border.style);
+         (void) set_style(rd, rl->rule.draw.border.style, c);
          gdImageOpenPolygon(rd->img, p, w->ref_cnt, gdStyled);
       }
    }
@@ -372,13 +374,15 @@ int act_open_poly(osm_way_t *w, struct rdata *rd, struct orule *rl)
 
       gdImageSetThickness(rd->img, t);
       gdImageSetAntiAliased(rd->img, rl->rule.draw.fill.col);
+      // this is a bugfix for libgd: antialised lines with a thickness > 1 do not work
+      c = t > 1 ? rl->rule.draw.fill.col : gdAntiAliased;
       if (rl->rule.draw.fill.style == DRAW_SOLID)
       {
-         gdImageOpenPolygon(rd->img, p, w->ref_cnt, gdAntiAliased);
+         gdImageOpenPolygon(rd->img, p, w->ref_cnt, c);
       }
       else
       {
-         (void) set_style(rd, rl->rule.draw.fill.style);
+         (void) set_style(rd, rl->rule.draw.fill.style, c);
          gdImageOpenPolygon(rd->img, p, w->ref_cnt, gdStyled);
       }
    }
@@ -392,7 +396,7 @@ int act_open_poly(osm_way_t *w, struct rdata *rd, struct orule *rl)
 
 int act_fill_poly(osm_way_t *w, struct rdata *rd, struct orule *rl)
 {
-   int e, t;
+   int e, t, c;
    gdPoint p[w->ref_cnt];
 
    if ((e = poly_mpcoords(w, rd, p)))
@@ -414,13 +418,15 @@ int act_fill_poly(osm_way_t *w, struct rdata *rd, struct orule *rl)
 
       gdImageSetThickness(rd->img, t);
       gdImageSetAntiAliased(rd->img, rl->rule.draw.border.col);
+      // this is a bugfix for libgd: antialised lines with a thickness > 1 do not work
+      c = t > 1 ? rl->rule.draw.fill.col : gdAntiAliased;
       if (rl->rule.draw.border.style == DRAW_SOLID)
       {
-         gdImageOpenPolygon(rd->img, p, w->ref_cnt, gdAntiAliased);
+         gdImageOpenPolygon(rd->img, p, w->ref_cnt, c);
       }
       else
       {
-         (void) set_style(rd, rl->rule.draw.border.style);
+         (void) set_style(rd, rl->rule.draw.border.style, c);
          gdImagePolygon(rd->img, p, w->ref_cnt, gdStyled);
       }
    }
