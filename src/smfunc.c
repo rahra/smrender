@@ -32,50 +32,60 @@
 #define DIR_CCW 1
 
 
-static FILE *output_handle_;
-static osm_obj_t *o_;
+//static FILE *output_handle_;
+//static osm_obj_t *o_;
 
 
-void act_output_ini(const struct orule *rl)
+int act_out_ini(smrule_t *r)
 {
-   if ((output_handle_ = fopen(rl->rule.func.parm, "w")) == NULL)
+   char *s;
+
+   if ((s = get_param("file", NULL, r->act.fp)) == NULL)
    {
-      log_msg(LOG_ERR, "error opening output file: %s", rl->rule.func.parm);
-      return;
+      log_msg(LOG_WARN, "parameter 'file' missing");
+      return 1;
    }
-   fprintf(output_handle_, "<?xml version='1.0' encoding='UTF-8'?>\n<osm version='0.6' generator='smrender'>\n");
+
+   if ((r->act.data = fopen(s, "w")) == NULL)
+   {
+      log_msg(LOG_ERR, "error opening output file %s: %s", s, strerror(errno));
+      return 1;
+   }
+   fprintf(r->act.data, "<?xml version='1.0' encoding='UTF-8'?>\n<osm version='0.6' generator='smrender'>\n");
+   return 0;
 }
 
 
-int act_output(osm_obj_t *o)
+int act_out(smrule_t *r, osm_obj_t *o)
 {
    osm_node_t *n;
    int i;
 
-   if (output_handle_ == NULL)
+   if (r->act.data == NULL)
       return -1;
 
    for (i = 0; i < ((osm_way_t*) o)->ref_cnt; i++)
    {
       if ((n = get_object(OSM_NODE, ((osm_way_t*) o)->ref[i])) == NULL)
          continue;
-      print_onode(output_handle_, (osm_obj_t*) n);
+      print_onode(r->act.data, (osm_obj_t*) n);
    }
-   print_onode(output_handle_, o);
+   print_onode(r->act.data, o);
 
    return 0;
 }
 
 
-void act_output_fini(void)
+int act_out_fini(smrule_t *r)
 {
-   if (output_handle_ == NULL)
-      return;
+   if (r->act.data == NULL)
+      return 1;
 
-   fprintf(output_handle_, "</osm>\n");
-   fclose(output_handle_);
-   output_handle_ = NULL;
-   return;
+   fprintf(r->act.data, "</osm>\n");
+   fclose(r->act.data);
+
+   r->act.data = NULL;
+   return 0;
 }
 
 
@@ -137,7 +147,7 @@ int poly_area(const osm_way_t *w, struct coord *c, double *ar)
 }
 
 
-int act_poly_area(osm_way_t *w)
+int act_poly_area(smrule_t *r, osm_way_t *w)
 {
    double ar;
    struct otag *ot;
@@ -167,7 +177,7 @@ int act_poly_area(osm_way_t *w)
 }
 
 
-int act_poly_centroid(osm_way_t *w)
+int act_poly_centroid(smrule_t *r, osm_way_t *w)
 {
    struct coord c;
    double ar;
@@ -178,7 +188,7 @@ int act_poly_centroid(osm_way_t *w)
       return 0;
 
    if (poly_area(w, &c, &ar))
-      return -1;
+      return 1;
 
    n = malloc_node(w->obj.tag_cnt + 1);
    n->obj.id = unique_node_id();
@@ -204,7 +214,7 @@ int act_poly_centroid(osm_way_t *w)
 }
 
 
-int reverse_way(osm_way_t *w)
+int act_reverse_way(smrule_t *r, osm_way_t *w)
 {
    int i;
    int64_t ref;
@@ -234,75 +244,80 @@ int set_way_direction(osm_way_t *w, int dir)
       return -1;
 
    if (((ar < 0) && (dir == DIR_CCW)) || ((ar > 0) && (dir == DIR_CW)))
-      return reverse_way(w);
+      return act_reverse_way(NULL, w);
 
    return 0;
 }
 
 
-int set_ccw(osm_way_t *w)
+int act_set_ccw(smrule_t *r, osm_way_t *w)
 {
    return set_way_direction(w, DIR_CCW);
 }
 
 
-int set_cw(osm_way_t *w)
+int act_set_cw(smrule_t *r, osm_way_t *w)
 {
    return set_way_direction(w, DIR_CW);
 }
 
 
-void set_tags_ini(const struct orule *rl)
+int act_set_tags_ini(smrule_t *r)
 {
-   orule_t *or;
+   smrule_t *rule;
    int64_t templ_id;
+   char *s;
 
-   o_ = NULL;
-   if (rl->rule.func.parm == NULL)
+   if ((s = get_param("id", NULL, r->act.fp)) == NULL)
    {
-      log_msg(LOG_WARN, "set_tags requires ID of OSM object");
-      return;
+      log_msg(LOG_WARN, "set_tags requires parameter 'id'");
+      return -1;
    }
 
-   if (!(templ_id = atol(rl->rule.func.parm)))
+   errno = 0;
+   templ_id = strtol(s, NULL, 0);
+   if (errno)
    {
-      log_msg(LOG_WARN, "set_tags requires ID of OSM object != 0");
-      return;
+      log_msg(LOG_WARN, "cannot convert id: %s", strerror(errno));
+      return -1;
    }
 
-   if ((or = get_object0(get_rdata()->rules, templ_id, rl->oo->type - 1)) == NULL)
+   if ((rule = get_object0(get_rdata()->rules, templ_id, r->oo->type - 1)) == NULL)
    {
-      log_msg(LOG_WARN, "there is no rule of type %d with id 0x%016x", rl->oo->type, templ_id);
-      return;
+      log_msg(LOG_WARN, "there is no rule of type %d with id 0x%016x", r->oo->type, templ_id);
+      return 1;
    }
 
-   if ((o_ = or->oo) == NULL)
+   if ((r->act.data = rule->oo) == NULL)
    {
       log_msg(LOG_CRIT, "rule has no object");
-      return;
+      return 1;
    }
+
+   return 0;
 }
 
 
-int set_tags(osm_obj_t *o)
+int act_set_tags(smrule_t *r, osm_obj_t *o)
 {
+   osm_obj_t *templ_o = r->act.data;
    struct otag *ot;
 
-   if (o_ == NULL)
+   if (templ_o == NULL)
    {
       log_msg(LOG_CRIT, "NULL pointer to template object");
       return -1;
    }
 
-   if ((ot = realloc(o->otag, sizeof(struct otag) * (o->tag_cnt + o_->tag_cnt))) == NULL)
+   if ((ot = realloc(o->otag, sizeof(struct otag) * (o->tag_cnt + templ_o->tag_cnt))) == NULL)
    {
       log_msg(LOG_CRIT, "Cannot realloc tag memory: %s", strerror(errno));
       return -1;
    }
 
    o->otag = ot;
-   memcpy(&o->otag[o->tag_cnt], o_->otag, sizeof(struct otag) * o_->tag_cnt);
-   o->tag_cnt += o_->tag_cnt;
+   memcpy(&o->otag[o->tag_cnt], templ_o->otag, sizeof(struct otag) * templ_o->tag_cnt);
+   o->tag_cnt += templ_o->tag_cnt;
 
    return 0;
 }

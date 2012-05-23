@@ -23,16 +23,18 @@
 #include <string.h>
 #include <errno.h>
 #include <dlfcn.h>
+#include <ctype.h>
 
 #include "smrender.h"
 #include "smlog.h"
 #include "smrparse.h"
+#include "smrules.h"
 
 
 //#define RULE_COUNT 8
-static const char *rule_type_[] = {"N/A", "ACT_IMG", "ACT_CAP", "ACT_FUNC", "ACT_DRAW", "ACT_IGNORE", "ACT_OUTPUT", "ACT_SETTAGS"};
+//static const char *rule_type_[] = {"N/A", "ACT_IMG", "ACT_CAP", "ACT_FUNC", "ACT_DRAW", "ACT_IGNORE", "ACT_OUTPUT", "ACT_SETTAGS"};
 
-
+/*
 const char *rule_type_str(int n)
 {
    if ((n < 0) || (n >= RULE_COUNT))
@@ -40,7 +42,7 @@ const char *rule_type_str(int n)
 
    return rule_type_[n];
 }
-
+*/
 
 #if 0
 /*! Returns degrees and minutes of a fractional coordinate.
@@ -213,6 +215,20 @@ int parse_color(const struct rdata *rd, const char *s)
 }
 
 
+int parse_style(const char *s)
+{
+   if (s == NULL)
+      return DRAW_SOLID;
+
+   if (!strcmp(s, "solid")) return DRAW_SOLID;
+   if (!strcmp(s, "dashed")) return DRAW_DASHED;
+   if (!strcmp(s, "dotted")) return DRAW_DOTTED;
+   if (!strcmp(s, "transparent")) return DRAW_TRANSPARENT;
+
+   return DRAW_SOLID;
+}
+
+#if 0
 int parse_draw(const char *src, struct drawStyle *ds, const struct rdata *rd)
 {
    char buf[strlen(src) + 1];
@@ -235,10 +251,7 @@ int parse_draw(const char *src, struct drawStyle *ds, const struct rdata *rd)
    if ((s = strtok_r(NULL, ",", &sb)) == NULL)
       return 0;
 
-   if (!strcmp(s, "solid")) ds->style = DRAW_SOLID;
-   else if (!strcmp(s, "dashed")) ds->style = DRAW_DASHED;
-   else if (!strcmp(s, "dotted")) ds->style = DRAW_DOTTED;
-   else if (!strcmp(s, "transparent")) ds->style = DRAW_TRANSPARENT;
+   ds->style = parse_style(s);
 
    //log_msg(LOG_WARN, "draw width and styles are not parsed yet (sorry...)");
    return 0;
@@ -291,13 +304,14 @@ struct orule *rule_alloc(struct rdata *rd, osm_obj_t *o)
    bn->next[o->type - 1] = rl;
    return rl;
 }
+#endif
 
 
 int get_structor(void *lhandle, structor_t *stor, const char *sym, const char *trail)
 {
-   char buf[strlen(sym) + strlen(trail) + 1];
+   char buf[strlen(sym) + strlen(trail) + 5];
 
-   snprintf(buf, sizeof(buf), "%s%s", sym, trail);
+   snprintf(buf, sizeof(buf), "act_%s%s", sym, trail);
    // Clear any existing error
    dlerror();
    stor->sym = dlsym(lhandle, buf);
@@ -310,315 +324,141 @@ int get_structor(void *lhandle, structor_t *stor, const char *sym, const char *t
 }
 
 
-int parse_func(struct actFunction *afn, const char *symstr)
+smrule_t *alloc_rule(struct rdata *rd, osm_obj_t *o)
 {
-   char buf[strlen(symstr) + 1];
-   char *func, *lib, *sp;
+   bx_node_t *bn;
+   smrule_t *rl;
 
-   strcpy(buf, symstr);
-   if ((afn->parm = strchr(symstr, '?')) != NULL)
-   {
-      buf[afn->parm - symstr] = '\0';
-      afn->parm++;
-      if ((afn->parm = strdup(afn->parm)) == NULL)
-      {
-         log_msg(LOG_ERR, "strdup in parse_func failed: %s", strerror(errno));
-         return 1;
-      }
-      if ((afn->parm0 = strdup(afn->parm)) == NULL)
-      {
-         log_msg(LOG_ERR, "strdup in parse_func failed: %s", strerror(errno));
-         return 1;
-      }
-      afn->fp = parse_fparam(afn->parm0);
-   }
+   if ((rl = malloc(sizeof(smrule_t) + sizeof(struct stag) * o->tag_cnt)) == NULL)
+      log_msg(LOG_ERR, "alloc_rule failed: %s", strerror(errno)),
+         exit(EXIT_FAILURE);
+   //memset(&rl->act, 0, sizeof(action_t));
+   //rl->oo = o;
+   //rl->act.tag_cnt = o->tag_cnt;
 
-   if ((func = strtok_r(buf, "@", &sp)) == NULL)
-   {
-      log_msg(LOG_ERR, "syntax error in function rule");
-      return -1;
-   }
+   if ((bn = bx_get_node(rd->rules, o->id)) == NULL)
+      log_msg(LOG_EMERG, "bx_get_node() returned NULL in rule_alloc()"),
+         exit(EXIT_FAILURE);
 
-   if ((lib = strtok_r(NULL, "?", &sp)) == NULL)
-   {
-      log_msg(LOG_INFO, "looking up function in memory linked code");
-   }
-   else if (!strcmp(lib, "NULL"))
-   {
-      log_msg(LOG_INFO, "looking up function in memory linked code");
-      lib = NULL;
-   }
- 
-#if 0
-   else
-   {
-      if ((afn->parm = strtok_r(NULL, "", &sp)) != NULL)
-      {
-         // FIXME: error checking missing
-         afn->parm = strdup(afn->parm);
-         afn->fp = parse_fparam(afn->parm);
-      }
-      else
-         afn->fp = NULL;
-      
-      if (!strcmp(lib, "NULL"))
-      {
-         log_msg(LOG_INFO, "looking up function in memory linked code");
-         lib = NULL;
-      }
-   }
-#endif
-
-   // Open shared library
-   if ((afn->libhandle = dlopen(lib, RTLD_LAZY)) == NULL)
-   {
-      log_msg(LOG_ERR, "could not open library: %s", dlerror());
-      return -1;
-   }
-
-#if 0
-   // Clear any existing error
-   dlerror();
-   rl->rule.func.main.sym = dlsym(rl->rule.func.libhandle, func);
-   // Check for errors (BSD returns const char*, thus type is converted)
-   if ((s = (char*) dlerror()) != NULL)
-   {
-      log_msg(LOG_ERR, "error loading symbol from libary: %s", s);
-      return -1;
-   }
-#endif
-
-   if (get_structor(afn->libhandle, (structor_t*) &afn->main, func, ""))
-      return -1;
-
-   (void) get_structor(afn->libhandle, (structor_t*) &afn->ini, func, "_ini");
-   (void) get_structor(afn->libhandle, (structor_t*) &afn->fini, func, "_fini");
-
-   return 0;
+   bn->next[o->type - 1] = rl;
+   return rl;
 }
 
 
-int parse_to_func(struct actFunction *afn, const char *pstr, const char *fstr)
+char *skipb(char *s)
 {
-   char buf[strlen(pstr) + strlen(fstr) + 1];
-
-   snprintf(buf, sizeof(buf), "%s%s", fstr, pstr);
-   return parse_func(afn, buf);
-
+   for (; isspace(*s); s++);
+   if (*s == '\0')
+      return NULL;
+   return s;
 }
 
 
-int prepare_rules(osm_obj_t *o, struct rdata *rd, void *p)
+int init_rules(osm_obj_t *o, struct rdata *rd, void *p)
 {
-   char *s;
-   FILE *f;
-   int i;
-   struct orule *rl;
+   char *s, *t, *func, buf[1024];
+   smrule_t *rl;
+   //action_t act;
+   int e, i;
 
-   log_debug("allocating rule 0x%016lx", o->id);
-   rl = rule_alloc(rd, o);
+   log_debug("initializing rule 0x%016lx", o->id);
 
-   for (i = 0; i < rl->oo->tag_cnt; i++)
+   rl = alloc_rule(rd, o);
+   rl->oo = o;
+   memset(&rl->act, 0, sizeof(rl->act));
+
+   rl->act.tag_cnt = o->tag_cnt;
+   for (i = 0; i < o->tag_cnt; i++)
    {
-      if (parse_matchtype(&rl->oo->otag[i].k, &rl->rule.stag[i].stk) == -1)
+      if (parse_matchtype(&o->otag[i].k, &rl->act.stag[i].stk) == -1)
          return 0;
-      if (parse_matchtype(&rl->oo->otag[i].v, &rl->rule.stag[i].stv) == -1)
+      if (parse_matchtype(&o->otag[i].v, &rl->act.stag[i].stv) == -1)
          return 0;
    }
 
-   if ((i = match_attr(rl->oo, "_action_", NULL)) == -1)
+   if ((i = match_attr(o, "_action_", NULL)) == -1)
    {
-      log_msg(LOG_WARN, "rule %ld has no action, it may be used as template", rl->oo->id);
+      // FIXME need to be added to btree
+      log_msg(LOG_WARN, "rule %ld has no action, it may be used as template", o->id);
+      rl->act.func_name = "templ";
+      rl->act.main.func = act_templ;
       return 0;
    }
 
-   rl->oo->otag[i].v.buf[rl->oo->otag[i].v.len] = '\0';
-   s = strtok(rl->oo->otag[i].v.buf, ":");
-   if (!strcmp(s, "img"))
+   o->otag[i].v.buf[o->otag[i].v.len] = '\0';
+   log_msg(LOG_DEBUG, "parsing '%s'", o->otag[i].v.buf);
+
+   if ((s = skipb(o->otag[i].v.buf)) == NULL)
    {
-      if ((s = strtok(NULL, ":")) == NULL)
-         return E_SYNTAX;
-      if ((f = fopen(s, "r")) == NULL)
-      {
-         log_msg(LOG_WARN, "fopen(%s) failed: %s", s, strerror(errno));
-         return E_SYNTAX;
-      }
-
-      rl->rule.img.angle = 0;
-      if ((rl->rule.img.img = gdImageCreateFromPng(f)) == NULL)
-         log_msg(LOG_WARN, "could not read PNG from %s", s);
-      (void) fclose(f);
-
-      rl->rule.type = ACT_IMG;
-      log_debug("successfully imported PNG %s", s);
+      log_msg(LOG_WARN, "empty _action_ value");
+      return 1;
    }
-   else if (!strcmp(s, "img-auto"))
+
+   rl->act.func_name = s;
+   if ((t = strpbrk(s, "@:")) != NULL)
    {
-      if ((s = strtok(NULL, ":")) == NULL)
-         return E_SYNTAX;
-      if ((f = fopen(s, "r")) == NULL)
+      s = t + 1;
+      if (*t == '@')
       {
-         log_msg(LOG_WARN, "fopen(%s) failed: %s", s, strerror(errno));
-         return 0;
-      }
-
-      rl->rule.img.angle = NAN;
-      if ((rl->rule.img.img = gdImageCreateFromPng(f)) == NULL)
-         log_msg(LOG_WARN, "could not read PNG from %s\n", s);
-      (void) fclose(f);
-
-      rl->rule.type = ACT_IMG;
-      log_debug("img-auto, successfully imported PNG %s", s);
-   }
-   else if (!strcmp(s, "cap"))
-   {
-      if ((s = strtok(NULL, ",")) == NULL) return E_SYNTAX;
-      rl->rule.cap.font = s;
-      if ((s = strtok(NULL, ",")) == NULL) return E_SYNTAX;
-      rl->rule.cap.size = atof(s);
-      if ((s = strtok(NULL, ",")) == NULL) return E_SYNTAX;
-      rl->rule.cap.pos |= ppos(s);
-      if ((s = strtok(NULL, ",")) == NULL) return E_SYNTAX;
-
-      rl->rule.cap.col = parse_color(rd, s);
-
-      if ((s = strtok(NULL, ",")) == NULL) return E_SYNTAX;
-      if (!strncmp(s, "auto", 4))
-      {
-         rl->rule.cap.angle = NAN;
-         parse_auto_rot(rd, s, &rl->rule.cap.rot);
-         log_debug("auto;%08x;%.1f;%.1f", rl->rule.cap.rot.autocol, rl->rule.cap.rot.weight, rl->rule.cap.rot.phase);
-      }
-      else
-         rl->rule.cap.angle = atof(s);
-      if ((s = strtok(NULL, ",")) == NULL) return E_SYNTAX;
-      if (*s == '*')
-      {
-         rl->rule.cap.pos |= POS_UC;
-         s++;
-      }
-      rl->rule.cap.key = s;
-      rl->rule.type = ACT_CAP;
-      log_debug("successfully parsed caption rule");
-   }
-   else if (!strcmp(s, "func"))
-   {
-      if ((s = strtok(NULL, "")) == NULL)
-      {
-         log_warn("syntax error in function rule");
-         return E_SYNTAX;
-      }
-
-      if (parse_func(&rl->rule.func, s))
-         return E_SYNTAX;
-
-      rl->rule.type = ACT_FUNC;
-      log_debug("successfully parsed function rule");
-   }
-   else if (!strcmp(s, "draw"))
-   {
-      if ((s = strtok(NULL, "")) == NULL)
-      {
-         log_warn("syntax error in draw rule");
-         return E_SYNTAX;
-      }
-
-      if (*s != ':')
-      {
-         s = strtok(s, ":");
-         if (parse_draw(s, &rl->rule.draw.fill, rd) == -1)
-            return E_SYNTAX;
-         rl->rule.draw.fill.used = 1;
-         if ((s = strtok(NULL, ":")) != NULL)
+         if ((t = strchr(s, ':')) != NULL)
          {
-            if (!parse_draw(s, &rl->rule.draw.border, rd))
-               rl->rule.draw.border.used = 1;
+            *t = '\0';
+            rl->act.parm = t + 1;
+         }
+
+         // Open shared library
+         if ((rl->act.libhandle = dlopen(s, RTLD_LAZY)) == NULL)
+         {
+            log_msg(LOG_ERR, "could not open library: %s", dlerror());
+            return 1;
          }
       }
       else
       {
-         if (strlen(s) <= 1)
-         {
-            log_warn("syntax error in draw rule");
-            return E_SYNTAX;
-         }
-         if (!parse_draw(s + 1, &rl->rule.draw.border, rd))
-            rl->rule.draw.border.used = 1;
+         *t = '\0';
+         rl->act.parm = t + 1;
       }
-
-      rl->rule.type = ACT_DRAW;
-      log_debug("successfully parsed draw rule");
    }
-   else if (!strcmp(s, "out"))
+
+   if (rl->act.libhandle != NULL)
    {
-      if ((s = strtok(NULL, "")) == NULL)
+      strncpy(buf, rl->act.func_name, sizeof(buf));
+      buf[sizeof(buf) - 1] = '\0';
+      if ((func = strtok(buf, "@")) == NULL)
       {
-         log_warn("syntax error in out rule");
-         return E_SYNTAX;
+         log_msg(LOG_CRIT, "strtok() returned NULL");
+         return 1;
       }
-
-      if (parse_to_func(&rl->rule.func, s, "act_output@NULL?"))
-      {
-         log_msg(LOG_ERR, "error in parse_to_func()");
-         return E_SYNTAX;
-      }
-
-      if (rl->rule.func.parm == NULL)
-      {
-         rl->rule.func.parm = "/dev/null";
-         log_msg(LOG_NOTICE, "output rule writing to '%s'", rl->rule.func.parm);
-      }
-
-      rl->rule.type = ACT_FUNC;
-      log_debug("successfully parsed output rule");
-   }
-   else if (!strcmp(s, "settags"))
-   {
-      if ((s = strtok(NULL, "")) == NULL)
-      {
-         log_warn("syntax error in settags rule");
-         return E_SYNTAX;
-      }
-
-      if (parse_to_func(&rl->rule.func, s, "set_tags@NULL?"))
-      {
-         log_msg(LOG_ERR, "error in parse_to_func()");
-         return E_SYNTAX;
-      }
-
-      if (rl->rule.func.parm == NULL)
-      {
-         log_msg(LOG_WARN, "settags requires an argument");
-         return E_SYNTAX;
-      }
-
-      rl->rule.type = ACT_FUNC;
-      log_debug("successfully parsed settags rule");
-   }
-   else if (!strcmp(s, "mskfill"))
-   {
-      if ((s = strtok(NULL, "")) == NULL)
-      {
-         log_warn("syntax error in mask fill rule");
-         return E_SYNTAX;
-      }
-
-      if (parse_to_func(&rl->rule.func, s, "gen_layer@NULL?"))
-      {
-         log_msg(LOG_ERR, "error in parse_to_func()");
-         return E_SYNTAX;
-      }
-
-      rl->rule.type = ACT_FUNC;
-      log_debug("successfully parsed mask fill rule");
-   }
-   else if (!strcmp(s, "ignore"))
-   {
-      rl->rule.type = ACT_IGNORE;
    }
    else
+      func = rl->act.func_name;
+
+   if (get_structor(rl->act.libhandle, (structor_t*) &rl->act.main, func, ""))
+      return 1;
+
+   (void) get_structor(rl->act.libhandle, (structor_t*) &rl->act.ini, func, "_ini");
+   (void) get_structor(rl->act.libhandle, (structor_t*) &rl->act.fini, func, "_fini");
+
+   if (rl->act.parm != NULL)
+      rl->act.fp = parse_fparam(rl->act.parm);
+
+   // finally call initialization function
+   if (rl->act.ini.func != NULL)
    {
-      log_warn("action type '%s' not supported yet", s);
+      log_msg(LOG_DEBUG, "calling %s_ini()", rl->act.func_name);
+      e = rl->act.ini.func(rl);
+      if (e < 0)
+      {
+         log_msg(LOG_ERR, "%s_ini() failed: %d. Exiting.", rl->act.func_name, e);
+         return e;
+      }
+      if (e > 0)
+      {
+         log_msg(LOG_ERR, "%s_ini() failed: %d. Rule will be ignored.", rl->act.func_name, e);
+         rl->act.main.func = NULL;
+         rl->act.fini.func = NULL;
+         return e;
+      }
    }
 
    // remove _action_ tag from tag list, i.e. move last element
@@ -626,14 +466,14 @@ int prepare_rules(osm_obj_t *o, struct rdata *rd, void *p)
    if (i < rl->oo->tag_cnt - 1)
    {
       memmove(&rl->oo->otag[i], &rl->oo->otag[rl->oo->tag_cnt - 1], sizeof(struct otag));
-      memmove(&rl->rule.stag[i], &rl->rule.stag[rl->oo->tag_cnt - 1], sizeof(struct stag));
+      memmove(&rl->act.stag[i], &rl->act.stag[rl->oo->tag_cnt - 1], sizeof(struct stag));
    }
    rl->oo->tag_cnt--;
-   rl->rule.tag_cnt--;
+   rl->act.tag_cnt--;
 
    return 0;
 }
-
+ 
 
 void free_fparam(fparam_t **fp)
 {
@@ -652,6 +492,13 @@ void free_fparam(fparam_t **fp)
 }
 
 
+/*! This function parses a string of the format "key1=val1,key2=val2,..." into a fparam_t* list.
+ *  @param parm A pointer to the original string. Please not that the string is
+ *  tokenized using strtok_r(), thus '\0' characters are inserted. If the
+ *  original string is needed for something else it should be strdup()'ed
+ *  before.
+ *  @return A pointer to a fparam_t* list or NULL in case of error.
+ */
 fparam_t **parse_fparam(char *parm)
 {
    fparam_t **fp, **fp0;
@@ -659,10 +506,13 @@ fparam_t **parse_fparam(char *parm)
    int cnt;
 
    if ((fp = malloc(sizeof(fparam_t*))) == NULL)
+   {
+      log_msg(LOG_ERR, "malloc failed: %s", strerror(errno));
       return NULL;
+   }
    *fp = NULL;
 
-   for (s = strtok_r(parm, ",", &sp0), cnt = 0; s != NULL; s = strtok_r(NULL, ",", &sp0), cnt++)
+   for (s = strtok_r(parm, ";", &sp0), cnt = 0; s != NULL; s = strtok_r(NULL, ";", &sp0), cnt++)
    {
       if ((fp0 = realloc(fp, sizeof(fparam_t*) * (cnt + 2))) == NULL)
       {

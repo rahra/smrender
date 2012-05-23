@@ -12,8 +12,10 @@ typedef struct fparam
 int parse_color(const struct rdata *, const char *);
 const char *rule_type_str(int);
 int prepare_rules(osm_obj_t*, struct rdata*, void*);
+int init_rules(osm_obj_t*, struct rdata*, void*);
 fparam_t **parse_fparam(char*);
 //char *get_param(const char*, double*, fparam_t**);
+int parse_style(const char *);
 
 
 #endif

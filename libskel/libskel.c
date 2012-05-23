@@ -3,7 +3,10 @@
 #include "smrender.h"
 
 
-static FILE *f_;
+struct some_data
+{
+   FILE *f;
+};
 
 
 /*! Library constructor. String constants which are returned to load program
@@ -12,7 +15,6 @@ static FILE *f_;
 void __attribute__ ((constructor)) init_lib___(void)
 {
    log_msg(LOG_INFO, "initializing libskel.so");
-   f_ = stderr;
 }
 
 
@@ -25,32 +27,45 @@ void __attribute__ ((destructor)) fini_lib___(void)
 /*! Rule initialization function. Called once before the first object matches
  * the rule.
  */
-void skelfunc_ini(orule_t *r)
+int act_skelfunc_ini(smrule_t *r)
 {
-   fprintf(f_, "print_out_init() called\n");
-   if (r->rule.func.parm != NULL)
-      fprintf(f_, "parameter string = '%s'\n", r->rule.func.parm);
+   struct some_data *s;
+   char *b;
+
+   if ((s = malloc(sizeof(*s))) == NULL)
+      return 1;
+
+   s->f = stderr;
+   r->act.data = s;
+
+   fprintf(s->f, "print_out_init() called\n");
+   if ((b = get_param("foo", NULL, r->act.fp)) != NULL)
+      fprintf(s->f, "parameter 'foo' = '%s'\n", b);
+
+   return 0;
 }
 
 
 /*! Rule function. Called every time an object matches the rule.
  */
-int skelfunc(osm_obj_t *o)
+int skelfunc(smrule_t *r, osm_obj_t *o)
 {
-   fprintf(f_, "object has %d tags and is ", o->tag_cnt);
+   struct some_data *s = r->act.data;
+
+   fprintf(s->f, "object has %d tags and is ", o->tag_cnt);
 
    switch (o->type)
    {
       case OSM_NODE:
-         fprintf(f_, "a node with coords %f.3 %f.3\n", ((osm_node_t*) o)->lat, ((osm_node_t*) o)->lon);
+         fprintf(s->f, "a node with coords %f.3 %f.3\n", ((osm_node_t*) o)->lat, ((osm_node_t*) o)->lon);
          break;
 
       case OSM_WAY:
-         fprintf(f_, "a way with %d node references\n", ((osm_way_t*) o)->ref_cnt);
+         fprintf(s->f, "a way with %d node references\n", ((osm_way_t*) o)->ref_cnt);
          break;
 
       default:
-         fprintf(f_, "of unknown type %d\n", o->type);
+         fprintf(s->f, "of unknown type %d\n", o->type);
    }
 
    return 0;
@@ -59,9 +74,14 @@ int skelfunc(osm_obj_t *o)
 
 /*! Deinitialization function. Called once after the last object match.
  */
-void skelfunc_fini(void)
+int skelfunc_fini(smrule_t *r)
 {
-   fprintf(f_, "skel_func_fini() called\n");
-   fflush(f_);
+   struct some_data *s = r->act.data;
+
+   fprintf(s->f, "skel_func_fini() called\n");
+   fflush(s->f);
+   free(s);
+   r->act.data = NULL;
+   return 0;
 }
 

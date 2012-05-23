@@ -52,59 +52,23 @@
 #include "smlog.h"
 #include "smath.h"
 #include "bxtree.h"
+#include "smcoast.h"
 
-
-// initial number of ref array
-#define INIT_MAX_REF 20
-#define MAX_OPEN_POLY 32
-
-
-struct corner_point
+struct refine
 {
-   struct pcoord pc;
-   osm_node_t *n;
+   double deviation;
+   int iteration;
 };
-
-
-struct poly
-{
-   struct poly *next, *prev;  // cat_poly:
-   osm_way_t *w;
-   short del;                 // cat_poly: 1 if element should be removed from list
-   short open;                // cat_poly: 1 if element is connected but still open way
-   double area;               // gen_layer: area of polygon
-   short cw;                 // 1 if polygon is clockwise, otherwise 0
-};
-
-struct wlist
-{
-   int ref_cnt, max_ref;
-   struct poly ref[];
-};
-
-struct pdef
-{
-   int wl_index;        // index of way within wlist
-   int pn;              // index number of destined point within way
-   union
-   {
-      struct pcoord pc; // bearing to pointer
-      int64_t nid;      // node id
-   };
-};
-
-
-void node_brg(struct pcoord*, struct coord*, int64_t);
-void init_corner_brg(const struct rdata*, const struct coord*, struct corner_point*);
-
 
 static struct corner_point co_pt_[4];
 static struct coord center_;
-static struct wlist *wl_ = NULL;
-static struct orule *rl_ = NULL;
-static int fg_;
-static double deviation_;
-static int iteration_;
+//static struct wlist *wl_ = NULL;
+//static struct orule *rl_ = NULL;
+//static struct actDraw draw_;
+//static int collect_open_;
+//static int directional_;
+//static double deviation_;
+//static int iteration_;
 
 
 /*! Check if way is a closed polygon and is an area (i.e. it has at least 4 points)
@@ -255,18 +219,18 @@ int count_poly_refs(struct poly *pl, int *cnt)
 }
 
 
-osm_way_t *create_new_coastline(int ref_cnt)
+osm_way_t *create_new_coastline(const osm_obj_t *o, int ref_cnt)
 {
    osm_way_t *w;
 
-   if (rl_ == NULL)
+   if (o == NULL)
    {
       w = malloc_way(1, ref_cnt);
    }
    else
    {
-      w = malloc_way(rl_->oo->tag_cnt + 1, ref_cnt);
-      memcpy(&w->obj.otag[1], &rl_->oo->otag[0], sizeof(struct otag) * rl_->oo->tag_cnt);
+      w = malloc_way(o->tag_cnt + 1, ref_cnt);
+      memcpy(&w->obj.otag[1], &o->otag[0], sizeof(struct otag) * o->tag_cnt);
    }
 
    w->obj.id = unique_way_id();
@@ -306,7 +270,7 @@ int join_open_poly(struct poly *pl, osm_way_t *w)
 }
 
 
-int loop_detect(struct wlist *wl)
+int loop_detect(const osm_obj_t *o, struct wlist *wl)
 {
    osm_way_t *w;
    int i, cnt, ret, ocnt = 0;
@@ -330,7 +294,7 @@ int loop_detect(struct wlist *wl)
       }
 
       log_debug("waylist: wl_index %d (start = %p, cnt = %d, loop = %d)", i, &wl->ref[i], cnt, ret);
-      w = create_new_coastline(cnt);
+      w = create_new_coastline(o, cnt);
       cnt = join_open_poly(&wl->ref[i], w);
       put_object((osm_obj_t*) w);
       log_debug("%d ways joined", cnt);
@@ -385,7 +349,7 @@ void init_corner_brg(const struct rdata *rd, const struct coord *src, struct cor
       set_const_tag(&co_pt[i].n->obj.otag[0], "grid", "pagecorner");
       set_const_tag(&co_pt[i].n->obj.otag[1], "generator", "smrender");
       put_object((osm_obj_t*) co_pt[i].n);
-      log_msg(LOG_DEBUG, "corner_point[%d].bearing = %f", i, co_pt[i].pc.bearing);
+      log_msg(LOG_DEBUG, "corner_point[%d].bearing = %f (id = %ld)", i, co_pt[i].pc.bearing, co_pt[i].n->obj.id);
    }
 }
 
@@ -457,7 +421,7 @@ int connect_open(struct pdef *pd, struct wlist *wl, int ocnt)
                ref[0] = co_pt[k % 4].n->obj.id;
                wl->ref[pd[i].wl_index].w->ref = ref;
                wl->ref[pd[i].wl_index].w->ref_cnt++;
-               log_debug("added corner point %d", k % 4);
+               log_debug("added corner point %d (id = %ld)", k % 4, co_pt[k % 4].n->obj.id);
             }
 
             // if start and end point belong to same way close
@@ -515,23 +479,15 @@ int connect_open(struct pdef *pd, struct wlist *wl, int ocnt)
 }
 
 
-void init_cat_poly(void)
+void init_cat_poly(struct rdata *rd)
 {
-   static int call_once = 0;
-   struct rdata *rd;
-
-   if (call_once)
-      return;
-
-   call_once = 1;
-   rd = get_rdata();
    center_.lat = rd->mean_lat;
    center_.lon = rd->mean_lon;
    init_corner_brg(rd, &center_, co_pt_);
 }
 
 
-int cat_poly_ini(const orule_t *rl)
+struct wlist *init_wlist(void)
 {
    struct wlist *wl;
 
@@ -540,37 +496,47 @@ int cat_poly_ini(const orule_t *rl)
 
    wl->ref_cnt = 0;
    wl->max_ref = INIT_MAX_REF;
-   wl_ = wl;
-   rl_ = (orule_t*) rl;
 
-   init_cat_poly();
+   //init_cat_poly();
+   return wl;
+}
 
+
+int act_cat_poly_ini(smrule_t *r)
+{
+   // just to be on the safe side
+   if (r->oo->type != OSM_WAY)
+      return -1;
+
+   r->act.data = init_wlist();
    return 0;
 }
 
 
-int cat_poly(osm_obj_t *o)
+int act_cat_poly(smrule_t *r, osm_obj_t *o)
 {
+   //struct wlist **wl = &r->act.data;
+
    // check if it is an open polygon
    if (((osm_way_t*) o)->ref_cnt < 2)
       return 0;
    if (((osm_way_t*) o)->ref[0] == ((osm_way_t*) o)->ref[((osm_way_t*) o)->ref_cnt - 1])
       return 0;
 
-   return gather_poly0((osm_way_t*) o, &wl_);
+   return gather_poly0((osm_way_t*) o, (struct wlist**) &r->act.data);
 }
 
 
-void cat_poly_fini(void)
+int act_cat_poly_fini(smrule_t *r)
 {
-   int i, ocnt;
-   struct wlist *wl = wl_;
+   struct wlist *wl = r->act.data;
    struct pdef *pd;
+   int i, ocnt;
 
    pd = poly_get_node_ids(wl);
    qsort(pd, wl->ref_cnt * 2, sizeof(struct pdef), (int(*)(const void *, const void *)) compare_pdef_nid);
    poly_find_adj2(wl, pd);
-   ocnt = loop_detect(wl);
+   ocnt = loop_detect(r->oo, wl);
    free(pd);
 
    if ((pd = calloc(ocnt << 1, sizeof(struct pdef))) == NULL)
@@ -591,6 +557,9 @@ void cat_poly_fini(void)
 
    free(pd);
    free(wl);
+   r->act.data = NULL;
+
+   return 0;
 }
 
 
@@ -601,88 +570,6 @@ int compare_poly_area(const struct poly *p1, const struct poly *p2)
    if (p1->area < p2->area)
       return 1;
    return 0;
-}
-
-
-int gen_layer_ini(const orule_t *rl)
-{
-   struct rdata *rd = get_rdata();
-
-   if (rl->rule.func.parm != NULL)
-      fg_ = parse_color(rd, rl->rule.func.parm);
-   else
-      fg_ = rd->col[BLACK];
-
-   return cat_poly_ini(rl);
-}
-
-
-int gen_layer(osm_obj_t *o)
-{
-   if (!is_closed_poly((osm_way_t*) o))
-      return 0;
-
-   return gather_poly0((osm_way_t*) o, &wl_);
-}
-
-
-void poly_fill(struct rdata *rd, gdImage *img, osm_way_t *w, int c)
-{
-   int e;
-   gdPoint p[w->ref_cnt];
-
-   if ((e = poly_mpcoords(w, rd, p)))
-   {
-      log_msg(LOG_CRIT, "poly_mpcoords returned %d, skipping", e);
-      return;
-   }
-
-   gdImageFilledPolygon(img, p, w->ref_cnt, c);
-}
-
- 
-void gen_layer_fini(void)
-{
-   struct wlist *wl = wl_;
-   struct coord c;
-   struct rdata *rd;
-   int i;
-   gdImage *img;
-   int fg, bg;
- 
-   if (!wl->ref_cnt)
-   {
-      free(wl);
-      return;
-   }
-
-   for (i = 0; i < wl->ref_cnt; i++)
-   {
-      poly_area(wl->ref[i].w, &c, &wl->ref[i].area);
-      if (wl->ref[i].area < 0)
-      {
-         wl->ref[i].area = fabs(wl->ref[i].area);
-         wl->ref[i].cw = 1;
-      }
-   }
-
-   qsort(wl->ref, wl->ref_cnt, sizeof(struct poly), (int(*)(const void *, const void *)) compare_poly_area);
-
-   rd = get_rdata();
-   img = gdImageCreateTrueColor(gdImageSX(rd->img), gdImageSY(rd->img));
-   bg = rd->col[WHITE];
-   fg = fg_;
-   gdImageColorTransparent(img, bg);
-   gdImageSetAntiAliased(img, fg);
-   gdImageFilledRectangle(img, 0, 0, gdImageSX(img), gdImageSY(img), wl->ref[0].cw ? gdAntiAliased : bg);
-
-   for (i = 0; i < wl->ref_cnt; i++)
-      poly_fill(rd, img, wl->ref[i].w, wl->ref[i].cw ? bg : gdAntiAliased);
-
-   gdImageCopy(rd->img, img, 0, 0, 0, 0, gdImageSX(img), gdImageSY(img));
-   gdImageDestroy(img);
-
-   free(wl);
 }
 
 
@@ -804,7 +691,7 @@ void avg_point(osm_node_t *n, const struct coord *p)
  *  @param n Array of two node pointers which will receive the result.
  *  @param s Array of three nodes which are the source of calculation.
  */
-void circle_calc(osm_node_t **n, osm_node_t **s)
+void circle_calc(osm_node_t **n, osm_node_t **s, double deviation)
 {
    int i;
    double k[2], d[2], r, t;
@@ -830,7 +717,7 @@ void circle_calc(osm_node_t **n, osm_node_t **s)
       {
          //add_blind_node(&c);
          t = HYPOT(p[i].lon - c.lon, p[i].lat - c.lat);
-         node_to_circle(n[i], &c, r - t > deviation_ ? t + deviation_ : r, k[i], c.lon < p[i].lon ? -1 : 1);
+         node_to_circle(n[i], &c, r - t > deviation ? t + deviation : r, k[i], c.lon < p[i].lon ? -1 : 1);
       }
       else
       {
@@ -840,7 +727,7 @@ void circle_calc(osm_node_t **n, osm_node_t **s)
 }
 
 
-int refine_poly0(osm_way_t *w)
+int refine_poly0(osm_way_t *w, double deviation)
 {
    osm_node_t *n[w->ref_cnt - 1], *s[w->ref_cnt];
    int64_t *ref;
@@ -859,7 +746,7 @@ int refine_poly0(osm_way_t *w)
       n[i] = malloc_node(0);
 
    for (i = 0; i < w->ref_cnt - 2; i++)
-      circle_calc(&n[i], &s[i]);
+      circle_calc(&n[i], &s[i], deviation);
 
    if ((ref = malloc(sizeof(int64_t) * (w->ref_cnt * 2 - 1))) == NULL)
    {
@@ -883,33 +770,57 @@ int refine_poly0(osm_way_t *w)
 }
 
 
-int refine_poly_ini(const orule_t *rl)
+int act_refine_poly_ini(smrule_t *r)
 {
+   struct refine *rf;
    double it;
 
-   if (get_param("iteration", &it, rl->rule.func.fp) == NULL)
-      it = MAX_ITERATION;
-   iteration_ = round(it);
-   if (get_param("deviation", &deviation_, rl->rule.func.fp) == NULL)
-      deviation_ = MAX_DEVIATION;
+   if ((rf = malloc(sizeof(*rf))) == NULL)
+   {
+      log_msg(LOG_ERR, "cannot malloc: %s", strerror(errno));
+      return -1;
+   }
 
-   deviation_ /= (1852.0 * 60.0);
-   log_msg(LOG_INFO, "refine_poly using iteration = %d, deviation = %.1f", iteration_, deviation_ * 1852.0 * 60.0);
+   if (get_param("iteration", &it, r->act.fp) == NULL)
+      it = MAX_ITERATION;
+
+   rf->iteration = round(it);
+
+   if (get_param("deviation", &rf->deviation, r->act.fp) == NULL)
+      rf->deviation = MAX_DEVIATION;
+
+   rf->deviation /= (1852.0 * 60.0);
+   log_msg(LOG_INFO, "refine_poly using iteration = %d, deviation = %.1f", rf->iteration, rf->deviation * 1852.0 * 60.0);
+
+   r->act.data = rf;
+
    return 0;
 }
 
 
-int refine_poly(osm_way_t *w)
+int act_refine_poly(smrule_t *r, osm_way_t *w)
 {
+   struct refine *rf = r->act.data;
    int i;
 
    if (w->obj.type != OSM_WAY)
       return 1;
 
-   for (i = 0; i < iteration_; i++)
-      if (refine_poly0(w))
+   for (i = 0; i < rf->iteration; i++)
+      if (refine_poly0(w, rf->deviation))
          return 1;
 
+   return 0;
+}
+
+
+int act_refine_poly_fini(smrule_t *r)
+{
+   if (r->act.data != NULL)
+   {
+      free(r->act.data);
+      r->act.data = NULL;
+   }
    return 0;
 }
 
