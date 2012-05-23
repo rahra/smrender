@@ -110,7 +110,7 @@
 
       <!--<tag k='_action_' v='cap:/usr/share/fonts/truetype/ttf-liberation/LiberationSans-Regular.ttf,1.4,cm,black,auto;white;0.7,seamark:light_character'/>-->
       <!--<tag k='_action_' v='cap:sans-serif,1.4,cm,black,auto;white;0.7,seamark:light_character'/>-->
-      <tag k='_action_' v='cap:font=sans-serif;size=1.4;key=seamark:light_character'/>
+      <tag k='_action_' v='cap:font=sans-serif;size=1.4;key=seamark:light_character;angle=auto;auto-color=white;weight=0.7'/>
       <!-- <tag k='seamark:light:ref' v=''/> -->
       <tag k='seamark:light_character' v=''/>
    </node>

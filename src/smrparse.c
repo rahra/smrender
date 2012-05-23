@@ -209,6 +209,8 @@ int parse_color(const struct rdata *rd, const char *s)
       return rd->col[MAGENTA];
    if (!strcmp(s, "brown"))
       return rd->col[BROWN];
+   if (!strcmp(s, "transparent"))
+      return rd->col[TRANSPARENT];
 
    log_msg(LOG_WARN, "unknown color %s, defaulting to black", s);
    return rd->col[BLACK];
@@ -365,6 +367,7 @@ int init_rules(osm_obj_t *o, struct rdata *rd, void *p)
 
    rl = alloc_rule(rd, o);
    rl->oo = o;
+   rl->data = NULL;
    memset(&rl->act, 0, sizeof(rl->act));
 
    rl->act.tag_cnt = o->tag_cnt;
@@ -537,12 +540,14 @@ fparam_t **parse_fparam(char *parm)
 }
 
 
-char *get_param(const char *attr, double *dval, fparam_t **fp)
+char *get_param(const char *attr, double *dval, const action_t *act)
 {
-   if ((fp == NULL) || (attr == NULL))
+   fparam_t **fp;
+
+   if ((act == NULL) || (act->fp == NULL) || (attr == NULL))
       return NULL;
 
-   for (; *fp != NULL; fp++)
+   for (fp = act->fp; *fp != NULL; fp++)
    {
       if (!strcmp(attr, (*fp)->attr))
       {

@@ -40,18 +40,18 @@ int act_out_ini(smrule_t *r)
 {
    char *s;
 
-   if ((s = get_param("file", NULL, r->act.fp)) == NULL)
+   if ((s = get_param("file", NULL, &r->act)) == NULL)
    {
       log_msg(LOG_WARN, "parameter 'file' missing");
       return 1;
    }
 
-   if ((r->act.data = fopen(s, "w")) == NULL)
+   if ((r->data = fopen(s, "w")) == NULL)
    {
       log_msg(LOG_ERR, "error opening output file %s: %s", s, strerror(errno));
       return 1;
    }
-   fprintf(r->act.data, "<?xml version='1.0' encoding='UTF-8'?>\n<osm version='0.6' generator='smrender'>\n");
+   fprintf(r->data, "<?xml version='1.0' encoding='UTF-8'?>\n<osm version='0.6' generator='smrender'>\n");
    return 0;
 }
 
@@ -61,16 +61,16 @@ int act_out(smrule_t *r, osm_obj_t *o)
    osm_node_t *n;
    int i;
 
-   if (r->act.data == NULL)
+   if (r->data == NULL)
       return -1;
 
    for (i = 0; i < ((osm_way_t*) o)->ref_cnt; i++)
    {
       if ((n = get_object(OSM_NODE, ((osm_way_t*) o)->ref[i])) == NULL)
          continue;
-      print_onode(r->act.data, (osm_obj_t*) n);
+      print_onode(r->data, (osm_obj_t*) n);
    }
-   print_onode(r->act.data, o);
+   print_onode(r->data, o);
 
    return 0;
 }
@@ -78,13 +78,13 @@ int act_out(smrule_t *r, osm_obj_t *o)
 
 int act_out_fini(smrule_t *r)
 {
-   if (r->act.data == NULL)
+   if (r->data == NULL)
       return 1;
 
-   fprintf(r->act.data, "</osm>\n");
-   fclose(r->act.data);
+   fprintf(r->data, "</osm>\n");
+   fclose(r->data);
 
-   r->act.data = NULL;
+   r->data = NULL;
    return 0;
 }
 
@@ -268,7 +268,7 @@ int act_set_tags_ini(smrule_t *r)
    int64_t templ_id;
    char *s;
 
-   if ((s = get_param("id", NULL, r->act.fp)) == NULL)
+   if ((s = get_param("id", NULL, &r->act)) == NULL)
    {
       log_msg(LOG_WARN, "set_tags requires parameter 'id'");
       return -1;
@@ -288,7 +288,7 @@ int act_set_tags_ini(smrule_t *r)
       return 1;
    }
 
-   if ((r->act.data = rule->oo) == NULL)
+   if ((r->data = rule->oo) == NULL)
    {
       log_msg(LOG_CRIT, "rule has no object");
       return 1;
@@ -300,7 +300,7 @@ int act_set_tags_ini(smrule_t *r)
 
 int act_set_tags(smrule_t *r, osm_obj_t *o)
 {
-   osm_obj_t *templ_o = r->act.data;
+   osm_obj_t *templ_o = r->data;
    struct otag *ot;
 
    if (templ_o == NULL)
