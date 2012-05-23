@@ -32,9 +32,8 @@
 #include <fcntl.h>
 #include <signal.h>
 #include <limits.h>
-//#include <gd.h>
 
-#include "smrender.h"
+#include "smrender_dev.h"
 #include "osm_inplace.h"
 #include "bstring.h"
 #include "libhpxml.h"

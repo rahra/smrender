@@ -25,7 +25,7 @@
 #include <errno.h>
 #include <ctype.h>
 
-#include "smrender.h"
+#include "smrender_dev.h"
 #include "smlog.h"
 #include "smrules.h"
 #include "smcoast.h"
@@ -144,17 +144,17 @@ int act_cap_ini(smrule_t *r)
 
    memset(&cap, 0, sizeof(cap));
 
-   if ((cap.font = get_param("font", NULL, &r->act)) == NULL)
+   if ((cap.font = get_param("font", NULL, r->act)) == NULL)
    {
       log_msg(LOG_WARN, "parameter 'font' missing");
       return 1;
    }
-   if (get_param("size", &cap.size, &r->act) == NULL)
+   if (get_param("size", &cap.size, r->act) == NULL)
    {
       log_msg(LOG_WARN, "parameter 'size' missing");
       return 1;
    }
-   if ((cap.key = get_param("key", NULL, &r->act)) == NULL)
+   if ((cap.key = get_param("key", NULL, r->act)) == NULL)
    {
       log_msg(LOG_WARN, "parameter 'key' missing");
       return 1;
@@ -164,23 +164,23 @@ int act_cap_ini(smrule_t *r)
       cap.key++;
       cap.pos |= POS_UC;
    }
-   if ((s = get_param("color", NULL, &r->act)) != NULL)
+   if ((s = get_param("color", NULL, r->act)) != NULL)
       cap.col = parse_color(get_rdata(), s);
-   if ((s = get_param("angle", &cap.angle, &r->act)) != NULL)
+   if ((s = get_param("angle", &cap.angle, r->act)) != NULL)
    {
       if (!strcmp(s, "auto"))
       {
          cap.angle = NAN;
-         if ((s = get_param("auto-color", NULL, &r->act)) != NULL)
+         if ((s = get_param("auto-color", NULL, r->act)) != NULL)
          {
             cap.rot.autocol = parse_color(get_rdata(), s);
          }
-         if ((s = get_param("weight", &cap.rot.weight, &r->act)) == NULL)
+         if ((s = get_param("weight", &cap.rot.weight, r->act)) == NULL)
             cap.rot.weight = 1;
-         (void) get_param("weight", &cap.rot.phase, &r->act);
+         (void) get_param("weight", &cap.rot.phase, r->act);
       }
    }
-   if ((s = get_param("align", NULL, &r->act)) != NULL)
+   if ((s = get_param("align", NULL, r->act)) != NULL)
    {
       if (!strcmp(s, "east"))
          cap.pos |= POS_E;
@@ -189,7 +189,7 @@ int act_cap_ini(smrule_t *r)
       else
          log_msg(LOG_WARN, "unknown alignment '%s'", s);
    }
-   if ((s = get_param("halign", NULL, &r->act)) != NULL)
+   if ((s = get_param("halign", NULL, r->act)) != NULL)
    {
       if (!strcmp(s, "north"))
          cap.pos |= POS_N;
@@ -329,13 +329,13 @@ int cap_way(smrule_t *r, osm_way_t *w)
    if (poly_area(w, &c, &ar))
       return 0;
 
-   if ((tmp_rule = malloc(sizeof(smrule_t) + sizeof(struct stag) * r->act.tag_cnt)) == NULL)
+   if ((tmp_rule = malloc(sizeof(smrule_t) + sizeof(action_t) + sizeof(struct stag) * r->act->tag_cnt)) == NULL)
    {
       log_msg(LOG_ERR, "cannot malloc temp rule: %s", strerror(errno));
       return -1;
    }
 
-   memcpy(tmp_rule, r, sizeof(smrule_t) + sizeof(struct stag) * r->act.tag_cnt);
+   memcpy(tmp_rule, r, sizeof(smrule_t) + sizeof(action_t) + sizeof(struct stag) * r->act->tag_cnt);
 
    n = malloc_node(w->obj.tag_cnt);
    memcpy(n->obj.otag, w->obj.otag, sizeof(struct otag) * w->obj.tag_cnt);
@@ -562,7 +562,7 @@ int act_img_ini(smrule_t *r)
       return -1;
    }
 
-   if ((name = get_param("file", NULL, &r->act)) == NULL)
+   if ((name = get_param("file", NULL, r->act)) == NULL)
    {
       log_msg(LOG_WARN, "parameter 'file' missing");
       return -1;
@@ -585,7 +585,7 @@ int act_img_ini(smrule_t *r)
       return -1;
    }
 
-   if ((name = get_param("angle", &img.angle, &r->act)) != NULL)
+   if ((name = get_param("angle", &img.angle, r->act)) != NULL)
    {
       if (!strcmp(name, "auto"))
       {
@@ -777,31 +777,31 @@ int act_draw_ini(smrule_t *r)
    r->data = d;
 
    // parse fill settings
-   if ((s = get_param("color", NULL, &r->act)) != NULL)
+   if ((s = get_param("color", NULL, r->act)) != NULL)
    {
       d->fill.col = parse_color(rd, s);
       d->fill.used = 1;
    }
-   if (get_param("width", &d->fill.width, &r->act) == NULL)
+   if (get_param("width", &d->fill.width, r->act) == NULL)
       d->fill.width = 0;
-   d->fill.style = parse_style(get_param("style", NULL, &r->act));
+   d->fill.style = parse_style(get_param("style", NULL, r->act));
 
    // parse border settings
-   if ((s = get_param("bcolor", NULL, &r->act)) != NULL)
+   if ((s = get_param("bcolor", NULL, r->act)) != NULL)
    {
       d->border.col = parse_color(rd, s);
       d->border.used = 1;
    }
-   if (get_param("bwidth", &d->border.width, &r->act) == NULL)
+   if (get_param("bwidth", &d->border.width, r->act) == NULL)
       d->border.width = 0;
-   d->border.style = parse_style(get_param("bstyle", NULL, &r->act));
+   d->border.style = parse_style(get_param("bstyle", NULL, r->act));
 
    // honor direction of ways
-   if (get_param("directional", &a, &r->act) == NULL)
+   if (get_param("directional", &a, r->act) == NULL)
       a = 0;
    d->directional = a != 0;
 
-   if (get_param("ignore_open", &a, &r->act) == NULL)
+   if (get_param("ignore_open", &a, r->act) == NULL)
       a = 0;
    d->collect_open = a == 0;
 

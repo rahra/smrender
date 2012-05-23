@@ -2,6 +2,7 @@
 #include <syslog.h>
 #include <string.h>
 #include <errno.h>
+#include <math.h>
 
 #include "smrender.h"
 #include "seamark.h"
@@ -202,10 +203,10 @@ int act_vsector_ini(smrule_t *r)
    vd->arc_div = ARC_DIV;
    vd->sec_radius = SEC_RADIUS;
 
-   get_param("a", &vd->arc_max, &r->act);
-   get_param("b", &vd->dir_arc, &r->act);
-   get_param("d", &vd->arc_div, &r->act);
-   get_param("r", &vd->sec_radius, &r->act);
+   get_param("a", &vd->arc_max, r->act);
+   get_param("b", &vd->dir_arc, r->act);
+   get_param("d", &vd->arc_div, r->act);
+   get_param("r", &vd->sec_radius, r->act);
 
    r->data = vd;
 

@@ -24,7 +24,7 @@
 #include <string.h>
 #include <errno.h>
 
-#include "smrender.h"
+#include "smrender_dev.h"
 #include "smlog.h"
 
 
@@ -40,7 +40,7 @@ int act_out_ini(smrule_t *r)
 {
    char *s;
 
-   if ((s = get_param("file", NULL, &r->act)) == NULL)
+   if ((s = get_param("file", NULL, r->act)) == NULL)
    {
       log_msg(LOG_WARN, "parameter 'file' missing");
       return 1;
@@ -268,7 +268,7 @@ int act_set_tags_ini(smrule_t *r)
    int64_t templ_id;
    char *s;
 
-   if ((s = get_param("id", NULL, &r->act)) == NULL)
+   if ((s = get_param("id", NULL, r->act)) == NULL)
    {
       log_msg(LOG_WARN, "set_tags requires parameter 'id'");
       return -1;

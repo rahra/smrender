@@ -22,7 +22,7 @@
 
 #include <math.h>
 
-#include "smrender.h"
+#include "smrender_dev.h"
 
 
 /*! Calculate bearing and distance from src to dst.
