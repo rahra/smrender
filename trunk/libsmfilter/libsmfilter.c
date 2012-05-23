@@ -17,13 +17,20 @@ enum { SEAMARK_LIGHT_CHARACTER, SEAMARK_LIGHT_OBJECT, SEAMARK_LIGHT_RADIAL,
    SEAMARK_LIGHT_SECTOR_NR, SEAMARK_ARC_STYLE, SEAMARK_LIGHT_ARC_AL,
    SEAMARK_LIGHT_ARC};
 
+struct vsec_data
+{
+   double arc_div;         // param 'd'
+   double arc_max;         // param 'a'
+   double sec_radius;      // param 'r'
+   double dir_arc;         // param 'b'
+};
 
 static char *smstrdup(const char *);
 static int get_sectors(const osm_obj_t*, struct sector *sec, int nmax);
 static void node_calc(const struct osm_node *nd, double r, double a, double *lat, double *lon);
-static int sector_calc3(const osm_node_t*, const struct sector *, bstring_t);
+static int sector_calc3(const osm_node_t*, const struct sector *, bstring_t, const struct vsec_data*);
 static void init_sector(struct sector *sec);
-static int proc_sfrac(struct sector *sec);
+static int proc_sfrac(struct sector *sec, struct vsec_data*);
 #ifdef COPY_TO_HEAP
 static const char *color(int);
 static const char *color_abbr(int);
@@ -32,10 +39,10 @@ static void sort_sectors(struct sector *, int);
 static int parse_color(bstring_t);
 
 
-static double arc_div_ = ARC_DIV;         // param 'd'
-static double arc_max_ = ARC_MAX;         // param 'a'
-static double sec_radius_ = SEC_RADIUS;   // param 'r'
-static double dir_arc_ = DIR_ARC;         // param 'b'
+//static double arc_div_ = ARC_DIV;         // param 'd'
+//static double arc_max_ = ARC_MAX;         // param 'a'
+//static double sec_radius_ = SEC_RADIUS;   // param 'r'
+//static double dir_arc_ = DIR_ARC;         // param 'b'
 static int untagged_circle_ = 0;
 
 static const double altr_[] = {0.003, 0.0035, 0.009, 0.005};
@@ -115,7 +122,7 @@ void __attribute__ ((destructor)) fini_libsmfilter(void)
  * combined tag of several light attributes.
  * The function is intended to be called by a rule action.
  */
-int pchar(osm_obj_t *o)
+int act_pchar(smrule_t *r, osm_obj_t *o)
 {
    char lchar[8] = "", group[8] = "", period[8] = "", range[8] = "", col[8] = "", buf[256];
    int n;
@@ -173,15 +180,49 @@ int set_on_match(const char *s, const char *k, const char *v, double *a)
 }
 
 
-void vsector_ini(orule_t *r)
+int act_vsector_ini(smrule_t *r)
 {
-   arc_max_ = get_param("a", &arc_max_, r->rule.func.fp) == NULL ? ARC_MAX : arc_max_;
-   dir_arc_ = get_param("b", &dir_arc_, r->rule.func.fp) == NULL ? DIR_ARC : dir_arc_;
-   arc_div_ = get_param("d", &arc_div_, r->rule.func.fp) == NULL ? ARC_DIV : arc_div_;
-   sec_radius_ = get_param("r", &sec_radius_, r->rule.func.fp) == NULL ? SEC_RADIUS : sec_radius_;
+   struct vsec_data *vd;
+
+   if (r->oo->type != OSM_NODE)
+   {
+      log_msg(LOG_WARN, "vsector may be applied to nodes only");
+      return -1;
+   }
+
+   if ((vd = malloc(sizeof(*vd))) == NULL)
+   {
+      log_msg(LOG_ERR, "cannot malloc vsec_data: %s", strerror(errno));
+      return -1;
+   }
+
+   // init defaults
+   vd->arc_max = ARC_MAX;
+   vd->dir_arc = DIR_ARC;
+   vd->arc_div = ARC_DIV;
+   vd->sec_radius = SEC_RADIUS;
+
+   get_param("a", &vd->arc_max, r->act.fp);
+   get_param("b", &vd->dir_arc, r->act.fp);
+   get_param("d", &vd->arc_div, r->act.fp);
+   get_param("r", &vd->sec_radius, r->act.fp);
+
+   r->act.data = vd;
 
    log_msg(LOG_INFO, "arc_max_(a) = %.2f, dir_arc_(b) = %.2f, arc_div_(d) = %.2f, sec_radius_(r) = %.2f",
-         arc_max_, dir_arc_, arc_div_, sec_radius_);
+         vd->arc_max, vd->dir_arc, vd->arc_div, vd->sec_radius);
+   return 0;
+}
+
+
+int act_vsector_fini(smrule_t *r)
+{
+   if (r->act.data != NULL)
+   {
+      free(r->act.data);
+      r->act.data = NULL;
+   }
+   return 0;
 }
 
 
@@ -190,11 +231,11 @@ void vsector_ini(orule_t *r)
  * library for smrender. The code was changed as less as possible.
  * The function is intended to be called by a rule action.
  */
-int vsector(osm_obj_t *o)
+int act_vsector(smrule_t *r, osm_obj_t *o)
 {
+   struct vsec_data *vd = r->act.data;
    int i, j, n, k;
    struct sector sec[MAX_SEC];
-   //struct osm_node *nd = &ond->nd;
    bstring_t b = {0, ""};
 
    for (i = 0; i < MAX_SEC; i++)
@@ -288,14 +329,14 @@ int vsector(osm_obj_t *o)
    {
       if (sec[i].used)
       {
-         if (proc_sfrac(&sec[i]) == -1)
+         if (proc_sfrac(&sec[i], vd) == -1)
          {
             log_msg(LOG_WARNING, "negative angle definition is just allowed in last segment! (sector %d node %ld)", sec[i].nr, o->id);
             continue;
          }
          //printf("   <!-- [%d]: start = %.2f, end = %.2f, col = %d, r = %.2f, nr = %d -->\n",
          //   i, sec[i].start, sec[i].end, sec[i].col, sec[i].r, sec[i].nr);
-         if (sector_calc3((osm_node_t*) o, &sec[i], b))
+         if (sector_calc3((osm_node_t*) o, &sec[i], b, vd))
             log_msg(LOG_ERR, "sector_calc3 failed: %s", strerror(errno));
 
          if (sec[i].col[1] != -1)
@@ -306,7 +347,7 @@ int vsector(osm_obj_t *o)
                for (k = 0; k < sec[i].fused; k++)
                   sec[i].sf[k].r -= altr_[j];
                sec[i].al++;
-               if (sector_calc3((osm_node_t*) o, &sec[i], b))
+               if (sector_calc3((osm_node_t*) o, &sec[i], b, vd))
                   log_msg(LOG_ERR, "sector_calc3 failed: %s", strerror(errno));
             }
          }
@@ -700,7 +741,7 @@ static void node_calc(const osm_node_t *n, double r, double a, double *lat, doub
 }
 
 
-static int sector_calc3(const osm_node_t *n, const struct sector *sec, bstring_t st)
+static int sector_calc3(const osm_node_t *n, const struct sector *sec, bstring_t st, const struct vsec_data *vd)
 {
    double lat[3], lon[3], d, s, e, w, la, lo;
    int64_t id[5], sn;
@@ -809,10 +850,10 @@ static int sector_calc3(const osm_node_t *n, const struct sector *sec, bstring_t
          continue;
 
       // calculate distance of nodes on arc
-      if ((arc_max_ > 0.0) && ((sec->sf[i].r / arc_div_) > arc_max_))
-         d = arc_max_;
+      if ((vd->arc_max > 0.0) && ((sec->sf[i].r / vd->arc_div) > vd->arc_max))
+         d = vd->arc_max;
       else
-         d = sec->sf[i].r / arc_div_;
+         d = sec->sf[i].r / vd->arc_div;
       d = 2.0 * asin((d / 60.0) / (2.0 * (sec->sf[i].r / 60.0)));
 
       // if end angle is greater than start, wrap around 360 degrees
@@ -908,18 +949,18 @@ static void init_sector(struct sector *sec)
  *  defined in another than the last segment, -1 is returned. If generation of
  *  tapering segments would exceed MAX_SFRAC (array overflow), -2 is returned.
  */
-static int proc_sfrac(struct sector *sec)
+static int proc_sfrac(struct sector *sec, struct vsec_data *vd)
 {
    int i, j;
 
    if (isnan(sec->sf[0].r))
-      sec->sf[0].r = isnan(sec->r) ? sec_radius_ : sec->r;
+      sec->sf[0].r = isnan(sec->r) ? vd->sec_radius : sec->r;
    if (sec->sf[0].r < 0)
-      sec->sf[0].r = sec_radius_;
+      sec->sf[0].r = vd->sec_radius;
 
    if (!sec->fused && isnan(sec->dir))
    {
-      sec->sf[0].r = sec_radius_;
+      sec->sf[0].r = vd->sec_radius;
       sec->sf[0].start = sec->start;
       sec->sf[0].end = sec->end;
       sec->sf[0].col = sec->col[0];
@@ -933,9 +974,9 @@ static int proc_sfrac(struct sector *sec)
    // handle directional light
    if (!isnan(sec->dir))
    {
-      if (sec->sspace < 0) sec->sf[0].start = sec->dir - dir_arc_;
-      else if ((sec->sspace / 2) < dir_arc_) sec->sf[0].start = sec->dir - sec->sspace / 2;
-      else sec->sf[0].start = sec->dir - dir_arc_;
+      if (sec->sspace < 0) sec->sf[0].start = sec->dir - vd->dir_arc;
+      else if ((sec->sspace / 2) < vd->dir_arc) sec->sf[0].start = sec->dir - sec->sspace / 2;
+      else sec->sf[0].start = sec->dir - vd->dir_arc;
       //sec->sf[0].start = sec->dir - (dir_arc_ < sec->sspace ? dir_arc_ : sec->sspace / 2);
       sec->sf[0].end = sec->dir;
       sec->sf[0].col = sec->col[0];
@@ -943,9 +984,9 @@ static int proc_sfrac(struct sector *sec)
       sec->sf[0].endr = 1;
       sec->sf[1].r = sec->sf[0].r;
       sec->sf[1].start = sec->dir;
-      if (sec->espace < 0) sec->sf[1].end = sec->dir + dir_arc_;
-      else if ((sec->espace / 2) < dir_arc_) sec->sf[1].end = sec->dir + sec->espace / 2;
-      else sec->sf[1].end = sec->dir + dir_arc_;
+      if (sec->espace < 0) sec->sf[1].end = sec->dir + vd->dir_arc;
+      else if ((sec->espace / 2) < vd->dir_arc) sec->sf[1].end = sec->dir + sec->espace / 2;
+      else sec->sf[1].end = sec->dir + vd->dir_arc;
       //sec->sf[1].end = sec->dir + (dir_arc_ < sec->espace ? dir_arc_ : sec->espace / 2);
       sec->sf[1].col = sec->col[0];
       sec->sf[1].type = ARC_SOLID;
@@ -1060,7 +1101,7 @@ static int proc_sfrac(struct sector *sec)
 }
 
 
-int sounding(osm_obj_t *o)
+int act_sounding(smrule_t *rl, osm_obj_t *o)
 {
    osm_node_t *n;
    osm_way_t *w;

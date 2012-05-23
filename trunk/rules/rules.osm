@@ -1,58 +1,58 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <osm version='0.6'>
-   <node>
+   <node version="-10">
       <tag k='seamark:type' v=''/>
-      <tag k='_action_' v='func:vsector@libsmfilter.so'/>
+      <tag k='_action_' v='vsector@libsmfilter.so'/>
    </node>
    <node>
       <tag k='seamark:type' v=''/>
-      <tag k='_action_' v='func:pchar@libsmfilter.so'/>
+      <tag k='_action_' v='pchar@libsmfilter.so'/>
    </node>
    <node>
       <tag k='/^seamark:light:.*/' v=''/>
-      <tag k='_action_' v='img-auto:icons/Light_Magenta_90.png'/>
+      <tag k='_action_' v='img:angle=auto;file=icons/Light_Magenta_90.png'/>
    </node>
    <node>
       <tag k='seamark:type' v='light_minor'/>
-      <tag k='_action_' v='img:icons/Light_Minor.png'/>
+      <tag k='_action_' v='img:file=icons/Light_Minor.png'/>
    </node>
    <node>
       <tag k='seamark:type' v='light_major'/>
-      <tag k='_action_' v='img:icons/Light_Major.png'/>
+      <tag k='_action_' v='img:file=icons/Light_Major.png'/>
    </node>
    <node>
       <tag k='seamark:type' v='beacon_isolated_danger'/>
       <tag k='seamark:beacon_isolated_danger:shape' v='tower'/>
-      <tag k='_action_' v='img:icons/Cardinal_Tower_Single.png'/>
+      <tag k='_action_' v='img:file=icons/Cardinal_Tower_Single.png'/>
    </node>
    <node>
       <tag k='seamark:type' v='beacon_isolated_danger'/>
       <tag k='~seamark:beacon_isolated_danger:shape~' v=''/>
-      <tag k='_action_' v='img:icons/Cardinal_Beacon_Single.png'/>
+      <tag k='_action_' v='img:file=icons/Cardinal_Beacon_Single.png'/>
    </node>
    <node>
-      <tag k='_action_' v='img:icons/Cardinal_Beacon_West.png'/>
+      <tag k='_action_' v='img:file=icons/Cardinal_Beacon_West.png'/>
       <tag k='seamark:beacon_cardinal:category' v='west' />
       <tag k='seamark:type' v='beacon_cardinal' />
    </node>
    <node>
-      <tag k='_action_' v='img:icons/Cardinal_Beacon_East.png'/>
+      <tag k='_action_' v='img:file=icons/Cardinal_Beacon_East.png'/>
       <tag k='seamark:beacon_cardinal:category' v='east' />
       <tag k='seamark:type' v='beacon_cardinal' />
    </node>
     <node>
-      <tag k='_action_' v='img:icons/Cardinal_Beacon_South.png'/>
+      <tag k='_action_' v='img:file=icons/Cardinal_Beacon_South.png'/>
       <tag k='seamark:beacon_cardinal:category' v='south' />
       <tag k='seamark:type' v='beacon_cardinal' />
    </node>
     <node>
-      <tag k='_action_' v='img:icons/Cardinal_Beacon_North.png'/>
+      <tag k='_action_' v='img:file=icons/Cardinal_Beacon_North.png'/>
       <tag k='seamark:beacon_cardinal:category' v='north' />
       <tag k='seamark:type' v='beacon_cardinal' />
    </node>
  
    <node>
-      <tag k='_action_' v='img:icons/Light_House.png'/>
+      <tag k='_action_' v='img:file=icons/Light_House.png'/>
       <tag k='/^seamark:light.*/' v=''/>
       <tag k='seamark:type' v='landmark' />
    </node>
@@ -61,28 +61,28 @@
       <tag k='seamark:buoy_lateral:colour' v='~green~'/>
       <tag k='seamark:buoy_lateral:shape' v='pillar'/>
       <tag k='seamark:type' v='buoy_lateral'/>
-      <tag k='_action_' v='img:icons/Pillar.png'/>
+      <tag k='_action_' v='img:file=icons/Pillar.png'/>
    </node>
    <node>
       <tag k='seamark:buoy_lateral:colour' v='green'/>
       <tag k='seamark:buoy_lateral:shape' v='pillar'/>
       <tag k='seamark:type' v='buoy_lateral'/>
-      <tag k='_action_' v='img:icons/Pillar_Black.png'/>
+      <tag k='_action_' v='img:file=icons/Pillar_Black.png'/>
    </node>
    -->
    <node>
       <tag k='seamark:beacon_lateral:colour' v='~green~'/>
       <tag k='seamark:type' v='beacon_lateral'/>
-      <tag k='_action_' v='img:icons/Beacon.png'/>
+      <tag k='_action_' v='img:file=icons/Beacon.png'/>
    </node>
    <node>
       <tag k='seamark:beacon_lateral:colour' v='green'/>
       <tag k='seamark:type' v='beacon_lateral'/>
-      <tag k='_action_' v='img:icons/Beacon_Black.png'/>
+      <tag k='_action_' v='img:file=icons/Beacon_Black.png'/>
    </node>
    <node>
       <tag k='natural' v='peak'/>
-      <tag k='_action_' v='img:icons/Dot_6x6.png'/>
+      <tag k='_action_' v='img:file=icons/Dot_6x6.png'/>
    </node>
 
    <!--
@@ -109,33 +109,38 @@
       -->
 
       <!--<tag k='_action_' v='cap:/usr/share/fonts/truetype/ttf-liberation/LiberationSans-Regular.ttf,1.4,cm,black,auto;white;0.7,seamark:light_character'/>-->
-      <tag k='_action_' v='cap:sans-serif,1.4,cm,black,auto;white;0.7,seamark:light_character'/>
+      <!--<tag k='_action_' v='cap:sans-serif,1.4,cm,black,auto;white;0.7,seamark:light_character'/>-->
+      <tag k='_action_' v='cap:font=sans-serif;size=1.4;key=seamark:light_character'/>
       <!-- <tag k='seamark:light:ref' v=''/> -->
       <tag k='seamark:light_character' v=''/>
    </node>
    <node>
       <!-- <tag k='_action_' v='cap:/usr/share/fonts/truetype/freefont/FreeSerifBold.ttf,1.8,cm,black,auto,name'/> -->
-      <tag k='_action_' v='cap:serif:bold,1.8,cm,black,auto;yellow,name'/>
+      <!--<tag k='_action_' v='cap:serif:bold,1.8,cm,black,auto;yellow,name'/>-->
+      <tag k='_action_' v='cap:font=serif:bold;size=1.8;key=name'/>
       <tag k='place' v='village'/>
    </node>
    <node>
       <!--<tag k='_action_' v='cap:/usr/share/fonts/truetype/ttf-liberation/LiberationSerif-Regular.ttf,1.5,cm,black,0,name'/>-->
-      <tag k='_action_' v='cap:serif,1.5,cm,black,0,name'/>
+      <tag k='_action_' v='cap:font=serif;size=1.5;key=name'/>
       <tag k='place' v='hamlet'/>
    </node>
  
    <node>
       <!--<tag k='_action_' v='cap:/usr/share/fonts/truetype/ttf-liberation/LiberationSerif-Regular.ttf,1.2,n,black,0,name'/>-->
-      <tag k='_action_' v='cap:serif,1.2,n,black,0,name'/>
+      <!--<tag k='_action_' v='cap:serif,1.2,n,black,0,name'/>-->
+      <tag k='_action_' v='cap:font=serif;halign=north;size=1.2;key=name'/>
       <tag k='natural' v='peak'/>
    </node>
    <node>
       <!--<tag k='_action_' v='cap:/usr/share/fonts/truetype/ttf-liberation/LiberationSerif-Regular.ttf,1.2,s,black,0,ele'/>-->
-      <tag k='_action_' v='cap:roman,1.2,s,black,0,ele'/>
+      <!--<tag k='_action_' v='cap:roman,1.2,s,black,0,ele'/>-->
+      <tag k='_action_' v='cap:font=roman;size=1.2;halign=south;key=ele'/>
       <tag k='natural' v='peak'/>
    </node>
    <node>
-      <tag k='_action_' v='cap:sans-serif:bold,2.5,cm,black,auto;yellow,name'/>
+      <!--<tag k='_action_' v='cap:sans-serif:bold,2.5,cm,black,auto;yellow,name'/>-->
+      <tag k='_action_' v='cap:font=sans-serif:bold;size=2.5;angle=auto;auto-color=yellow;key=name'/>
       <tag k='place' v='city'/>
    </node>
    <!--
@@ -151,96 +156,110 @@
    -->
     <node>
        <!--<tag k='_action_' v='cap:/usr/share/fonts/truetype/ttf-liberation/LiberationSans-Italic.ttf,1.4,cm,black,auto;white,name'/>-->
-      <tag k='_action_' v='cap:sans-serif:italic,1.4,cm,black,auto;white,name'/>
+       <!--<tag k='_action_' v='cap:sans-serif:italic,1.4,cm,black,auto;white,name'/>-->
+      <tag k='_action_' v='cap:font=sans-serif:italic;size=1.4;angle=auto;auto-color=white;key=name'/>
       <tag k='natural' v='bay'/>
    </node>
    <node>
       <!--<tag k='_action_' v='cap:/usr/share/fonts/truetype/ttf-liberation/LiberationSans-Bold.ttf,4,cn,black,90,name'/>-->
-      <tag k='_action_' v='cap:sans-serif:bold,4,cn,black,90,name'/>
+      <!--<tag k='_action_' v='cap:sans-serif:bold,4,cn,black,90,name'/>-->
+      <tag k='_action_' v='cap:font=sans-serif:bold;size=4;key=name;angle=90;halign=north'/>
       <tag k='grid' v='text'/>
       <tag k='border' v='left'/>
    </node>
    <node>
       <!--<tag k='_action_' v='cap:/usr/share/fonts/truetype/ttf-liberation/LiberationSans-Bold.ttf,4,cn,black,270,name'/>-->
-      <tag k='_action_' v='cap:sans-serif:bold,4,cn,black,270,name'/>
+      <!--<tag k='_action_' v='cap:sans-serif:bold,4,cn,black,270,name'/>-->
+      <tag k='_action_' v='cap:font=sans-serif:bold;size=4;key=name;angle=270;halign=north'/>
       <tag k='grid' v='text'/>
       <tag k='border' v='right'/>
    </node>
    <node>
       <!--<tag k='_action_' v='cap:/usr/share/fonts/truetype/ttf-liberation/LiberationSans-Bold.ttf,4,cn,black,0,name'/>-->
-      <tag k='_action_' v='cap:sans-serif:bold,4,cn,black,0,name'/>
+      <!--<tag k='_action_' v='cap:sans-serif:bold,4,cn,black,0,name'/>-->
+      <tag k='_action_' v='cap:font=sans-serif:bold;size=4;key=name;halign=north'/>
       <tag k='grid' v='text'/>
       <tag k='border' v='top'/>
    </node>
    <node>
       <!--<tag k='_action_' v='cap:/usr/share/fonts/truetype/ttf-liberation/LiberationSans-Bold.ttf,4,cs,black,0,name'/>-->
-      <tag k='_action_' v='cap:sans-serif,4,cs,black,0,name'/>
+      <!--<tag k='_action_' v='cap:sans-serif,4,cs,black,0,name'/>-->
+      <tag k='_action_' v='cap:font=sans-serif;size=4;key=name;halign=south'/>
       <tag k='grid' v='text'/>
       <tag k='border' v='bottom'/>
    </node>
    <node>
       <tag k='grid' v='outer_border'/>
       <tag k='pointindex' v='0'/>
-      <tag k='_action_' v='cap:sans-serif,2,en,black,0,lat'/>
+      <!--<tag k='_action_' v='cap:sans-serif,2,en,black,0,lat'/>-->
+      <tag k='_action_' v='cap:font=sans-serif;size=2;key=lat;halign=north;align=east'/>
    </node>
     <node>
       <tag k='grid' v='outer_border'/>
       <tag k='pointindex' v='0'/>
-      <tag k='_action_' v='cap:sans-serif,2,wn,black,90,lon'/>
+      <!--<tag k='_action_' v='cap:sans-serif,2,wn,black,90,lon'/>-->
+      <tag k='_action_' v='cap:font=sans-serif;size=2;key=lon;halign=north;align=west;angle=90'/>
    </node>
  
    <node>
       <tag k='grid' v='outer_border'/>
       <tag k='pointindex' v='1'/>
-      <tag k='_action_' v='cap:sans-serif,2,wn,black,0,lat'/>
+      <!--<tag k='_action_' v='cap:sans-serif,2,wn,black,0,lat'/>-->
+      <tag k='_action_' v='cap:font=sans-serif;size=2;key=lat;halign=north;align=west'/>
    </node>
     <node>
       <tag k='grid' v='outer_border'/>
       <tag k='pointindex' v='1'/>
-      <tag k='_action_' v='cap:sans-serif,2,en,black,270,lon'/>
+      <!--<tag k='_action_' v='cap:sans-serif,2,en,black,270,lon'/>-->
+      <tag k='_action_' v='cap:font=sans-serif;size=2;key=lon;halign=north;align=east;angle=270'/>
    </node>
  
    <node>
       <tag k='grid' v='outer_border'/>
       <tag k='pointindex' v='2'/>
-      <tag k='_action_' v='cap:sans-serif,2,ws,black,0,lat'/>
+      <!--<tag k='_action_' v='cap:sans-serif,2,ws,black,0,lat'/>-->
+      <tag k='_action_' v='cap:font=sans-serif;size=2;key=lat;halign=south;align=west'/>
    </node>
     <node>
       <tag k='grid' v='outer_border'/>
       <tag k='pointindex' v='2'/>
-      <tag k='_action_' v='cap:sans-serif,2,wn,black,270,lon'/>
+      <!--<tag k='_action_' v='cap:sans-serif,2,wn,black,270,lon'/>-->
+      <tag k='_action_' v='cap:font=sans-serif;size=2;key=lon;angle=270;halign=north;align=west'/>
    </node>
     <node>
       <tag k='grid' v='outer_border'/>
       <tag k='pointindex' v='3'/>
-      <tag k='_action_' v='cap:sans-serif,2,es,black,0,lat'/>
+      <!--<tag k='_action_' v='cap:sans-serif,2,es,black,0,lat'/>-->
+      <tag k='_action_' v='cap:font=sans-serif;size=2;key=lat'/>
    </node>
     <node>
       <tag k='grid' v='outer_border'/>
       <tag k='pointindex' v='3'/>
-      <tag k='_action_' v='cap:sans-serif,2,en,black,90,lon'/>
+      <!--<tag k='_action_' v='cap:sans-serif,2,en,black,90,lon'/>-->
+      <tag k='_action_' v='cap:font=sans-serif;size=2;key=lon;angle=90;halign=north;align=east'/>
    </node>
    <node>
-      <tag k='_action_' v='cap:sans-serif:bold,2,cn,black,0,name'/>
+      <!--<tag k='_action_' v='cap:sans-serif:bold,2,cn,black,0,name'/>-->
+      <tag k='_action_' v='cap:font=sans-serif:bold;size=2;key=name;halign=north'/>
       <tag k='grid' v='text'/>
       <tag k='border' v='copyright'/>
    </node>
 
    <way>
       <tag k='natural' v='coastline'/>
-      <tag k='_action_' v='func:refine_poly'/>
+      <tag k='_action_' v='refine_poly'/>
    </way>
    <way>
       <tag k='natural' v='coastline'/>
-      <tag k='_action_' v='func:cat_poly'/>
+      <tag k='_action_' v='cat_poly'/>
    </way>
    <way>
       <tag k='natural' v='coastline'/>
-      <tag k='_action_' v='func:act_poly_area'/>
+      <tag k='_action_' v='poly_area'/>
    </way>
     <way>
       <tag k='natural' v='coastline'/>
-      <tag k='_action_' v='func:act_poly_centroid'/>
+      <tag k='_action_' v='poly_centroid'/>
    </way>
    <!--
     <way>
@@ -251,39 +270,41 @@
    -->
    <way>
       <tag k='natural' v='coastline'/>
-      <tag k='_action_' v='draw:yellow:black'/>
+      <tag k='_action_' v='draw:color=yellow;bcolor=black'/>
    </way>
    <way>
       <tag k='building' v=''/>
       <!-- draw:<fill color>,<fill width>[,<fill style>][:<border color>,<border width>[,<border style>]] -->
-      <tag k='_action_' v='draw:black'/>
+      <tag k='_action_' v='draw:color=black'/>
    </way>
    <way>
       <tag k='highway' v='/^(secondary|primary|residential)$/'/>
-      <tag k='_action_' v='draw:black'/>
+      <tag k='_action_' v='draw:color=black'/>
    </way>
    <way>
       <tag k='seamark:light_radial' v=''/>
-      <tag k='_action_' v='draw:black'/>
+      <tag k='_action_' v='draw:color=black'/>
    </way>
    <way>
       <tag k='seamark:light_arc' v=''/>
-      <tag k='_action_' v='draw:black'/>
+      <tag k='_action_' v='draw:color=black'/>
    </way>
    <way>
       <tag k='natural' v='water'/>
-      <tag k='_action_' v='draw:blue:#000080'/>
+      <tag k='_action_' v='draw:color=blue;bcolor=#000080'/>
    </way>
    <way>
       <tag k='waterway' v=''/>
-      <tag k='_action_' v='draw:blue:blue'/>
+      <tag k='_action_' v='draw:color=blue;bcolor=blue'/>
    </way>
    <way>
       <tag k='grid' v=''/>
-      <tag k='_action_' v='draw:black,0,transparent:black'/>
+      <!--<tag k='_action_' v='draw:color=black;width=0;style=transparent;bcolor=black'/>-->
+      <tag k='_action_' v='draw:bcolor=black'/>
    </way>
    <way>
-      <tag k='_action_' v='cap:sans-serif:bold,2.5,cm,black,0,name'/>
+      <!--<tag k='_action_' v='cap:sans-serif:bold,2.5,cm,black,0,name'/>-->
+      <tag k='_action_' v='cap:font=sans-serif:bold;size=2.5;key=*name'/>
       <tag k='place' v='/island|islet/'/>
    </way>
 </osm>

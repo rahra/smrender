@@ -43,77 +43,6 @@ void set_util_rd(struct rdata *r)
 }
 
 
-#if 0
-static struct rdata rd_, *rd = &rd_;
-
-
-struct rdata *init_rdata(void)
-{
-   memset(rd, 0, sizeof(*rd));
-
-   // A3 paper portrait (300dpi)
-   rd->w = 3507; rd->h = 4961; rd->dpi = 300;
-   // A4 paper portrait (300dpi)
-   //rd->w = 2480; rd->h = 3507; rd->dpi = 300;
-   // A4 paper landscape (300dpi)
-   //rd->h = 2480; rd->w = 3507; rd->dpi = 300;
-   // A4 paper portrait (600dpi)
-   //rd->w = 4961; rd->h = 7016; rd->dpi = 600;
-   // A2 paper landscape (300dpi)
-   //rd->w = 7016; rd->h = 4961; rd->dpi = 300;
-   // A1 paper landscape (300dpi)
-   //rd->w = 9933; rd->h = 7016; rd->dpi = 300;
-   // A1 paper portrait (300dpi)
-   //rd->h = 9933; rd->w = 7016; rd->dpi = 300;
-
-   rd->grd.lat_ticks = rd->grd.lon_ticks = G_TICKS;
-   rd->grd.lat_sticks = rd->grd.lon_sticks = G_STICKS;
-   rd->grd.lat_g = rd->grd.lon_g = G_GRID;
-
-   // init callback function pointers
-   //rd->cb.log_msg = log_msg;
-   //rd->cb.get_object = get_object;
-   //rd->cb.put_object = put_object;
-   //rd->cb.malloc_object = malloc_object;
-   //rd->cb.match_attr = match_attr;
-
-   // this should be given by CLI arguments
-   /* porec.osm
-   rd->x1c = 13.53;
-   rd->y1c = 45.28;
-   rd->x2c = 13.63;
-   rd->y2c = 45.183; */
-
-   //dugi.osm
-   rd->x1c = 14.72;
-   rd->y1c = 44.23;
-   rd->x2c = 15.29;
-   rd->y2c = 43.96;
-
-   //croatia...osm
-   //rd->x1c = 13.9;
-   //rd->y1c = 45.75;
-   //rd->x2c = 15.4;
-   //rd->y2c = 43.0;
-
-   //croatia_big...osm
-   //rd->x1c = 13.5;
-   //rd->y1c = 45.5;
-   //rd->x2c = 15.5;
-   //rd->y2c = 43.5;
-
-   /* treasure_island
-   rd->x1c = 24.33;
-   rd->y1c = 37.51;
-   rd->x2c = 24.98;
-   rd->y2c = 37.16;
-   */
- 
-   return rd;
-}
-#endif
-
-
 void set_const_tag(struct otag *tag, char *k, char *v)
 {
    tag->k.buf = k;
@@ -138,28 +67,6 @@ int64_t unique_way_id(void)
    return rd->ds.min_wid;
 }
 
-/*
-struct onode *malloc_object(int tag_cnt, int ref_cnt)
-{
-   struct onode *nd;
-
-   if ((nd = calloc(1, sizeof(struct onode) + tag_cnt * sizeof(struct otag))) == NULL)
-   {
-      log_msg(LOG_EMERG, "malloc_object(): cannot calloc() new onode: %s", strerror(errno));
-      exit(EXIT_FAILURE);
-   }
-   if ((nd->ref = calloc(ref_cnt, sizeof(int64_t))) == NULL)
-   {
-      log_msg(LOG_EMERG, "malloc_object(): cannot calloc() refs of new onode: %s", strerror(errno));
-      free(nd);
-      exit(EXIT_FAILURE);
-   }
-
-   nd->ref_cnt = ref_cnt;
-   nd->tag_cnt = tag_cnt;
-   return nd;
-}
-*/
 
 int put_object0(bx_node_t **tree, int64_t id, void *p, int idx)
 {

@@ -83,29 +83,31 @@
 
 
 typedef struct rdata rdata_t;
-typedef struct onode onode_t;
-typedef struct orule orule_t;
+//typedef struct onode onode_t;
+//typedef struct orule orule_t;
 typedef int (*tree_func_t)(osm_obj_t*, struct rdata*, void*);
-typedef int (*ext_func_t)(osm_obj_t*);
+//typedef int (*ext_func_t)(osm_obj_t*);
 typedef union structor
 {
-      void (*func)(void);
+      int (*func)(void);
       void *sym;
 } structor_t;
- 
+typedef struct smrule smrule_t;
+typedef struct action action_t;
+
 // indexes to object tree
 enum {IDX_NODE, IDX_WAY};
-enum {E_SM_OK, E_RTYPE_NA, E_ACT_NOT_IMPL, E_SYNTAX, E_REF_ERR};
+//enum {E_SM_OK, E_RTYPE_NA, E_ACT_NOT_IMPL, E_SYNTAX, E_REF_ERR};
 enum {WHITE, YELLOW, BLACK, BLUE, MAGENTA, BROWN, TRANSPARENT, BGCOLOR, MAX_COLOR};
 enum {LAT, LON};
-enum {ACT_NA, ACT_IMG, ACT_CAP, ACT_FUNC, ACT_DRAW, ACT_IGNORE, ACT_OUTPUT, ACT_SETTAGS, RULE_COUNT};
+//enum {ACT_NA, ACT_IMG, ACT_CAP, ACT_FUNC, ACT_DRAW, ACT_IGNORE, ACT_OUTPUT, ACT_SETTAGS, RULE_COUNT};
 enum {DRAW_SOLID, DRAW_DASHED, DRAW_DOTTED, DRAW_TRANSPARENT};
 
 // select projection
 // PRJ_DIRECT directly projects the bounding box onto the image.
 // PRJ_MERC_PAGE chooses the largest possible bb withing the given bb to fit into the image.
 // PRJ_MERC_BB chooses the image size being selected depending on the given bb.
-enum {PRJ_DIRECT, PRJ_MERC_PAGE, PRJ_MERC_BB};
+//enum {PRJ_DIRECT, PRJ_MERC_PAGE, PRJ_MERC_BB};
 
 
 typedef struct fparam
@@ -163,7 +165,7 @@ struct actCaption
                      // counterclockwise. NAN means auto-rotate
    struct auto_rot rot;
 };
-
+/*
 struct actFunction
 {
    union
@@ -179,15 +181,21 @@ struct actFunction
    structor_t fini;
    void *libhandle;  // pointer to lib base
    char *parm;       // function argument string
-   char *parm0;      // mem buf for fparam_t's (don't touch)
-   fparam_t **fp;    // pointer list to function arguments
+   char *func_name;  // pointer to function name
+};
+*/
+
+struct actParam
+{
+   char *buf;
+   fparam_t **fp;
 };
 
-struct actOutput
+/*struct actOutput
 {
    //char *name;
    FILE *fhandle;
-};
+};*/
 
 struct drawStyle
 {
@@ -201,8 +209,12 @@ struct actDraw
 {
    struct drawStyle fill;
    struct drawStyle border;
+   int directional;
+   int collect_open;
+   struct wlist *wl;
 };
 
+/*
 struct rule
 {
    short type;
@@ -214,8 +226,42 @@ struct rule
       struct actDraw draw;
       struct actOutput out;
    };
+   struct actParam parm;
    short tag_cnt;
    struct stag stag[];
+};
+*/
+
+struct action
+{
+   union             // initialization function _ini()
+   {
+      int (*func)(smrule_t*);
+      void *sym;
+   } ini;
+   union             // rule function
+   {
+      int (*func)(smrule_t*, osm_obj_t*);
+      void *sym;
+   } main;
+   union             // finalization function _fini()
+   {
+      int (*func)(smrule_t*);
+      void *sym;
+   } fini;
+   void *libhandle;  // pointer to lib base
+   char *func_name;  // pointer to function name
+   char *parm;       // function argument string
+   fparam_t **fp;    // pointer to parsed parameter list
+   void *data;       // arbitrary data
+   short tag_cnt;
+   struct stag stag[];
+};
+
+struct smrule
+{
+   osm_obj_t *oo;
+   action_t act;
 };
 
 /*struct onode
@@ -227,11 +273,13 @@ struct rule
    struct otag otag[];
 };*/
 
+/*
 struct orule
 {
    osm_obj_t *oo;
    struct rule rule;
 };
+*/
 
 struct grid
 {
@@ -332,6 +380,7 @@ void install_sigusr1(void);
 
 /* smcoast.c */
 int is_closed_poly(const osm_way_t*);
+void init_cat_poly(struct rdata*);
 
 /* smgrid.c */
 void grid2(struct rdata*);

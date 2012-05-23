@@ -118,6 +118,7 @@ char *cfmt(double c, int d, char *s, int l)
 }
 
 
+#if 0
 /*! Match and apply ruleset to node.
  *  @param nd Node which should be rendered.
  *  @param rd Pointer to general rendering parameters.
@@ -273,6 +274,65 @@ int apply_rules(struct orule *rl, struct rdata *rd, osm_node_t *n)
 
    return e;
 }
+#endif
+
+
+/*! Match and apply ruleset to node.
+ *  @param nd Node which should be rendered.
+ *  @param rd Pointer to general rendering parameters.
+ *  @param mnd Ruleset.
+ */
+int apply_smrules0(osm_obj_t *o, struct rdata *rd, smrule_t *r)
+{
+   int i;
+
+   for (i = 0; i < r->oo->tag_cnt; i++)
+      if (bs_match_attr(o, &r->oo->otag[i], &r->act.stag[i]) == -1)
+         return 0;
+
+   if (r->act.main.func != NULL)
+      return r->act.main.func(r, o);
+
+   return 1;
+}
+
+
+int apply_smrules(smrule_t *r, struct rdata *rd, osm_obj_t *o)
+{
+   int e = 0;
+
+   if (r == NULL)
+   {
+      log_msg(LOG_DEBUG, "NULL pointer to rule, ignoring");
+      return 1;
+   }
+
+   if (o != NULL)
+   {
+      if (r->oo->ver != o->ver)
+         return 0;
+   }
+
+   log_debug("applying rule id 0x%016lx '%s'", (long) r->oo->id, r->act.func_name);
+
+   if (r->act.main.func != NULL)
+   {
+      e = traverse(rd->obj, 0, r->oo->type - 1, (tree_func_t) apply_smrules0, rd, r);
+   }
+   else
+   {
+      log_msg(LOG_WARN, "no function pointer");
+      e = 1;
+   }
+
+   // call de-initialization rule of function rule if available
+   if (r->act.fini.func != NULL)
+   {
+      e = r->act.fini.func(r);
+   }
+
+   return e;
+}
 
 
 int print_tree(osm_obj_t *o, struct rdata *rd, void *p)
@@ -350,11 +410,14 @@ int traverse(const bx_node_t *nt, int d, int idx, tree_func_t dhandler, struct r
       {
          if (nt->next[i] != NULL)
          {
-            e = dhandler(nt->next[i], rd, p);
-            if (e < 0)
+            if ((e = dhandler(nt->next[i], rd, p)))
             {
-               //log_msg(LOG_WARNING, "dhandler() returned %d, breaking recursion.", e);
-               return e;
+               log_msg(LOG_WARNING, "dhandler() %p returned %d", dhandler, e);
+               if (e < 0)
+               {
+                  log_msg(LOG_INFO, "breaking recursion");
+                  return e;
+               }
             }
          }
       }
@@ -364,14 +427,17 @@ int traverse(const bx_node_t *nt, int d, int idx, tree_func_t dhandler, struct r
    for (i = 0; i < 1 << BX_RES; i++)
       if (nt->next[i])
       {
-         e = traverse(nt->next[i], d + 1, idx, dhandler, rd, p);
+         if ((e = traverse(nt->next[i], d + 1, idx, dhandler, rd, p)) < 0)
+            return e;
+         /*
          if (e < 0)
          {
             log_msg(LOG_WARNING, "traverse() returned %d, breaking recursion.", e);
             return e;
          }
-//         else if (e > 0)
-//            log_msg(LOG_INFO, "traverse() returned %d", e);
+         else if (e > 0)
+            log_msg(LOG_INFO, "traverse() returned %d", e);
+            */
       }
 
    return 0;
@@ -906,8 +972,12 @@ int main(int argc, char *argv[])
       log_msg(LOG_DEBUG, " rstats.ver[%d] = %d", n, rstats.ver[n]);
  
    log_msg(LOG_INFO, "preparing rules");
-   traverse(rd->rules, 0, IDX_NODE, (tree_func_t) prepare_rules, rd, NULL);
-   traverse(rd->rules, 0, IDX_WAY, (tree_func_t) prepare_rules, rd, NULL);
+   if (traverse(rd->rules, 0, IDX_NODE, (tree_func_t) init_rules, rd, NULL) < 0)
+      log_msg(LOG_ERR, "rule parser failed"),
+         exit(EXIT_FAILURE);
+   if (traverse(rd->rules, 0, IDX_WAY, (tree_func_t) init_rules, rd, NULL) < 0)
+      log_msg(LOG_ERR, "rule parser failed"),
+         exit(EXIT_FAILURE);
 
    if ((osm_ifile != NULL) && ((fd = open(osm_ifile, O_RDONLY)) == -1))
       log_msg(LOG_ERR, "cannot open file %s: %s", osm_ifile, strerror(errno)),
@@ -969,6 +1039,7 @@ int main(int argc, char *argv[])
    }
 
    install_sigint();
+   init_cat_poly(rd);
 
    memset(&o, 0, sizeof(o));
    for (n = 0; (n < rstats.ver_cnt) && !int_; n++)
@@ -977,9 +1048,9 @@ int main(int argc, char *argv[])
       o.ver = rstats.ver[n];
 
       log_msg(LOG_INFO, " ways...");
-      traverse(rd->rules, 0, IDX_WAY, (tree_func_t) apply_rules, rd, &o);
+      traverse(rd->rules, 0, IDX_WAY, (tree_func_t) apply_smrules, rd, &o);
       log_msg(LOG_INFO, " nodes...");
-      traverse(rd->rules, 0, IDX_NODE, (tree_func_t) apply_rules, rd, &o);
+      traverse(rd->rules, 0, IDX_NODE, (tree_func_t) apply_smrules, rd, &o);
    }
    int_ = 0;
 
