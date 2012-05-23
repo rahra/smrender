@@ -28,7 +28,6 @@
 #include "smrender_dev.h"
 #include "smlog.h"
 #include "smrparse.h"
-#include "smrules.h"
 
 
 //#define RULE_COUNT 8

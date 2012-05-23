@@ -41,7 +41,6 @@
 #include "smrender_dev.h"
 #include "libhpxml.h"
 #include "smlog.h"
-#include "smrules.h"
 #include "smrparse.h"
 
 
