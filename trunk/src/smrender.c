@@ -75,7 +75,7 @@ void install_sigint(void)
       log_msg(LOG_INFO, "SIGINT installed (pid = %ld)", (long) getpid());
 }
 
-
+#if 0
 /*! Returns degrees and minutes of a fractional coordinate.
  */
 void fdm(double x, int *deg, int *min)
@@ -116,7 +116,7 @@ char *cfmt(double c, int d, char *s, int l)
    }
    return s;
 }
-
+#endif
 
 #if 0
 /*! Match and apply ruleset to node.

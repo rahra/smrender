@@ -202,12 +202,12 @@ int act_vsector_ini(smrule_t *r)
    vd->arc_div = ARC_DIV;
    vd->sec_radius = SEC_RADIUS;
 
-   get_param("a", &vd->arc_max, r->act.fp);
-   get_param("b", &vd->dir_arc, r->act.fp);
-   get_param("d", &vd->arc_div, r->act.fp);
-   get_param("r", &vd->sec_radius, r->act.fp);
+   get_param("a", &vd->arc_max, &r->act);
+   get_param("b", &vd->dir_arc, &r->act);
+   get_param("d", &vd->arc_div, &r->act);
+   get_param("r", &vd->sec_radius, &r->act);
 
-   r->act.data = vd;
+   r->data = vd;
 
    log_msg(LOG_INFO, "arc_max_(a) = %.2f, dir_arc_(b) = %.2f, arc_div_(d) = %.2f, sec_radius_(r) = %.2f",
          vd->arc_max, vd->dir_arc, vd->arc_div, vd->sec_radius);
@@ -217,10 +217,10 @@ int act_vsector_ini(smrule_t *r)
 
 int act_vsector_fini(smrule_t *r)
 {
-   if (r->act.data != NULL)
+   if (r->data != NULL)
    {
-      free(r->act.data);
-      r->act.data = NULL;
+      free(r->data);
+      r->data = NULL;
    }
    return 0;
 }
@@ -233,7 +233,7 @@ int act_vsector_fini(smrule_t *r)
  */
 int act_vsector(smrule_t *r, osm_obj_t *o)
 {
-   struct vsec_data *vd = r->act.data;
+   struct vsec_data *vd = r->data;
    int i, j, n, k;
    struct sector sec[MAX_SEC];
    bstring_t b = {0, ""};

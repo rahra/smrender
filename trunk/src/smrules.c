@@ -116,17 +116,17 @@ int act_cap_ini(smrule_t *r)
 
    memset(&cap, 0, sizeof(cap));
 
-   if ((cap.font = get_param("font", NULL, r->act.fp)) == NULL)
+   if ((cap.font = get_param("font", NULL, &r->act)) == NULL)
    {
       log_msg(LOG_WARN, "parameter 'font' missing");
       return 1;
    }
-   if (get_param("size", &cap.size, r->act.fp) == NULL)
+   if (get_param("size", &cap.size, &r->act) == NULL)
    {
       log_msg(LOG_WARN, "parameter 'size' missing");
       return 1;
    }
-   if ((cap.key = get_param("key", NULL, r->act.fp)) == NULL)
+   if ((cap.key = get_param("key", NULL, &r->act)) == NULL)
    {
       log_msg(LOG_WARN, "parameter 'key' missing");
       return 1;
@@ -136,20 +136,23 @@ int act_cap_ini(smrule_t *r)
       cap.key++;
       cap.pos |= POS_UC;
    }
-   if ((s = get_param("color", NULL, r->act.fp)) != NULL)
+   if ((s = get_param("color", NULL, &r->act)) != NULL)
       cap.col = parse_color(get_rdata(), s);
-   if ((s = get_param("angle", &cap.angle, r->act.fp)) != NULL)
+   if ((s = get_param("angle", &cap.angle, &r->act)) != NULL)
    {
       if (!strcmp(s, "auto"))
       {
          cap.angle = NAN;
-         if ((s = get_param("auto-color", NULL, r->act.fp)) != NULL)
+         if ((s = get_param("auto-color", NULL, &r->act)) != NULL)
          {
             cap.rot.autocol = parse_color(get_rdata(), s);
          }
+         if ((s = get_param("weight", &cap.rot.weight, &r->act)) == NULL)
+            cap.rot.weight = 1;
+         (void) get_param("weight", &cap.rot.phase, &r->act);
       }
    }
-   if ((s = get_param("align", NULL, r->act.fp)) != NULL)
+   if ((s = get_param("align", NULL, &r->act)) != NULL)
    {
       if (!strcmp(s, "east"))
          cap.pos |= POS_E;
@@ -158,7 +161,7 @@ int act_cap_ini(smrule_t *r)
       else
          log_msg(LOG_WARN, "unknown alignment '%s'", s);
    }
-   if ((s = get_param("halign", NULL, r->act.fp)) != NULL)
+   if ((s = get_param("halign", NULL, &r->act)) != NULL)
    {
       if (!strcmp(s, "north"))
          cap.pos |= POS_N;
@@ -168,15 +171,16 @@ int act_cap_ini(smrule_t *r)
          log_msg(LOG_WARN, "unknown alignment '%s'", s);
    }
 
-   if ((r->act.data = malloc(sizeof(cap))) == NULL)
+   if ((r->data = malloc(sizeof(cap))) == NULL)
    {
       log_msg(LOG_ERR, "cannot malloc: %s", strerror(errno));
       return -1;
    }
 
-   // FIXME: additional parameters not parsed
-
-   memcpy(r->act.data, &cap, sizeof(cap));
+   log_msg(LOG_DEBUG, "%04x, %08x, '%s', '%s', %.1f, %.1f, {%.1f, %08x, %.1f}",
+         cap.pos, cap.col, cap.font, cap.key, cap.size, cap.angle,
+         cap.rot.phase, cap.rot.autocol, cap.rot.weight);
+   memcpy(r->data, &cap, sizeof(cap));
    return 0;
 }
 
@@ -188,7 +192,7 @@ int act_cap_ini(smrule_t *r)
 
 int cap_node(smrule_t *r, osm_node_t *n)
 {
-   struct actCaption *cap = r->act.data;
+   struct actCaption *cap = r->data;
    struct rdata *rd = get_rdata();
    int br[8], m;
    char *s, *v;
@@ -282,7 +286,7 @@ int cap_node(smrule_t *r, osm_node_t *n)
 
 int cap_way(smrule_t *r, osm_way_t *w)
 {
-   struct actCaption *cap = r->act.data;
+   struct actCaption *cap = r->data;
    struct actCaption tmp_cap;
    struct rdata *rd = get_rdata();
    struct coord c;
@@ -310,7 +314,7 @@ int cap_way(smrule_t *r, osm_way_t *w)
    n->lat = c.lat;
    n->lon = c.lon;
    memcpy(&tmp_cap, cap, sizeof(tmp_cap));
-   tmp_rule->act.data = &tmp_cap;
+   tmp_rule->data = &tmp_cap;
    tmp_cap.size = 100 * sqrt(fabs(ar) / (rd->mean_lat_len * rd->hc * 3600));
 #define MIN_AUTO_SIZE 0.7
 #define MAX_AUTO_SIZE 12.0
@@ -342,10 +346,10 @@ int act_cap(smrule_t *r, osm_obj_t *o)
 
 int act_cap_fini(smrule_t *r)
 {
-   if (r->act.data != NULL)
+   if (r->data != NULL)
    {
-      free(r->act.data);
-      r->act.data = NULL;
+      free(r->data);
+      r->data = NULL;
    }
    return 0;
 }
@@ -530,7 +534,7 @@ int act_img_ini(smrule_t *r)
       return -1;
    }
 
-   if ((name = get_param("file", NULL, r->act.fp)) == NULL)
+   if ((name = get_param("file", NULL, &r->act)) == NULL)
    {
       log_msg(LOG_WARN, "parameter 'file' missing");
       return -1;
@@ -553,7 +557,7 @@ int act_img_ini(smrule_t *r)
       return -1;
    }
 
-   if ((name = get_param("angle", &img.angle, r->act.fp)) != NULL)
+   if ((name = get_param("angle", &img.angle, &r->act)) != NULL)
    {
       if (!strcmp(name, "auto"))
       {
@@ -562,13 +566,13 @@ int act_img_ini(smrule_t *r)
       }
    }
    
-   if ((r->act.data = malloc(sizeof(img))) == NULL)
+   if ((r->data = malloc(sizeof(img))) == NULL)
    {
       log_msg(LOG_ERR, "cannot malloc: %s", strerror(errno));
       return -1;
    }
 
-   memcpy(r->act.data, &img, sizeof(img));
+   memcpy(r->data, &img, sizeof(img));
 
    return 0;
 }
@@ -576,7 +580,7 @@ int act_img_ini(smrule_t *r)
 
 int act_img(smrule_t *r, osm_node_t *n)
 {
-   struct actImage *img = r->act.data;
+   struct actImage *img = r->data;
    struct rdata *rd = get_rdata();
    int hx, hy, x, y;
    double a;
@@ -595,13 +599,13 @@ int act_img(smrule_t *r, osm_node_t *n)
 
 int act_img_fini(smrule_t *r)
 {
-   struct actImage *img = r->act.data;
+   struct actImage *img = r->data;
 
    if (img != NULL && img->img != NULL)
       gdImageDestroy(img->img);
 
    free (img);
-   r->act.data = NULL;
+   r->data = NULL;
 
    return 0;
 }
@@ -742,34 +746,34 @@ int act_draw_ini(smrule_t *r)
    }
 
    memset(d, 0, sizeof(*d));
-   r->act.data = d;
+   r->data = d;
 
    // parse fill settings
-   if ((s = get_param("color", NULL, r->act.fp)) != NULL)
+   if ((s = get_param("color", NULL, &r->act)) != NULL)
    {
       d->fill.col = parse_color(rd, s);
       d->fill.used = 1;
    }
-   if (get_param("width", &d->fill.width, r->act.fp) == NULL)
+   if (get_param("width", &d->fill.width, &r->act) == NULL)
       d->fill.width = 0;
-   d->fill.style = parse_style(get_param("style", NULL, r->act.fp));
+   d->fill.style = parse_style(get_param("style", NULL, &r->act));
 
    // parse border settings
-   if ((s = get_param("bcolor", NULL, r->act.fp)) != NULL)
+   if ((s = get_param("bcolor", NULL, &r->act)) != NULL)
    {
       d->border.col = parse_color(rd, s);
       d->border.used = 1;
    }
-   if (get_param("bwidth", &d->border.width, r->act.fp) == NULL)
+   if (get_param("bwidth", &d->border.width, &r->act) == NULL)
       d->border.width = 0;
-   d->border.style = parse_style(get_param("bstyle", NULL, r->act.fp));
+   d->border.style = parse_style(get_param("bstyle", NULL, &r->act));
 
    // honor direction of ways
-   if (get_param("directional", &a, r->act.fp) == NULL)
+   if (get_param("directional", &a, &r->act) == NULL)
       a = 0;
    d->directional = a != 0;
 
-   if (get_param("ignore_open", &a, r->act.fp) == NULL)
+   if (get_param("ignore_open", &a, &r->act) == NULL)
       a = 0;
    d->collect_open = a == 0;
 
@@ -787,7 +791,7 @@ int act_draw_ini(smrule_t *r)
 
 int act_draw(smrule_t *r, osm_obj_t *o)
 {
-   struct actDraw *d = r->act.data;
+   struct actDraw *d = r->data;
 
    if (!d->collect_open && !is_closed_poly((osm_way_t*) o))
       return 0;
@@ -823,7 +827,7 @@ void poly_fill(struct rdata *rd, gdImage *img, osm_way_t *w, int fg, int bg, int
  
 int act_draw_fini(smrule_t *r)
 {
-   struct actDraw *d = r->act.data;
+   struct actDraw *d = r->data;
    struct rdata *rd;
    struct coord c;
    gdImage *img;
@@ -873,7 +877,7 @@ int act_draw_fini(smrule_t *r)
 
    free(d->wl);
    free(d);
-   r->act.data = NULL;
+   r->data = NULL;
 
    return 0;
 }

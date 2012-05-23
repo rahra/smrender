@@ -508,28 +508,26 @@ int act_cat_poly_ini(smrule_t *r)
    if (r->oo->type != OSM_WAY)
       return -1;
 
-   r->act.data = init_wlist();
+   r->data = init_wlist();
    return 0;
 }
 
 
 int act_cat_poly(smrule_t *r, osm_obj_t *o)
 {
-   //struct wlist **wl = &r->act.data;
-
    // check if it is an open polygon
    if (((osm_way_t*) o)->ref_cnt < 2)
       return 0;
    if (((osm_way_t*) o)->ref[0] == ((osm_way_t*) o)->ref[((osm_way_t*) o)->ref_cnt - 1])
       return 0;
 
-   return gather_poly0((osm_way_t*) o, (struct wlist**) &r->act.data);
+   return gather_poly0((osm_way_t*) o, (struct wlist**) &r->data);
 }
 
 
 int act_cat_poly_fini(smrule_t *r)
 {
-   struct wlist *wl = r->act.data;
+   struct wlist *wl = r->data;
    struct pdef *pd;
    int i, ocnt;
 
@@ -557,7 +555,7 @@ int act_cat_poly_fini(smrule_t *r)
 
    free(pd);
    free(wl);
-   r->act.data = NULL;
+   r->data = NULL;
 
    return 0;
 }
@@ -781,18 +779,18 @@ int act_refine_poly_ini(smrule_t *r)
       return -1;
    }
 
-   if (get_param("iteration", &it, r->act.fp) == NULL)
+   if (get_param("iteration", &it, &r->act) == NULL)
       it = MAX_ITERATION;
 
    rf->iteration = round(it);
 
-   if (get_param("deviation", &rf->deviation, r->act.fp) == NULL)
+   if (get_param("deviation", &rf->deviation, &r->act) == NULL)
       rf->deviation = MAX_DEVIATION;
 
    rf->deviation /= (1852.0 * 60.0);
    log_msg(LOG_INFO, "refine_poly using iteration = %d, deviation = %.1f", rf->iteration, rf->deviation * 1852.0 * 60.0);
 
-   r->act.data = rf;
+   r->data = rf;
 
    return 0;
 }
@@ -800,7 +798,7 @@ int act_refine_poly_ini(smrule_t *r)
 
 int act_refine_poly(smrule_t *r, osm_way_t *w)
 {
-   struct refine *rf = r->act.data;
+   struct refine *rf = r->data;
    int i;
 
    if (w->obj.type != OSM_WAY)
@@ -816,10 +814,10 @@ int act_refine_poly(smrule_t *r, osm_way_t *w)
 
 int act_refine_poly_fini(smrule_t *r)
 {
-   if (r->act.data != NULL)
+   if (r->data != NULL)
    {
-      free(r->act.data);
-      r->act.data = NULL;
+      free(r->data);
+      r->data = NULL;
    }
    return 0;
 }

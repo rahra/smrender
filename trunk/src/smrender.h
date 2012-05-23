@@ -253,7 +253,6 @@ struct action
    char *func_name;  // pointer to function name
    char *parm;       // function argument string
    fparam_t **fp;    // pointer to parsed parameter list
-   void *data;       // arbitrary data
    short tag_cnt;
    struct stag stag[];
 };
@@ -261,6 +260,7 @@ struct action
 struct smrule
 {
    osm_obj_t *oo;
+   void *data;       // arbitrary data
    action_t act;
 };
 
@@ -389,9 +389,7 @@ void grid2(struct rdata*);
 int poly_mpcoords(osm_way_t*, struct rdata*, gdPoint *);
 
 /* smrparse.c */
-char *get_param(const char*, double*, fparam_t**);
-
-//extern int oline_;
+char *get_param(const char*, double*, const action_t*);
 
 #endif
 
