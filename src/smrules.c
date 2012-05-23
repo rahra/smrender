@@ -33,7 +33,7 @@ void init_main_image(struct rdata *rd, const char *bg)
 {
    // preparing image
    if ((rd->img = gdImageCreateTrueColor(rd->w, rd->h)) == NULL)
-      perror("gdImage"), exit(EXIT_FAILURE);
+      log_msg(LOG_ERR, "could not create image"), exit(EXIT_FAILURE);
    rd->col[WHITE] = gdImageColorAllocate(rd->img, 255, 255, 255);
    rd->col[BLACK] = gdImageColorAllocate(rd->img, 0, 0, 0);
    rd->col[YELLOW] = gdImageColorAllocate(rd->img, 231,209,74);
@@ -46,7 +46,6 @@ void init_main_image(struct rdata *rd, const char *bg)
    log_msg(LOG_DEBUG, "background color is set to 0x%08x", rd->col[BGCOLOR]);
    gdImageFill(rd->img, 0, 0, rd->col[BGCOLOR]);
 
-#define gdImageFTUseFontConfig gdFTUseFontConfig
    if (!gdImageFTUseFontConfig(1))
       log_msg(LOG_NOTICE, "fontconfig library not available");
 }
