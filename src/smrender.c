@@ -39,9 +39,6 @@
 #include <signal.h>
 
 #include "smrender_dev.h"
-#include "libhpxml.h"
-#include "smlog.h"
-#include "smrparse.h"
 
 
 static struct rdata rd_;

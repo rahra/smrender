@@ -30,8 +30,7 @@
 #include <errno.h>
 
 #include "smrender_dev.h"
-#include "bstring.h"
-#include "smlog.h"
+//#include "bstring.h"
 
 
 static struct rdata *rd;

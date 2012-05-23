@@ -15,7 +15,9 @@
  * along with libhpxml. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "smconfig.h"
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -27,9 +29,9 @@
 #include <sys/mman.h>
 #endif
 
+#include "smrender.h"
 #include "bstring.h"
 #include "libhpxml.h"
-#include "smlog.h"
 
 
 static long hpx_lineno_;

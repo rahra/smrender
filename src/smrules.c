@@ -26,7 +26,6 @@
 #include <ctype.h>
 
 #include "smrender_dev.h"
-#include "smlog.h"
 #include "smcoast.h"
 
 

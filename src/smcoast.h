@@ -23,11 +23,10 @@
 #include <stdio.h>
 #include <errno.h>
 
-#include "smrender.h"
-#include "smrparse.h"
-#include "smlog.h"
-#include "smath.h"
-#include "bxtree.h"
+#include "smrender_dev.h"
+//#include "smrparse.h"
+//#include "smath.h"
+//#include "bxtree.h"
 
 
 // initial number of ref array
