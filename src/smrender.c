@@ -936,23 +936,7 @@ int main(int argc, char *argv[])
    print_rdata(stderr, rd);
 
    // preparing image
-   if ((rd->img = gdImageCreateTrueColor(rd->w, rd->h)) == NULL)
-      perror("gdImage"), exit(EXIT_FAILURE);
-   rd->col[WHITE] = gdImageColorAllocate(rd->img, 255, 255, 255);
-   rd->col[BLACK] = gdImageColorAllocate(rd->img, 0, 0, 0);
-   rd->col[YELLOW] = gdImageColorAllocate(rd->img, 231,209,74);
-   rd->col[BLUE] = gdImageColorAllocate(rd->img, 137, 199, 178);
-   rd->col[MAGENTA] = gdImageColorAllocate(rd->img, 120, 8, 44);
-   rd->col[BROWN] = gdImageColorAllocate(rd->img, 154, 42, 2);
-   rd->col[TRANSPARENT] = gdTransparent;
-
-   rd->col[BGCOLOR] = bg == NULL ? rd->col[WHITE] : parse_color(rd, bg);
-   log_msg(LOG_DEBUG, "background color is set to 0x%08x", rd->col[BGCOLOR]);
-   gdImageFill(rd->img, 0, 0, rd->col[BGCOLOR]);
-
-#define gdImageFTUseFontConfig gdFTUseFontConfig
-   if (!gdImageFTUseFontConfig(1))
-      log_msg(LOG_NOTICE, "fontconfig library not available");
+   init_main_image(rd, bg);
 
    if ((fd = open(cf, O_RDONLY)) == -1)
       log_msg(LOG_ERR, "cannot open file %s: %s", cf, strerror(errno)),
@@ -1077,10 +1061,9 @@ int main(int argc, char *argv[])
          log_msg(LOG_ERR, "error opening file %s: %s", img_file, strerror(errno)),
             exit(EXIT_FAILURE);
    }
-   gdImagePng(rd->img, f);
+   save_main_image(rd, f);
    if (img_file != NULL)
       fclose(f);
-   gdImageDestroy(rd->img);
 
    (void) gettimeofday(&tv_end, NULL);
    tv_end.tv_sec -= tv_start.tv_sec;
