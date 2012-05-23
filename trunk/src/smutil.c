@@ -29,7 +29,7 @@
 #include <syslog.h>
 #include <errno.h>
 
-#include "smrender.h"
+#include "smrender_dev.h"
 #include "bstring.h"
 #include "smlog.h"
 

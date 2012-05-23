@@ -25,7 +25,7 @@
 #include <dlfcn.h>
 #include <ctype.h>
 
-#include "smrender.h"
+#include "smrender_dev.h"
 #include "smlog.h"
 #include "smrparse.h"
 #include "smrules.h"
@@ -331,12 +331,13 @@ smrule_t *alloc_rule(struct rdata *rd, osm_obj_t *o)
    bx_node_t *bn;
    smrule_t *rl;
 
-   if ((rl = malloc(sizeof(smrule_t) + sizeof(struct stag) * o->tag_cnt)) == NULL)
+   if ((rl = malloc(sizeof(smrule_t) + sizeof(action_t) + sizeof(struct stag) * o->tag_cnt)) == NULL)
       log_msg(LOG_ERR, "alloc_rule failed: %s", strerror(errno)),
          exit(EXIT_FAILURE);
+   rl->act = (action_t*) (rl + 1);
    //memset(&rl->act, 0, sizeof(action_t));
    //rl->oo = o;
-   //rl->act.tag_cnt = o->tag_cnt;
+   //rl->act->tag_cnt = o->tag_cnt;
 
    if ((bn = bx_get_node(rd->rules, o->id)) == NULL)
       log_msg(LOG_EMERG, "bx_get_node() returned NULL in rule_alloc()"),
@@ -368,14 +369,14 @@ int init_rules(osm_obj_t *o, struct rdata *rd, void *p)
    rl = alloc_rule(rd, o);
    rl->oo = o;
    rl->data = NULL;
-   memset(&rl->act, 0, sizeof(rl->act));
+   memset(rl->act, 0, sizeof(*rl->act));
 
-   rl->act.tag_cnt = o->tag_cnt;
+   rl->act->tag_cnt = o->tag_cnt;
    for (i = 0; i < o->tag_cnt; i++)
    {
-      if (parse_matchtype(&o->otag[i].k, &rl->act.stag[i].stk) == -1)
+      if (parse_matchtype(&o->otag[i].k, &rl->act->stag[i].stk) == -1)
          return 0;
-      if (parse_matchtype(&o->otag[i].v, &rl->act.stag[i].stv) == -1)
+      if (parse_matchtype(&o->otag[i].v, &rl->act->stag[i].stv) == -1)
          return 0;
    }
 
@@ -383,8 +384,8 @@ int init_rules(osm_obj_t *o, struct rdata *rd, void *p)
    {
       // FIXME need to be added to btree
       log_msg(LOG_WARN, "rule %ld has no action, it may be used as template", o->id);
-      rl->act.func_name = "templ";
-      rl->act.main.func = act_templ;
+      rl->act->func_name = "templ";
+      rl->act->main.func = act_templ;
       return 0;
    }
 
@@ -397,7 +398,7 @@ int init_rules(osm_obj_t *o, struct rdata *rd, void *p)
       return 1;
    }
 
-   rl->act.func_name = s;
+   rl->act->func_name = s;
    if ((t = strpbrk(s, "@:")) != NULL)
    {
       s = t + 1;
@@ -406,11 +407,11 @@ int init_rules(osm_obj_t *o, struct rdata *rd, void *p)
          if ((t = strchr(s, ':')) != NULL)
          {
             *t = '\0';
-            rl->act.parm = t + 1;
+            rl->act->parm = t + 1;
          }
 
          // Open shared library
-         if ((rl->act.libhandle = dlopen(s, RTLD_LAZY)) == NULL)
+         if ((rl->act->libhandle = dlopen(s, RTLD_LAZY)) == NULL)
          {
             log_msg(LOG_ERR, "could not open library: %s", dlerror());
             return 1;
@@ -419,13 +420,13 @@ int init_rules(osm_obj_t *o, struct rdata *rd, void *p)
       else
       {
          *t = '\0';
-         rl->act.parm = t + 1;
+         rl->act->parm = t + 1;
       }
    }
 
-   if (rl->act.libhandle != NULL)
+   if (rl->act->libhandle != NULL)
    {
-      strncpy(buf, rl->act.func_name, sizeof(buf));
+      strncpy(buf, rl->act->func_name, sizeof(buf));
       buf[sizeof(buf) - 1] = '\0';
       if ((func = strtok(buf, "@")) == NULL)
       {
@@ -434,32 +435,32 @@ int init_rules(osm_obj_t *o, struct rdata *rd, void *p)
       }
    }
    else
-      func = rl->act.func_name;
+      func = rl->act->func_name;
 
-   if (get_structor(rl->act.libhandle, (structor_t*) &rl->act.main, func, ""))
+   if (get_structor(rl->act->libhandle, (structor_t*) &rl->act->main, func, ""))
       return 1;
 
-   (void) get_structor(rl->act.libhandle, (structor_t*) &rl->act.ini, func, "_ini");
-   (void) get_structor(rl->act.libhandle, (structor_t*) &rl->act.fini, func, "_fini");
+   (void) get_structor(rl->act->libhandle, (structor_t*) &rl->act->ini, func, "_ini");
+   (void) get_structor(rl->act->libhandle, (structor_t*) &rl->act->fini, func, "_fini");
 
-   if (rl->act.parm != NULL)
-      rl->act.fp = parse_fparam(rl->act.parm);
+   if (rl->act->parm != NULL)
+      rl->act->fp = parse_fparam(rl->act->parm);
 
    // finally call initialization function
-   if (rl->act.ini.func != NULL)
+   if (rl->act->ini.func != NULL)
    {
-      log_msg(LOG_DEBUG, "calling %s_ini()", rl->act.func_name);
-      e = rl->act.ini.func(rl);
+      log_msg(LOG_DEBUG, "calling %s_ini()", rl->act->func_name);
+      e = rl->act->ini.func(rl);
       if (e < 0)
       {
-         log_msg(LOG_ERR, "%s_ini() failed: %d. Exiting.", rl->act.func_name, e);
+         log_msg(LOG_ERR, "%s_ini() failed: %d. Exiting.", rl->act->func_name, e);
          return e;
       }
       if (e > 0)
       {
-         log_msg(LOG_ERR, "%s_ini() failed: %d. Rule will be ignored.", rl->act.func_name, e);
-         rl->act.main.func = NULL;
-         rl->act.fini.func = NULL;
+         log_msg(LOG_ERR, "%s_ini() failed: %d. Rule will be ignored.", rl->act->func_name, e);
+         rl->act->main.func = NULL;
+         rl->act->fini.func = NULL;
          return e;
       }
    }
@@ -469,10 +470,10 @@ int init_rules(osm_obj_t *o, struct rdata *rd, void *p)
    if (i < rl->oo->tag_cnt - 1)
    {
       memmove(&rl->oo->otag[i], &rl->oo->otag[rl->oo->tag_cnt - 1], sizeof(struct otag));
-      memmove(&rl->act.stag[i], &rl->act.stag[rl->oo->tag_cnt - 1], sizeof(struct stag));
+      memmove(&rl->act->stag[i], &rl->act->stag[rl->oo->tag_cnt - 1], sizeof(struct stag));
    }
    rl->oo->tag_cnt--;
-   rl->act.tag_cnt--;
+   rl->act->tag_cnt--;
 
    return 0;
 }

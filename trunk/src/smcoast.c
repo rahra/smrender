@@ -47,7 +47,7 @@
 #include <stdio.h>
 #include <errno.h>
 
-#include "smrender.h"
+#include "smrender_dev.h"
 #include "smrparse.h"
 #include "smlog.h"
 #include "smath.h"
@@ -779,12 +779,12 @@ int act_refine_poly_ini(smrule_t *r)
       return -1;
    }
 
-   if (get_param("iteration", &it, &r->act) == NULL)
+   if (get_param("iteration", &it, r->act) == NULL)
       it = MAX_ITERATION;
 
    rf->iteration = round(it);
 
-   if (get_param("deviation", &rf->deviation, &r->act) == NULL)
+   if (get_param("deviation", &rf->deviation, r->act) == NULL)
       rf->deviation = MAX_DEVIATION;
 
    rf->deviation /= (1852.0 * 60.0);

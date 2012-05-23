@@ -1,7 +1,7 @@
 #include <stdint.h>
 #include <string.h>
 
-#include "smrender.h"
+#include "smrender_dev.h"
 #include "smlog.h"
 #include "MurmurHash2_64.h"
 #include "smreg.h"

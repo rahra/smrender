@@ -38,7 +38,7 @@
 #include <syslog.h>
 #include <signal.h>
 
-#include "smrender.h"
+#include "smrender_dev.h"
 #include "libhpxml.h"
 #include "smlog.h"
 #include "smrules.h"
@@ -287,11 +287,11 @@ int apply_smrules0(osm_obj_t *o, struct rdata *rd, smrule_t *r)
    int i;
 
    for (i = 0; i < r->oo->tag_cnt; i++)
-      if (bs_match_attr(o, &r->oo->otag[i], &r->act.stag[i]) == -1)
+      if (bs_match_attr(o, &r->oo->otag[i], &r->act->stag[i]) == -1)
          return 0;
 
-   if (r->act.main.func != NULL)
-      return r->act.main.func(r, o);
+   if (r->act->main.func != NULL)
+      return r->act->main.func(r, o);
 
    return 1;
 }
@@ -313,9 +313,9 @@ int apply_smrules(smrule_t *r, struct rdata *rd, osm_obj_t *o)
          return 0;
    }
 
-   log_debug("applying rule id 0x%016lx '%s'", (long) r->oo->id, r->act.func_name);
+   log_debug("applying rule id 0x%016lx '%s'", (long) r->oo->id, r->act->func_name);
 
-   if (r->act.main.func != NULL)
+   if (r->act->main.func != NULL)
    {
       e = traverse(rd->obj, 0, r->oo->type - 1, (tree_func_t) apply_smrules0, rd, r);
    }
@@ -326,9 +326,9 @@ int apply_smrules(smrule_t *r, struct rdata *rd, osm_obj_t *o)
    }
 
    // call de-initialization rule of function rule if available
-   if (r->act.fini.func != NULL)
+   if (r->act->fini.func != NULL)
    {
-      e = r->act.fini.func(r);
+      e = r->act->fini.func(r);
    }
 
    return e;

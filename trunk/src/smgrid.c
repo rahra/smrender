@@ -22,7 +22,7 @@
  */
 
 #include <string.h>
-#include "smrender.h"
+#include "smrender_dev.h"
 
 #define TM_RESCALE 100
 #define T_RESCALE (60 * TM_RESCALE)
