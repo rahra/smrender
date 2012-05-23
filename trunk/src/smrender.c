@@ -718,7 +718,8 @@ void usage(const char *s)
          "   -G .................. Do not generate grid nodes/ways.\n"
          "   -i <osm input> ...... OSM input data (default is stdin).\n"
          "   -l .................. Select landscape output.\n"
-         "   -M .................. Input file is memory mapped.\n"
+         "   -M .................. Input file is memory mapped (default).\n"
+         "   -m .................. Input file is read into heap memory.\n"
          "   -r <rules file> ..... Rules file ('rules.osm' is default).\n"
          "   -o <image file> ..... Filename of output image (stdout is default).\n"
          "   -P <page format> .... Select output page format.\n"
@@ -783,7 +784,7 @@ int main(int argc, char *argv[])
    char *cf = "rules.osm", *img_file = NULL, *osm_ifile = NULL, *osm_ofile = NULL;
    struct rdata *rd;
    struct timeval tv_start, tv_end;
-   int gen_grid = 1, landscape = 0, w_mmap = 0, load_filter = 0;
+   int gen_grid = 1, landscape = 0, w_mmap = 1, load_filter = 0;
    char *paper = "A3", *bg = NULL;
    struct filter fi;
    struct dstats rstats;
@@ -799,7 +800,7 @@ int main(int argc, char *argv[])
    set_util_rd(rd);
    rd->cmdline = mk_cmd_line((const char**) argv);
 
-   while ((n = getopt(argc, argv, "b:d:fg:Ghi:lMo:P:r:w:")) != -1)
+   while ((n = getopt(argc, argv, "b:d:fg:Ghi:lMmo:P:r:w:")) != -1)
       switch (n)
       {
          case 'b':
@@ -856,10 +857,14 @@ int main(int argc, char *argv[])
 
          case 'M':
 #ifndef WITH_MMAP
-            log_msg(LOG_ERR, "memory mapping support disable, recompile with WITH_MMAP");
+            log_msg(LOG_ERR, "memory mapping support disabled, recompile with WITH_MMAP");
             exit(EXIT_FAILURE);
 #endif
             w_mmap = 1;
+            break;
+
+         case 'm':
+            w_mmap = 0;
             break;
 
          case 'l':
@@ -990,6 +995,12 @@ int main(int argc, char *argv[])
    {
       log_msg(LOG_INFO, "input file will be memory mapped with mmap()");
       st.st_size = -st.st_size;
+   }
+   else
+   {
+      // FIXME
+      log_msg(LOG_CRIT, "***** Smrender currently does not work without mmap(). Sorry guys, this is a bug and will be fixed. *****");
+      exit(EXIT_FAILURE);
    }
    if ((ctl = hpx_init(fd, st.st_size)) == NULL)
       perror("hpx_init_simple"), exit(EXIT_FAILURE);
