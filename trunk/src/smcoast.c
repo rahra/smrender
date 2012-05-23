@@ -48,10 +48,6 @@
 #include <errno.h>
 
 #include "smrender_dev.h"
-#include "smrparse.h"
-#include "smlog.h"
-#include "smath.h"
-#include "bxtree.h"
 #include "smcoast.h"
 
 struct refine

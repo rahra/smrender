@@ -26,10 +26,10 @@
 #include <string.h>
 #include <errno.h>
 
+#include "smrender.h"
 #include "osm_inplace.h"
 #include "bstring.h"
 #include "libhpxml.h"
-#include "smlog.h"
 
 
 #define TLEN 20

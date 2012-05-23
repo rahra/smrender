@@ -3,6 +3,7 @@
 #include <errno.h>
 #include <string.h>
 
+#include "smrender.h"
 #include "bxtree.h"
 
 

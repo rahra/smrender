@@ -34,11 +34,10 @@
 #include <limits.h>
 
 #include "smrender_dev.h"
-#include "osm_inplace.h"
-#include "bstring.h"
+//#include "osm_inplace.h"
+//#include "bstring.h"
 #include "libhpxml.h"
-#include "smlog.h"
-#include "bxtree.h"
+//#include "bxtree.h"
 
 
 static size_t oline_ = 0;

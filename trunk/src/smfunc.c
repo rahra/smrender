@@ -25,7 +25,6 @@
 #include <errno.h>
 
 #include "smrender_dev.h"
-#include "smlog.h"
 
 
 #define DIR_CW 0

@@ -28,7 +28,6 @@
 #include <regex.h>
 
 #include "smrender.h"
-#include "smconfig.h"
 
 #include "osm_inplace.h"
 #include "bstring.h"
@@ -426,6 +425,16 @@ void init_main_image(struct rdata*, const char*);
 void save_main_image(struct rdata*, FILE*);
 int act_templ(smrule_t*, osm_obj_t*);
 
+/* smlog.c */
+FILE *init_log(const char*, int);
+
+/* smrparse.c */
+int parse_color(const struct rdata *, const char *);
+int parse_style(const char *s);
+//const char *rule_type_str(int);
+//int prepare_rules(osm_obj_t*, struct rdata*, void*);
+int init_rules(osm_obj_t*, struct rdata*, void*);
+fparam_t **parse_fparam(char*);
 
 #endif
 

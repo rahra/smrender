@@ -9,6 +9,15 @@ AC_SUBST([CFLAGS], [["-g -Wall"]])
 AC_PROG_CC
 AC_CONFIG_HEADERS([config.h])
 
+
+# some #defines for smrender
+AC_DEFINE([MEM_USAGE], [], [Generate memory usage statistics.])
+AC_DEFINE([bx_hash_t], [int64_t], [Set hash type for bxtree.])
+AC_DEFINE([BX_RES], [4], [Set bit resolution for bxtree.])
+AC_DEFINE([WITH_MMAP], [], [Add mmap() support.])
+AC_DEFINE([READ_FILTER], [], [Add code for read filter.])
+
+
 AX_CHECK_GD
 
 #AC_SEARCH_LIBS([gdImageSetPixel], [gd])
