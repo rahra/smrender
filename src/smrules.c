@@ -27,7 +27,6 @@
 
 #include "smrender_dev.h"
 #include "smlog.h"
-#include "smrules.h"
 #include "smcoast.h"
 
 

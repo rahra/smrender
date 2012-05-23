@@ -424,9 +424,8 @@ void grid2(struct rdata*);
 int poly_mpcoords(osm_way_t*, struct rdata*, gdPoint *);
 void init_main_image(struct rdata*, const char*);
 void save_main_image(struct rdata*, FILE*);
+int act_templ(smrule_t*, osm_obj_t*);
 
-/* smrparse.c */
-//char *get_param(const char*, double*, const action_t*);
 
 #endif
 
