@@ -387,6 +387,8 @@ void grid2(struct rdata*);
 
 /* smrules.c */
 int poly_mpcoords(osm_way_t*, struct rdata*, gdPoint *);
+void init_main_image(struct rdata*, const char*);
+void save_main_image(struct rdata*, FILE*);
 
 /* smrparse.c */
 char *get_param(const char*, double*, const action_t*);
