@@ -36,32 +36,29 @@
 
 #ifndef HAVE_GD
 // this defines macros if smrender is compiled without libgd
-typedef struct { int thick; } gdImage;
+typedef int gdImage;
 typedef struct { int x, y; } gdPoint;
 typedef struct { int charmap, flags, hdpi, vdpi; } gdFTStringExtra;
-#ifndef PSEUDO_IMG
-#define PSEUDO_IMG
-gdImage _pseudo_img_;
-#endif
 #define gdFTEX_RESOLUTION 0
 #define gdFTEX_CHARMAP 0
 #define gdFTEX_Unicode 0
 #define gdTransparent 0
 #define gdImageColorResolve(a, b, c, d) 0
-#define gdImageCreateTrueColor(a, b) (&_pseudo_img_)
+#define gdImageCreateTrueColor(a, b) ((void*)1)
 #define gdImageColorAllocate(a, b, c, d) 0
 #define gdImageFill(a, b, c, d)
-#define gdImageFTUseFontConfig(a) 0
+#define gdFTUseFontConfig(a) 0
+#define gdImageGetThickness(a) 0
 #define gdImagePng(a, b)
 #define gdImageDestroy(a)
 #define gdImagePolygon(a, b, c, d)
 #define gdImageStringFTEx(a, b, c, d, e, f, x, y, v, z) 0
 #define gdImageSetStyle(a, b, c)
-#define gdImageSetThickness(a, b);
+#define gdImageSetThickness(a, b)
 #define gdImageSetAntiAliased(a, b)
 #define gdImageOpenPolygon(a, b, c, d)
 #define gdImageFilledPolygon(a, b, c, d)
-#define gdImageCreateFromPng(a) (&_pseudo_img_)
+#define gdImageCreateFromPng(a) ((void*)1)
 #define gdImageSX(a) 0
 #define gdImageSY(a) 0
 #define gdImageColorTransparent(a, b)
@@ -69,8 +66,6 @@ gdImage _pseudo_img_;
 #define gdImageCopyRotated(a, b, c, d, e, f, g, h, i)
 #define gdImageFilledRectangle(a, b, c, d, e, f)
 #define gdImageGetPixel(a, b, c) 0
-#else
-#define gdImageFTUseFontConfig gdFTUseFontConfig
 #endif
 
 #define SW_AUTHOR "Bernhard R. Fischer"

@@ -46,7 +46,7 @@ void init_main_image(struct rdata *rd, const char *bg)
    log_msg(LOG_DEBUG, "background color is set to 0x%08x", rd->col[BGCOLOR]);
    gdImageFill(rd->img, 0, 0, rd->col[BGCOLOR]);
 
-   if (!gdImageFTUseFontConfig(1))
+   if (!gdFTUseFontConfig(1))
       log_msg(LOG_NOTICE, "fontconfig library not available");
 }
 
@@ -441,6 +441,15 @@ int set_style(struct rdata *rd, int style, int col)
    gdImageSetStyle(rd->img, sdef, len);
    return 0;
 }
+
+
+#ifdef HAVE_GD
+int gdImageGetThickness(const gdImage *img)
+{
+   return img->thick;
+}
+#endif
+
 
 #if 0
 int act_open_poly(osm_way_t *w, struct rdata *rd, struct orule *rl)
@@ -842,7 +851,7 @@ void poly_fill(struct rdata *rd, gdImage *img, osm_way_t *w, int fg, int bg, int
    }
    else
    {
-      t = img->thick;
+      t = gdImageGetThickness(img);
       gdImageSetThickness(img, thick);
       gdImageOpenPolygon(img, p, w->ref_cnt, thick > 1 ? fg : gdAntiAliased);
       gdImageSetThickness(img, t);
