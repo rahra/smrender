@@ -40,6 +40,7 @@ void init_main_image(struct rdata *rd, const char *bg)
    rd->col[BLUE] = gdImageColorAllocate(rd->img, 137, 199, 178);
    rd->col[MAGENTA] = gdImageColorAllocate(rd->img, 120, 8, 44);
    rd->col[BROWN] = gdImageColorAllocate(rd->img, 154, 42, 2);
+   // FIXME: gdTransparent is not the transparent color index!
    rd->col[TRANSPARENT] = gdTransparent;
 
    rd->col[BGCOLOR] = bg == NULL ? rd->col[WHITE] : parse_color(rd, bg);
@@ -858,61 +859,110 @@ void poly_fill(struct rdata *rd, gdImage *img, osm_way_t *w, int fg, int bg, int
    }
 }
 
- 
+
+void poly_border(struct rdata *rd, gdImage *img, osm_way_t *w, int fg, int ct, int ot)
+{
+   int e, t;
+   gdPoint p[w->ref_cnt];
+
+   if ((e = poly_mpcoords(w, rd, p)))
+   {
+      log_msg(LOG_CRIT, "poly_mpcoords returned %d, skipping", e);
+      return;
+   }
+
+   t = gdImageGetThickness(img);
+   if (is_closed_poly(w))
+   {
+      gdImageSetThickness(img, ct);
+      gdImagePolygon(img, p, w->ref_cnt, ct > 1 ? fg : gdAntiAliased);
+   }
+   else
+   {
+      gdImageSetThickness(img, ot);
+      gdImageOpenPolygon(img, p, w->ref_cnt, ot > 1 ? fg : gdAntiAliased);
+   }
+   gdImageSetThickness(img, t);
+}
+
+
+void dfree(struct actDraw **d)
+{
+   free((*d)->wl);
+   free(*d);
+   *d = NULL;
+}
+
+
 int act_draw_fini(smrule_t *r)
 {
    struct actDraw *d = r->data;
    struct rdata *rd;
    struct coord c;
    gdImage *img;
-   int fg, bg;
+   int fg, bg, closed_thick, open_thick;
    int i;
  
    if (!d->wl->ref_cnt)
    {
-      free(d->wl);
+      dfree((struct actDraw**) &r->data);
       return 1;
    }
 
-   // FIXME: we need this only if 'directional'
-   for (i = 0; i < d->wl->ref_cnt; i++)
+   if (d->directional)
    {
-      if (is_closed_poly(d->wl->ref[i].w))
+      for (i = 0; i < d->wl->ref_cnt; i++)
       {
-         poly_area(d->wl->ref[i].w, &c, &d->wl->ref[i].area);
-         if (d->wl->ref[i].area < 0)
+         if (is_closed_poly(d->wl->ref[i].w))
          {
-            d->wl->ref[i].area = fabs(d->wl->ref[i].area);
-            d->wl->ref[i].cw = d->directional;
+            poly_area(d->wl->ref[i].w, &c, &d->wl->ref[i].area);
+            if (d->wl->ref[i].area < 0)
+            {
+               d->wl->ref[i].area = fabs(d->wl->ref[i].area);
+               d->wl->ref[i].cw = d->directional;
+            }
          }
       }
-   }
-
-   if (d->directional)
       qsort(d->wl->ref, d->wl->ref_cnt, sizeof(struct poly), (int(*)(const void *, const void *)) compare_poly_area);
+   }
 
    rd = get_rdata();
 
+   img = gdImageCreateTrueColor(gdImageSX(rd->img), gdImageSY(rd->img));
+   bg = rd->col[BGCOLOR];
+   gdImageColorTransparent(img, bg);
+
    if (d->fill.used)
    {
-      img = gdImageCreateTrueColor(gdImageSX(rd->img), gdImageSY(rd->img));
-      bg = rd->col[WHITE];
       fg = d->fill.col;
-      gdImageColorTransparent(img, bg);
       gdImageSetAntiAliased(img, fg);
       gdImageFilledRectangle(img, 0, 0, gdImageSX(img), gdImageSY(img), d->wl->ref[0].cw ? gdAntiAliased : bg);
 
       for (i = 0; i < d->wl->ref_cnt; i++)
-      poly_fill(rd, img, d->wl->ref[i].w, fg, bg, d->wl->ref[i].cw, d->fill.width > 0 ? MM2PX(d->fill.width) : 1);
+         poly_fill(rd, img, d->wl->ref[i].w, fg, bg, d->wl->ref[i].cw, d->fill.width > 0 ? MM2PX(d->fill.width) : 1);
 
       gdImageCopy(rd->img, img, 0, 0, 0, 0, gdImageSX(img), gdImageSY(img));
-      gdImageDestroy(img);
    }
 
-   free(d->wl);
-   free(d);
-   r->data = NULL;
+   if (d->border.used)
+   {
+      fg = d->border.col;
+      gdImageSetAntiAliased(img, fg);
+      gdImageFilledRectangle(img, 0, 0, gdImageSX(img), gdImageSY(img), bg);
 
+      if ((closed_thick = MM2PX(round(d->border.width * 2))) < 1)
+         closed_thick = 1;
+      if ((open_thick = MM2PX(round(d->border.width * 2 + d->fill.width))) < 1)
+         open_thick = 1;
+
+      for (i = 0; i < d->wl->ref_cnt; i++)
+         poly_border(rd, img, d->wl->ref[i].w, fg, closed_thick, open_thick);
+
+      gdImageCopy(rd->img, img, 0, 0, 0, 0, gdImageSX(img), gdImageSY(img));
+   }
+
+   gdImageDestroy(img);
+   dfree((struct actDraw**) &r->data);
    return 0;
 }
 
