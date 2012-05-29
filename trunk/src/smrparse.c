@@ -117,11 +117,13 @@ short ppos(const char *s)
 int parse_color(const struct rdata *rd, const char *s)
 {
    long c;
+   int l;
 
    if (*s == '#')
    {
       s++;
-      if (strlen(s) != 6)
+      l = strlen(s);
+      if ((l != 6) && (l != 8))
       {
          log_msg(LOG_WARN, "format error in HTML color '#%s'", s);
          return rd->col[BLACK];
@@ -135,7 +137,7 @@ int parse_color(const struct rdata *rd, const char *s)
          return rd->col[BLACK];
       }
 
-      return gdImageColorResolve(rd->img, (c >> 16) & 0xff, (c >> 8) & 0xff, c & 0xff);
+      return get_color(rd, (c >> 16) & 0xff, (c >> 8) & 0xff, c & 0xff, (c >> 24) & 0x7f);
    }
    if (!strcmp(s, "white"))
       return rd->col[WHITE];
