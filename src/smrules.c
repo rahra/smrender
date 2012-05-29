@@ -211,12 +211,35 @@ int act_cap_ini(smrule_t *r)
 }
 
 
+int act_cap_way_ini(smrule_t *r)
+{
+   if (r->oo->type != OSM_WAY)
+   {
+      log_msg(LOG_ERR, "cap_way only applicable on ways");
+      return -1;
+   }
+   return act_cap_ini(r);
+}
+
+
+int act_cap_node_ini(smrule_t *r)
+{
+   if (r->oo->type != OSM_NODE)
+   {
+      log_msg(LOG_ERR, "cap_way only applicable on nodes");
+      return -1;
+   }
+   return act_cap_ini(r);
+}
+
+
+
 #define POS_OFFSET MM2PX(1.3)
 #define MAX_OFFSET MM2PX(2.0)
 #define DIVX 3
 
 
-int cap_node(smrule_t *r, osm_node_t *n)
+int act_cap_node(smrule_t *r, osm_node_t *n)
 {
    struct actCaption *cap = r->data;
    struct rdata *rd = get_rdata();
@@ -310,7 +333,7 @@ int cap_node(smrule_t *r, osm_node_t *n)
 }
 
 
-int cap_way(smrule_t *r, osm_way_t *w)
+int act_cap_way(smrule_t *r, osm_way_t *w)
 {
    struct actCaption *cap = r->data;
    struct actCaption tmp_cap;
@@ -348,7 +371,7 @@ int cap_way(smrule_t *r, osm_way_t *w)
    if (tmp_cap.size > MAX_AUTO_SIZE) tmp_cap.size = MAX_AUTO_SIZE;
    //log_debug("r->rule.cap.size = %f (%f 1/1000)", r->rule.cap.size, r->rule.cap.size / 100 * 1000);
 
-   e = cap_node(tmp_rule, n);
+   e = act_cap_node(tmp_rule, n);
    free_obj((osm_obj_t*) n);
 
    return e;
@@ -360,10 +383,10 @@ int act_cap(smrule_t *r, osm_obj_t *o)
    switch (o->type)
    {
       case OSM_NODE:
-         return cap_node(r, (osm_node_t*) o);
+         return act_cap_node(r, (osm_node_t*) o);
 
       case OSM_WAY:
-         return cap_way(r, (osm_way_t*) o);
+         return act_cap_way(r, (osm_way_t*) o);
    }
    log_msg(LOG_WARN, "type %d not implemented yet", o->type);
    return -1;
@@ -378,6 +401,18 @@ int act_cap_fini(smrule_t *r)
       r->data = NULL;
    }
    return 0;
+}
+
+
+int act_cap_way_fini(smrule_t *r)
+{
+   return act_cap_fini(r);
+}
+
+
+int act_cap_node_fini(smrule_t *r)
+{
+   return act_cap_fini(r);
 }
 
 
@@ -444,115 +479,17 @@ int set_style(struct rdata *rd, int style, int col)
 }
 
 
+int get_color(const struct rdata *rd, int r, int g, int b, int a)
+{
+   log_msg(LOG_DEBUG, "get_color(..., %d, %d, %d, %d)", r, g, b, a);
+   return gdImageColorResolveAlpha(rd->img, r, g, b, a);
+}
+
+
 #ifdef HAVE_GD
 int gdImageGetThickness(const gdImage *img)
 {
    return img->thick;
-}
-#endif
-
-
-#if 0
-int act_open_poly(osm_way_t *w, struct rdata *rd, struct orule *rl)
-{
-   int e, t, c;
-   gdPoint p[w->ref_cnt];
-
-   if ((e = poly_mpcoords(w, rd, p)))
-      return e;
-
-   // save thickness
-   e = rd->img->thick;
-
-   if (rl->rule.draw.border.used && (rl->rule.draw.border.style != DRAW_TRANSPARENT))
-   {
-
-      if (!(t = MM2PX(rl->rule.draw.border.width + rl->rule.draw.fill.width * (rl->rule.draw.fill.used != 0))))
-         t = 1;
-
-      gdImageSetThickness(rd->img, t);
-      gdImageSetAntiAliased(rd->img, rl->rule.draw.border.col);
-      // this is a bugfix for libgd: antialised lines with a thickness > 1 do not work
-      c = t > 1 ? rl->rule.draw.border.col : gdAntiAliased;
-      if (rl->rule.draw.border.style == DRAW_SOLID)
-      {
-         gdImageOpenPolygon(rd->img, p, w->ref_cnt, c);
-      }
-      else
-      {
-         (void) set_style(rd, rl->rule.draw.border.style, c);
-         gdImageOpenPolygon(rd->img, p, w->ref_cnt, gdStyled);
-      }
-   }
-
-   if (rl->rule.draw.fill.used && (rl->rule.draw.fill.style != DRAW_TRANSPARENT))
-   {
-      if (!(t = MM2PX(rl->rule.draw.fill.width - rl->rule.draw.border.width * (rl->rule.draw.border.used != 0))))
-         t = 1;
-
-      gdImageSetThickness(rd->img, t);
-      gdImageSetAntiAliased(rd->img, rl->rule.draw.fill.col);
-      // this is a bugfix for libgd: antialised lines with a thickness > 1 do not work
-      c = t > 1 ? rl->rule.draw.fill.col : gdAntiAliased;
-      if (rl->rule.draw.fill.style == DRAW_SOLID)
-      {
-         gdImageOpenPolygon(rd->img, p, w->ref_cnt, c);
-      }
-      else
-      {
-         (void) set_style(rd, rl->rule.draw.fill.style, c);
-         gdImageOpenPolygon(rd->img, p, w->ref_cnt, gdStyled);
-      }
-   }
-
-   // restore thickness
-   gdImageSetThickness(rd->img, e);
-
-   return 0;
-}
-
-
-int act_fill_poly(osm_way_t *w, struct rdata *rd, struct orule *rl)
-{
-   int e, t, c;
-   gdPoint p[w->ref_cnt];
-
-   if ((e = poly_mpcoords(w, rd, p)))
-      return e;
-
-   // save thickness
-   e = rd->img->thick;
-
-   if (rl->rule.draw.fill.used && (rl->rule.draw.fill.style != DRAW_TRANSPARENT))
-   {
-      gdImageSetAntiAliased(rd->img, rl->rule.draw.fill.col);
-      gdImageFilledPolygon(rd->img, p, w->ref_cnt, gdAntiAliased);
-   }
-
-   if (rl->rule.draw.border.used && (rl->rule.draw.border.style != DRAW_TRANSPARENT))
-   {
-      if (!(t = MM2PX(rl->rule.draw.border.width)))
-         t = 1;
-
-      gdImageSetThickness(rd->img, t);
-      gdImageSetAntiAliased(rd->img, rl->rule.draw.border.col);
-      // this is a bugfix for libgd: antialised lines with a thickness > 1 do not work
-      c = t > 1 ? rl->rule.draw.fill.col : gdAntiAliased;
-      if (rl->rule.draw.border.style == DRAW_SOLID)
-      {
-         gdImageOpenPolygon(rd->img, p, w->ref_cnt, c);
-      }
-      else
-      {
-         (void) set_style(rd, rl->rule.draw.border.style, c);
-         gdImagePolygon(rd->img, p, w->ref_cnt, gdStyled);
-      }
-   }
-
-   // restore thickness
-   gdImageSetThickness(rd->img, e);
-
-   return 0;
 }
 #endif
 
