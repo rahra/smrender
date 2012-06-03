@@ -446,6 +446,7 @@ void print_rdata(FILE *f, const struct rdata *rd)
          rd->y1c, rd->x1c, rd->y2c, rd->x2c);
    log_msg(LOG_NOTICE, "   mean_lat = %.3f°, mean_lat_len = %.3f° (%.1f nm)",
          rd->mean_lat, rd->mean_lat_len, rd->mean_lat_len * 60);
+   log_msg(LOG_NOTICE, "   lath = %f, lath_len = %f", rd->lath, rd->lath_len);
    log_msg(LOG_NOTICE, "   %dx%d px, dpi = %d, page size = %.1f x %.1f mm",
          rd->w, rd->h, rd->dpi, PX2MM(rd->w), PX2MM(rd->h));
    log_msg(LOG_NOTICE, "   scale 1:%.0f, %.1f x %.1f nm",
@@ -467,6 +468,8 @@ void init_bbox_mll(struct rdata *rd)
    rd->y1c = rd->mean_lat + rd->hc / 2.0;
    rd->y2c = rd->mean_lat - rd->hc / 2.0;
    rd->scale = (rd->mean_lat_len * 60.0 * 1852 * 100 / 2.54) / ((double) rd->w / (double) rd->dpi);
+   rd->lath = asinh(tan(DEG2RAD(rd->y2c)));
+   rd->lath_len = asinh(tan(DEG2RAD(rd->y1c))) - rd->lath;
 }
 
 
@@ -705,7 +708,7 @@ void usage(const char *s)
          "               <lat> and <lon> specify the coordinates of the centerpoint.\n"
          "   <size>   := <scale> | <length>'d' | <length>'m'\n"
          "               <scale> Scale of chart.\n"
-         "               <length> Length of mean meridian in either degrees ('d') or\n"
+         "               <length> Length of mean latitude in either degrees ('d') or\n"
          "                        nautical miles ('m')\n"
          "   -b <color> .......... Choose background color ('white' is default).\n"
          "   -d <density> ........ Set image density (300 is default).\n"
