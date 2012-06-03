@@ -75,7 +75,7 @@ void mk_chart_coords(int x, int y, struct rdata *rd, double *lat, double *lon)
 void mk_paper_coords(double lat, double lon, struct rdata *rd, int *x, int *y)
 {
    *x = round(        (lon - rd->x1c) * rd->w / rd->wc);
-   *y = round(rd->h - (lat - rd->y2c) * rd->h / rd->hc);
+   *y = round(rd->h - (asinh(tan(DEG2RAD(lat))) - rd->lath) * rd->h / rd->lath_len);
 }
 
 

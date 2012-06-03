@@ -352,9 +352,11 @@ struct rdata
    double x1c, y1c, x2c, y2c;
    // coordinate with/height (wc=x2c-x1c, hc=y1c-y2c)
    double wc, hc;
-   // mean latitude and its length in degrees corresponding to the real nautical mails
+   // mean latitude and its length in degrees corresponding to the real nautical miles
    double mean_lat, mean_lat_len;
    double mean_lon;
+   // hyperbolic values for transversial Mercator (latitude stretching)
+   double lath, lath_len;
    // (pixel) image width and height
    int w, h;
    // pixel resolution
