@@ -725,6 +725,7 @@ void usage(const char *s)
          "   -w <osm file> ....... Output OSM data to file.\n",
          s
          );
+   printf("\nSee http://www.abenteuerland.at/smrender/ for more information.\n");
 }
 
 

@@ -138,6 +138,7 @@ double color_frequency(struct rdata *rd, int x, int y, int w, int h, int col)
 int act_cap_ini(smrule_t *r)
 {
    struct actCaption cap;
+   struct rdata *rd;
    char *s;
 
    memset(&cap, 0, sizeof(cap));
@@ -162,23 +163,25 @@ int act_cap_ini(smrule_t *r)
       cap.key++;
       cap.pos |= POS_UC;
    }
+   rd = get_rdata();
    if ((s = get_param("color", NULL, r->act)) != NULL)
-      cap.col = parse_color(get_rdata(), s);
+      cap.col = parse_color(rd, s);
    if ((s = get_param("angle", &cap.angle, r->act)) != NULL)
    {
       if (!strcmp(s, "auto"))
       {
          cap.angle = NAN;
+         cap.rot.autocol = rd->col[BGCOLOR];
          if ((s = get_param("auto-color", NULL, r->act)) != NULL)
          {
-            cap.rot.autocol = parse_color(get_rdata(), s);
+            cap.rot.autocol = parse_color(rd, s);
          }
          if ((s = get_param("weight", &cap.rot.weight, r->act)) == NULL)
             cap.rot.weight = 1;
-         (void) get_param("weight", &cap.rot.phase, r->act);
+         (void) get_param("phase", &cap.rot.phase, r->act);
       }
    }
-   if ((s = get_param("align", NULL, r->act)) != NULL)
+   if ((s = get_param("halign", NULL, r->act)) != NULL)
    {
       if (!strcmp(s, "east"))
          cap.pos |= POS_E;
@@ -187,7 +190,7 @@ int act_cap_ini(smrule_t *r)
       else
          log_msg(LOG_WARN, "unknown alignment '%s'", s);
    }
-   if ((s = get_param("halign", NULL, r->act)) != NULL)
+   if ((s = get_param("valign", NULL, r->act)) != NULL)
    {
       if (!strcmp(s, "north"))
          cap.pos |= POS_N;
@@ -439,7 +442,7 @@ int set_style(struct rdata *rd, int style, int col)
 #define STYLE_LONG_LEN 1.2
    static int sdef[MAX_STYLE_BUF];
    int len, i;
-
+return 0;
    if (MM2PX(STYLE_LONG_LEN) + MM2PX(STYLE_SHORT_LEN) >= MAX_STYLE_BUF)
    {
       log_msg(LOG_CRIT, "style buffer to small for %d dpi, increase MAX_STYLE_BUF", (int) rd->dpi);
@@ -797,9 +800,9 @@ void poly_fill(struct rdata *rd, gdImage *img, osm_way_t *w, int fg, int bg, int
 }
 
 
-void poly_border(struct rdata *rd, gdImage *img, osm_way_t *w, int fg, int ct, int ot)
+void poly_border(struct rdata *rd, gdImage *img, osm_way_t *w, int fg, int ct, int ot, int style)
 {
-   int e, t;
+   int e, t, c;
    gdPoint p[w->ref_cnt];
 
    if ((e = poly_mpcoords(w, rd, p)))
@@ -813,11 +816,27 @@ void poly_border(struct rdata *rd, gdImage *img, osm_way_t *w, int fg, int ct, i
    {
       gdImageSetThickness(img, ct);
       gdImagePolygon(img, p, w->ref_cnt, ct > 1 ? fg : gdAntiAliased);
+      /*
+      c = ct > 1 ? fg : gdAntiAliased;
+      if (style == DRAW_SOLID)
+      {
+         set_style(rd, style, c);
+         c = gdStyled;
+      }
+      gdImagePolygon(img, p, w->ref_cnt, c);*/
    }
    else
    {
       gdImageSetThickness(img, ot);
       gdImageOpenPolygon(img, p, w->ref_cnt, ot > 1 ? fg : gdAntiAliased);
+      /*
+      c = ot > 1 ? fg : gdAntiAliased;
+      if (style == DRAW_SOLID)
+      {
+         set_style(rd, style, c);
+         c = gdStyled;
+      }
+      gdImageOpenPolygon(img, p, w->ref_cnt, c);*/
    }
    gdImageSetThickness(img, t);
 }
@@ -893,7 +912,7 @@ int act_draw_fini(smrule_t *r)
          open_thick = 1;
 
       for (i = 0; i < d->wl->ref_cnt; i++)
-         poly_border(rd, img, d->wl->ref[i].w, fg, closed_thick, open_thick);
+         poly_border(rd, img, d->wl->ref[i].w, fg, closed_thick, open_thick, d->border.style);
 
       gdImageCopy(rd->img, img, 0, 0, 0, 0, gdImageSX(img), gdImageSY(img));
    }
