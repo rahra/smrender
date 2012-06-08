@@ -200,7 +200,7 @@
     <node>
       <tag k='grid' v='outer_border'/>
       <tag k='pointindex' v='3'/>
-      <tag k='_action_' v='cap:font=sans-serif;size=2;key=lat'/>
+      <tag k='_action_' v='cap:font=sans-serif;size=2;key=lat;valign=south;halign=east'/>
    </node>
     <node>
       <tag k='grid' v='outer_border'/>
