@@ -116,7 +116,7 @@ int read_osm_file(hpx_ctrl_t *ctl, bx_node_t **tree, struct filter *fi)
    hpx_tree_t *tlist = NULL;
    bx_node_t *tr;
    int64_t *ref;
-   int64_t nid = INT64_MIN + 1;
+   int64_t nid = MIN_ID + 1;
    time_t tim;
 
    if (hpx_tree_resize(&tlist, 0) == -1)

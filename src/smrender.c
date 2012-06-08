@@ -331,6 +331,56 @@ int apply_smrules(smrule_t *r, struct rdata *rd, osm_obj_t *o)
 }
 
 
+int norm_rule_node(osm_obj_t *o, struct rdata *rd, void *p)
+{
+#define RULE_LON_DIFF 1.0/600.0
+#define RULE_LAT_DIFF RULE_LON_DIFF
+   static double lon;
+
+   if ((((osm_node_t*) o)->lon == 0.0) && (((osm_node_t*) o)->lon == 0.0))
+   {
+      //log_debug("norm %f", lon);
+      lon += RULE_LON_DIFF;
+      ((osm_node_t*) o)->lon = lon;
+   }
+   return 0;
+}
+
+
+int norm_rule_way(osm_obj_t *o, struct rdata *rd, void *p)
+{
+   static double lat;
+   osm_node_t *n;
+
+   if (((osm_way_t*) o)->ref_cnt > 0)
+      return 0;
+
+   lat += RULE_LAT_DIFF;
+
+   n = malloc_node(0);
+   n->obj.id = --((struct dstats*) p)->min_nid;
+   n->obj.ver = 1;
+   n->lat = lat;
+   n->lon = 0;
+   put_object0(&rd->rules, n->obj.id, n, IDX_NODE);
+   n = malloc_node(0);
+   n->obj.id = --((struct dstats*) p)->min_nid;
+   n->obj.ver = 1;
+   n->lat = lat;
+   n->lon = RULE_LON_DIFF;
+   put_object0(&rd->rules, n->obj.id, n, IDX_NODE);
+
+   if ((((osm_way_t*) o)->ref = malloc(sizeof(int64_t) * 2)) == NULL)
+      log_msg(LOG_ERR, "malloc failed: %s", strerror(errno)), exit(EXIT_FAILURE);
+
+   ((osm_way_t*) o)->ref[0] = n->obj.id + 1;
+   ((osm_way_t*) o)->ref[1] = n->obj.id;
+   ((osm_way_t*) o)->ref_cnt = 2;
+
+   return 0;
+}
+
+
 int print_tree(osm_obj_t *o, struct rdata *rd, void *p)
 {
    print_onode(p, o);
@@ -530,8 +580,8 @@ int print_onode(FILE *f, const osm_obj_t *o)
 void init_stats(struct dstats *ds)
 {
    memset(ds, 0, sizeof(*ds));
-   ds->min_nid = ds->min_wid = INT64_MAX;
-   ds->max_nid = ds->max_wid = INT64_MIN;
+   ds->min_nid = ds->min_wid = MAX_ID;
+   ds->max_nid = ds->max_wid = MIN_ID;
    ds->lu.lat = -90;
    ds->rb.lat = 90;
    ds->lu.lon = 180;
@@ -589,7 +639,7 @@ int onode_stats(osm_obj_t *o, struct rdata *rd, struct dstats *ds)
 }
 
 
-int save_osm(struct rdata *rd, const char *s)
+int save_osm(struct rdata *rd, const char *s, bx_node_t *tree)
 {
    FILE *f;
 
@@ -600,8 +650,8 @@ int save_osm(struct rdata *rd, const char *s)
    if ((f = fopen(s, "w")) != NULL)
    {
       fprintf(f, "<?xml version='1.0' encoding='UTF-8'?>\n<osm version='0.6' generator='smrender'>\n");
-      traverse(rd->obj, 0, IDX_NODE, print_tree, rd, f);
-      traverse(rd->obj, 0, IDX_WAY, print_tree, rd, f);
+      traverse(tree, 0, IDX_NODE, print_tree, rd, f);
+      traverse(tree, 0, IDX_WAY, print_tree, rd, f);
       fprintf(f, "</osm>\n");
       fclose(f);
    }
@@ -781,7 +831,7 @@ int main(int argc, char *argv[])
    int fd = 0, n;
    struct stat st;
    FILE *f = stdout;
-   char *cf = "rules.osm", *img_file = NULL, *osm_ifile = NULL, *osm_ofile = NULL;
+   char *cf = "rules.osm", *img_file = NULL, *osm_ifile = NULL, *osm_ofile = NULL, *osm_rfile = NULL;
    struct rdata *rd;
    struct timeval tv_start, tv_end;
    int gen_grid = 1, landscape = 0, w_mmap = 1, load_filter = 0;
@@ -800,7 +850,7 @@ int main(int argc, char *argv[])
    set_util_rd(rd);
    rd->cmdline = mk_cmd_line((const char**) argv);
 
-   while ((n = getopt(argc, argv, "b:d:fg:Ghi:lMmo:P:r:w:")) != -1)
+   while ((n = getopt(argc, argv, "b:d:fg:Ghi:lMmo:P:r:R:w:")) != -1)
       switch (n)
       {
          case 'b':
@@ -883,6 +933,10 @@ int main(int argc, char *argv[])
             cf = optarg;
             break;
 
+         case 'R':
+            osm_rfile = optarg;
+            break;
+
          case 'w':
             osm_ofile = optarg;
             break;
@@ -959,7 +1013,14 @@ int main(int argc, char *argv[])
    qsort(rstats.ver, rstats.ver_cnt, sizeof(int), (int(*)(const void*, const void*)) cmp_int);
    for (n = 0; n < rstats.ver_cnt; n++)
       log_msg(LOG_DEBUG, " rstats.ver[%d] = %d", n, rstats.ver[n]);
- 
+
+   if (osm_rfile != NULL)
+   {
+      traverse(rd->rules, 0, IDX_NODE, norm_rule_node, rd, NULL);
+      traverse(rd->rules, 0, IDX_WAY, norm_rule_way, rd, &rstats);
+      save_osm(rd, osm_rfile, rd->rules);
+   }
+
    log_msg(LOG_INFO, "preparing rules");
    if (traverse(rd->rules, 0, IDX_NODE, (tree_func_t) init_rules, rd, NULL) < 0)
       log_msg(LOG_ERR, "rule parser failed"),
@@ -1049,7 +1110,7 @@ int main(int argc, char *argv[])
    }
    int_ = 0;
 
-   save_osm(rd, osm_ofile);
+   save_osm(rd, osm_ofile, rd->obj);
    (void) close(ctl->fd);
    hpx_free(ctl);
    hpx_free(cfctl);
