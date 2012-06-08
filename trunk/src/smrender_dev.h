@@ -117,9 +117,11 @@ typedef struct { int charmap, flags, hdpi, vdpi; } gdFTStringExtra;
 // convert mm to degrees
 #define MM2LAT(x) ((x) * (rd->y1c - rd->y2c) / PX2MM(rd->h))
 #define MM2LON(x) ((x) * (rd->x2c - rd->x1c) / PX2MM(rd->w))
-
+// maximum number if different rule versions (processing iterations)
 #define MAX_ITER 8
 
+#define MIN_ID 0xffffff0000000000L
+#define MAX_ID INT64_MAX
 
 //typedef struct rdata rdata_t;
 //typedef struct onode onode_t;

@@ -34,16 +34,17 @@ void init_main_image(struct rdata *rd, const char *bg)
    // preparing image
    if ((rd->img = gdImageCreateTrueColor(rd->w, rd->h)) == NULL)
       log_msg(LOG_ERR, "could not create image"), exit(EXIT_FAILURE);
-   rd->col[WHITE] = gdImageColorAllocate(rd->img, 255, 255, 255);
+   rd->col[WHITE] = gdImageColorAllocate(rd->img, 255, 255, 254);
    rd->col[BLACK] = gdImageColorAllocate(rd->img, 0, 0, 0);
    rd->col[YELLOW] = gdImageColorAllocate(rd->img, 231,209,74);
    rd->col[BLUE] = gdImageColorAllocate(rd->img, 137, 199, 178);
    rd->col[MAGENTA] = gdImageColorAllocate(rd->img, 120, 8, 44);
    rd->col[BROWN] = gdImageColorAllocate(rd->img, 154, 42, 2);
    // FIXME: gdTransparent is not the transparent color index!
-   rd->col[TRANSPARENT] = gdTransparent;
+   //rd->col[TRANSPARENT] = gdTransparent;
 
-   rd->col[BGCOLOR] = bg == NULL ? rd->col[WHITE] : parse_color(rd, bg);
+   //rd->col[BGCOLOR] = bg == NULL ? rd->col[WHITE] : parse_color(rd, bg);
+   rd->col[BGCOLOR] = bg == NULL ? 0x00ffffff : parse_color(rd, bg);
    log_msg(LOG_DEBUG, "background color is set to 0x%08x", rd->col[BGCOLOR]);
    gdImageFill(rd->img, 0, 0, rd->col[BGCOLOR]);
 
@@ -129,7 +130,7 @@ double color_frequency_w(struct rdata *rd, int x, int y, int w, int h, const str
 
 double color_frequency(struct rdata *rd, int x, int y, int w, int h, int col)
 {
-   struct auto_rot rot = {0, rd->col[WHITE], 1};
+   struct auto_rot rot = {0, col, 1};
 
    return color_frequency_w(rd, x, y, w, h, &rot);
 }
@@ -277,6 +278,7 @@ int act_cap_node(smrule_t *r, osm_node_t *n)
    if (isnan(cap->angle))
    {
       ma = color_frequency_w(rd, x, y, br[4] - br[0] + MAX_OFFSET, br[1] - br[5], &cap->rot);
+      //FIXME: WHITE?
       off = cf_dist(rd, x, y, br[4] - br[0], br[1] - br[5], DEG2RAD(ma), rd->col[WHITE], MAX_OFFSET);
 
       oy =(br[1] - br[5]) / DIVX;
@@ -435,27 +437,26 @@ int poly_mpcoords(osm_way_t *w, struct rdata *rd, gdPoint *p)
 }
 
 
-int set_style(struct rdata *rd, int style, int col)
+int set_style(gdImage *img, int style, int col)
 {
 #define MAX_STYLE_BUF 300
 #define STYLE_SHORT_LEN 0.4
 #define STYLE_LONG_LEN 1.2
-   static int sdef[MAX_STYLE_BUF];
+   struct rdata *rd = get_rdata();
+   int sdef[MAX_STYLE_BUF];
    int len, i;
-return 0;
+
+   if (style == DRAW_SOLID)
+      return col;
+
    if (MM2PX(STYLE_LONG_LEN) + MM2PX(STYLE_SHORT_LEN) >= MAX_STYLE_BUF)
    {
       log_msg(LOG_CRIT, "style buffer to small for %d dpi, increase MAX_STYLE_BUF", (int) rd->dpi);
-      return -1;
+      return col;
    }
 
    switch (style)
    {
-      case DRAW_SOLID:
-         sdef[0] = col;
-         len = 1;
-         break;
-
       case DRAW_DOTTED:
          len = 0;
          for (i = 0; i < MM2PX(STYLE_SHORT_LEN); i++, len++)
@@ -474,11 +475,11 @@ return 0;
 
       default:
          log_msg(LOG_EMERG, "unknown drawing style %d!", style);
-         return -1;
+         return col;
    }
 
-   gdImageSetStyle(rd->img, sdef, len);
-   return 0;
+   gdImageSetStyle(img, sdef, len);
+   return gdStyled;
 }
 
 
@@ -500,7 +501,8 @@ int gdImageGetThickness(const gdImage *img)
 int act_img_ini(smrule_t *r)
 {
    struct actImage img;
-   char *name;
+   struct rdata *rd;
+   char *name, *s;
    FILE *f;
 
    if (r->oo->type != OSM_NODE)
@@ -536,8 +538,16 @@ int act_img_ini(smrule_t *r)
    {
       if (!strcmp(name, "auto"))
       {
+         rd = get_rdata();
          img.angle = NAN;
-         // FIXME: additional auto-rotation settings should be parsed here
+         img.rot.autocol = rd->col[BGCOLOR];
+         if ((s = get_param("auto-color", NULL, r->act)) != NULL)
+         {
+            img.rot.autocol = parse_color(rd, s);
+         }
+         if ((s = get_param("weight", &img.rot.weight, r->act)) == NULL)
+            img.rot.weight = 1;
+         (void) get_param("phase", &img.rot.phase, r->act);
       }
    }
    
@@ -563,7 +573,7 @@ int act_img(smrule_t *r, osm_node_t *n)
    mk_paper_coords(n->lat, n->lon, rd, &x, &y);
    hx = gdImageSX(img->img) / 2;
    hy = gdImageSY(img->img) / 2;
-   a = isnan(img->angle) ? color_frequency(rd, x, y, hx, hy, rd->col[WHITE]) : 0;
+   a = isnan(img->angle) ? color_frequency_w(rd, x, y, hx, hy, &img->rot) : img->angle;
 
    gdImageCopyRotated(rd->img, img->img, x, y, 0, 0,
          gdImageSX(img->img), gdImageSY(img->img), round(a));
@@ -687,13 +697,15 @@ int cf_dist(struct rdata *rd, int x, int y, int w, int h, double a, int col, int
 
 int col_freq(struct rdata *rd, int x, int y, int w, int h, double a, int col)
 {
+#define COL_MASK 0xfcfcfcfc
    int x1, y1, rx, ry, c = 0;
 
+   col &= COL_MASK;
    for (y1 = -h / 2; y1 < h / 2; y1++)
       for (x1 = 0; x1 < w; x1++)
       {
          rot_pos(x1, y1, a, &rx, &ry);
-         c += (col == gdImageGetPixel(rd->img, x + rx, y - ry));
+         c += (col == (gdImageGetPixel(rd->img, x + rx, y - ry) & COL_MASK));
       }
 
    return c;
@@ -815,28 +827,14 @@ void poly_border(struct rdata *rd, gdImage *img, osm_way_t *w, int fg, int ct, i
    if (is_closed_poly(w))
    {
       gdImageSetThickness(img, ct);
-      gdImagePolygon(img, p, w->ref_cnt, ct > 1 ? fg : gdAntiAliased);
-      /*
-      c = ct > 1 ? fg : gdAntiAliased;
-      if (style == DRAW_SOLID)
-      {
-         set_style(rd, style, c);
-         c = gdStyled;
-      }
-      gdImagePolygon(img, p, w->ref_cnt, c);*/
+      c = set_style(img, style, ct > 1 ? fg : gdAntiAliased);
+      gdImagePolygon(img, p, w->ref_cnt, c);
    }
    else
    {
       gdImageSetThickness(img, ot);
-      gdImageOpenPolygon(img, p, w->ref_cnt, ot > 1 ? fg : gdAntiAliased);
-      /*
-      c = ot > 1 ? fg : gdAntiAliased;
-      if (style == DRAW_SOLID)
-      {
-         set_style(rd, style, c);
-         c = gdStyled;
-      }
-      gdImageOpenPolygon(img, p, w->ref_cnt, c);*/
+      c = set_style(img, style, ot > 1 ? fg : gdAntiAliased);
+      gdImageOpenPolygon(img, p, w->ref_cnt, c);
    }
    gdImageSetThickness(img, t);
 }
@@ -865,6 +863,7 @@ int act_draw_fini(smrule_t *r)
       return 1;
    }
 
+
    if (d->directional)
    {
       for (i = 0; i < d->wl->ref_cnt; i++)
@@ -883,9 +882,8 @@ int act_draw_fini(smrule_t *r)
    }
 
    rd = get_rdata();
-
-   img = gdImageCreateTrueColor(gdImageSX(rd->img), gdImageSY(rd->img));
    bg = rd->col[BGCOLOR];
+   img = gdImageCreateTrueColor(gdImageSX(rd->img), gdImageSY(rd->img));
    gdImageColorTransparent(img, bg);
 
    if (d->fill.used)

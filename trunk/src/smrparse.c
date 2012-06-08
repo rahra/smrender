@@ -247,9 +247,9 @@ int init_rules(osm_obj_t *o, struct rdata *rd, void *p)
    if ((i = match_attr(o, "_action_", NULL)) == -1)
    {
       // FIXME need to be added to btree
-      log_msg(LOG_WARN, "rule %ld has no action, it may be used as template", o->id);
+      log_msg(LOG_DEBUG, "rule %ld has no action, it may be used as template", o->id);
       rl->act->func_name = "templ";
-      rl->act->main.func = act_templ;
+      //rl->act->main.func = act_templ;
       return 0;
    }
 
