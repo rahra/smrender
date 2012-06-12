@@ -207,6 +207,7 @@ int bs_match_attr(const osm_obj_t *o, const struct otag *ot, const struct stag *
          return i;
    }
 
+   // FIXME: Why INT_MAX?
    if ((st->stk.type & SPECIAL_NOT) || (st->stv.type & SPECIAL_NOT))
       return INT_MAX;
 

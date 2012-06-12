@@ -444,6 +444,7 @@ int parse_color(const struct rdata *, const char *);
 int parse_style(const char *s);
 //const char *rule_type_str(int);
 //int prepare_rules(osm_obj_t*, struct rdata*, void*);
+int parse_matchtype(bstring_t*, struct specialTag*);
 int init_rules(osm_obj_t*, struct rdata*, void*);
 fparam_t **parse_fparam(char*);
 

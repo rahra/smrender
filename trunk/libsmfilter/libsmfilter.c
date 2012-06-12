@@ -3,6 +3,8 @@
 #include <string.h>
 #include <errno.h>
 #include <math.h>
+#include <sys/types.h>
+#include <regex.h>
 
 #include "smrender.h"
 #include "seamark.h"
@@ -37,7 +39,7 @@ static const char *color(int);
 static const char *color_abbr(int);
 #endif
 static void sort_sectors(struct sector *, int);
-static int parse_color(bstring_t);
+static int parse_seamark_color(bstring_t);
 
 
 //static double arc_div_ = ARC_DIV;         // param 'd'
@@ -119,17 +121,64 @@ void __attribute__ ((destructor)) fini_libsmfilter(void)
 }
 
 
+int act_pchar_ini(smrule_t *r)
+{
+   regex_t regex;
+   int e;
+
+   if ((e = regcomp(&regex, "seamark:light:([0-9]+:)?colour", REG_EXTENDED | REG_NOSUB)))
+   {
+      log_msg(LOG_ERR, "regcomp failed: %d", e);
+      return -1;
+   }
+
+   if ((r->data = malloc(sizeof(regex))) == NULL)
+   {
+      log_msg(LOG_ERR, "cannot malloc: %s", strerror(errno));
+      return -1;
+   }
+
+   memcpy(r->data, &regex, sizeof(regex));
+   return 0;
+}
+
+
+int act_pchar_fini(smrule_t *r)
+{
+   if (r->data == NULL)
+      return 0;
+
+   regfree(r->data);
+   free(r->data);
+   r->data = NULL;
+   return 0;
+}
+
+
+
+char *bs_dup(const bstring_t *b)
+{
+   char *s;
+
+   if ((s = malloc(b->len + 1)) == NULL)
+      return NULL;
+   memcpy(s, b->buf, b->len);
+   s[b->len] = '\0';
+   return s;
+}
+
+
 /*! This function creates the new tag 'seamark:light_character' which is a
  * combined tag of several light attributes.
  * The function is intended to be called by a rule action.
  */
 int act_pchar(smrule_t *r, osm_obj_t *o)
 {
-   char lchar[8] = "", group[8] = "", period[8] = "", range[8] = "", col[8] = "", buf[256];
-   int n;
-   //osm_node_t *node;
-   //struct onode *node;
+   char lchar[8] = "", group[8] = "", period[8] = "", range[8] = "", col[32] = "", buf[256];
+   int col_mask[COL_CNT];
    struct otag *ot;
+   char *s;
+   int i, n;
 
    if ((n = match_attr(o, "seamark:light:group", NULL)) != -1)
       snprintf(group, sizeof(group), "(%.*s)", o->otag[n].v.len, o->otag[n].v.buf);
@@ -139,11 +188,26 @@ int act_pchar(smrule_t *r, osm_obj_t *o)
       snprintf(range, sizeof(range), " %.*sM", o->otag[n].v.len, o->otag[n].v.buf);
    if ((n = match_attr(o, "seamark:light:character", NULL)) != -1)
       snprintf(lchar, sizeof(lchar), "%.*s%s", o->otag[n].v.len, o->otag[n].v.buf, group[0] == '\0' ? "." : "");
-   if ((n = match_attr(o, "seamark:light:colour", NULL)) != -1)
+
+   memset(&col_mask, 0, sizeof(col_mask));
+   for (i = 0; i < o->tag_cnt; i++)
    {
-      if ((n = parse_color(o->otag[n].v)) != -1)
-         snprintf(col, sizeof(col), "%s.",  col_abbr_[n]);
+      s = bs_dup(&o->otag[i].k);
+      if (!regexec(r->data, s, 0, NULL, 0))
+      {
+         if ((n = parse_seamark_color(o->otag[i].v)) != -1)
+            col_mask[n]++;
+      }
+      free(s);
    }
+
+   for (i = 0; i < COL_CNT; i++)
+      if (col_mask[i])
+      {
+         snprintf(buf, sizeof(buf), "%s.", col_abbr_[i]);
+         //FIXME: strcat
+         strcat(col, buf);
+      }
 
    if (!snprintf(buf, sizeof(buf), "%s%s%s%s%s", lchar, group, col, period, range))
       return 0;
@@ -359,7 +423,7 @@ int act_vsector(smrule_t *r, osm_obj_t *o)
 }
 
 
-static int parse_color(bstring_t b)
+static int parse_seamark_color(bstring_t b)
 {
    int i;
 

@@ -106,7 +106,7 @@ int poly_area(const osm_way_t *w, struct coord *c, double *ar)
 
    if (!is_closed_poly(w))
    {
-      log_msg(LOG_DEBUG, "poly_area() only allowed on closed polygons");
+      //log_msg(LOG_DEBUG, "poly_area() only allowed on closed polygons");
       return -1;
    }
 
