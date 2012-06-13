@@ -120,7 +120,7 @@ typedef struct { int charmap, flags, hdpi, vdpi; } gdFTStringExtra;
 // maximum number if different rule versions (processing iterations)
 #define MAX_ITER 8
 
-#define MIN_ID 0xffffff0000000000L
+#define MIN_ID 0xffffff0000000000LL
 #define MAX_ID INT64_MAX
 
 //typedef struct rdata rdata_t;
