@@ -214,7 +214,7 @@ smrule_t *alloc_rule(struct rdata *rd, osm_obj_t *o)
 
 char *skipb(char *s)
 {
-   for (; isspace(*s); s++);
+   for (; isspace((unsigned) *s); s++);
    if (*s == '\0')
       return NULL;
    return s;

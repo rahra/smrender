@@ -961,7 +961,7 @@ int main(int argc, char *argv[])
    if ((param = atof(s)) <= 0)
       log_msg(LOG_ERR, "illegal size argument for"), exit(EXIT_FAILURE);
  
-   if (isdigit(s[strlen(s) - 1]) || (s[strlen(s) - 1] == '.'))
+   if (isdigit((unsigned) s[strlen(s) - 1]) || (s[strlen(s) - 1] == '.'))
       rd->scale = param;
    else if (s[strlen(s) - 1] == 'm')
       rd->mean_lat_len = param / 60;

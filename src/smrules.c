@@ -256,7 +256,7 @@ int act_cap_node(smrule_t *r, osm_node_t *n)
 
    if (cap->pos & POS_UC)
       for (x = 0; x < n->obj.otag[m].v.len; x++)
-         v[x] = toupper(v[x]);
+         v[x] = toupper((unsigned) v[x]);
 
    mk_paper_coords(n->lat, n->lon, rd, &x, &y);
    memset(&fte, 0, sizeof(fte));
