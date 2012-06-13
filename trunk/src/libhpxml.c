@@ -49,7 +49,7 @@ long hpx_lineno(void)
  */
 int skip_bblank(bstring_t *b)
 {
-   for (; isspace(*b->buf) && b->len; bs_advance(b));
+   for (; isspace((unsigned) *b->buf) && b->len; bs_advance(b));
    return b->len;
 }
 
@@ -77,12 +77,12 @@ hpx_tag_t *hpx_tm_create(int n)
  */
 int hpx_parse_name(bstring_t *b, bstring_t *n)
 {
-   if (!IS_XML1CHAR(*b->buf))
+   if (!IS_XML1CHAR((unsigned) *b->buf))
       return 0;
 
    n->buf = b->buf;
    bs_advance(b);
-   for (n->len = 1; IS_XMLCHAR(*b->buf) && b->len; bs_advance(b), n->len++);
+   for (n->len = 1; IS_XMLCHAR((unsigned) *b->buf) && b->len; bs_advance(b), n->len++);
    return n->len;
 }
 
@@ -162,7 +162,7 @@ int hpx_process_elem(bstring_t b, hpx_tag_t *p)
       return -1;
 
    //if (isalpha(*b.buf) || (*b.buf == '_') || (*b.buf == ':'))
-   if (IS_XML1CHAR(*b.buf))
+   if (IS_XML1CHAR((unsigned) *b.buf))
    {
       hpx_parse_name(&b, &p->tag);
       hpx_parse_attr_list(&b, p);
@@ -403,7 +403,7 @@ int hpx_proc_buf(hpx_ctrl_t *ctl, bstringl_t *b, long *lno)
 
       // cut trailing white spaces
       //for (b->len = s; b->len && (b->buf[b->len - 1] == ' '); b->len--);
-      for (b->len = s; b->len && isspace(b->buf[b->len - 1]); b->len--);
+      for (b->len = s; b->len && isspace((unsigned) b->buf[b->len - 1]); b->len--);
 
       s += i;
    }
