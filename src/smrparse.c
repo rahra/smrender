@@ -185,7 +185,7 @@ int get_structor(void *lhandle, structor_t *stor, const char *sym, const char *t
    if (dlerror() == NULL)
       return 0;
 
-   log_msg(LOG_INFO, "no structor %s()", buf);
+   log_msg(LOG_INFO, "no symbol '%s'", buf);
    return -1;
 }
 
@@ -248,7 +248,7 @@ int init_rules(osm_obj_t *o, struct rdata *rd, void *p)
    {
       // FIXME need to be added to btree
       log_msg(LOG_DEBUG, "rule %ld has no action, it may be used as template", o->id);
-      rl->act->func_name = "templ";
+      //rl->act->func_name = "templ";
       //rl->act->main.func = act_templ;
       return 0;
    }
@@ -301,9 +301,7 @@ int init_rules(osm_obj_t *o, struct rdata *rd, void *p)
    else
       func = rl->act->func_name;
 
-   if (get_structor(rl->act->libhandle, (structor_t*) &rl->act->main, func, ""))
-      return 1;
-
+   (void) get_structor(rl->act->libhandle, (structor_t*) &rl->act->main, func, "");
    (void) get_structor(rl->act->libhandle, (structor_t*) &rl->act->ini, func, "_ini");
    (void) get_structor(rl->act->libhandle, (structor_t*) &rl->act->fini, func, "_fini");
 

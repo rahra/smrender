@@ -910,9 +910,3 @@ int act_draw_fini(smrule_t *r)
    return 0;
 }
 
-
-int act_templ(smrule_t *r, osm_obj_t *o)
-{
-   return 0;
-}
-

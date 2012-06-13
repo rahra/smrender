@@ -71,207 +71,6 @@ void install_sigint(void)
       log_msg(LOG_INFO, "SIGINT installed (pid = %ld)", (long) getpid());
 }
 
-#if 0
-/*! Returns degrees and minutes of a fractional coordinate.
- */
-void fdm(double x, int *deg, int *min)
-{
-   double d;
-
-   *min = round(modf(x, &d) * 60);
-   *deg = round(d);
-   if (*min == 60)
-   {
-      (*deg)++;
-      *min = 0;
-   }
-}
-
-
-double fround(double x, double y)
-{
-   return x - fmod(x, y);
-}
-
-
-char *cfmt(double c, int d, char *s, int l)
-{
-   // FIXME: modf should be used instead
-   switch (d)
-   {
-      case LAT:
-         snprintf(s, l, "%02.0f %c %1.2f", fabs(c), c < 0 ? 'S' : 'N', (c - floor(c)) * 60.0);
-         break;
-
-      case LON:
-         snprintf(s, l, "%03.0f %c %1.2f", fabs(c), c < 0 ? 'W' : 'E', (c - floor(c)) * 60.0);
-         break;
-
-      default:
-         *s = '\0';
-   }
-   return s;
-}
-#endif
-
-#if 0
-/*! Match and apply ruleset to node.
- *  @param nd Node which should be rendered.
- *  @param rd Pointer to general rendering parameters.
- *  @param mnd Ruleset.
- */
-int apply_rules0(osm_node_t *n, struct rdata *rd, struct orule *rl)
-{
-   int i, e;
-
-   if (!rl->rule.type)
-   {
-      //log_debug("ACT_NA rule ignored");
-      return E_RTYPE_NA;
-   }
-
-   // check if node has tags
-   //if (!nd->tag_cnt)
-   //   return 0;
-
-   for (i = 0; i < rl->oo->tag_cnt; i++)
-      if (bs_match_attr((osm_obj_t*) n, &rl->oo->otag[i], &rl->rule.stag[i]) == -1)
-         return 0;
-
-   //fprintf(stderr, "node id %ld rule match %ld\n", nd->nd.id, mnd->nd.id);
-
-   switch (rl->rule.type)
-   {
-      case ACT_IMG:
-         e = act_image(n, rd, rl);
-         break;
-
-      case ACT_CAP:
-         e = act_caption(n, rd, rl);
-         break;
-
-      case ACT_FUNC:
-         e = rl->rule.func.main.func((osm_obj_t*) n);
-         break;
-
-         /*
-      case ACT_OUTPUT:
-         e = act_output(nd, rl);
-         break;
-
-      case ACT_IGNORE:
-         e = -1;
-         break;
-         */
-
-      default:
-         e = E_ACT_NOT_IMPL;
-         log_warn("action type %d not implemented yet", rl->rule.type);
-   }
-
-   return e;
-}
-
-
-
-/*! Match and apply ruleset to node.
- *  @param nd Node which should be rendered.
- *  @param rd Pointer to general rendering parameters.
- *  @param mnd Ruleset.
- */
-int apply_wrules0(osm_way_t *w, struct rdata *rd, struct orule *rl)
-{
-   int i, e;
-
-   if (!rl->rule.type)
-   {
-      //log_debug("ACT_NA rule ignored");
-      return E_RTYPE_NA;
-   }
-
-   // check if node has tags
-   //if (!nd->tag_cnt)
-   //   return 0;
-
-   for (i = 0; i < rl->oo->tag_cnt; i++)
-      if (bs_match_attr((osm_obj_t*) w, &rl->oo->otag[i], &rl->rule.stag[i]) == -1)
-         return 0;
-
-   //fprintf(stderr, "way id %ld rule match %ld\n", nd->nd.id, mnd->nd.id);
-
-   switch (rl->rule.type)
-   {
-      case ACT_DRAW:
-         if (w->ref[0] == w->ref[w->ref_cnt - 1])
-            e = act_fill_poly(w, rd, rl);
-         else
-            e = act_open_poly(w, rd, rl);
-         break;
-
-      case ACT_FUNC:
-         e = rl->rule.func.main.func((osm_obj_t*) w);
-         break;
-
-      case ACT_CAP:
-         e = act_wcaption(w, rd, rl);
-         break;
-
-         /*
-      case ACT_OUTPUT:
-         e = act_output(nd, rl);
-         break;
-
-      case ACT_IGNORE:
-         e = -1;
-         break;
-         */
-
-      default:
-         e = E_ACT_NOT_IMPL;
-         log_msg(LOG_WARN, "action type %d not implemented yet", rl->rule.type);
-   }
-
-   return e;
-}
-
-
-int apply_rules(struct orule *rl, struct rdata *rd, osm_node_t *n)
-{
-   int e = 0;
-
-   if (n != NULL)
-   {
-      if (rl->oo->ver != n->obj.ver)
-         return 0;
-   }
-
-   log_debug("applying rule id 0x%016lx type %s(%d)", (long) rl->oo->id, rule_type_str(rl->rule.type), rl->rule.type);
-   // call initialization rule of function rule if available
-   if ((rl->rule.type == ACT_FUNC) && (rl->rule.func.ini.func != NULL))
-      rl->rule.func.ini.func(rl);
-
-   switch (rl->oo->type)
-   {
-      case OSM_NODE:
-         e = traverse(rd->obj, 0, IDX_NODE, (tree_func_t) apply_rules0, rd, rl);
-         break;
-
-      case OSM_WAY:
-         e = traverse(rd->obj, 0, IDX_WAY, (tree_func_t) apply_wrules0, rd, rl);
-         break;
-
-      default:
-         log_debug("unknown rule type");
-   }
-
-   // call de-initialization rule of function rule if available
-   if ((rl->rule.type == ACT_FUNC) && (rl->rule.func.fini.func != NULL))
-      rl->rule.func.fini.func();
-
-   return e;
-}
-#endif
-
 
 /*! Match and apply ruleset to node.
  *  @param nd Node which should be rendered.
@@ -286,10 +85,7 @@ int apply_smrules0(osm_obj_t *o, struct rdata *rd, smrule_t *r)
       if (bs_match_attr(o, &r->oo->otag[i], &r->act->stag[i]) == -1)
          return 0;
 
-   if (r->act->main.func != NULL)
-      return r->act->main.func(r, o);
-
-   return 1;
+   return r->act->main.func(r, o);
 }
 
 
@@ -299,33 +95,24 @@ int apply_smrules(smrule_t *r, struct rdata *rd, osm_obj_t *o)
 
    if (r == NULL)
    {
-      log_msg(LOG_DEBUG, "NULL pointer to rule, ignoring");
+      log_msg(LOG_EMERG, "NULL pointer to rule, ignoring");
       return 1;
    }
 
-   if (o != NULL)
-   {
-      if (r->oo->ver != o->ver)
-         return 0;
-   }
+   if (o != NULL && r->oo->ver != o->ver)
+      return 0;
+
+   if (r->act->func_name == NULL)
+      return 0;
 
    log_debug("applying rule id 0x%016lx '%s'", (long) r->oo->id, r->act->func_name);
 
    if (r->act->main.func != NULL)
-   {
       e = traverse(rd->obj, 0, r->oo->type - 1, (tree_func_t) apply_smrules0, rd, r);
-   }
-   else
-   {
-      log_msg(LOG_WARN, "no function pointer");
-      e = 1;
-   }
 
    // call de-initialization rule of function rule if available
-   if (r->act->fini.func != NULL)
-   {
+   if (e >= 0 && r->act->fini.func != NULL)
       e = r->act->fini.func(r);
-   }
 
    return e;
 }
