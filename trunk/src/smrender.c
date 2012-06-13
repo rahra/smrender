@@ -518,8 +518,8 @@ void init_bbox_mll(struct rdata *rd)
    rd->y1c = rd->mean_lat + rd->hc / 2.0;
    rd->y2c = rd->mean_lat - rd->hc / 2.0;
    rd->scale = (rd->mean_lat_len * 60.0 * 1852 * 100 / 2.54) / ((double) rd->w / (double) rd->dpi);
-   rd->lath = asinh(tan(DEG2RAD(rd->y2c)));
-   rd->lath_len = asinh(tan(DEG2RAD(rd->y1c))) - rd->lath;
+   rd->lath = asinh(tan(DEG2RAD(rd->mean_lat)));
+   rd->lath_len = asinh(tan(DEG2RAD(rd->y1c))) - asinh(tan(DEG2RAD(rd->y2c)));
 }
 
 

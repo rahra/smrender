@@ -60,27 +60,13 @@ void save_main_image(struct rdata *rd, FILE *f)
 }
 
 
-/*! Convert pixel coordinates back into latitude and longitude. Note that this
- *  leads to some inaccuracy.
- */
-void mk_chart_coords(int x, int y, struct rdata *rd, double *lat, double *lon)
-{
-   *lon = rd->wc *          x  / rd->w + rd->x1c;
-   *lat = rd->hc * (rd->h - y) / rd->h + rd->y2c;
-}
-
-
 /*! Convert latitude and longitude coordinates into x and y coordinates of
  * pixel image.
  */
 void mk_paper_coords(double lat, double lon, struct rdata *rd, int *x, int *y)
 {
-   *x = round(        (                  lon    - rd->x1c)  * rd->w / rd->wc);
-#ifdef NO_MERC_STRETCH
-   *y = round(rd->h - (                  lat    - rd->y2c)  * rd->h / rd->hc);
-#else
-   *y = round(rd->h - (asinh(tan(DEG2RAD(lat))) - rd->lath) * rd->h / rd->lath_len);
-#endif
+   *x = round(        (                         lon    - rd->x1c)  * rd->w / rd->wc);
+   *y = round(rd->h * (0.5 - (asinh(tan(DEG2RAD(lat))) - rd->lath)         / rd->lath_len));
 }
 
 
