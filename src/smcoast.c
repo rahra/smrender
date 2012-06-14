@@ -511,13 +511,17 @@ int act_cat_poly_ini(smrule_t *r)
 
 int act_cat_poly(smrule_t *r, osm_obj_t *o)
 {
+   // This construction is used because of strict aliasing rule.
+   union wlu { struct wlist **wl; void **p; } wlu;
+
    // check if it is an open polygon
    if (((osm_way_t*) o)->ref_cnt < 2)
       return 0;
    if (((osm_way_t*) o)->ref[0] == ((osm_way_t*) o)->ref[((osm_way_t*) o)->ref_cnt - 1])
       return 0;
 
-   return gather_poly0((osm_way_t*) o, (struct wlist**) &r->data);
+   wlu.p = &r->data;
+   return gather_poly0((osm_way_t*) o, wlu.wl);
 }
 
 
