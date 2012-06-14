@@ -173,14 +173,14 @@ int parse_style(const char *s)
 }
 
 
-int get_structor(void *lhandle, structor_t *stor, const char *sym, const char *trail)
+int get_structor(void *lhandle, void **stor, const char *sym, const char *trail)
 {
    char buf[strlen(sym) + strlen(trail) + 5];
 
    snprintf(buf, sizeof(buf), "act_%s%s", sym, trail);
    // Clear any existing error
    dlerror();
-   stor->sym = dlsym(lhandle, buf);
+   *stor = dlsym(lhandle, buf);
    // Check for errors (BSD returns const char*, thus type is converted)
    if (dlerror() == NULL)
       return 0;
@@ -301,9 +301,9 @@ int init_rules(osm_obj_t *o, struct rdata *rd, void *p)
    else
       func = rl->act->func_name;
 
-   (void) get_structor(rl->act->libhandle, (structor_t*) &rl->act->main, func, "");
-   (void) get_structor(rl->act->libhandle, (structor_t*) &rl->act->ini, func, "_ini");
-   (void) get_structor(rl->act->libhandle, (structor_t*) &rl->act->fini, func, "_fini");
+   (void) get_structor(rl->act->libhandle, &rl->act->main.sym, func, "");
+   (void) get_structor(rl->act->libhandle, &rl->act->ini.sym, func, "_ini");
+   (void) get_structor(rl->act->libhandle, &rl->act->fini.sym, func, "_fini");
 
    if (rl->act->parm != NULL)
       rl->act->fp = parse_fparam(rl->act->parm);

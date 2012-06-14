@@ -830,11 +830,10 @@ void poly_border(struct rdata *rd, gdImage *img, osm_way_t *w, int fg, int ct, i
 }
 
 
-void dfree(struct actDraw **d)
+void dfree(struct actDraw *d)
 {
-   free((*d)->wl);
-   free(*d);
-   *d = NULL;
+   free(d->wl);
+   free(d);
 }
 
 
@@ -849,7 +848,8 @@ int act_draw_fini(smrule_t *r)
  
    if (!d->wl->ref_cnt)
    {
-      dfree((struct actDraw**) &r->data);
+      dfree(r->data);
+      r->data = NULL;
       return 1;
    }
 
@@ -906,7 +906,8 @@ int act_draw_fini(smrule_t *r)
    }
 
    gdImageDestroy(img);
-   dfree((struct actDraw**) &r->data);
+   dfree(r->data);
+   r->data = NULL;
    return 0;
 }
 

@@ -68,10 +68,6 @@ typedef struct { int charmap, flags, hdpi, vdpi; } gdFTStringExtra;
 #define gdImageGetPixel(a, b, c) 0
 #endif
 
-#define SW_AUTHOR "Bernhard R. Fischer"
-#define SW_AEMAIL "bf@abenteuerland.at"
-#define SW_COPY "© 2011"
-
 #define SPECIAL_DIRECT 0x0000
 #define SPECIAL_REGEX 0x0001
 #define SPECIAL_GT 0x0002
@@ -123,33 +119,13 @@ typedef struct { int charmap, flags, hdpi, vdpi; } gdFTStringExtra;
 #define MIN_ID 0xffffff0000000000LL
 #define MAX_ID INT64_MAX
 
-//typedef struct rdata rdata_t;
-//typedef struct onode onode_t;
-//typedef struct orule orule_t;
 typedef int (*tree_func_t)(osm_obj_t*, struct rdata*, void*);
-//typedef int (*ext_func_t)(osm_obj_t*);
-typedef union structor
-{
-      int (*func)(void);
-      void *sym;
-} structor_t;
-//typedef struct smrule smrule_t;
-//typedef struct action action_t;
 
 // indexes to object tree
 enum {IDX_NODE, IDX_WAY};
-//enum {E_SM_OK, E_RTYPE_NA, E_ACT_NOT_IMPL, E_SYNTAX, E_REF_ERR};
 enum {WHITE, YELLOW, BLACK, BLUE, MAGENTA, BROWN, TRANSPARENT, BGCOLOR, MAX_COLOR};
 enum {LAT, LON};
-//enum {ACT_NA, ACT_IMG, ACT_CAP, ACT_FUNC, ACT_DRAW, ACT_IGNORE, ACT_OUTPUT, ACT_SETTAGS, RULE_COUNT};
 enum {DRAW_SOLID, DRAW_DASHED, DRAW_DOTTED, DRAW_TRANSPARENT};
-
-// select projection
-// PRJ_DIRECT directly projects the bounding box onto the image.
-// PRJ_MERC_PAGE chooses the largest possible bb withing the given bb to fit into the image.
-// PRJ_MERC_BB chooses the image size being selected depending on the given bb.
-//enum {PRJ_DIRECT, PRJ_MERC_PAGE, PRJ_MERC_BB};
-
 
 typedef struct fparam
 {
@@ -167,12 +143,6 @@ struct specialTag
       double val;
    };
 };
-
-/* struct otag
-{
-   bstring_t k;
-   bstring_t v;
-};*/
 
 struct stag
 {
@@ -206,37 +176,12 @@ struct actCaption
                      // counterclockwise. NAN means auto-rotate
    struct auto_rot rot;
 };
-/*
-struct actFunction
-{
-   union
-   {
-      ext_func_t func;
-      void *sym;
-   } main;
-   union
-   {
-      int (*func)(const orule_t*);
-      void *sym;
-   } ini;
-   structor_t fini;
-   void *libhandle;  // pointer to lib base
-   char *parm;       // function argument string
-   char *func_name;  // pointer to function name
-};
-*/
 
 struct actParam
 {
    char *buf;
    fparam_t **fp;
 };
-
-/*struct actOutput
-{
-   //char *name;
-   FILE *fhandle;
-};*/
 
 struct drawStyle
 {
@@ -254,24 +199,6 @@ struct actDraw
    int collect_open;
    struct wlist *wl;
 };
-
-/*
-struct rule
-{
-   short type;
-   union
-   {
-      struct actImage img;
-      struct actCaption cap;
-      struct actFunction func;
-      struct actDraw draw;
-      struct actOutput out;
-   };
-   struct actParam parm;
-   short tag_cnt;
-   struct stag stag[];
-};
-*/
 
 struct action
 {
@@ -297,31 +224,6 @@ struct action
    short tag_cnt;
    struct stag stag[];
 };
-
-/*
-struct smrule
-{
-   osm_obj_t *oo;
-   void *data;       // arbitrary data
-   action_t act;
-};*/
-
-/*struct onode
-{
-   struct osm_node nd;
-   int ref_cnt;
-   int64_t *ref;
-   int tag_cnt;
-   struct otag otag[];
-};*/
-
-/*
-struct orule
-{
-   osm_obj_t *oo;
-   struct rule rule;
-};
-*/
 
 struct grid
 {
@@ -403,19 +305,11 @@ struct rdata *get_rdata(void);
 
 
 /* smutil.c */
-//int match_attr(const osm_obj_t*, const char *, const char *);
 int bs_match_attr(const osm_obj_t*, const struct otag *, const struct stag*);
 int bs_match(const bstring_t *, const bstring_t *, const struct specialTag *);
 void set_util_rd(struct rdata*);
-//void disable_put(void);
 int put_object0(bx_node_t**, int64_t, void*, int);
-//int put_object(osm_obj_t*);
 void *get_object0(bx_node_t*, int64_t, int);
-//void *get_object(int, int64_t);
-//struct onode *malloc_object(int , int);
-//int64_t unique_node_id(void);
-//int64_t unique_way_id(void);
-//void set_const_tag(struct otag*, char*, char*);
 
 /* smloadosm.c */
 void osm_read_exit(void);
@@ -441,8 +335,6 @@ FILE *init_log(const char*, int);
 /* smrparse.c */
 int parse_color(const struct rdata *, const char *);
 int parse_style(const char *s);
-//const char *rule_type_str(int);
-//int prepare_rules(osm_obj_t*, struct rdata*, void*);
 int parse_matchtype(bstring_t*, struct specialTag*);
 int init_rules(osm_obj_t*, struct rdata*, void*);
 fparam_t **parse_fparam(char*);
