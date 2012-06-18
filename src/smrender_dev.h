@@ -84,6 +84,8 @@ typedef struct { int charmap, flags, hdpi, vdpi; } gdFTStringExtra;
 #define POS_W 8
 #define POS_UC 16
 
+// macro to convert minutes to degrees
+#define MIN2DEG(x) ((double) (x) / 60.0)
 // distance of grid lines in degrees (should be multple of G_TICKS)
 #define G_GRID (10.0 / 60.0)
 // distance of axis ticks in degrees (should be multiple of G_STICKS)

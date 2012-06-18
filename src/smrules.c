@@ -874,6 +874,10 @@ int act_draw_fini(smrule_t *r)
    rd = get_rdata();
    bg = rd->col[BGCOLOR];
    img = gdImageCreateTrueColor(gdImageSX(rd->img), gdImageSY(rd->img));
+   bg = gdImageColorAllocate(img,
+         gdImageRed(rd->img, rd->col[BGCOLOR]),
+         gdImageGreen(rd->img, rd->col[BGCOLOR]),
+         gdImageBlue(rd->img, rd->col[BGCOLOR]));
    gdImageColorTransparent(img, bg);
 
    if (d->fill.used)

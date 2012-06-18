@@ -15,6 +15,7 @@
    </node>
    <node>
       <tag k='/^seamark:light:.*/' v=''/>
+      <tag k='~/buoy/~' v=''/>
       <tag k='_action_' v='img:angle=auto;file=icons/Light_Magenta_90.png'/>
    </node>
    <node>
@@ -128,7 +129,7 @@
    </node>
    <node>
       <tag k='_action_' v='cap:font=sans-serif:bold;size=2.5;angle=auto;auto-color=yellow;key=name'/>
-      <tag k='place' v='city'/>
+      <tag k='place' v='/town|city/'/>
    </node>
    <!--
    <node>
