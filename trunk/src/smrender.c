@@ -277,7 +277,7 @@ int traverse(const bx_node_t *nt, int d, int idx, tree_func_t dhandler, struct r
 }
 
 
-void print_rdata(FILE *f, const struct rdata *rd)
+void print_rdata(const struct rdata *rd)
 {
    log_msg(LOG_NOTICE, "render data: left upper %.3f/%.3f, right bottom %.3f/%.3f",
          rd->y1c, rd->x1c, rd->y2c, rd->x2c);
@@ -436,7 +436,11 @@ int save_osm(struct rdata *rd, const char *s, bx_node_t *tree)
    log_msg(LOG_INFO, "saving osm output to '%s'", s);
    if ((f = fopen(s, "w")) != NULL)
    {
-      fprintf(f, "<?xml version='1.0' encoding='UTF-8'?>\n<osm version='0.6' generator='smrender'>\n");
+      fprintf(f, "<?xml version='1.0' encoding='UTF-8'?>\n"
+                 "<osm version='0.6' generator='smrender'>\n"
+                 "<bounds minlat='%f' minlon='%f' maxlat='%f' maxlon='%f'/>\n",
+                 rd->y2c, rd->x1c, rd->y1c, rd->x2c
+                 );
       traverse(tree, 0, IDX_NODE, print_tree, rd, f);
       traverse(tree, 0, IDX_WAY, print_tree, rd, f);
       fprintf(f, "</osm>\n");
@@ -446,6 +450,30 @@ int save_osm(struct rdata *rd, const char *s, bx_node_t *tree)
       log_msg(LOG_WARN, "could not open '%s': %s", s, strerror(errno));
 
    return 0;
+}
+
+
+/*! Set grid depending on the scale. */
+void auto_grid(struct rdata *rd)
+{
+   if (rd->scale >= 250000)
+   {
+      rd->grd.lat_ticks = rd->grd.lon_ticks = MIN2DEG(2);
+      rd->grd.lat_sticks = rd->grd.lon_sticks = MIN2DEG(0.5);
+      rd->grd.lat_g = rd->grd.lon_g = MIN2DEG(20);
+   }
+   else if (rd->scale >= 150000)
+   {
+      rd->grd.lat_ticks = rd->grd.lon_ticks = MIN2DEG(1);
+      rd->grd.lat_sticks = rd->grd.lon_sticks = MIN2DEG(0.25);
+      rd->grd.lat_g = rd->grd.lon_g = MIN2DEG(10);
+   }
+   else
+   {
+      rd->grd.lat_ticks = rd->grd.lon_ticks = MIN2DEG(1);
+      rd->grd.lat_sticks = rd->grd.lon_sticks = MIN2DEG(0.2);
+      rd->grd.lat_g = rd->grd.lon_g = MIN2DEG(5);
+   }
 }
 
 
@@ -621,7 +649,7 @@ int main(int argc, char *argv[])
    char *cf = "rules.osm", *img_file = NULL, *osm_ifile = NULL, *osm_ofile = NULL, *osm_rfile = NULL;
    struct rdata *rd;
    struct timeval tv_start, tv_end;
-   int gen_grid = 1, landscape = 0, w_mmap = 1, load_filter = 0;
+   int gen_grid = 1, landscape = 0, w_mmap = 1, load_filter = 0, user_grid = 0;
    char *paper = "A3", *bg = NULL;
    struct filter fi;
    struct dstats rstats;
@@ -651,6 +679,7 @@ int main(int argc, char *argv[])
             break;
 
          case 'g':
+            user_grid = 1;
             if ((s = strtok(optarg, ":")) == NULL)
                log_msg(LOG_ERR, "ill grid parameter"), exit(EXIT_FAILURE);
 
@@ -662,7 +691,6 @@ int main(int argc, char *argv[])
                break;
             }
             rd->grd.lat_ticks = rd->grd.lon_ticks = atof(s) / 60;
-
 
             if ((s = strtok(NULL, ":")) == NULL)
             {
@@ -773,8 +801,10 @@ int main(int argc, char *argv[])
 
    init_bbox_mll(rd);
 
-   // FIXME: Why stderr?
-   print_rdata(stderr, rd);
+   if (!user_grid)
+      auto_grid(rd);
+
+   print_rdata(rd);
 
    // preparing image
    init_main_image(rd, bg);
