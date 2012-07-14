@@ -240,3 +240,16 @@ int match_attr(const osm_obj_t *o, const char *k, const char *v)
    return bs_match_attr(o, &ot, &st);
 }
 
+
+/*! Convert coordinate c to string.
+ *  @param lat_lon 0 for latitude, other values for longitude.
+ */
+int coord_str(double c, int lat_lon, char *buf, int len)
+{
+   if (!lat_lon)
+      return snprintf(buf, len, "%02d %c %.1f'", (int) c, c < 0 ? 'S' : 'N', (double) ((int) round(c * T_RESCALE) % T_RESCALE) / TM_RESCALE);
+   else
+      return snprintf(buf, len, "%03d %c %.1f'", (int) c, c < 0 ? 'W' : 'E', (double) ((int) round(c * T_RESCALE) % T_RESCALE) / TM_RESCALE);
+
+}
+

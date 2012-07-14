@@ -279,9 +279,13 @@ int traverse(const bx_node_t *nt, int d, int idx, tree_func_t dhandler, struct r
 
 void print_rdata(const struct rdata *rd)
 {
-   log_msg(LOG_NOTICE, "render data: left upper %.3f/%.3f, right bottom %.3f/%.3f",
-         rd->y1c, rd->x1c, rd->y2c, rd->x2c);
-   log_msg(LOG_NOTICE, "   mean_lat = %.3f°, mean_lat_len = %.3f° (%.1f nm)",
+   log_msg(LOG_NOTICE, "*** chart parameters for rendering ****");
+   log_msg(LOG_NOTICE, "   %.3f %.3f -- %.3f %.3f",
+         rd->y1c, rd->x1c, rd->y1c, rd->x2c);
+   log_msg(LOG_NOTICE, "   %.3f %.3f -- %.3f %.3f",
+         rd->y2c, rd->x1c, rd->y2c, rd->x2c);
+   log_msg(LOG_NOTICE, "   wc = %.3f°, hc = %.3f°", rd->wc, rd->hc);
+   log_msg(LOG_NOTICE, "   mean_lat = %.3f°, mean_lat_len = %.3f (%.1f nm)",
          rd->mean_lat, rd->mean_lat_len, rd->mean_lat_len * 60);
    log_msg(LOG_NOTICE, "   lath = %f, lath_len = %f", rd->lath, rd->lath_len);
    log_msg(LOG_NOTICE, "   %dx%d px, dpi = %d, page size = %.1f x %.1f mm",
@@ -291,8 +295,9 @@ void print_rdata(const struct rdata *rd)
    log_msg(LOG_NOTICE, "   grid = %.1f', ticks = %.2f', subticks = %.2f'",
          rd->grd.lat_g * 60, rd->grd.lat_ticks * 60, rd->grd.lat_sticks * 60);
 
-   log_debug("G_GRID %.3f, G_TICKS %.3f, G_STICKS %.3f, G_MARGIN %.2f, G_TW %.2f, G_STW %.2f, G_BW %.2f",
+   log_debug("   G_GRID %.3f, G_TICKS %.3f, G_STICKS %.3f, G_MARGIN %.2f, G_TW %.2f, G_STW %.2f, G_BW %.2f",
          G_GRID, G_TICKS, G_STICKS, G_MARGIN, G_TW, G_STW, G_BW);
+   log_msg(LOG_NOTICE, "***");
 }
 
 
@@ -587,6 +592,7 @@ void usage(const char *s)
          "   -r <rules file> ..... Rules file ('rules.osm' is default).\n"
          "   -o <image file> ..... Filename of output image (stdout is default).\n"
          "   -P <page format> .... Select output page format.\n"
+         "   -V .................. Show chart parameters and exit.\n"
          "   -w <osm file> ....... Output OSM data to file.\n",
          s
          );
@@ -649,7 +655,7 @@ int main(int argc, char *argv[])
    char *cf = "rules.osm", *img_file = NULL, *osm_ifile = NULL, *osm_ofile = NULL, *osm_rfile = NULL;
    struct rdata *rd;
    struct timeval tv_start, tv_end;
-   int gen_grid = 1, landscape = 0, w_mmap = 1, load_filter = 0, user_grid = 0;
+   int gen_grid = 1, landscape = 0, w_mmap = 1, load_filter = 0, user_grid = 0, init_exit = 0;
    char *paper = "A3", *bg = NULL;
    struct filter fi;
    struct dstats rstats;
@@ -665,7 +671,7 @@ int main(int argc, char *argv[])
    set_util_rd(rd);
    rd->cmdline = mk_cmd_line((const char**) argv);
 
-   while ((n = getopt(argc, argv, "b:d:fg:Ghi:lMmo:P:r:R:w:")) != -1)
+   while ((n = getopt(argc, argv, "b:d:fg:Ghi:lMmo:P:r:R:Vw:")) != -1)
       switch (n)
       {
          case 'b':
@@ -752,6 +758,10 @@ int main(int argc, char *argv[])
             osm_rfile = optarg;
             break;
 
+         case 'V':
+            init_exit = 1;
+            break;
+
          case 'w':
             osm_ofile = optarg;
             break;
@@ -805,6 +815,9 @@ int main(int argc, char *argv[])
       auto_grid(rd);
 
    print_rdata(rd);
+
+   if (init_exit)
+      exit(EXIT_SUCCESS);
 
    // preparing image
    init_main_image(rd, bg);

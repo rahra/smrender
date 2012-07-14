@@ -121,6 +121,11 @@ typedef struct { int charmap, flags, hdpi, vdpi; } gdFTStringExtra;
 #define MIN_ID 0xffffff0000000000LL
 #define MAX_ID INT64_MAX
 
+#define TM_RESCALE 100
+#define T_RESCALE (60 * TM_RESCALE)
+#define MIN10(x) round((x) * T_RESCALE)
+
+
 typedef int (*tree_func_t)(osm_obj_t*, struct rdata*, void*);
 
 // indexes to object tree
@@ -312,6 +317,8 @@ int bs_match(const bstring_t *, const bstring_t *, const struct specialTag *);
 void set_util_rd(struct rdata*);
 int put_object0(bx_node_t**, int64_t, void*, int);
 void *get_object0(bx_node_t*, int64_t, int);
+int coord_str(double, int, char*, int);
+
 
 /* smloadosm.c */
 void osm_read_exit(void);

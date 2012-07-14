@@ -24,10 +24,6 @@
 #include <string.h>
 #include "smrender_dev.h"
 
-#define TM_RESCALE 100
-#define T_RESCALE (60 * TM_RESCALE)
-#define MIN10(x) round((x) * T_RESCALE)
-
 
 void geo_description(double lat, double lon, char *text, char *pos)
 {
@@ -74,9 +70,9 @@ void geo_square(struct rdata *rd, double b, char *v)
       n->lon = lon[i];
       set_const_tag(&n->obj.otag[0], "generator", "smrender");
       set_const_tag(&n->obj.otag[1], "grid", v);
-      snprintf(buf, sizeof(buf), "%02d %c %.1f'", (int) lat[i], lat[i] < 0 ? 'S' : 'N', (double) ((int) round(lat[i] * T_RESCALE) % T_RESCALE) / TM_RESCALE);
+      coord_str(lat[i], 0, buf, sizeof(buf));
       set_const_tag(&n->obj.otag[2], "lat", strdup(buf));
-      snprintf(buf, sizeof(buf), "%03d %c %.1f'", (int) lon[i], lon[i] < 0 ? 'W' : 'E', (double) ((int) round(lon[i] * T_RESCALE) % T_RESCALE) / TM_RESCALE);
+      coord_str(lon[i], 1, buf, sizeof(buf));
       set_const_tag(&n->obj.otag[3], "lon", strdup(buf));
       snprintf(buf, sizeof(buf), "%d", i);
       set_const_tag(&n->obj.otag[4], "pointindex", strdup(buf));
