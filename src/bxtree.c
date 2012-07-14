@@ -28,7 +28,7 @@ void bx_exit(void)
          break;
 
       default:
-         log_msg(LOG_INFO, "tree memory: %ld kByte", bx_sizeof() / 1024);
+         log_msg(LOG_DEBUG, "tree memory: %ld kByte", bx_sizeof() / 1024);
    }
    ae++;
 }

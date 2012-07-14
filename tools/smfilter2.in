@@ -27,7 +27,7 @@ cat << ! > $RULES
    <tag k='seamark:type' v=''/>
    <tag 
       k='_action_'
-      v='func:vsector@@SMFILTER_NAME@?$param'
+      v='vsector@@SMFILTER_NAME@:$param'
    />
 </node>
 !
