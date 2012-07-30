@@ -290,6 +290,7 @@ void print_rdata(const struct rdata *rd)
    log_msg(LOG_NOTICE, "   lath = %f, lath_len = %f", rd->lath, rd->lath_len);
    log_msg(LOG_NOTICE, "   %dx%d px, dpi = %d, page size = %.1f x %.1f mm",
          rd->w, rd->h, rd->dpi, PX2MM(rd->w), PX2MM(rd->h));
+   log_msg(LOG_NOTICE, "   1 px = %.3f mm, 1mm = %d px", PX2MM(1), (int) MM2PX(1));
    log_msg(LOG_NOTICE, "   scale 1:%.0f, %.1f x %.1f nm",
          rd->scale, rd->wc * 60 * cos(DEG2RAD(rd->mean_lat)), rd->hc * 60);
    log_msg(LOG_NOTICE, "   grid = %.1f', ticks = %.2f', subticks = %.2f'",
