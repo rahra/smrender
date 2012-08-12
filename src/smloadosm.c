@@ -328,8 +328,10 @@ int read_osm_file(hpx_ctrl_t *ctl, bx_node_t **tree, struct filter *fi)
                            mem->type = OSM_NODE;
                         else if (!bs_cmp(b, "way"))
                            mem->type = OSM_WAY;
+                        else if (!bs_cmp(b, "relation"))
+                           mem->type = OSM_REL;
                         else
-                           log_msg(LOG_WARN, "relation type may only be 'node' or 'way'");
+                           log_msg(LOG_WARN, "relation type may only be 'node', 'way', or 'relation'");
                      }
                      if (get_value("ref", tlist->subtag[i]->tag, &b) != -1)
                      {

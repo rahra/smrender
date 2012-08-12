@@ -869,14 +869,20 @@ int main(int argc, char *argv[])
    {
       traverse(rd->rules, 0, IDX_NODE, norm_rule_node, rd, NULL);
       traverse(rd->rules, 0, IDX_WAY, norm_rule_way, rd, &rstats);
+      // FIXME: saving relation rules missing
       save_osm(rd, osm_rfile, rd->rules);
    }
 
-   log_msg(LOG_INFO, "preparing rules");
+   log_msg(LOG_INFO, "preparing node rules");
    if (traverse(rd->rules, 0, IDX_NODE, (tree_func_t) init_rules, rd, NULL) < 0)
       log_msg(LOG_ERR, "rule parser failed"),
          exit(EXIT_FAILURE);
+   log_msg(LOG_INFO, "preparing way rules");
    if (traverse(rd->rules, 0, IDX_WAY, (tree_func_t) init_rules, rd, NULL) < 0)
+      log_msg(LOG_ERR, "rule parser failed"),
+         exit(EXIT_FAILURE);
+   log_msg(LOG_INFO, "preparing relation rules");
+   if (traverse(rd->rules, 0, IDX_REL, (tree_func_t) init_rules, rd, NULL) < 0)
       log_msg(LOG_ERR, "rule parser failed"),
          exit(EXIT_FAILURE);
 
@@ -957,8 +963,11 @@ int main(int argc, char *argv[])
       log_msg(LOG_INFO, "rendering pass %d (ver = %d)", n, rstats.ver[n]);
       o.ver = rstats.ver[n];
 
+      // FIXME: order way -> rel -> node?
       log_msg(LOG_INFO, " ways...");
       traverse(rd->rules, 0, IDX_WAY, (tree_func_t) apply_smrules, rd, &o);
+      log_msg(LOG_INFO, " relations...");
+      traverse(rd->rules, 0, IDX_REL, (tree_func_t) apply_smrules, rd, &o);
       log_msg(LOG_INFO, " nodes...");
       traverse(rd->rules, 0, IDX_NODE, (tree_func_t) apply_smrules, rd, &o);
    }

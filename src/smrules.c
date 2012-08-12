@@ -710,9 +710,9 @@ int act_draw_ini(smrule_t *r)
    char *s;
 
    // just to be on the safe side
-   if (r->oo->type != OSM_WAY)
+   if ((r->oo->type != OSM_WAY) && (r->oo->type != OSM_REL))
    {
-      log_msg(LOG_WARN, "'draw' may be applied to ways only");
+      log_msg(LOG_WARN, "'draw' may be applied to ways or relations only");
       return 1;
    }
 
@@ -769,11 +769,32 @@ int act_draw_ini(smrule_t *r)
 int act_draw(smrule_t *r, osm_obj_t *o)
 {
    struct actDraw *d = r->data;
+   osm_way_t *w;
+   int i;
 
-   if (!d->collect_open && !is_closed_poly((osm_way_t*) o))
+   if (o->type == OSM_WAY)
+   {
+      if (!d->collect_open && !is_closed_poly((osm_way_t*) o))
+         return 0;
+
+      return gather_poly0((osm_way_t*) o, &d->wl);
+   }
+   else if (o->type == OSM_REL)
+   {
+      for (i = 0; i < ((osm_rel_t*) o)->mem_cnt; i++)
+      {
+         if (((osm_rel_t*) o)->mem[i].type != OSM_WAY)
+            continue;
+         if ((w = get_object(OSM_WAY, ((osm_rel_t*) o)->mem[i].id)) == NULL)
+            //FIXME: error message may be output here
+            continue;
+
+         (void) gather_poly0(w, &d->wl);
+      }
       return 0;
-
-   return gather_poly0((osm_way_t*) o, &d->wl);
+   }
+   
+   return 1;
 }
 
 
