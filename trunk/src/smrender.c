@@ -332,6 +332,7 @@ int print_onode(FILE *f, const osm_obj_t *o)
    if ((tm = gmtime(&o->tim)) != NULL)
       strftime(ts, sizeof(ts), "%Y-%m-%dT%H:%M:%SZ", tm);
 
+   // FIXME: 'visible' missing?
    switch (o->type)
    {
       case OSM_NODE:
@@ -341,6 +342,11 @@ int print_onode(FILE *f, const osm_obj_t *o)
 
       case OSM_WAY:
          fprintf(f, "<way id=\"%ld\" version=\"%d\" timestamp=\"%s\" uid=\"%d\">\n",
+               (long) o->id, o->ver, ts, o->uid);
+         break;
+
+      case OSM_REL:
+         fprintf(f, "<relation id=\"%ld\" version=\"%d\" timestamp=\"%s\" uid=\"%d\">\n",
                (long) o->id, o->ver, ts, o->uid);
          break;
 
@@ -363,6 +369,13 @@ int print_onode(FILE *f, const osm_obj_t *o)
          for (i = 0; i < ((osm_way_t*) o)->ref_cnt; i++)
             fprintf(f, "<nd ref=\"%ld\"/>\n", (long) ((osm_way_t*) o)->ref[i]);
          fprintf(f, "</way>\n");
+         break;
+
+      case OSM_REL:
+         for (i = 0; i < ((osm_rel_t*) o)->mem_cnt; i++)
+            fprintf(f, "<member type=\"%s\" id=\"%ld\" role=\"\"/>\n",
+                  ((osm_rel_t*) o)->mem[i].type == OSM_NODE ? "node" : "way", (long) ((osm_rel_t*) o)->mem[i].id);
+         fprintf(f, "</relation>\n");
          break;
    }
 
@@ -397,18 +410,24 @@ int onode_stats(osm_obj_t *o, struct rdata *rd, struct dstats *ds)
 {
    int i;
 
-   if (o->type == OSM_NODE)
+   switch (o->type)
    {
+      case OSM_NODE:
       ds->ncnt++;
       node_stats((osm_node_t*) o, ds);
       if (ds->min_nid > o->id) ds->min_nid = o->id;
       if (ds->max_nid < o->id) ds->max_nid = o->id;
-   }
-   else if (o->type == OSM_WAY)
-   {
+      break;
+
+      case OSM_WAY:
       ds->wcnt++;
       if (ds->min_wid > o->id) ds->min_wid = o->id;
       if (ds->max_wid < o->id) ds->max_wid = o->id;
+      break;
+
+      case OSM_REL:
+      ds->rcnt++;
+      break;
    }
    if ((void*) o > ds->hi_addr)
       ds->hi_addr = o;
@@ -449,6 +468,7 @@ int save_osm(struct rdata *rd, const char *s, bx_node_t *tree)
                  );
       traverse(tree, 0, IDX_NODE, print_tree, rd, f);
       traverse(tree, 0, IDX_WAY, print_tree, rd, f);
+      traverse(tree, 0, IDX_REL, print_tree, rd, f);
       fprintf(f, "</osm>\n");
       fclose(f);
    }
@@ -909,12 +929,15 @@ int main(int argc, char *argv[])
 
    log_msg(LOG_INFO, "gathering stats");
    init_stats(&rd->ds);
+   traverse(rd->obj, 0, IDX_REL, (tree_func_t) onode_stats, rd, &rd->ds);
    traverse(rd->obj, 0, IDX_WAY, (tree_func_t) onode_stats, rd, &rd->ds);
    traverse(rd->obj, 0, IDX_NODE, (tree_func_t) onode_stats, rd, &rd->ds);
    log_msg(LOG_INFO, " ncnt = %ld, min_nid = %ld, max_nid = %ld",
          rd->ds.ncnt, rd->ds.min_nid, rd->ds.max_nid);
    log_msg(LOG_INFO, " wcnt = %ld, min_wid = %ld, max_wid = %ld",
          rd->ds.wcnt, rd->ds.min_wid, rd->ds.max_wid);
+   log_msg(LOG_INFO, " rcnt = %ld",
+         rd->ds.rcnt);
    log_msg(LOG_INFO, " left upper %.2f/%.2f, right bottom %.2f/%.2f",
          rd->ds.lu.lat, rd->ds.lu.lon, rd->ds.rb.lat, rd->ds.rb.lon);
    log_msg(LOG_INFO, " lo_addr = %p, hi_addr = %p", rd->ds.lo_addr, rd->ds.hi_addr);
