@@ -129,7 +129,7 @@ typedef struct { int charmap, flags, hdpi, vdpi; } gdFTStringExtra;
 typedef int (*tree_func_t)(osm_obj_t*, struct rdata*, void*);
 
 // indexes to object tree
-enum {IDX_NODE, IDX_WAY};
+enum {IDX_NODE, IDX_WAY, IDX_REL};
 enum {WHITE, YELLOW, BLACK, BLUE, MAGENTA, BROWN, TRANSPARENT, BGCOLOR, MAX_COLOR};
 enum {LAT, LON};
 enum {DRAW_SOLID, DRAW_DASHED, DRAW_DOTTED, DRAW_TRANSPARENT};
@@ -243,7 +243,7 @@ struct dstats
 {
    struct coord lu;  // left upper
    struct coord rb;  // right bottom
-   long ncnt, wcnt;
+   long ncnt, wcnt, rcnt;
    int64_t min_nid;
    int64_t max_nid;
    int64_t min_wid;

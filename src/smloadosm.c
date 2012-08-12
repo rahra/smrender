@@ -109,15 +109,15 @@ int read_osm_file(hpx_ctrl_t *ctl, bx_node_t **tree, struct filter *fi)
 {
    hpx_tag_t *tag;
    bstring_t b;
-   int t = 0, e, i, j, rcnt;
+   int t = 0, e, i, j, rcnt, mcnt;
    osm_storage_t o;
    osm_obj_t *obj;
-   //struct onode *ond;
    hpx_tree_t *tlist = NULL;
    bx_node_t *tr;
    int64_t *ref;
    int64_t nid = MIN_ID + 1;
    time_t tim;
+   struct rmember *mem;
 
    if (hpx_tree_resize(&tlist, 0) == -1)
       perror("hpx_tree_resize"), exit(EXIT_FAILURE);
@@ -148,6 +148,8 @@ int read_osm_file(hpx_ctrl_t *ctl, bx_node_t **tree, struct filter *fi)
             t = OSM_NODE;
          else if (!bs_cmp(tag->tag, "way"))
             t = OSM_WAY;
+         else if (!bs_cmp(tag->tag, "relation"))
+            t = OSM_REL;
          else
             t = 0;
 
@@ -211,7 +213,13 @@ int read_osm_file(hpx_ctrl_t *ctl, bx_node_t **tree, struct filter *fi)
                      break;
 
                   case OSM_WAY:
+                     log_msg(LOG_WARN, "single <way/>?");
                      obj = (osm_obj_t*) malloc_way(0, 0);
+                     break;
+
+                  case OSM_REL:
+                     log_msg(LOG_WARN, "single <relation/>?");
+                     obj = (osm_obj_t*) malloc_rel(0, 0);
                      break;
                      
                   default:
@@ -237,16 +245,18 @@ int read_osm_file(hpx_ctrl_t *ctl, bx_node_t **tree, struct filter *fi)
             }
             else if (tag->type == HPX_CLOSE)
             {
-               if ((o.o.type != OSM_NODE) && (o.o.type != OSM_WAY))
+               if ((o.o.type != OSM_NODE) && (o.o.type != OSM_WAY) && (o.o.type != OSM_REL))
                   continue;
 
-               // count 'nd' and 'tag' tags
+               // count 'nd', 'tag', and 'member' tags
                for (i = 0; i < tlist->nsub; i++)
                {
                   if (!bs_cmp(tlist->subtag[i]->tag->tag, "tag"))
                      o.o.tag_cnt++;
                   else if (!bs_cmp(tlist->subtag[i]->tag->tag, "nd"))
                      o.w.ref_cnt++;
+                  else if (!bs_cmp(tlist->subtag[i]->tag->tag, "member"))
+                     o.r.mem_cnt++;
                }
 
                switch (o.o.type)
@@ -258,7 +268,11 @@ int read_osm_file(hpx_ctrl_t *ctl, bx_node_t **tree, struct filter *fi)
                   case OSM_WAY:
                      obj = (osm_obj_t*) malloc_way(o.o.tag_cnt, o.w.ref_cnt);
                      break;
-                     
+
+                  case OSM_REL:
+                     obj = (osm_obj_t*) malloc_rel(o.o.tag_cnt, o.r.mem_cnt);
+                     break;
+ 
                   default:
                      log_msg(LOG_ERR, "type %d no implemented yet", o.o.type);
                      clear_ostor(&o);
@@ -268,7 +282,12 @@ int read_osm_file(hpx_ctrl_t *ctl, bx_node_t **tree, struct filter *fi)
 
                assign_o(obj, (osm_obj_t*) &o);
 
-               for (i = 0, ref = ((osm_way_t*) obj)->ref, j = 0, rcnt = 0; i < tlist->nsub; i++)
+               ref = ((osm_way_t*) obj)->ref;
+               rcnt = 0;
+               mem = ((osm_rel_t*) obj)->mem;
+               mcnt = 0;
+
+               for (i = 0, j = 0; i < tlist->nsub; i++)
                {
                   if (!bs_cmp(tlist->subtag[i]->tag->tag, "tag"))
                   {
@@ -280,6 +299,11 @@ int read_osm_file(hpx_ctrl_t *ctl, bx_node_t **tree, struct filter *fi)
                   }
                   else if (!bs_cmp(tlist->subtag[i]->tag->tag, "nd"))
                   {
+                     if (o.o.type != OSM_WAY)
+                     {
+                        log_msg(LOG_WARN, "<nd> only allowed in <way>");
+                        continue;
+                     }
                      if (get_value("ref", tlist->subtag[i]->tag, &b) != -1)
                      {
                         *ref = bs_tol(b);
@@ -291,9 +315,37 @@ int read_osm_file(hpx_ctrl_t *ctl, bx_node_t **tree, struct filter *fi)
                         rcnt++;
                      }
                   }
+                  else if (!bs_cmp(tlist->subtag[i]->tag->tag, "member"))
+                  {
+                     if (o.o.type != OSM_REL)
+                     {
+                        log_msg(LOG_WARN, "<member> only allowed in <relation>");
+                        continue;
+                     }
+                     if (get_value("type", tlist->subtag[i]->tag, &b) != -1)
+                     {
+                        if (!bs_cmp(b, "node"))
+                           mem->type = OSM_NODE;
+                        else if (!bs_cmp(b, "way"))
+                           mem->type = OSM_WAY;
+                        else
+                           log_msg(LOG_WARN, "relation type may only be 'node' or 'way'");
+                     }
+                     if (get_value("ref", tlist->subtag[i]->tag, &b) != -1)
+                     {
+                        mem->id = bs_tol(b);
+                     }
+                     // FIXME: 'role' not parsed yet
+                     if (mem->type)
+                     {
+                        mem++;
+                        mcnt++;
+                     }
+                  }
                }
 
 #ifdef READ_FILTER
+               //FIXME: read filter does not take care on relations!
                if ((fi != NULL) && (o.o.type == OSM_WAY) && (rcnt == 0))
                {
                   free_obj(obj);
@@ -303,6 +355,8 @@ int read_osm_file(hpx_ctrl_t *ctl, bx_node_t **tree, struct filter *fi)
                {
                   if (o.o.type == OSM_WAY)
                      ((osm_way_t*) obj)->ref_cnt = rcnt;
+                  else if (o.o.type == OSM_REL)
+                     ((osm_rel_t*) obj)->mem_cnt = mcnt;
                   tr = bx_add_node(tree, o.o.id);
                   if (tr->next[o.o.type - 1] != NULL)
                   {
@@ -321,10 +375,10 @@ int read_osm_file(hpx_ctrl_t *ctl, bx_node_t **tree, struct filter *fi)
             continue;
          } //if (!bs_cmp(tag->tag, "node"))
 
-         if ((o.o.type != OSM_NODE) && (o.o.type != OSM_WAY))
+         if ((o.o.type != OSM_NODE) && (o.o.type != OSM_WAY) && (o.o.type != OSM_REL))
             continue;
 
-         if (!bs_cmp(tag->tag, "tag") || !bs_cmp(tag->tag, "nd"))
+         if (!bs_cmp(tag->tag, "tag") || !bs_cmp(tag->tag, "nd") || !bs_cmp(tag->tag, "member"))
          {
             tlist->nsub++;
             if (tlist->nsub >= tlist->msub)

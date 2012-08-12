@@ -137,11 +137,16 @@ int get_value(const char *k, hpx_tag_t *tag, bstring_t *b)
 void free_obj(osm_obj_t *o)
 {
    free(o->otag);
-   if (o->type == OSM_WAY)
-      free(((osm_way_t*) o)->ref);
-   //FIXME: osm_rel_t not implemented yet
-   //
+   switch (o->type)
+   {
+      case OSM_WAY:
+         free(((osm_way_t*) o)->ref);
+         break;
 
+      case OSM_REL:
+         free(((osm_rel_t*) o)->mem);
+         break;
+   }
    free(o);
 }
 
@@ -187,5 +192,21 @@ osm_way_t *malloc_way(short tag_cnt, int ref_cnt)
    w->ref_cnt = ref_cnt;
    mem_usage_ += sizeof(osm_way_t);
    return w;
+}
+
+osm_rel_t *malloc_rel(short tag_cnt, short mem_cnt)
+{
+   osm_rel_t *r;
+
+   if ((r = calloc(1, sizeof(osm_rel_t))) == NULL)
+      log_msg(LOG_ERR, "could not malloc_rel(): %s", strerror(errno)),
+         exit(EXIT_FAILURE);
+   r->obj.type = OSM_REL;
+   r->obj.otag = malloc_mem(sizeof(struct otag), tag_cnt);
+   r->obj.tag_cnt = tag_cnt;
+   r->mem = malloc_mem(sizeof(struct rmember), mem_cnt);
+   r->mem_cnt = mem_cnt;
+   mem_usage_ += sizeof(osm_rel_t);
+   return r;
 }
 
