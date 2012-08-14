@@ -24,9 +24,6 @@
 #include <errno.h>
 
 #include "smrender_dev.h"
-//#include "smrparse.h"
-//#include "smath.h"
-//#include "bxtree.h"
 
 
 // initial number of ref array
@@ -40,7 +37,6 @@ struct corner_point
    osm_node_t *n;
 };
 
-
 struct poly
 {
    struct poly *next, *prev;  // cat_poly:
@@ -48,9 +44,8 @@ struct poly
    short del;                 // cat_poly: 1 if element should be removed from list
    short open;                // cat_poly: 1 if element is connected but still open way
    double area;               // gen_layer: area of polygon
-   short cw;                 // 1 if polygon is clockwise, otherwise 0
+   short cw;                  // 1 if polygon is clockwise, otherwise 0
 };
-
 
 struct wlist
 {
@@ -58,6 +53,11 @@ struct wlist
    struct poly ref[];
 };
 
+struct catpoly
+{
+   short ign_incomplete;      // 1 if incomplete "closed" polys should be ignored
+   struct wlist *wl;          // pointer to wlist
+};
 
 struct pdef
 {

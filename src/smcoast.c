@@ -58,13 +58,6 @@ struct refine
 
 static struct corner_point co_pt_[4];
 static struct coord center_;
-//static struct wlist *wl_ = NULL;
-//static struct orule *rl_ = NULL;
-//static struct actDraw draw_;
-//static int collect_open_;
-//static int directional_;
-//static double deviation_;
-//static int iteration_;
 
 
 /*! Check if way is a closed polygon and is an area (i.e. it has at least 4 points)
@@ -89,13 +82,6 @@ int is_closed_poly(const osm_way_t *w)
  */
 int gather_poly0(osm_way_t *w, struct wlist **wl)
 {
-   /*
-   // check if it is an open polygon
-   if (w->ref_cnt < 2)
-      return 0;
-   if (w->ref[0] == w->ref[w->ref_cnt - 1])
-      return 0;
-*/
    // check if there's enough memory
    if ((*wl)->ref_cnt >= (*wl)->max_ref)
    {
@@ -500,34 +486,48 @@ struct wlist *init_wlist(void)
 
 int act_cat_poly_ini(smrule_t *r)
 {
+   double d;
+
    // just to be on the safe side
    if (r->oo->type != OSM_WAY)
       return -1;
 
-   r->data = init_wlist();
+   if ((r->data = malloc(sizeof(struct catpoly))) == NULL)
+   {
+      log_msg(LOG_ERR, "malloc failed in act_cat_poly_ini(): %s", strerror(errno));
+      return -1;
+   }
+
+   ((struct catpoly*) r->data)->wl = init_wlist();
+   ((struct catpoly*) r->data)->ign_incomplete = 0;
+
+   if (get_param("ign_incomplete", &d, r->act) != NULL)
+      if (d != 0)
+         ((struct catpoly*) r->data)->ign_incomplete = 1;
+
+   log_msg(LOG_DEBUG, "ign_incomplete = %d", ((struct catpoly*) r->data)->ign_incomplete);
+
    return 0;
 }
 
 
 int act_cat_poly(smrule_t *r, osm_obj_t *o)
 {
-   // This construction is used because of strict aliasing rule.
-   union wlu { struct wlist **wl; void **p; } wlu;
-
    // check if it is an open polygon
    if (((osm_way_t*) o)->ref_cnt < 2)
       return 0;
    if (((osm_way_t*) o)->ref[0] == ((osm_way_t*) o)->ref[((osm_way_t*) o)->ref_cnt - 1])
       return 0;
 
-   wlu.p = &r->data;
-   return gather_poly0((osm_way_t*) o, wlu.wl);
+   return gather_poly0((osm_way_t*) o, &((struct catpoly*)r->data)->wl);
+
 }
 
 
 int act_cat_poly_fini(smrule_t *r)
 {
-   struct wlist *wl = r->data;
+   struct catpoly *cp = r->data;
+   struct wlist *wl = cp->wl;
    struct pdef *pd;
    int i, ocnt;
 
@@ -537,24 +537,30 @@ int act_cat_poly_fini(smrule_t *r)
    ocnt = loop_detect(r->oo, wl);
    free(pd);
 
-   if ((pd = calloc(ocnt << 1, sizeof(struct pdef))) == NULL)
-      log_msg(LOG_EMERG, "cat_poly()/calloc(): %s", strerror(errno)), exit(EXIT_FAILURE);
-
-   poly_get_brg(pd, wl, ocnt);
-
-   do
+   if (!cp->ign_incomplete)
    {
-      log_msg(LOG_DEBUG, "sorting pdef, ocnt = %d", ocnt << 1);
-      qsort(pd, ocnt << 1, sizeof(struct pdef), (int(*)(const void *, const void *)) compare_pdef);
+      log_msg(LOG_DEBUG, "connecting incomplete polygons loops");
+      if ((pd = calloc(ocnt << 1, sizeof(struct pdef))) == NULL)
+         log_msg(LOG_EMERG, "cat_poly()/calloc(): %s", strerror(errno)), exit(EXIT_FAILURE);
 
-      for (i = 0; i < ocnt << 1; i++)
-         if (wl->ref[pd[i].wl_index].open)
-            log_debug("%d: wl_index = %d, pn = %d, wid = %ld, brg = %f", i, pd[i].wl_index, pd[i].pn, wl->ref[pd[i].wl_index].w->obj.id, pd[i].pc.bearing);
+      poly_get_brg(pd, wl, ocnt);
+
+      do
+      {
+         log_msg(LOG_DEBUG, "sorting pdef, ocnt = %d", ocnt << 1);
+         qsort(pd, ocnt << 1, sizeof(struct pdef), (int(*)(const void *, const void *)) compare_pdef);
+
+         for (i = 0; i < ocnt << 1; i++)
+            if (wl->ref[pd[i].wl_index].open)
+               log_debug("%d: wl_index = %d, pn = %d, wid = %ld, brg = %f", i, pd[i].wl_index, pd[i].pn, wl->ref[pd[i].wl_index].w->obj.id, pd[i].pc.bearing);
+      }
+      while (connect_open(pd, wl, ocnt << 1));
+
+      free(pd);
    }
-   while (connect_open(pd, wl, ocnt << 1));
 
-   free(pd);
    free(wl);
+   free(r->data);
    r->data = NULL;
 
    return 0;
@@ -699,7 +705,13 @@ void circle_calc(osm_node_t **n, osm_node_t **s, double deviation)
    {
       p[i].lat = (s[i]->lat + s[i + 1]->lat) / 2;
       p[i].lon = (s[i]->lon + s[i + 1]->lon) / 2;
-      k[i] = -(s[i + 1]->lon - s[i]->lon) / (s[i + 1]->lat - s[i]->lat);
+
+      // prevent DIV0
+      if (s[i + 1]->lat - s[i]->lat == 0.0)
+         k[i] = 0.0;
+      else
+         k[i] = -(s[i + 1]->lon - s[i]->lon) / (s[i + 1]->lat - s[i]->lat);
+
       d[i] = p[i].lat - k[i] * p[i].lon;
    }
 
@@ -730,6 +742,12 @@ int refine_poly0(osm_way_t *w, double deviation)
    osm_node_t *n[w->ref_cnt - 1], *s[w->ref_cnt];
    int64_t *ref;
    int i;
+
+   if (w->ref_cnt < 3)
+   {
+      log_msg(LOG_DEBUG, "refine_poly needs way with at least 3 nodes");
+      return 1;
+   }
 
    // get existing nodes
    for (i = 0; i < w->ref_cnt; i++)

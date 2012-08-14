@@ -55,6 +55,7 @@ int act_out_ini(smrule_t *r)
 }
 
 
+// FIXME: act_out violates the OSM rule of object order in an OSM file: nodes before ways before relations!
 int act_out(smrule_t *r, osm_obj_t *o)
 {
    osm_node_t *n;
