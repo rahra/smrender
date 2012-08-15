@@ -963,11 +963,11 @@ int main(int argc, char *argv[])
       log_msg(LOG_INFO, "rendering pass %d (ver = %d)", n, rstats.ver[n]);
       o.ver = rstats.ver[n];
 
-      // FIXME: order way -> rel -> node?
-      log_msg(LOG_INFO, " ways...");
-      traverse(rd->rules, 0, IDX_WAY, (tree_func_t) apply_smrules, rd, &o);
+      // FIXME: order rel -> way -> node?
       log_msg(LOG_INFO, " relations...");
       traverse(rd->rules, 0, IDX_REL, (tree_func_t) apply_smrules, rd, &o);
+      log_msg(LOG_INFO, " ways...");
+      traverse(rd->rules, 0, IDX_WAY, (tree_func_t) apply_smrules, rd, &o);
       log_msg(LOG_INFO, " nodes...");
       traverse(rd->rules, 0, IDX_NODE, (tree_func_t) apply_smrules, rd, &o);
    }
