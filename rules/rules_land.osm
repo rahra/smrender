@@ -160,5 +160,10 @@
       <tag k='_action_' v='draw:bcolor=black'/>
    </way>
 
+   <relation>
+      <tag k='route' v='horse'/>
+      <tag k='_action_' v='draw:color=#ff0000;width=1.5'/>
+   </relation>
+
 </osm>
 
