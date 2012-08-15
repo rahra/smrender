@@ -582,6 +582,7 @@ int cat_poly_fini(smrule_t *r)
 int cat_relways(smrule_t *r, osm_obj_t *o)
 {
    osm_way_t *w;
+   smrule_t tr;
    int i;
 
    log_msg(LOG_DEBUG, "cat_relways(id = %ld)", (long) o->id);
@@ -597,7 +598,10 @@ int cat_relways(smrule_t *r, osm_obj_t *o)
       }
       cat_poly(r, (osm_obj_t*) w);
    }
-   cat_poly_fini(r);
+   // create temporary rule for copying tags of the relation object to new ways.
+   memcpy(&tr, r, sizeof(tr));
+   tr.oo = o;
+   cat_poly_fini(&tr);
    return 0;
 }
 
