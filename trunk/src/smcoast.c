@@ -354,9 +354,10 @@ void node_brg(struct pcoord *pc, struct coord *src, int64_t nid)
  *  @param pd Pointer to list of end points of type struct pdef.
  *  @param wl Pointer to list of open ways.
  *  @param ocnt number of end points within pd. Obviously, ocnt MUST be an even number.
+ *  @param no_corner Set to 1 if no corner points should be inserted, otherwise set to 0.
  *  @return 0 On success, -1 if connect_open() should be recalled with pd being resorted.
  */
-int connect_open(struct pdef *pd, struct wlist *wl, int ocnt)
+int connect_open(struct pdef *pd, struct wlist *wl, int ocnt, short no_corner)
 {
    int i, j, k, l;
    int64_t *ref;
@@ -380,7 +381,7 @@ int connect_open(struct pdef *pd, struct wlist *wl, int ocnt)
             continue;
          }
 
-         //if (pd[i].wl_index == pd[j % ocnt].wl_index)
+         if (!no_corner)
          {
             // find next corner point for i
             for (k = 0; k < 4; k++)
@@ -405,56 +406,55 @@ int connect_open(struct pdef *pd, struct wlist *wl, int ocnt)
                wl->ref[pd[i].wl_index].w->ref_cnt++;
                log_debug("added corner point %d (id = %ld)", k % 4, co_pt[k % 4].n->obj.id);
             }
+         } //if (!no_corner)
 
-            // if start and end point belong to same way close
-            if (pd[i].wl_index == pd[j % ocnt].wl_index)
-            {
-               if ((ref = realloc(wl->ref[pd[i].wl_index].w->ref, sizeof(int64_t) * (wl->ref[pd[i].wl_index].w->ref_cnt + 1))) == NULL)
-                  log_msg(LOG_ERR, "realloc() failed: %s", strerror(errno)), exit(EXIT_FAILURE);
+         // if start and end point belong to same way close
+         if (pd[i].wl_index == pd[j % ocnt].wl_index)
+         {
+            if ((ref = realloc(wl->ref[pd[i].wl_index].w->ref, sizeof(int64_t) * (wl->ref[pd[i].wl_index].w->ref_cnt + 1))) == NULL)
+               log_msg(LOG_ERR, "realloc() failed: %s", strerror(errno)), exit(EXIT_FAILURE);
 
-               //memmove(&ref[1], &ref[0], sizeof(int64_t) * wl->ref[pd[i].wl_index].w->ref_cnt); 
-               ref[wl->ref[pd[i].wl_index].w->ref_cnt] = ref[0];
-               wl->ref[pd[i].wl_index].w->ref = ref;
-               wl->ref[pd[i].wl_index].w->ref_cnt++;
-               wl->ref[pd[i].wl_index].open = 0;
-               log_debug("way %ld (wl_index = %d) is now closed", wl->ref[pd[i].wl_index].w->obj.id, pd[i].wl_index);
-            }
-            else
-            {
-               log_debug("pd[%d].wl_index(%d) != pd[%d].wl_index(%d)", i, pd[i].wl_index, j % ocnt, pd[j % ocnt].wl_index);
-               if ((ref = realloc(wl->ref[pd[i].wl_index].w->ref, sizeof(int64_t) * (wl->ref[pd[i].wl_index].w->ref_cnt + wl->ref[pd[j % ocnt].wl_index].w->ref_cnt))) == NULL)
-                  log_msg(LOG_ERR, "realloc() failed: %s", strerror(errno)), exit(EXIT_FAILURE);
+            ref[wl->ref[pd[i].wl_index].w->ref_cnt] = ref[0];
+            wl->ref[pd[i].wl_index].w->ref = ref;
+            wl->ref[pd[i].wl_index].w->ref_cnt++;
+            wl->ref[pd[i].wl_index].open = 0;
+            log_debug("way %ld (wl_index = %d) is now closed", wl->ref[pd[i].wl_index].w->obj.id, pd[i].wl_index);
+         }
+         else
+         {
+            log_debug("pd[%d].wl_index(%d) != pd[%d].wl_index(%d)", i, pd[i].wl_index, j % ocnt, pd[j % ocnt].wl_index);
+            if ((ref = realloc(wl->ref[pd[i].wl_index].w->ref, sizeof(int64_t) * (wl->ref[pd[i].wl_index].w->ref_cnt + wl->ref[pd[j % ocnt].wl_index].w->ref_cnt))) == NULL)
+               log_msg(LOG_ERR, "realloc() failed: %s", strerror(errno)), exit(EXIT_FAILURE);
 
-               // move refs from i^th way back
-               memmove(&ref[wl->ref[pd[j % ocnt].wl_index].w->ref_cnt], &ref[0], sizeof(int64_t) * wl->ref[pd[i].wl_index].w->ref_cnt); 
-               // copy refs from j^th way to the beginning of i^th way
-               memcpy(&ref[0], wl->ref[pd[j % ocnt].wl_index].w->ref, sizeof(int64_t) * wl->ref[pd[j % ocnt].wl_index].w->ref_cnt);
-               wl->ref[pd[i].wl_index].w->ref = ref;
-               wl->ref[pd[i].wl_index].w->ref_cnt += wl->ref[pd[j % ocnt].wl_index].w->ref_cnt;
-               // (pseudo) close j^th way
-               // FIXME: onode and its refs should be free()'d and removed from tree
-               wl->ref[pd[j % ocnt].wl_index].open = 0;
-               // find end-point of i^th way
-               for (k = 0; k < ocnt; k++)
-                  if ((pd[i].wl_index == pd[k].wl_index) && pd[k].pn)
-                  {
-                     // set point index of new end point of i^th way
-                     pd[k % ocnt].pn = wl->ref[pd[i].wl_index].w->ref_cnt - 1;
-                     break;
-                  }
-               // find start-point of j^th way
-               for (k = 0; k < ocnt; k++)
-                  if ((pd[j % ocnt].wl_index == pd[k].wl_index) && !pd[k].pn)
-                  {
-                     // set new start-point of i to start-point of j
-                     pd[i].pc = pd[k].pc;
-                     break;
-                  }
-               log_debug("way %ld (wl_index = %d) marked as closed, resorting pdef", wl->ref[pd[j % ocnt].wl_index].w->obj.id, pd[j % ocnt].wl_index);
-               return -1;
-            }
-            break;
-         } //if (pd[i].wl_index == pd[j % ocnt].wl_index)
+            // move refs from i^th way back
+            memmove(&ref[wl->ref[pd[j % ocnt].wl_index].w->ref_cnt], &ref[0], sizeof(int64_t) * wl->ref[pd[i].wl_index].w->ref_cnt); 
+            // copy refs from j^th way to the beginning of i^th way
+            memcpy(&ref[0], wl->ref[pd[j % ocnt].wl_index].w->ref, sizeof(int64_t) * wl->ref[pd[j % ocnt].wl_index].w->ref_cnt);
+            wl->ref[pd[i].wl_index].w->ref = ref;
+            wl->ref[pd[i].wl_index].w->ref_cnt += wl->ref[pd[j % ocnt].wl_index].w->ref_cnt;
+            // (pseudo) close j^th way
+            // FIXME: onode and its refs should be free()'d and removed from tree
+            wl->ref[pd[j % ocnt].wl_index].open = 0;
+            // find end-point of i^th way
+            for (k = 0; k < ocnt; k++)
+               if ((pd[i].wl_index == pd[k].wl_index) && pd[k].pn)
+               {
+                  // set point index of new end point of i^th way
+                  pd[k % ocnt].pn = wl->ref[pd[i].wl_index].w->ref_cnt - 1;
+                  break;
+               }
+            // find start-point of j^th way
+            for (k = 0; k < ocnt; k++)
+               if ((pd[j % ocnt].wl_index == pd[k].wl_index) && !pd[k].pn)
+               {
+                  // set new start-point of i to start-point of j
+                  pd[i].pc = pd[k].pc;
+                  break;
+               }
+            log_debug("way %ld (wl_index = %d) marked as closed, resorting pdef", wl->ref[pd[j % ocnt].wl_index].w->obj.id, pd[j % ocnt].wl_index);
+            return -1;
+         }
+         break;
       }
    }
    return 0;
@@ -484,34 +484,49 @@ struct wlist *init_wlist(void)
 }
 
 
-int act_cat_poly_ini(smrule_t *r)
+int cat_poly_ini(smrule_t *r)
 {
    double d;
 
-   // just to be on the safe side
-   if (r->oo->type != OSM_WAY)
-      return -1;
-
-   if ((r->data = malloc(sizeof(struct catpoly))) == NULL)
+   if ((r->data = calloc(1, sizeof(struct catpoly))) == NULL)
    {
-      log_msg(LOG_ERR, "malloc failed in act_cat_poly_ini(): %s", strerror(errno));
+      log_msg(LOG_ERR, "calloc failed in act_cat_poly_ini(): %s", strerror(errno));
       return -1;
    }
-
-   ((struct catpoly*) r->data)->wl = init_wlist();
-   ((struct catpoly*) r->data)->ign_incomplete = 0;
 
    if (get_param("ign_incomplete", &d, r->act) != NULL)
       if (d != 0)
          ((struct catpoly*) r->data)->ign_incomplete = 1;
+   if (get_param("no_corner", &d, r->act) != NULL)
+      if (d != 0)
+         ((struct catpoly*) r->data)->no_corner = 1;
 
-   log_msg(LOG_DEBUG, "ign_incomplete = %d", ((struct catpoly*) r->data)->ign_incomplete);
+   log_msg(LOG_DEBUG, "ign_incomplete = %d, no_corner = %d", 
+         ((struct catpoly*) r->data)->ign_incomplete,
+         ((struct catpoly*) r->data)->no_corner);
 
    return 0;
 }
 
 
-int act_cat_poly(smrule_t *r, osm_obj_t *o)
+int act_cat_poly_ini(smrule_t *r)
+{
+   // just to be on the safe side
+   if ((r->oo->type != OSM_WAY) && (r->oo->type != OSM_REL))
+   {
+      log_msg(LOG_ERR, "cat_poly() is only allowed on ways and relations");
+      return -1;
+   }
+
+   cat_poly_ini(r);
+   if (r->oo->type == OSM_WAY)
+      ((struct catpoly*) r->data)->wl = init_wlist();
+
+   return 0;
+}
+
+
+int cat_poly(smrule_t *r, osm_obj_t *o)
 {
    // check if it is an open polygon
    if (((osm_way_t*) o)->ref_cnt < 2)
@@ -524,7 +539,7 @@ int act_cat_poly(smrule_t *r, osm_obj_t *o)
 }
 
 
-int act_cat_poly_fini(smrule_t *r)
+int cat_poly_fini(smrule_t *r)
 {
    struct catpoly *cp = r->data;
    struct wlist *wl = cp->wl;
@@ -554,15 +569,60 @@ int act_cat_poly_fini(smrule_t *r)
             if (wl->ref[pd[i].wl_index].open)
                log_debug("%d: wl_index = %d, pn = %d, wid = %ld, brg = %f", i, pd[i].wl_index, pd[i].pn, wl->ref[pd[i].wl_index].w->obj.id, pd[i].pc.bearing);
       }
-      while (connect_open(pd, wl, ocnt << 1));
+      while (connect_open(pd, wl, ocnt << 1, cp->no_corner));
 
       free(pd);
    }
 
    free(wl);
+   return 0;
+}
+
+
+int cat_relways(smrule_t *r, osm_obj_t *o)
+{
+   osm_way_t *w;
+   int i;
+
+   log_msg(LOG_DEBUG, "cat_relways(id = %ld)", (long) o->id);
+   ((struct catpoly*) r->data)->wl = init_wlist();
+   for (i = 0; i < ((osm_rel_t*) o)->mem_cnt; i++)
+   {
+      if (((osm_rel_t*) o)->mem[i].type != OSM_WAY)
+         continue;
+      if ((w = get_object(OSM_WAY, ((osm_rel_t*) o)->mem[i].id)) == NULL)
+      {
+         log_msg(LOG_ERR, "way %ld of relation %ld does not exist", (long) ((osm_rel_t*) o)->mem[i].id, (long) o->id);
+         continue;
+      }
+      cat_poly(r, (osm_obj_t*) w);
+   }
+   cat_poly_fini(r);
+   return 0;
+}
+
+
+int act_cat_poly(smrule_t *r, osm_obj_t *o)
+{
+   switch (r->oo->type)
+   {
+      case OSM_WAY:
+         return cat_poly(r, o);
+
+      case OSM_REL:
+         return cat_relways(r, o);
+   }
+   return -1;
+}
+
+
+
+int act_cat_poly_fini(smrule_t *r)
+{
+   if (r->oo->type == OSM_WAY)
+      cat_poly_fini(r);
    free(r->data);
    r->data = NULL;
-
    return 0;
 }
 
