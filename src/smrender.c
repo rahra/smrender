@@ -27,6 +27,8 @@
 
 #include <stdio.h>
 #include <stdint.h>
+#include <stdlib.h>
+#include <ctype.h>
 #include <unistd.h>
 #include <string.h>
 #include <time.h>
@@ -41,8 +43,106 @@
 #include "smrender_dev.h"
 
 
+#define COORD_LAT 0
+#define COORD_LON 1
+
+#define ISNORTH(x) (strchr("Nn", (x)) != NULL)
+#define ISSOUTH(x) (strchr("Ss", (x)) != NULL)
+#define ISEAST(x) (strchr("EeOo", (x)) != NULL)
+#define ISWEST(x) (strchr("Ww", (x)) != NULL)
+#define ISLAT(x) (ISNORTH(x) || ISSOUTH(x))
+#define ISLON(x) (ISEAST(x) || ISWEST(x))
+
+
 static struct rdata rd_;
 static volatile sig_atomic_t int_ = 0;
+
+
+/*! This function parse a coordinate string of format "[-]dd.ddd[NESW]" or
+ * "[-]dd[NESW](dd.ddd)?" into a correctly signed double value. The function
+ * returns either COORD_LAT (0) if the string contains a latitude coordinate,
+ * or COORD_LON (1) if the string contains a longitude coordinate, or -1
+ * otherwise.
+ * @param s Pointer to string.
+ * @param a Pointer to double variable which will receive the converted value.
+ * @return 0 for latitude, 1 for longitude, or -1 otherwise. In any case a will
+ * be set to 0.0.
+ */
+int parse_coord(const char *s, double *a)
+{
+   double e, f, n = 1.0;
+   int r;
+
+   for (; isspace(*s); s++);
+   if (*s == '-')
+   {
+      s++;
+      n = -1.0;
+   }
+   for (*a = 0.0; isdigit(*s); s++)
+   {
+      *a *= 10.0;
+      *a += *s - '0';
+   }
+
+   for (; isspace(*s); s++);
+   if (*s == '\0')
+   {
+      *a *= n;
+      return -1;
+   }
+
+   if (ISLAT(*s))
+   {
+      r = COORD_LAT;
+      if (ISSOUTH(*s)) n *= -1.0;
+   }
+   else if (ISLON(*s))
+   {
+      r = COORD_LON;
+      if (ISWEST(*s)) n *= -1.0;
+   }
+   else if (*s == '.')
+   {
+      s++;
+      for (e = 1.0, f = 0.0; isdigit(*s); e *= 10.0, s++)
+      {
+         f *= 10.0;
+         f += *s - '0';
+      }
+      *a += f / e;
+      *a *= n;
+
+      for (; isspace(*s); s++);
+      if (*s == '\0') return -1;
+
+      if (ISLAT(*s))
+      {
+         if (ISSOUTH(*s)) *a *= -1.0;
+         return COORD_LAT;
+      }
+      else if (ISLON(*s))
+      {
+         if (ISWEST(*s)) *a *= -1.0;
+         return COORD_LON;
+      }
+      else
+         return -1;
+   }
+   else
+   {
+      *a *= n;
+      return -1;
+   }
+
+   s++;
+   for (; isspace(*s); s++);
+   f = atof(s);
+   *a += f / 60.0;
+   *a *= n;
+
+   return r;
+}
 
 
 struct rdata *get_rdata(void)
@@ -795,26 +895,38 @@ int main(int argc, char *argv[])
    }
    else
    {
-   if ((s = strtok(argv[optind], ":")) == NULL)
-      log_msg(LOG_ERR, "latitude paramter missing"), exit(EXIT_FAILURE);
-   rd->mean_lat = atof(s);
-   if ((s = strtok(NULL, ":")) == NULL)
-      log_msg(LOG_ERR, "longitude paramter missing"), exit(EXIT_FAILURE);
-   rd->mean_lon = atof(s);
-   if ((s = strtok(NULL, ":")) == NULL)
-      log_msg(LOG_ERR, "size parameter missing"), exit(EXIT_FAILURE);
+      if ((s = strtok(argv[optind], ":")) == NULL)
+         log_msg(LOG_ERR, "latitude paramter missing"), exit(EXIT_FAILURE);
 
-   if ((param = atof(s)) <= 0)
-      log_msg(LOG_ERR, "illegal size argument for"), exit(EXIT_FAILURE);
+      n = parse_coord(s, &param);
+      if (n == COORD_LON)
+         rd->mean_lon = param;
+      else
+         rd->mean_lat = param;
+
+      if ((s = strtok(NULL, ":")) == NULL)
+         log_msg(LOG_ERR, "longitude paramter missing"), exit(EXIT_FAILURE);
+
+      n = parse_coord(s, &param);
+      if (n == COORD_LAT)
+         rd->mean_lat = param;
+      else
+         rd->mean_lon = param;
+
+      if ((s = strtok(NULL, ":")) == NULL)
+         log_msg(LOG_ERR, "size parameter missing"), exit(EXIT_FAILURE);
+
+      if ((param = atof(s)) <= 0)
+         log_msg(LOG_ERR, "illegal size argument for"), exit(EXIT_FAILURE);
  
-   if (isdigit((unsigned) s[strlen(s) - 1]) || (s[strlen(s) - 1] == '.'))
-      rd->scale = param;
-   else if (s[strlen(s) - 1] == 'm')
-      rd->mean_lat_len = param / 60;
-   else if (s[strlen(s) - 1] == 'd')
-      rd->wc = param;
-   else
-      log_msg(LOG_ERR, "illegal size parameter"), exit(EXIT_FAILURE);
+      if (isdigit((unsigned) s[strlen(s) - 1]) || (s[strlen(s) - 1] == '.'))
+         rd->scale = param;
+      else if (s[strlen(s) - 1] == 'm')
+         rd->mean_lat_len = param / 60;
+      else if (s[strlen(s) - 1] == 'd')
+         rd->wc = param;
+      else
+         log_msg(LOG_ERR, "illegal size parameter"), exit(EXIT_FAILURE);
    }
  
    install_sigusr1();
