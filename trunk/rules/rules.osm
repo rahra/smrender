@@ -310,5 +310,10 @@
       <tag k='_action_' v='cap:font=sans-serif:bold;size=2.5;key=*name'/>
       <tag k='place' v='/island|islet/'/>
    </way>
+   <relation>
+      <tag k='place' v='island'/>
+      <tag k='type' v='multipolygon'/>
+      <tag k='_action_' v='cat_poly:no_corner=1'/>
+   </relation>
 </osm>
 
