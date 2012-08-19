@@ -34,38 +34,10 @@
 #include "bxtree.h"
 #include "smath.h"
 
-#ifndef HAVE_GD
-// this defines macros if smrender is compiled without libgd
-typedef int gdImage;
-typedef struct { int x, y; } gdPoint;
-typedef struct { int charmap, flags, hdpi, vdpi; } gdFTStringExtra;
-#define gdFTEX_RESOLUTION 0
-#define gdFTEX_CHARMAP 0
-#define gdFTEX_Unicode 0
-#define gdTransparent 0
-#define gdImageColorResolve(a, b, c, d) 0
-#define gdImageCreateTrueColor(a, b) ((void*)1)
-#define gdImageColorAllocate(a, b, c, d) 0
-#define gdImageFill(a, b, c, d)
-#define gdFTUseFontConfig(a) 0
-#define gdImageGetThickness(a) 0
-#define gdImagePng(a, b)
-#define gdImageDestroy(a)
-#define gdImagePolygon(a, b, c, d)
-#define gdImageStringFTEx(a, b, c, d, e, f, x, y, v, z) 0
-#define gdImageSetStyle(a, b, c)
-#define gdImageSetThickness(a, b)
-#define gdImageSetAntiAliased(a, b)
-#define gdImageOpenPolygon(a, b, c, d)
-#define gdImageFilledPolygon(a, b, c, d)
-#define gdImageCreateFromPng(a) ((void*)1)
-#define gdImageSX(a) 0
-#define gdImageSY(a) 0
-#define gdImageColorTransparent(a, b)
-#define gdImageCopy(a, b, c, d, e, f, g, h)
-#define gdImageCopyRotated(a, b, c, d, e, f, g, h, i)
-#define gdImageFilledRectangle(a, b, c, d, e, f)
-#define gdImageGetPixel(a, b, c) 0
+#ifdef HAVE_GD
+typedef gdImage image_t;
+#else
+typedef void image_t;
 #endif
 
 #define SPECIAL_DIRECT 0x0000
@@ -117,6 +89,8 @@ typedef struct { int charmap, flags, hdpi, vdpi; } gdFTStringExtra;
 #define MM2LON(x) ((x) * (rd->x2c - rd->x1c) / PX2MM(rd->w))
 // maximum number if different rule versions (processing iterations)
 #define MAX_ITER 8
+// default oversampling factor
+#define DEFAULT_OVS 2
 
 #define MIN_ID 0xffffff0000000000LL
 #define MAX_ID INT64_MAX
@@ -169,7 +143,7 @@ struct actImage
 {
    double angle;
    struct auto_rot rot;
-   gdImage *img;
+   image_t *img;
 };
 
 struct actCaption
@@ -272,6 +246,8 @@ struct rdata
    int w, h;
    // pixel resolution
    int dpi;
+   // oversampling factor
+   int ovs;
    // scale
    double scale;
    // grid drawing data
@@ -283,7 +259,7 @@ struct rdata
 
    // ***** this id libgd2 specific ***** 
    // pointer to image data
-   gdImage *img;
+   image_t *img;
    // image colors
    int col[MAX_COLOR];
 };
@@ -333,7 +309,6 @@ void init_cat_poly(struct rdata*);
 void grid2(struct rdata*);
 
 /* smrules.c */
-int poly_mpcoords(osm_way_t*, struct rdata*, gdPoint *);
 void init_main_image(struct rdata*, const char*);
 void save_main_image(struct rdata*, FILE*);
 int get_color(const struct rdata*, int, int, int, int);

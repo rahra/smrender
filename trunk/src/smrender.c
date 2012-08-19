@@ -389,7 +389,9 @@ void print_rdata(const struct rdata *rd)
          rd->mean_lat, rd->mean_lat_len, rd->mean_lat_len * 60);
    log_msg(LOG_NOTICE, "   lath = %f, lath_len = %f", rd->lath, rd->lath_len);
    log_msg(LOG_NOTICE, "   %dx%d px, dpi = %d, page size = %.1f x %.1f mm",
-         rd->w, rd->h, rd->dpi, PX2MM(rd->w), PX2MM(rd->h));
+         rd->w, rd->h, rd->ovs ? rd->dpi / rd->ovs : rd->dpi, PX2MM(rd->w), PX2MM(rd->h));
+   log_msg(LOG_NOTICE, "   rendering dpi = %d, oversampling = %d",
+         rd->dpi, rd->ovs);
    log_msg(LOG_NOTICE, "   1 px = %.3f mm, 1mm = %d px", PX2MM(1), (int) MM2PX(1));
    log_msg(LOG_NOTICE, "   scale 1:%.0f, %.1f x %.1f nm",
          rd->scale, rd->wc * 60 * cos(DEG2RAD(rd->mean_lat)), rd->hc * 60);
@@ -607,6 +609,7 @@ struct rdata *init_rdata(void)
 {
    memset(&rd_, 0, sizeof(rd_));
    rd_.dpi = 300;
+   rd_.ovs = DEFAULT_OVS;
    rd_.grd.lat_ticks = rd_.grd.lon_ticks = G_TICKS;
    rd_.grd.lat_sticks = rd_.grd.lon_sticks = G_STICKS;
    rd_.grd.lat_g = rd_.grd.lon_g = G_GRID;
@@ -711,11 +714,12 @@ void usage(const char *s)
          "   -M .................. Input file is memory mapped (default).\n"
          "   -m .................. Input file is read into heap memory.\n"
          "   -r <rules file> ..... Rules file ('rules.osm' is default).\n"
+         "   -s <ovs> ............ Set oversampling factor (0-10) (default = %d).\n"
          "   -o <image file> ..... Filename of output image (stdout is default).\n"
          "   -P <page format> .... Select output page format.\n"
          "   -V .................. Show chart parameters and exit.\n"
          "   -w <osm file> ....... Output OSM data to file.\n",
-         s
+         s, DEFAULT_OVS
          );
    printf("\nSee http://www.abenteuerland.at/smrender/ for more information.\n");
 }
@@ -792,7 +796,7 @@ int main(int argc, char *argv[])
    set_util_rd(rd);
    rd->cmdline = mk_cmd_line((const char**) argv);
 
-   while ((n = getopt(argc, argv, "b:d:fg:Ghi:lMmo:P:r:R:Vw:")) != -1)
+   while ((n = getopt(argc, argv, "b:d:fg:Ghi:lMmo:P:r:s:R:Vw:")) != -1)
       switch (n)
       {
          case 'b':
@@ -875,6 +879,14 @@ int main(int argc, char *argv[])
             cf = optarg;
             break;
 
+         case 's':
+            rd->ovs = atoi(optarg);
+            if (rd->ovs < 0)
+               rd->ovs = 0;
+            if (rd->ovs > 10)
+               rd->ovs = 10;
+            break;
+
          case 'R':
             osm_rfile = optarg;
             break;
@@ -934,6 +946,9 @@ int main(int argc, char *argv[])
    // install exit handlers
    osm_read_exit();
    bx_exit();
+
+   if (rd->ovs)
+      rd->dpi *= rd->ovs;
 
    init_rd_paper(rd, paper, landscape);
 

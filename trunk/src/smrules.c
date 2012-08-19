@@ -29,6 +29,7 @@
 #include "smcoast.h"
 
 
+#ifdef HAVE_GD
 void init_main_image(struct rdata *rd, const char *bg)
 {
    // preparing image
@@ -40,10 +41,6 @@ void init_main_image(struct rdata *rd, const char *bg)
    rd->col[BLUE] = gdImageColorAllocate(rd->img, 137, 199, 178);
    rd->col[MAGENTA] = gdImageColorAllocate(rd->img, 120, 8, 44);
    rd->col[BROWN] = gdImageColorAllocate(rd->img, 154, 42, 2);
-   // FIXME: gdTransparent is not the transparent color index!
-   //rd->col[TRANSPARENT] = gdTransparent;
-
-   //rd->col[BGCOLOR] = bg == NULL ? rd->col[WHITE] : parse_color(rd, bg);
    rd->col[BGCOLOR] = bg == NULL ? 0x00ffffff : parse_color(rd, bg);
    log_msg(LOG_DEBUG, "background color is set to 0x%08x", rd->col[BGCOLOR]);
    gdImageFill(rd->img, 0, 0, rd->col[BGCOLOR]);
@@ -55,7 +52,20 @@ void init_main_image(struct rdata *rd, const char *bg)
 
 void save_main_image(struct rdata *rd, FILE *f)
 {
-   gdImagePng(rd->img, f);
+   gdImage *img;
+
+      if (rd->ovs <= 1)
+   {
+      gdImagePng(rd->img, f);
+   }
+   else
+   {
+      log_msg(LOG_INFO, "resampling rendered image");
+      img = gdImageCreateTrueColor(gdImageSX(rd->img) / rd->ovs, gdImageSY(rd->img) / rd->ovs);
+      gdImageCopyResampled(img, rd->img, 0, 0, 0, 0, gdImageSX(img), gdImageSY(img), gdImageSX(rd->img), gdImageSY(rd->img));
+      gdImagePng(img, f);
+      gdImageDestroy(img);
+   }
    gdImageDestroy(rd->img);
 }
 
@@ -237,7 +247,7 @@ int act_cap_node(smrule_t *r, osm_node_t *n)
 {
    struct actCaption *cap = r->data;
    struct rdata *rd = get_rdata();
-   int br[8], m;
+   int br[8], m, c;
    char *s, *v;
    gdFTStringExtra fte;
    int x, y, rx, ry, ox, oy, off;
@@ -258,12 +268,13 @@ int act_cap_node(smrule_t *r, osm_node_t *n)
       for (x = 0; x < n->obj.otag[m].v.len; x++)
          v[x] = toupper((unsigned) v[x]);
 
+   c = !rd->ovs ? cap->col : cap->col | 0x80000000;
    mk_paper_coords(n->lat, n->lon, rd, &x, &y);
    memset(&fte, 0, sizeof(fte));
    fte.flags = gdFTEX_RESOLUTION | gdFTEX_CHARMAP;
    fte.charmap = gdFTEX_Unicode;
    fte.hdpi = fte.vdpi = rd->dpi;
-   gdImageStringFTEx(NULL, br, cap->col, cap->font, cap->size * 2.8699, 0, x, y, v, &fte);
+   gdImageStringFTEx(NULL, br, c, cap->font, cap->size * 2.8699, 0, x, y, v, &fte);
 
    if (isnan(cap->angle))
    {
@@ -318,9 +329,8 @@ int act_cap_node(smrule_t *r, osm_node_t *n)
   //rot_rect(rd, x, y, DEG2RAD(ma), br);
 
    rot_pos(ox, oy, DEG2RAD(ma), &rx, &ry);
-   //fprintf(stderr, "dx = %d, dy = %d, rx = %d, ry = %d, ma = %.3f, off = %d, '%s'\n", br[0]-br[2],br[1]-br[5], rx, ry, ma, off, nd->otag[n].v.buf);
 
-   if ((s = gdImageStringFTEx(rd->img, br, cap->col, cap->font, cap->size * 2.8699, DEG2RAD(ma), x + rx, y - ry, v, &fte)) != NULL)
+   if ((s = gdImageStringFTEx(rd->img, br, c, cap->font, cap->size * 2.8699, DEG2RAD(ma), x + rx, y - ry, v, &fte)) != NULL)
       log_msg(LOG_ERR, "error rendering caption: %s", s);
 
    free(v);
@@ -480,20 +490,20 @@ int get_color(const struct rdata *rd, int r, int g, int b, int a)
 }
 
 
-#ifdef HAVE_GD
 int gdImageGetThickness(const gdImage *img)
 {
    return img->thick;
 }
-#endif
 
 
 int act_img_ini(smrule_t *r)
 {
+   struct rdata *rd = get_rdata();
    struct actImage img;
-   struct rdata *rd;
+   gdImage *tmp_img;
    char *name, *s;
    FILE *f;
+   int c;
 
    if (r->oo->type != OSM_NODE)
    {
@@ -515,20 +525,36 @@ int act_img_ini(smrule_t *r)
 
    memset(&img, 0, sizeof(img));
 
-   img.img = gdImageCreateFromPng(f);
+   tmp_img = gdImageCreateFromPng(f);
    (void) fclose(f);
 
-   if (img.img == NULL)
+   if (tmp_img == NULL)
    {
       log_msg(LOG_WARN, "could not read PNG from %s", name);
       return -1;
    }
 
+   if (rd->ovs > 1)
+   {
+      if ((img.img = gdImageCreateTrueColor(gdImageSX(tmp_img) * rd->ovs, gdImageSY(tmp_img) * rd->ovs)) == NULL)
+      {
+         log_msg(LOG_WARN, "could not create resized true color image");
+         return -1;
+      }
+      c = gdImageColorAllocate(img.img, 255, 255, 255);
+      gdImageColorTransparent(img.img, c);
+      gdImageFill(img.img, 0, 0, c);
+      gdImageAlphaBlending(img.img, 0);
+      gdImageCopyResized(img.img, tmp_img, 0, 0, 0, 0, gdImageSX(img.img), gdImageSY(img.img), gdImageSX(tmp_img), gdImageSY(tmp_img));
+      gdImageDestroy(tmp_img);
+   }
+   else
+      img.img = tmp_img;
+
    if ((name = get_param("angle", &img.angle, r->act)) != NULL)
    {
       if (!strcmp(name, "auto"))
       {
-         rd = get_rdata();
          img.angle = NAN;
          img.rot.autocol = rd->col[BGCOLOR];
          if ((s = get_param("auto-color", NULL, r->act)) != NULL)
@@ -811,13 +837,13 @@ void poly_fill(struct rdata *rd, gdImage *img, osm_way_t *w, int fg, int bg, int
 
    if (is_closed_poly(w))
    {
-      gdImageFilledPolygon(img, p, w->ref_cnt, cw ? bg : gdAntiAliased);
+      gdImageFilledPolygon(img, p, w->ref_cnt, cw ? bg : !rd->ovs ? gdAntiAliased : fg);
    }
    else
    {
       t = gdImageGetThickness(img);
       gdImageSetThickness(img, thick);
-      gdImageOpenPolygon(img, p, w->ref_cnt, thick > 1 ? fg : gdAntiAliased);
+      gdImageOpenPolygon(img, p, w->ref_cnt, rd->ovs ? fg : thick > 1 ? fg : gdAntiAliased);
       gdImageSetThickness(img, t);
    }
 }
@@ -838,13 +864,13 @@ void poly_border(struct rdata *rd, gdImage *img, osm_way_t *w, int fg, int ct, i
    if (is_closed_poly(w))
    {
       gdImageSetThickness(img, ct);
-      c = set_style(img, style, ct > 1 ? fg : gdAntiAliased);
+      c = set_style(img, style, rd->ovs ? fg : ct > 1 ? fg : gdAntiAliased);
       gdImagePolygon(img, p, w->ref_cnt, c);
    }
    else
    {
       gdImageSetThickness(img, ot);
-      c = set_style(img, style, ot > 1 ? fg : gdAntiAliased);
+      c = set_style(img, style, rd->ovs ? fg : ot > 1 ? fg : gdAntiAliased);
       gdImageOpenPolygon(img, p, w->ref_cnt, c);
    }
    gdImageSetThickness(img, t);
@@ -905,10 +931,9 @@ int act_draw_fini(smrule_t *r)
    {
       fg = d->fill.col;
       gdImageSetAntiAliased(img, fg);
-      gdImageFilledRectangle(img, 0, 0, gdImageSX(img), gdImageSY(img), d->wl->ref[0].cw ? gdAntiAliased : bg);
-
+      gdImageFilledRectangle(img, 0, 0, gdImageSX(img), gdImageSY(img), !d->wl->ref[0].cw ? bg : rd->ovs ? fg : gdAntiAliased);
       for (i = 0; i < d->wl->ref_cnt; i++)
-         poly_fill(rd, img, d->wl->ref[i].w, fg, bg, d->wl->ref[i].cw, d->fill.width > 0 ? MM2PX(d->fill.width) : 1);
+         poly_fill(rd, img, d->wl->ref[i].w, fg, bg, d->wl->ref[i].cw, d->fill.width > 0 ? MM2PX(d->fill.width) : (rd->ovs ? rd->ovs : 1));
 
       gdImageCopy(rd->img, img, 0, 0, 0, 0, gdImageSX(img), gdImageSY(img));
    }
@@ -920,9 +945,9 @@ int act_draw_fini(smrule_t *r)
       gdImageFilledRectangle(img, 0, 0, gdImageSX(img), gdImageSY(img), bg);
 
       if ((closed_thick = MM2PX(round(d->border.width * 2))) < 1)
-         closed_thick = 1;
+         closed_thick = rd->ovs ? rd->ovs : 1;
       if ((open_thick = MM2PX(round(d->border.width * 2 + d->fill.width))) < 1)
-         open_thick = 1;
+         open_thick = rd->ovs ? rd->ovs : 1;
 
       for (i = 0; i < d->wl->ref_cnt; i++)
          poly_border(rd, img, d->wl->ref[i].w, fg, closed_thick, open_thick, d->border.style);
@@ -935,4 +960,23 @@ int act_draw_fini(smrule_t *r)
    r->data = NULL;
    return 0;
 }
+
+#else
+
+void init_main_image(struct rdata *rd, const char *bg)
+{
+}
+
+
+void save_main_image(struct rdata *rd, FILE *f)
+{
+}
+
+
+int get_color(const struct rdata *rd, int r, int g, int b, int a)
+{
+   return 0;
+}
+
+#endif
 
