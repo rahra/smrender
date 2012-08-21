@@ -64,12 +64,13 @@ int act_out(smrule_t *r, osm_obj_t *o)
    if (r->data == NULL)
       return -1;
 
-   for (i = 0; i < ((osm_way_t*) o)->ref_cnt; i++)
-   {
-      if ((n = get_object(OSM_NODE, ((osm_way_t*) o)->ref[i])) == NULL)
-         continue;
-      print_onode(r->data, (osm_obj_t*) n);
-   }
+   if (o->type == OSM_WAY)
+      for (i = 0; i < ((osm_way_t*) o)->ref_cnt; i++)
+      {
+         if ((n = get_object(OSM_NODE, ((osm_way_t*) o)->ref[i])) == NULL)
+            continue;
+         print_onode(r->data, (osm_obj_t*) n);
+      }
    print_onode(r->data, o);
 
    return 0;

@@ -1105,7 +1105,6 @@ int main(int argc, char *argv[])
    hpx_free(ctl);
    hpx_free(cfctl);
 
-   log_msg(LOG_INFO, "saving image");
    if (img_file != NULL)
    {
       if ((f = fopen(img_file, "w")) == NULL)

@@ -54,16 +54,18 @@ void save_main_image(struct rdata *rd, FILE *f)
 {
    gdImage *img;
 
-      if (rd->ovs <= 1)
+   if (rd->ovs <= 1)
    {
-      gdImagePng(rd->img, f);
+      log_msg(LOG_INFO, "saving image");
+      gdImagePngEx(rd->img, f, 9);
    }
    else
    {
       log_msg(LOG_INFO, "resampling rendered image");
       img = gdImageCreateTrueColor(gdImageSX(rd->img) / rd->ovs, gdImageSY(rd->img) / rd->ovs);
       gdImageCopyResampled(img, rd->img, 0, 0, 0, 0, gdImageSX(img), gdImageSY(img), gdImageSX(rd->img), gdImageSY(rd->img));
-      gdImagePng(img, f);
+      log_msg(LOG_INFO, "saving image");
+      gdImagePngEx(img, f, 9);
       gdImageDestroy(img);
    }
    gdImageDestroy(rd->img);
