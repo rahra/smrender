@@ -25,10 +25,6 @@
 #include "libhpxml.h"
 
 
-//#define LATCL(x) ((int)((x+90.0)*256.0/180.0)&0xff)
-//#define LONCL(x) ((int)((x+180.0)*256.0/360.0)&0xff)
-//#define NCL(y,x) ((LONCL(x)<<8)|LATCL(y))
-
 #define JAN2004 1072915200
 
 #define get_v(x,y) get_value("v",x,y)
