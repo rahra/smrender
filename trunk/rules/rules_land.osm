@@ -73,9 +73,9 @@
       <tag k='_action_' v='cap:font=sans-serif;size=3;key=name'/>
    </node>
 
-   <node>
+   <node version='-1'>
       <tag k='natural' v='peak'/>
-      <tag k='_action_' v='img:file=icons/Dot_6x6.png'/>
+      <tag k='_action_' v='shape:style=triangle;size=1.2'/>
    </node>
 
    <node>
@@ -154,15 +154,25 @@
       <tag k='grid' v='text'/>
       <tag k='border' v='copyright'/>
    </node>
-   
+
+    <way>
+      <tag k='generator' v='smrender'/>
+      <tag k='_action_' v='out:file=smrender.osm'/>
+   </way>
+  
    <way>
       <tag k='grid' v=''/>
       <tag k='_action_' v='draw:bcolor=black'/>
    </way>
 
-   <relation>
+   <way>
+      <tag k='natural' v='peak'/>
+      <tag k='_action_' v='draw:color=#906030'/>
+   </way>
+
+   <relation version='10'>
       <tag k='route' v='horse'/>
-      <tag k='_action_' v='draw:color=#ff0000;width=1.5'/>
+      <tag k='_action_' v='draw:color=#ff0000;width=.7'/>
    </relation>
 
 </osm>

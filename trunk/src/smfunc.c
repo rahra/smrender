@@ -323,3 +323,128 @@ int act_set_tags(smrule_t *r, osm_obj_t *o)
    return 0;
 }
 
+
+int act_shape_ini(smrule_t *r)
+{
+   struct act_shape *as;
+   double pcount = 0.0;
+   char *s = "";
+
+   if ((get_param("nodes", &pcount, r->act) == NULL) && ((s = get_param("style", NULL, r->act)) == NULL))
+   {
+      log_msg(LOG_WARN, "action 'shape' requires parameter 'style' or 'nodes'");
+      return 1;
+   }
+
+   if ((as = calloc(1, sizeof(*as))) == NULL)
+   {
+      log_msg(LOG_ERR, "cannot calloc struct act_shape: %s", strerror(errno));
+      return -1;
+   }
+
+   if (pcount == 0.0)
+   {
+      if (!strcmp(s, "triangle"))
+      {
+         as->shape = SHP_TRIANGLE;
+         as->pcount = 3;
+      }
+      else if (!strcmp(s, "square"))
+      {
+         as->shape = SHP_SQUARE;
+         as->pcount = 4;
+      }
+      else
+      {
+         log_msg(LOG_WARN, "unknown shape '%s'", s);
+         free(as);
+         return 1;
+      }
+   }
+   else
+   {
+      if (pcount < 3.0)
+      {
+         log_msg(LOG_WARN, "value for 'nodes' must be at least 3");
+         free(as);
+         return 1;
+      }
+      else if (pcount > MAX_SHAPE_PCOUNT)
+      {
+         log_msg(LOG_WARN, "'nodes' must not exceed %d", MAX_SHAPE_PCOUNT);
+         free(as);
+         return 1;
+      }
+      as->pcount = pcount;
+   }
+
+   log_debug("shape nodes = %d", as->pcount);
+
+   if (get_param("size", &as->size, r->act) == NULL)
+   {
+      log_msg(LOG_WARN, "action 'shape' requires parameter 'size', defaults to 1.0mm");
+      as->size = 1.0;
+   }
+
+   (void) get_param("angle", &as->angle, r->act);
+
+   r->data = as;
+   return 0;
+}
+
+
+void shape_circle(struct act_shape *as, osm_node_t *n)
+{
+   rdata_t *rd = get_rdata();
+   osm_node_t *nd[as->pcount];
+   double radius, angle, angle_step;
+   osm_way_t *w;
+   int i;
+
+   radius = MM2LAT(as->size);
+   angle = DEG2RAD(as->angle);
+   angle_step = 2 * M_PI / as->pcount;
+
+   w = malloc_way(n->obj.tag_cnt + 1, as->pcount + 1);
+   w->obj.id = unique_way_id();
+   w->obj.ver = 1;
+   set_const_tag(w->obj.otag, "generator", "smrender");
+   memcpy(&w->obj.otag[1], n->obj.otag, sizeof(struct otag) * n->obj.tag_cnt);
+
+   log_debug("generating shape way %ld with %d nodes", (long) w->obj.id, as->pcount);
+
+   for (i = 0; i < as->pcount; i++)
+   {
+         nd[i] = malloc_node(1);
+         nd[i]->lat = n->lat + radius * cos(angle + angle_step * i);
+         nd[i]->lon = n->lon - radius * sin(angle + angle_step * i) / cos(DEG2RAD(n->lat)); 
+         nd[i]->obj.id = w->ref[i] = unique_node_id();
+         nd[i]->obj.ver = 1;
+         set_const_tag(nd[i]->obj.otag, "generator", "smrender");
+         put_object((osm_obj_t*) nd[i]);
+   }
+   w->ref[i] = nd[0]->obj.id;
+   put_object((osm_obj_t*) w);
+}
+
+
+int act_shape(smrule_t *r, osm_obj_t *o)
+{
+   if (o->type != OSM_NODE)
+   {
+      log_msg(LOG_NOTICE, "shape() on objects other then OSM_NODE not supported yet");
+      return 1;
+   }
+
+   shape_circle(r->data, (osm_node_t*) o);
+   return 0;
+}
+
+
+int act_shape_fini(smrule_t *r)
+{
+   free(r->data);
+   r->data = NULL;
+   return 0;
+}
+

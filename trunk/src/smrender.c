@@ -986,6 +986,7 @@ int main(int argc, char *argv[])
 
    log_msg(LOG_INFO, "gathering rule stats");
    init_stats(&rstats);
+   traverse(rd->rules, 0, IDX_REL, (tree_func_t) onode_stats, rd, &rstats);
    traverse(rd->rules, 0, IDX_WAY, (tree_func_t) onode_stats, rd, &rstats);
    traverse(rd->rules, 0, IDX_NODE, (tree_func_t) onode_stats, rd, &rstats);
    qsort(rstats.ver, rstats.ver_cnt, sizeof(int), (int(*)(const void*, const void*)) cmp_int);

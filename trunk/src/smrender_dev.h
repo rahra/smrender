@@ -78,6 +78,8 @@ typedef void image_t;
 
 #define ANGLE_DIFF 10
 
+#define MAX_SHAPE_PCOUNT 2000
+
 // convert mm to pixels
 #define MM2PX(x) round((double) (x) * rd->dpi / 25.4)
 // convert mm to points (pt)
@@ -107,6 +109,7 @@ enum {IDX_NODE, IDX_WAY, IDX_REL};
 enum {WHITE, YELLOW, BLACK, BLUE, MAGENTA, BROWN, TRANSPARENT, BGCOLOR, MAX_COLOR};
 enum {LAT, LON};
 enum {DRAW_SOLID, DRAW_DASHED, DRAW_DOTTED, DRAW_TRANSPARENT};
+enum {SHP_UNKNOWN, SHP_TRIANGLE, SHP_CIRCLE, SHP_SQUARE};
 
 typedef struct fparam
 {
@@ -179,6 +182,14 @@ struct actDraw
    int directional;
    int collect_open;
    struct wlist *wl;
+};
+
+struct act_shape
+{
+   short shape;
+   short pcount;
+   double size;
+   double angle;
 };
 
 struct action
