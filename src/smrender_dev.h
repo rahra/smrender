@@ -109,7 +109,6 @@ enum {IDX_NODE, IDX_WAY, IDX_REL};
 enum {WHITE, YELLOW, BLACK, BLUE, MAGENTA, BROWN, TRANSPARENT, BGCOLOR, MAX_COLOR};
 enum {LAT, LON};
 enum {DRAW_SOLID, DRAW_DASHED, DRAW_DOTTED, DRAW_TRANSPARENT};
-enum {SHP_UNKNOWN, SHP_TRIANGLE, SHP_CIRCLE, SHP_SQUARE};
 
 typedef struct fparam
 {
@@ -186,7 +185,6 @@ struct actDraw
 
 struct act_shape
 {
-   short shape;
    short pcount;
    double size;
    double angle;
