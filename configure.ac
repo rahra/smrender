@@ -24,7 +24,7 @@ AX_CHECK_GD
 AC_SEARCH_LIBS([sin], [m])
 AC_SEARCH_LIBS([dlopen], [dl])
 
-AC_CHECK_FUNCS([strptime])
+AC_CHECK_FUNCS([strptime dladdr])
 
 if test -n "$export_dynamic_flag_spec" ; then
    exp_dyn=`eval echo $export_dynamic_flag_spec`

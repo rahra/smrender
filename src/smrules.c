@@ -821,7 +821,8 @@ int act_draw(smrule_t *r, osm_obj_t *o)
       }
       return 0;
    }
-   
+
+   log_msg(LOG_WARN, "draw() may not be applied to object type %d", o->type);
    return 1;
 }
 
@@ -897,6 +898,7 @@ int act_draw_fini(smrule_t *r)
  
    if (!d->wl->ref_cnt)
    {
+      log_debug("emtpy waylist");
       dfree(r->data);
       r->data = NULL;
       return 1;
