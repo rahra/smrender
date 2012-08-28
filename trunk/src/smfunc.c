@@ -326,6 +326,7 @@ int act_set_tags(smrule_t *r, osm_obj_t *o)
 
 int act_shape_ini(smrule_t *r)
 {
+   struct rdata *rd = get_rdata();
    struct act_shape *as;
    double pcount = 0.0;
    char *s = "";
@@ -346,13 +347,17 @@ int act_shape_ini(smrule_t *r)
    {
       if (!strcmp(s, "triangle"))
       {
-         as->shape = SHP_TRIANGLE;
          as->pcount = 3;
       }
       else if (!strcmp(s, "square"))
       {
-         as->shape = SHP_SQUARE;
          as->pcount = 4;
+      }
+      else if (!strcmp(s, "circle"))
+      {
+         // set to maximum number of nodes in case of a circle (this is
+         // recalculated, see below)
+         as->pcount = MAX_SHAPE_PCOUNT;
       }
       else
       {
@@ -378,22 +383,28 @@ int act_shape_ini(smrule_t *r)
       as->pcount = pcount;
    }
 
-   log_debug("shape nodes = %d", as->pcount);
-
-   if (get_param("size", &as->size, r->act) == NULL)
+   if (get_param("radius", &as->size, r->act) == NULL)
    {
-      log_msg(LOG_WARN, "action 'shape' requires parameter 'size', defaults to 1.0mm");
+      log_msg(LOG_WARN, "action 'shape' requires parameter 'radius', defaults to 1.0mm");
       as->size = 1.0;
    }
+   else if (as->size <= 0.0)
+      as->size = 1.0;
+
+   // recalculate node count in case of a circle
+   if (as->pcount == MAX_SHAPE_PCOUNT)
+      as->pcount = MM2PX(2.0 * as->size * M_PI) / 3;
 
    (void) get_param("angle", &as->angle, r->act);
+
+   log_debug("nodes = %d, radius = %.2f, angle = %.2f", as->pcount, as->size, as->angle);
 
    r->data = as;
    return 0;
 }
 
 
-void shape_circle(struct act_shape *as, osm_node_t *n)
+void shape_node(struct act_shape *as, osm_node_t *n)
 {
    rdata_t *rd = get_rdata();
    osm_node_t *nd[as->pcount];
@@ -428,15 +439,38 @@ void shape_circle(struct act_shape *as, osm_node_t *n)
 }
 
 
+void shape_way(struct act_shape *as, osm_way_t *w)
+{
+   osm_node_t *n;
+   int i;
+
+   for (i = 0; i < w->ref_cnt; i++)
+   {
+      if ((n = get_object(OSM_NODE, w->ref[i])) == NULL)
+      {
+         log_msg(LOG_WARN, "node %ld of way %ld does not exist", (long) w->ref[i], (long) w->obj.id);
+         continue;
+      }
+      shape_node(as, n);
+   }
+}
+
+
 int act_shape(smrule_t *r, osm_obj_t *o)
 {
-   if (o->type != OSM_NODE)
+   if (o->type == OSM_NODE)
    {
-      log_msg(LOG_NOTICE, "shape() on objects other then OSM_NODE not supported yet");
+      shape_node(r->data, (osm_node_t*) o);
+   }
+   else if (o->type == OSM_WAY)
+   {
+      shape_way(r->data, (osm_way_t*) o);
+   }
+   else
+   {
+      log_msg(LOG_NOTICE, "shape() on this object type not supported");
       return 1;
    }
-
-   shape_circle(r->data, (osm_node_t*) o);
    return 0;
 }
 

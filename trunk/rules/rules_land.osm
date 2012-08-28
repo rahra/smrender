@@ -75,7 +75,7 @@
 
    <node version='-1'>
       <tag k='natural' v='peak'/>
-      <tag k='_action_' v='shape:style=triangle;size=1.2'/>
+      <tag k='_action_' v='shape:style=triangle;radius=.7'/>
    </node>
 
    <node>

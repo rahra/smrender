@@ -565,8 +565,9 @@ int save_osm(struct rdata *rd, const char *s, bx_node_t *tree)
    {
       fprintf(f, "<?xml version='1.0' encoding='UTF-8'?>\n"
                  "<osm version='0.6' generator='smrender'>\n"
+                 "<!-- cmdline: `%s` -->\n"
                  "<bounds minlat='%f' minlon='%f' maxlat='%f' maxlon='%f'/>\n",
-                 rd->y2c, rd->x1c, rd->y1c, rd->x2c
+                 rd->cmdline, rd->y2c, rd->x1c, rd->y1c, rd->x2c
                  );
       traverse(tree, 0, IDX_NODE, print_tree, rd, f);
       traverse(tree, 0, IDX_WAY, print_tree, rd, f);
