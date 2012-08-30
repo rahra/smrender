@@ -294,7 +294,7 @@ double color_frequency(struct rdata *, int, int, int, int, int);
 void mk_chart_coords(int, int, struct rdata*, double*, double*);
 int poly_area(const osm_way_t*, struct coord *, double *);
 struct rdata *get_rdata(void);
-
+int save_osm(struct rdata *, const char *, bx_node_t *);
 
 /* smutil.c */
 int bs_match_attr(const osm_obj_t*, const struct otag *, const struct stag*);
@@ -331,6 +331,7 @@ int parse_style(const char *s);
 int parse_matchtype(bstring_t*, struct specialTag*);
 int init_rules(osm_obj_t*, struct rdata*, void*);
 fparam_t **parse_fparam(char*);
+void free_fparam(fparam_t **);
 
 #endif
 

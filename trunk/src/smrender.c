@@ -573,6 +573,23 @@ int onode_stats(osm_obj_t *o, struct rdata *rd, struct dstats *ds)
 }
 
 
+int free_rules(smrule_t *r, struct rdata *rd, void *p)
+{
+   free_obj(r->oo);
+   free_fparam(r->act->fp);
+   // action must not be freed because it is part of the rule (see alloc_rule())
+   free(r);
+   return 0;
+}
+
+
+int free_objects(osm_obj_t *o, struct rdata *rd, void *p)
+{
+   free_obj(o);
+   return 0;
+}
+
+
 int save_osm(struct rdata *rd, const char *s, bx_node_t *tree)
 {
    FILE *f;
@@ -1127,6 +1144,21 @@ int main(int argc, char *argv[])
    hpx_free(ctl);
    hpx_free(cfctl);
 
+   log_debug("freeing main objects");
+   traverse(rd->obj, 0, IDX_REL, free_objects, rd, NULL);
+   traverse(rd->obj, 0, IDX_WAY, free_objects, rd, NULL);
+   traverse(rd->obj, 0, IDX_NODE, free_objects, rd, NULL);
+
+   log_debug("freeing rule objects");
+   traverse(rd->rules, 0, IDX_REL, (tree_func_t) free_rules, rd, NULL);
+   traverse(rd->rules, 0, IDX_WAY, (tree_func_t) free_rules, rd, NULL);
+   traverse(rd->rules, 0, IDX_NODE, (tree_func_t) free_rules, rd, NULL);
+
+   log_debug("freeing main object tree");
+   bx_free_tree(rd->obj);
+   log_debug("freeing rules tree");
+   bx_free_tree(rd->rules);
+
    if (img_file != NULL)
    {
       if ((f = fopen(img_file, "w")) == NULL)
@@ -1136,6 +1168,8 @@ int main(int argc, char *argv[])
    save_main_image(rd, f);
    if (img_file != NULL)
       fclose(f);
+
+   free(rd->cmdline);
 
    (void) gettimeofday(&tv_end, NULL);
    tv_end.tv_sec -= tv_start.tv_sec;

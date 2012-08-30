@@ -113,6 +113,7 @@ osm_node_t *malloc_node(short );
 osm_way_t *malloc_way(short , int );
 osm_rel_t *malloc_rel(short , short );
 size_t onode_mem(void);
+size_t onode_freed(void);
 
 #endif
 

@@ -345,9 +345,9 @@ void free_fparam(fparam_t **fp)
 {
    fparam_t **fp0 = fp;
 
-   // free string buffer (should be first attribute);
-   if (*fp != NULL)
-      free((*fp)->attr);
+   // safety check
+   if (fp == NULL)
+      return;
 
    // free fparam_t's
    for (; *fp != NULL; fp++)

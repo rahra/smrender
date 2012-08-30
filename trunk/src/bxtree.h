@@ -22,6 +22,8 @@
 
 #define bx_add_node(x, y) bx_add_node0(x, y, BT_ROOT)
 #define bx_get_node(x, y) bx_get_node0(x, y, BT_ROOT)
+#define bx_free_tree(x) bx_free_tree0(x, BT_ROOT)
+
 
 typedef struct bx_node
 {
@@ -29,9 +31,9 @@ typedef struct bx_node
 } bx_node_t;
 
 
-void bx_disable_add(void);
 bx_node_t *bx_add_node0(bx_node_t **, bx_hash_t, bx_hash_t);
 bx_node_t *bx_get_node0(bx_node_t *, bx_hash_t, bx_hash_t);
+void bx_free_tree0(bx_node_t *node, bx_hash_t d);
 size_t bx_sizeof(void);
 void bx_exit(void);
 
