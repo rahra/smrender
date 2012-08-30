@@ -38,6 +38,13 @@
 
 
 static size_t mem_usage_ = 0;
+static size_t mem_freed_ = 0;
+
+
+size_t onode_freed(void)
+{
+   return mem_freed_;
+}
 
 
 size_t onode_mem(void)
@@ -54,6 +61,7 @@ time_t parse_time(bstring_t b)
    if (b.len != TLEN)
       return -1;
 
+   memset(&tm, 0, sizeof(tm));
 #ifdef HAVE_STRPTIME
    (void) strptime(b.buf, "%Y-%m-%dT%T%z", &tm);
 #else
@@ -137,16 +145,27 @@ int get_value(const char *k, hpx_tag_t *tag, bstring_t *b)
 void free_obj(osm_obj_t *o)
 {
    free(o->otag);
+   mem_freed_ += sizeof(struct otag) * o->tag_cnt;
    switch (o->type)
    {
+      case OSM_NODE:
+         // nothing special to free for nodes
+         break;
+
       case OSM_WAY:
          free(((osm_way_t*) o)->ref);
+         mem_freed_ += sizeof(int64_t) * ((osm_way_t*) o)->ref_cnt;
          break;
 
       case OSM_REL:
          free(((osm_rel_t*) o)->mem);
+         mem_freed_ += sizeof(struct rmember) * ((osm_rel_t*) o)->mem_cnt;
          break;
+
+      default:
+         log_msg(LOG_ERR, "no such object type: %d", o->type);
    }
+   mem_freed_ += SIZEOF_OSM_OBJ(o);
    free(o);
 }
 
@@ -193,6 +212,7 @@ osm_way_t *malloc_way(short tag_cnt, int ref_cnt)
    mem_usage_ += sizeof(osm_way_t);
    return w;
 }
+
 
 osm_rel_t *malloc_rel(short tag_cnt, short mem_cnt)
 {

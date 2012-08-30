@@ -56,7 +56,8 @@ void osm_read_exit(void)
          break;
 
       default:
-         log_msg(LOG_DEBUG, "onode_memory: %ld kByte, oline %ld", onode_mem() / 1024, hpx_lineno());
+         log_msg(LOG_DEBUG, "onode_memory: %ld kByte, onode free: %ld kByte, leak = %ld, oline %ld",
+               (long) onode_mem() / 1024, (long) onode_freed() / 1024, (long) (onode_mem() - onode_freed()), hpx_lineno());
    }
    ae++;
 }

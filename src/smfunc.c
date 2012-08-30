@@ -31,12 +31,21 @@
 #define DIR_CCW 1
 
 
-//static FILE *output_handle_;
-//static osm_obj_t *o_;
+struct out_handle
+{
+   struct out_handle *next;
+   char *name;
+   int cnt;
+   bx_node_t *tree;
+};
+
+
+static struct out_handle *oh_ = NULL;
 
 
 int act_out_ini(smrule_t *r)
 {
+   struct out_handle **oh;
    char *s;
 
    if ((s = get_param("file", NULL, r->act)) == NULL)
@@ -45,47 +54,91 @@ int act_out_ini(smrule_t *r)
       return 1;
    }
 
-   if ((r->data = fopen(s, "w")) == NULL)
+   for (oh = &oh_; *oh != NULL; oh = &(*oh)->next)
    {
-      log_msg(LOG_ERR, "error opening output file %s: %s", s, strerror(errno));
-      return 1;
+      // check if filename exists
+      if (!strcmp((*oh)->name, s))
+      {
+         log_debug("file '%s' reused", s);
+         (*oh)->cnt++;
+         r->data = *oh;
+         return 0;
+      }
    }
-   fprintf(r->data, "<?xml version='1.0' encoding='UTF-8'?>\n<osm version='0.6' generator='smrender'>\n");
+
+   if ((*oh = calloc(1, sizeof(struct out_handle))) == NULL)
+   {
+      log_msg(LOG_ERR, "calloc() failed: %s", strerror(errno));
+      return -1;
+   }
+
+   if (((*oh)->name = strdup(s)) == NULL)
+   {
+      log_msg(LOG_ERR, "strdup() failed: %s", strerror(errno));
+      return -1;
+   }
+   
+   (*oh)->cnt++;
+   r->data = *oh;
+
    return 0;
 }
 
 
-// FIXME: act_out violates the OSM rule of object order in an OSM file: nodes before ways before relations!
 int act_out(smrule_t *r, osm_obj_t *o)
 {
    osm_node_t *n;
    int i;
 
-   if (r->data == NULL)
-      return -1;
-
    if (o->type == OSM_WAY)
+   {
       for (i = 0; i < ((osm_way_t*) o)->ref_cnt; i++)
       {
          if ((n = get_object(OSM_NODE, ((osm_way_t*) o)->ref[i])) == NULL)
+         {
+            log_debug("get_object() returned NULL");
             continue;
-         print_onode(r->data, (osm_obj_t*) n);
+         }
+         // FIXME: return value should be honored (but put_object0() handles
+         // errors correctly, hence, this is not a tragedy)
+         (void) put_object0(&((struct out_handle*) r->data)->tree, n->obj.id, n, n->obj.type - 1);
       }
-   print_onode(r->data, o);
+   }
 
-   return 0;
+   return put_object0(&((struct out_handle*) r->data)->tree, o->id, o, o->type - 1);
 }
 
 
 int act_out_fini(smrule_t *r)
 {
-   if (r->data == NULL)
-      return 1;
+   struct out_handle *oh = r->data;
+   struct out_handle **olist;
+   
+   oh->cnt--;
+   if (oh->cnt)
+   {
+      log_debug("file ref count = %d", oh->cnt);
+      return 0;
+   }
+   (void) save_osm(get_rdata(), oh->name, oh->tree);
+   free(oh->name);
+   log_debug("freeing temporary object tree");
+   bx_free_tree(oh->tree);
 
-   fprintf(r->data, "</osm>\n");
-   fclose(r->data);
+   // delete entry from list
+   for (olist = &oh_; *olist != NULL; olist = &(*olist)->next)
+   {
+      if (*olist == oh)
+      {
+         log_debug("deleting file entry %p", oh);
+         *olist = oh->next;
+         free(oh);
+         // break loop on last entry of list
+         if (*olist == NULL)
+            break;
+      }
+   }
 
-   r->data = NULL;
    return 0;
 }
 
