@@ -590,6 +590,43 @@ int free_objects(osm_obj_t *o, struct rdata *rd, void *p)
 }
 
 
+double px2lat(struct rdata *rd, int y)
+{
+   return RAD2DEG(atan(sinh(rd->lath - rd->lath_len * ((double) y / (double) rd->h - 0.5))));
+}
+
+
+void gen_kap_header(FILE *f, struct rdata *rd)
+{
+   double mppx, lat1, lat2;
+   int w, h;
+
+   lat1 = px2lat(rd, 0);
+   lat2 = px2lat(rd, rd->h);
+   w = rd->ovs ? rd->w / rd->ovs : rd->w;
+   h = rd->ovs ? rd->h / rd->ovs : rd->h;
+   mppx = rd->mean_lat_len / w * 1852.0 * 60.0;
+
+   fprintf(f, "VER/2.0\r\nBSB/NA=%s %d\r\n    NU=,RA=%d,%d,DU=%d\r\n",
+         "CHART", (int) rd->scale, w, h, rd->ovs ? rd->dpi / rd->ovs : rd->dpi);
+   fprintf(f, "KNP/SC=%d,GD=WGS84,PR=TRANSVERSE MERCATOR\r\n    PP=%f,PI=UNKNOWN,SP=UNKNOWN,SK=0.0,TA=90.0\r\n",
+         (int) rd->scale, rd->mean_lat);
+   fprintf(f, "    UN=METRES,SD=MLWS,DX=%.2f,DY=%.2f\r\n",
+         mppx, mppx);
+   fprintf(f, "REF/1,%d,%d,%.8f,%.8f\r\nREF/2,%d,%d,%.8f,%.8f\r\nREF/3,%d,%d,%.8f,%.8f\r\nREF/4,%d,%d,%.8f,%.8f\r\n",
+         0, 0, lat1, rd->x1c,
+         w, 0, lat1, rd->x2c,
+         w, h, lat2, rd->x2c,
+         0, h, lat2, rd->x1c);
+   fprintf(f, "PLY/1,%.8f,%.8f\r\nPLY/2,%.8f,%.8f\r\nPLY/3,%.8f,%.8f\r\nPLY/4,%.8f,%.8f\r\n",
+         rd->y1c, rd->x1c,
+         rd->y1c, rd->x2c,
+         rd->y2c, rd->x2c,
+         rd->y2c, rd->x1c);
+   fprintf(f, "DTM/0.0,0.0\r\nCPH/0.0\r\n");
+}
+
+
 int save_osm(struct rdata *rd, const char *s, bx_node_t *tree)
 {
    FILE *f;
@@ -748,6 +785,7 @@ void usage(const char *s)
          "   -g <grd>[:<t>[:<s>]]  Distance of grid/ticks/subticks in minutes.\n"
          "   -G .................. Do not generate grid nodes/ways.\n"
          "   -i <osm input> ...... OSM input data (default is stdin).\n"
+         "   -k <filename> ....... Write KAP header to file.\n"
          "   -l .................. Select landscape output.\n"
          "   -M .................. Input file is memory mapped (default).\n"
          "   -m .................. Input file is read into heap memory.\n"
@@ -815,7 +853,7 @@ int main(int argc, char *argv[])
    int fd = 0, n;
    struct stat st;
    FILE *f = stdout;
-   char *cf = "rules.osm", *img_file = NULL, *osm_ifile = NULL, *osm_ofile = NULL, *osm_rfile = NULL;
+   char *cf = "rules.osm", *img_file = NULL, *osm_ifile = NULL, *osm_ofile = NULL, *osm_rfile = NULL, *kap_file = NULL;
    struct rdata *rd;
    struct timeval tv_start, tv_end;
    int gen_grid = 1, landscape = 0, w_mmap = 1, load_filter = 0, user_grid = 0, init_exit = 0;
@@ -834,7 +872,7 @@ int main(int argc, char *argv[])
    set_util_rd(rd);
    rd->cmdline = mk_cmd_line((const char**) argv);
 
-   while ((n = getopt(argc, argv, "b:d:fg:Ghi:lMmo:P:r:s:R:Vw:")) != -1)
+   while ((n = getopt(argc, argv, "b:d:fg:Ghi:k:lMmo:P:r:s:R:Vw:")) != -1)
       switch (n)
       {
          case 'b':
@@ -887,6 +925,10 @@ int main(int argc, char *argv[])
 
          case 'i':
             osm_ifile = optarg;
+            break;
+
+         case 'k':
+            kap_file = optarg;
             break;
 
          case 'M':
@@ -1168,6 +1210,19 @@ int main(int argc, char *argv[])
    save_main_image(rd, f);
    if (img_file != NULL)
       fclose(f);
+
+   if (kap_file != NULL)
+   {
+      log_msg(LOG_INFO, "generating KAP file %s", kap_file);
+      if ((f = fopen(kap_file, "w")) == NULL)
+         log_msg(LOG_WARN, "cannot open file %s: %s", kap_file, strerror(errno));
+      else
+      {
+         gen_kap_header(f, rd);
+         fclose(f);
+      }
+   }
+
 
    free(rd->cmdline);
 
