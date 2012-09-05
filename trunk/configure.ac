@@ -1,5 +1,5 @@
 AC_PREREQ(2.67)
-define([svnversion], esyscmd([sh -c "echo -n $(( `svnversion | tr -d 'M'` + 1 ))"]))dnl
+define([svnversion], esyscmd([sh -c "echo -n `svnversion | tr -d 'M'`"]))dnl
 AC_INIT([smrender], [[1.2.r]svnversion], [bf@abenteuerland.at])
 AC_CONFIG_MACRO_DIR([m4])
 AM_INIT_AUTOMAKE([foreign -Wall -Werror])
