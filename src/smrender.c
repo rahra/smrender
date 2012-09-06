@@ -751,7 +751,7 @@ void usage(const char *s)
          "   -g <grd>[:<t>[:<s>]]  Distance of grid/ticks/subticks in minutes.\n"
          "   -G .................. Do not generate grid nodes/ways.\n"
          "   -i <osm input> ...... OSM input data (default is stdin).\n"
-         "   -k <filename> ....... Write KAP header to file.\n"
+         "   -k <filename> ....... Generate KAP file.\n"
          "   -l .................. Select landscape output.\n"
          "   -M .................. Input file is memory mapped (default).\n"
          "   -m .................. Input file is read into heap memory.\n"
