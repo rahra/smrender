@@ -251,8 +251,10 @@ struct rdata
    double mean_lon;
    // hyperbolic values for transversial Mercator (latitude stretching)
    double lath, lath_len;
-   // (pixel) image width and height
+   // (pixel) image width and height of rendered image
    int w, h;
+   // (pixel) image width and height of final image
+   int fw, fh;
    // pixel resolution
    int dpi;
    // oversampling factor
@@ -265,6 +267,8 @@ struct rdata
    struct dstats ds;
    // pointer to cmd line string
    char *cmdline;
+   // chart title
+   char *title;
 
    // ***** this id libgd2 specific ***** 
    // pointer to image data
@@ -321,6 +325,8 @@ void grid2(struct rdata*);
 void init_main_image(struct rdata*, const char*);
 void save_main_image(struct rdata*, FILE*);
 int get_color(const struct rdata*, int, int, int, int);
+int get_pixel(struct rdata*, int , int );
+void reduce_resolution(struct rdata *);
 
 /* smlog.c */
 FILE *init_log(const char*, int);
@@ -332,6 +338,9 @@ int parse_matchtype(bstring_t*, struct specialTag*);
 int init_rules(osm_obj_t*, struct rdata*, void*);
 fparam_t **parse_fparam(char*);
 void free_fparam(fparam_t **);
+
+/* smkap.c */
+int save_kap(FILE *, struct rdata *);
 
 #endif
 

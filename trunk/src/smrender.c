@@ -58,7 +58,6 @@
 #define ISLON(x) (ISEAST(x) || ISWEST(x))
 
 
-static struct rdata rd_;
 static volatile sig_atomic_t int_ = 0;
 
 
@@ -146,12 +145,6 @@ int parse_coord(const char *s, double *a)
    *a *= n;
 
    return r;
-}
-
-
-struct rdata *get_rdata(void)
-{
-   return &rd_;
 }
 
 
@@ -408,10 +401,12 @@ void print_rdata(const struct rdata *rd)
    log_msg(LOG_NOTICE, "   mean_lat = %.3f°, mean_lat_len = %.3f (%.1f nm)",
          rd->mean_lat, rd->mean_lat_len, rd->mean_lat_len * 60);
    log_msg(LOG_NOTICE, "   lath = %f, lath_len = %f", rd->lath, rd->lath_len);
-   log_msg(LOG_NOTICE, "   %dx%d px, dpi = %d, page size = %.1f x %.1f mm",
-         rd->w, rd->h, rd->ovs ? rd->dpi / rd->ovs : rd->dpi, PX2MM(rd->w), PX2MM(rd->h));
-   log_msg(LOG_NOTICE, "   rendering dpi = %d, oversampling = %d",
-         rd->dpi, rd->ovs);
+   log_msg(LOG_NOTICE, "   page size = %.1f x %.1f mm, oversampling = %d",
+         PX2MM(rd->w), PX2MM(rd->h), rd->ovs);
+   log_msg(LOG_NOTICE, "   rendering: %dx%d px, dpi = %d",
+         rd->w, rd->h, rd->dpi);
+   log_msg(LOG_NOTICE, "   final: %dx%d px, dpi = %d",
+         rd->fw, rd->fh, rd->ovs ? rd->dpi / rd->ovs : rd->dpi);
    log_msg(LOG_NOTICE, "   1 px = %.3f mm, 1mm = %d px", PX2MM(1), (int) MM2PX(1));
    log_msg(LOG_NOTICE, "   scale 1:%.0f, %.1f x %.1f nm",
          rd->scale, rd->wc * 60 * cos(DEG2RAD(rd->mean_lat)), rd->hc * 60);
@@ -495,7 +490,7 @@ int print_onode(FILE *f, const osm_obj_t *o)
 
       case OSM_REL:
          for (i = 0; i < ((osm_rel_t*) o)->mem_cnt; i++)
-            fprintf(f, "<member type=\"%s\" id=\"%ld\" role=\"\"/>\n",
+            fprintf(f, "<member type=\"%s\" ref=\"%ld\" role=\"\"/>\n",
                   ((osm_rel_t*) o)->mem[i].type == OSM_NODE ? "node" : "way", (long) ((osm_rel_t*) o)->mem[i].id);
          fprintf(f, "</relation>\n");
          break;
@@ -590,43 +585,6 @@ int free_objects(osm_obj_t *o, struct rdata *rd, void *p)
 }
 
 
-double px2lat(struct rdata *rd, int y)
-{
-   return RAD2DEG(atan(sinh(rd->lath - rd->lath_len * ((double) y / (double) rd->h - 0.5))));
-}
-
-
-void gen_kap_header(FILE *f, struct rdata *rd)
-{
-   double mppx, lat1, lat2;
-   int w, h;
-
-   lat1 = px2lat(rd, 0);
-   lat2 = px2lat(rd, rd->h);
-   w = rd->ovs ? rd->w / rd->ovs : rd->w;
-   h = rd->ovs ? rd->h / rd->ovs : rd->h;
-   mppx = rd->mean_lat_len / w * 1852.0 * 60.0;
-
-   fprintf(f, "VER/2.0\r\nBSB/NA=%s %d\r\n    NU=,RA=%d,%d,DU=%d\r\n",
-         "CHART", (int) rd->scale, w, h, rd->ovs ? rd->dpi / rd->ovs : rd->dpi);
-   fprintf(f, "KNP/SC=%d,GD=WGS84,PR=TRANSVERSE MERCATOR\r\n    PP=%f,PI=UNKNOWN,SP=UNKNOWN,SK=0.0,TA=90.0\r\n",
-         (int) rd->scale, rd->mean_lat);
-   fprintf(f, "    UN=METRES,SD=MLWS,DX=%.2f,DY=%.2f\r\n",
-         mppx, mppx);
-   fprintf(f, "REF/1,%d,%d,%.8f,%.8f\r\nREF/2,%d,%d,%.8f,%.8f\r\nREF/3,%d,%d,%.8f,%.8f\r\nREF/4,%d,%d,%.8f,%.8f\r\n",
-         0, 0, lat1, rd->x1c,
-         w, 0, lat1, rd->x2c,
-         w, h, lat2, rd->x2c,
-         0, h, lat2, rd->x1c);
-   fprintf(f, "PLY/1,%.8f,%.8f\r\nPLY/2,%.8f,%.8f\r\nPLY/3,%.8f,%.8f\r\nPLY/4,%.8f,%.8f\r\n",
-         rd->y1c, rd->x1c,
-         rd->y1c, rd->x2c,
-         rd->y2c, rd->x2c,
-         rd->y2c, rd->x1c);
-   fprintf(f, "DTM/0.0,0.0\r\nCPH/0.0\r\n");
-}
-
-
 int save_osm(struct rdata *rd, const char *s, bx_node_t *tree)
 {
    FILE *f;
@@ -680,16 +638,24 @@ void auto_grid(struct rdata *rd)
 }
 
 
-struct rdata *init_rdata(void)
+struct rdata *get_rdata(void)
 {
-   memset(&rd_, 0, sizeof(rd_));
-   rd_.dpi = 300;
-   rd_.ovs = DEFAULT_OVS;
-   rd_.grd.lat_ticks = rd_.grd.lon_ticks = G_TICKS;
-   rd_.grd.lat_sticks = rd_.grd.lon_sticks = G_STICKS;
-   rd_.grd.lat_g = rd_.grd.lon_g = G_GRID;
+   static struct rdata rd;
+   static int rd_init = 0;
 
-   return &rd_;
+   if (!rd_init)
+   {
+      rd_init++;
+      memset(&rd, 0, sizeof(rd));
+      rd.dpi = 300;
+      rd.ovs = DEFAULT_OVS;
+      rd.grd.lat_ticks = rd.grd.lon_ticks = G_TICKS;
+      rd.grd.lat_sticks = rd.grd.lon_sticks = G_STICKS;
+      rd.grd.lat_g = rd.grd.lon_g = G_GRID;
+      rd.title = "";
+   }
+
+   return &rd;
 }
 
 
@@ -791,6 +757,7 @@ void usage(const char *s)
          "   -m .................. Input file is read into heap memory.\n"
          "   -r <rules file> ..... Rules file ('rules.osm' is default).\n"
          "   -s <ovs> ............ Set oversampling factor (0-10) (default = %d).\n"
+         "   -t <title> .......... Set descriptional chart title.\n"
          "   -o <image file> ..... Filename of output image (stdout is default).\n"
          "   -P <page format> .... Select output page format.\n"
          "   -V .................. Show chart parameters and exit.\n"
@@ -868,11 +835,11 @@ int main(int argc, char *argv[])
    (void) gettimeofday(&tv_start, NULL);
    init_log("stderr", LOG_DEBUG);
    log_msg(LOG_INFO, "initializing structures");
-   rd = init_rdata();
+   rd = get_rdata();
    set_util_rd(rd);
    rd->cmdline = mk_cmd_line((const char**) argv);
 
-   while ((n = getopt(argc, argv, "b:d:fg:Ghi:k:lMmo:P:r:s:R:Vw:")) != -1)
+   while ((n = getopt(argc, argv, "b:d:fg:Ghi:k:lMmo:P:r:R:s:t:Vw:")) != -1)
       switch (n)
       {
          case 'b':
@@ -971,6 +938,10 @@ int main(int argc, char *argv[])
             osm_rfile = optarg;
             break;
 
+         case 't':
+            rd->title = optarg;
+            break;
+
          case 'V':
             init_exit = 1;
             break;
@@ -1031,6 +1002,16 @@ int main(int argc, char *argv[])
       rd->dpi *= rd->ovs;
 
    init_rd_paper(rd, paper, landscape);
+   if (rd->ovs > 1)
+   {
+      rd->fw = rd->w / rd->ovs;
+      rd->fh = rd->h / rd->ovs;
+   }
+   else
+   {
+      rd->fw = rd->w;
+      rd->fh = rd->h;
+   }
 
    if (rd->scale > 0)
       rd->mean_lat_len = rd->scale * ((double) rd->w / (double) rd->dpi) * 2.54 / (60.0 * 1852 * 100);
@@ -1201,15 +1182,19 @@ int main(int argc, char *argv[])
    log_debug("freeing rules tree");
    bx_free_tree(rd->rules);
 
+   if (rd->ovs > 1)
+      reduce_resolution(rd);
+
    if (img_file != NULL)
    {
       if ((f = fopen(img_file, "w")) == NULL)
-         log_msg(LOG_ERR, "error opening file %s: %s", img_file, strerror(errno)),
-            exit(EXIT_FAILURE);
+         log_msg(LOG_ERR, "error opening file %s: %s", img_file, strerror(errno));
+      else
+      {
+         save_main_image(rd, f);
+         fclose(f);
+      }
    }
-   save_main_image(rd, f);
-   if (img_file != NULL)
-      fclose(f);
 
    if (kap_file != NULL)
    {
@@ -1218,11 +1203,11 @@ int main(int argc, char *argv[])
          log_msg(LOG_WARN, "cannot open file %s: %s", kap_file, strerror(errno));
       else
       {
-         gen_kap_header(f, rd);
+         //gen_kap_header(f, rd);
+         save_kap(f, rd);
          fclose(f);
       }
    }
-
 
    free(rd->cmdline);
 
