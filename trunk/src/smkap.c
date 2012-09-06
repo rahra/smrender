@@ -1,4 +1,4 @@
-/* Copyright 2011 Bernhard R. Fischer, 2048R/5C5FFD47 <bf@abenteuerland.at>
+/* Copyright 2012 Bernhard R. Fischer, 2048R/5C5FFD47 <bf@abenteuerland.at>
  *
  * This file is part of smrender.
  *
@@ -15,8 +15,11 @@
  * along with smrender. If not, see <http://www.gnu.org/licenses/>.
  */
 
-/*! This file contains the code of the rule parser and main loop of the render
- * as well as the code for traversing the object (nodes/ways) tree.
+/*! This file contains the code to generate the KAP file.
+ *  Please note that this file contains two functions (bsb_compress_nb() and
+ *  bsb_compress_row()) which are taken as is from the project libbsb
+ *  (http://libbsb.sourceforge.net/). The authors of libbsb are Stuart
+ *  Cunningham and Anuradha Suraparaju. Libbsb was released with LGPL.
  *
  *  @author Bernhard R. Fischer
  */
