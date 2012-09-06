@@ -50,25 +50,23 @@ void init_main_image(struct rdata *rd, const char *bg)
 }
 
 
-void save_main_image(struct rdata *rd, FILE *f)
+void reduce_resolution(struct rdata *rd)
 {
    gdImage *img;
 
-   if (rd->ovs <= 1)
-   {
-      log_msg(LOG_INFO, "saving image");
-      gdImagePngEx(rd->img, f, 9);
-   }
-   else
-   {
-      log_msg(LOG_INFO, "resampling rendered image");
-      img = gdImageCreateTrueColor(gdImageSX(rd->img) / rd->ovs, gdImageSY(rd->img) / rd->ovs);
-      gdImageCopyResampled(img, rd->img, 0, 0, 0, 0, gdImageSX(img), gdImageSY(img), gdImageSX(rd->img), gdImageSY(rd->img));
-      log_msg(LOG_INFO, "saving image");
-      gdImagePngEx(img, f, 9);
-      gdImageDestroy(img);
-   }
+   log_msg(LOG_INFO, "resampling rendered image");
+   img = gdImageCreateTrueColor(rd->fw, rd->fh);
+   gdImageCopyResampled(img, rd->img, 0, 0, 0, 0, gdImageSX(img), gdImageSY(img), gdImageSX(rd->img), gdImageSY(rd->img));
    gdImageDestroy(rd->img);
+   rd->img = img;
+}
+
+
+void save_main_image(struct rdata *rd, FILE *f)
+{
+   log_msg(LOG_INFO, "saving image");
+   gdImagePngEx(rd->img, f, 9);
+   //gdImageDestroy(rd->img);
 }
 
 
@@ -270,7 +268,8 @@ int act_cap_node(smrule_t *r, osm_node_t *n)
       for (x = 0; x < n->obj.otag[m].v.len; x++)
          v[x] = toupper((unsigned) v[x]);
 
-   c = !rd->ovs ? cap->col : cap->col | 0x80000000;
+   // 0x80000000 is or'd into to get non-antialiased black
+   c = !rd->ovs ? cap->col : -cap->col | 0x80000000;
    mk_paper_coords(n->lat, n->lon, rd, &x, &y);
    memset(&fte, 0, sizeof(fte));
    fte.flags = gdFTEX_RESOLUTION | gdFTEX_CHARMAP;
@@ -965,9 +964,21 @@ int act_draw_fini(smrule_t *r)
    return 0;
 }
 
+
+int get_pixel(struct rdata *rd, int x, int y)
+{
+   return gdImageGetPixel(rd->img, x, y);
+}
+
+
 #else
 
 void init_main_image(struct rdata *rd, const char *bg)
+{
+}
+
+
+void reduce_resolution(struct rdata *rd)
 {
 }
 
@@ -978,6 +989,12 @@ void save_main_image(struct rdata *rd, FILE *f)
 
 
 int get_color(const struct rdata *rd, int r, int g, int b, int a)
+{
+   return 0;
+}
+
+
+int get_pixel(struct rdata *rd, int x, int y)
 {
    return 0;
 }

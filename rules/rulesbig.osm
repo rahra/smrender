@@ -178,6 +178,11 @@
       <tag k='border' v='top'/>
    </node>
    <node>
+      <tag k='_action_' v='cap:font=sans-serif:bold;size=6;key=name;valign=north;halign=east;color=brown'/>
+      <tag k='grid' v='text'/>
+      <tag k='border' v='title'/>
+   </node>
+   <node>
       <tag k='_action_' v='cap:font=sans-serif;size=4;key=name;valign=south'/>
       <tag k='grid' v='text'/>
       <tag k='border' v='bottom'/>
