@@ -752,6 +752,7 @@ void usage(const char *s)
          "   -G .................. Do not generate grid nodes/ways.\n"
          "   -i <osm input> ...... OSM input data (default is stdin).\n"
          "   -k <filename> ....... Generate KAP file.\n"
+         "   -K <filename> ....... Generate KAP header file.\n"
          "   -l .................. Select landscape output.\n"
          "   -M .................. Input file is memory mapped (default).\n"
          "   -m .................. Input file is read into heap memory.\n"
@@ -820,7 +821,8 @@ int main(int argc, char *argv[])
    int fd = 0, n;
    struct stat st;
    FILE *f = stdout;
-   char *cf = "rules.osm", *img_file = NULL, *osm_ifile = NULL, *osm_ofile = NULL, *osm_rfile = NULL, *kap_file = NULL;
+   char *cf = "rules.osm", *img_file = NULL, *osm_ifile = NULL, *osm_ofile =
+      NULL, *osm_rfile = NULL, *kap_file = NULL, *kap_hfile = NULL;
    struct rdata *rd;
    struct timeval tv_start, tv_end;
    int gen_grid = 1, landscape = 0, w_mmap = 1, load_filter = 0, user_grid = 0, init_exit = 0;
@@ -839,7 +841,7 @@ int main(int argc, char *argv[])
    set_util_rd(rd);
    rd->cmdline = mk_cmd_line((const char**) argv);
 
-   while ((n = getopt(argc, argv, "b:d:fg:Ghi:k:lMmo:P:r:R:s:t:Vw:")) != -1)
+   while ((n = getopt(argc, argv, "b:d:fg:Ghi:k:K:lMmo:P:r:R:s:t:Vw:")) != -1)
       switch (n)
       {
          case 'b':
@@ -896,6 +898,10 @@ int main(int argc, char *argv[])
 
          case 'k':
             kap_file = optarg;
+            break;
+
+         case 'K':
+            kap_hfile = optarg;
             break;
 
          case 'M':
@@ -1205,6 +1211,19 @@ int main(int argc, char *argv[])
       {
          //gen_kap_header(f, rd);
          save_kap(f, rd);
+         fclose(f);
+      }
+   }
+
+   if (kap_hfile != NULL)
+   {
+      log_msg(LOG_INFO, "generating KAP header file %s", kap_hfile);
+      if ((f = fopen(kap_hfile, "w")) == NULL)
+         log_msg(LOG_WARN, "cannot open file %s: %s", kap_file, strerror(errno));
+      else
+      {
+         //gen_kap_header(f, rd);
+         gen_kap_header(f, rd);
          fclose(f);
       }
    }

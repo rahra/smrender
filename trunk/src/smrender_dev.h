@@ -341,6 +341,7 @@ void free_fparam(fparam_t **);
 
 /* smkap.c */
 int save_kap(FILE *, struct rdata *);
+int gen_kap_header(FILE *, struct rdata *);
 
 #endif
 

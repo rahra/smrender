@@ -128,7 +128,7 @@ static void strreplc(char *s)
 }
 
 
-static int gen_kap_header(FILE *f, struct rdata *rd)
+int gen_kap_header(FILE *f, struct rdata *rd)
 {
    double mppx, lat1, lat2;
    int off = 0;
@@ -157,7 +157,7 @@ static int gen_kap_header(FILE *f, struct rdata *rd)
          rd->y1c, rd->x2c,
          rd->y2c, rd->x2c,
          rd->y2c, rd->x1c);
-   off += fprintf(f, "DTM/0.0,0.0\r\nCPH/0.0\r\nOST/1\r\n");
+   off += fprintf(f, "DTM/0.0,0.0\r\nCPH/0.0\r\n");
    return off;
 }
 
@@ -264,7 +264,7 @@ int save_kap(FILE *f, struct rdata *rd)
    hcnt = gen_hist(rd, &hist);
    d = get_depth(hcnt);
    log_debug("KAP color depth %d", d);
-   off += fprintf(f, "IFM/%d\r\n", d);
+   off += fprintf(f, "OST/1\r\nIFM/%d\r\n", d);
    for (i = 0; i < hcnt; i++)
       off += fprintf(f, "RGB/%d,%d,%d,%d\r\n", i + 1, (hist[i].col >> 16) & 0xff, (hist[i].col >> 8) & 0xff, hist[i].col & 0xff);
 
