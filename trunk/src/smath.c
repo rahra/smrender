@@ -28,8 +28,8 @@
 /*! Calculate bearing and distance from src to dst.
  *  @param src Source coodinates (struct coord).
  *  @param dst Destination coordinates (struct coord).
- *  @return Returns a struct pcoord. Pcoord contains the distance in degrees (on a flat Mercartor
- *  projection) and the angle, 0 degress north, clockwise.
+ *  @return Returns a struct pcoord. Pcoord contains the orthodrome distance in
+ *  degrees and the angle, 0 degress north, clockwise.
  */
 struct pcoord coord_diff(const struct coord *src, const struct coord *dst)
 {
@@ -40,7 +40,9 @@ struct pcoord coord_diff(const struct coord *src, const struct coord *dst)
    dlon = (dst->lon - src->lon) * cos(DEG2RAD((src->lat + dst->lat) / 2.0));
 
    pc.bearing = RAD2DEG(atan2(dlon, dlat));
-   pc.dist = sqrt(dlat * dlat + dlon * dlon);
+   pc.dist = RAD2DEG(acos(
+      sin(DEG2RAD(src->lat)) * sin(DEG2RAD(dst->lat)) + 
+      cos(DEG2RAD(src->lat)) * cos(DEG2RAD(dst->lat)) * cos(DEG2RAD(dst->lon - src->lon))));
 
    if (pc.bearing  < 0)
       pc.bearing += 360.0;
