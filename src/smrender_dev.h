@@ -188,6 +188,7 @@ struct act_shape
    short pcount;
    double size;
    double angle;
+   char *key;
 };
 
 struct action
@@ -220,6 +221,7 @@ struct grid
    double lat_ticks, lon_ticks;
    double lat_sticks, lon_sticks;
    double lat_g, lon_g;
+   double g_margin, g_tw, g_stw;
 };
 
 struct dstats
@@ -261,8 +263,6 @@ struct rdata
    int ovs;
    // scale
    double scale;
-   // grid drawing data
-   struct grid grd;
    // node/way stats
    struct dstats ds;
    // pointer to cmd line string

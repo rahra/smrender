@@ -53,7 +53,7 @@ int match_attr(const osm_obj_t*, const char *, const char *);
 char *get_param(const char*, double*, const action_t*);
 
 /* smlog.c */
-void log_msg(int, const char*, ...);
+void log_msg(int, const char*, ...) __attribute__((format (printf, 2, 3)));
 
 #endif
 

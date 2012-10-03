@@ -32,7 +32,6 @@
 enum {OSM_NA, OSM_NODE, OSM_WAY, OSM_REL};
 
 
-//#define SIZEOF_OSM_NODE_S sizeof(struct osm_node)
 #define SIZEOF_OSM_OBJ(x) ((x)->type == OSM_NODE ? sizeof(osm_node_t) : \
                            (x)->type == OSM_WAY ? sizeof(osm_way_t) : \
                            (x)->type == OSM_REL ? sizeof(osm_rel_t) : 0)
@@ -89,21 +88,6 @@ typedef union osm_storage
    osm_rel_t r;
 } osm_storage_t;
 
-/*
-struct osm_node
-{
-   // osm data
-   int64_t id;
-   double lat, lon;
-   int ver, cs, uid;
-   int vis;
-   time_t tim;
-//   char act[1024];
-
-   // osmx specific type
-   int type;
-};
-*/
 
 time_t parse_time(bstring_t);
 int proc_osm_node(const hpx_tag_t*, osm_obj_t*);
@@ -114,6 +98,10 @@ osm_way_t *malloc_way(short , int );
 osm_rel_t *malloc_rel(short , short );
 size_t onode_mem(void);
 size_t onode_freed(void);
+void osm_obj_default(osm_obj_t *);
+void osm_way_default(osm_way_t *);
+void osm_node_default(osm_node_t *);
+
 
 #endif
 

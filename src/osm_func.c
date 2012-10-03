@@ -230,3 +230,25 @@ osm_rel_t *malloc_rel(short tag_cnt, short mem_cnt)
    return r;
 }
 
+
+void osm_obj_default(osm_obj_t *o)
+{
+   o->tim = time(NULL);
+   o->ver = 1;
+   set_const_tag(&o->otag[0], "generator", "smrender");
+}
+
+
+void osm_way_default(osm_way_t *w)
+{
+   w->obj.id = unique_way_id();
+   osm_obj_default((osm_obj_t*) w);
+}
+
+
+void osm_node_default(osm_node_t *n)
+{
+   n->obj.id = unique_node_id();
+   osm_obj_default((osm_obj_t*) n);
+}
+

@@ -410,8 +410,6 @@ void print_rdata(const struct rdata *rd)
    log_msg(LOG_NOTICE, "   1 px = %.3f mm, 1mm = %d px", PX2MM(1), (int) MM2PX(1));
    log_msg(LOG_NOTICE, "   scale 1:%.0f, %.1f x %.1f nm",
          rd->scale, rd->wc * 60 * cos(DEG2RAD(rd->mean_lat)), rd->hc * 60);
-   log_msg(LOG_NOTICE, "   grid = %.1f', ticks = %.2f', subticks = %.2f'",
-         rd->grd.lat_g * 60, rd->grd.lat_ticks * 60, rd->grd.lat_sticks * 60);
 
    log_debug("   G_GRID %.3f, G_TICKS %.3f, G_STICKS %.3f, G_MARGIN %.2f, G_TW %.2f, G_STW %.2f, G_BW %.2f",
          G_GRID, G_TICKS, G_STICKS, G_MARGIN, G_TW, G_STW, G_BW);
@@ -453,7 +451,7 @@ int print_onode(FILE *f, const osm_obj_t *o)
    switch (o->type)
    {
       case OSM_NODE:
-         fprintf(f, "<node id=\"%ld\" version=\"%d\" lat=\"%f\" lon=\"%f\" timestamp=\"%s\" uid=\"%d\">\n",
+         fprintf(f, "<node id=\"%ld\" version=\"%d\" lat=\"%.7f\" lon=\"%.7f\" timestamp=\"%s\" uid=\"%d\">\n",
                (long) o->id, o->ver, ((osm_node_t*) o)->lat, ((osm_node_t*) o)->lon, ts, o->uid);
          break;
 
@@ -614,30 +612,6 @@ int save_osm(struct rdata *rd, const char *s, bx_node_t *tree)
 }
 
 
-/*! Set grid depending on the scale. */
-void auto_grid(struct rdata *rd)
-{
-   if (rd->scale >= 250000)
-   {
-      rd->grd.lat_ticks = rd->grd.lon_ticks = MIN2DEG(2);
-      rd->grd.lat_sticks = rd->grd.lon_sticks = MIN2DEG(0.5);
-      rd->grd.lat_g = rd->grd.lon_g = MIN2DEG(20);
-   }
-   else if (rd->scale >= 150000)
-   {
-      rd->grd.lat_ticks = rd->grd.lon_ticks = MIN2DEG(1);
-      rd->grd.lat_sticks = rd->grd.lon_sticks = MIN2DEG(0.25);
-      rd->grd.lat_g = rd->grd.lon_g = MIN2DEG(10);
-   }
-   else
-   {
-      rd->grd.lat_ticks = rd->grd.lon_ticks = MIN2DEG(1);
-      rd->grd.lat_sticks = rd->grd.lon_sticks = MIN2DEG(0.2);
-      rd->grd.lat_g = rd->grd.lon_g = MIN2DEG(5);
-   }
-}
-
-
 struct rdata *get_rdata(void)
 {
    static struct rdata rd;
@@ -649,9 +623,6 @@ struct rdata *get_rdata(void)
       memset(&rd, 0, sizeof(rd));
       rd.dpi = 300;
       rd.ovs = DEFAULT_OVS;
-      rd.grd.lat_ticks = rd.grd.lon_ticks = G_TICKS;
-      rd.grd.lat_sticks = rd.grd.lon_sticks = G_STICKS;
-      rd.grd.lat_g = rd.grd.lon_g = G_GRID;
       rd.title = "";
    }
 
@@ -748,8 +719,6 @@ void usage(const char *s)
          "   -b <color> .......... Choose background color ('white' is default).\n"
          "   -d <density> ........ Set image density (300 is default).\n"
          "   -f .................. Use loading filter.\n"
-         "   -g <grd>[:<t>[:<s>]]  Distance of grid/ticks/subticks in minutes.\n"
-         "   -G .................. Do not generate grid nodes/ways.\n"
          "   -i <osm input> ...... OSM input data (default is stdin).\n"
          "   -k <filename> ....... Generate KAP file.\n"
          "   -K <filename> ....... Generate KAP header file.\n"
@@ -825,7 +794,7 @@ int main(int argc, char *argv[])
       NULL, *osm_rfile = NULL, *kap_file = NULL, *kap_hfile = NULL;
    struct rdata *rd;
    struct timeval tv_start, tv_end;
-   int gen_grid = 1, landscape = 0, w_mmap = 1, load_filter = 0, user_grid = 0, init_exit = 0;
+   int landscape = 0, w_mmap = 1, load_filter = 0, init_exit = 0;
    char *paper = "A3", *bg = NULL;
    struct filter fi;
    struct dstats rstats;
@@ -855,33 +824,8 @@ int main(int argc, char *argv[])
             break;
 
          case 'g':
-            user_grid = 1;
-            if ((s = strtok(optarg, ":")) == NULL)
-               log_msg(LOG_ERR, "ill grid parameter"), exit(EXIT_FAILURE);
-
-            rd->grd.lat_g = rd->grd.lon_g = atof(s) / 60;
-
-            if ((s = strtok(NULL, ":")) == NULL)
-            {
-               rd->grd.lat_ticks = rd->grd.lon_ticks = rd->grd.lat_g / 10;
-               break;
-            }
-            rd->grd.lat_ticks = rd->grd.lon_ticks = atof(s) / 60;
-
-            if ((s = strtok(NULL, ":")) == NULL)
-            {
-               if (!((int) round(rd->grd.lat_ticks * 600) % 4))
-                  rd->grd.lat_sticks = rd->grd.lon_sticks = rd->grd.lat_ticks / 4;
-               else
-                  rd->grd.lat_sticks = rd->grd.lon_sticks = rd->grd.lat_ticks / 5;
-               break;
-            }
-
-            rd->grd.lat_sticks = rd->grd.lon_sticks = atof(s) / 60;
-            break;
-
          case 'G':
-            gen_grid = 0;
+            log_msg(LOG_WARN, "Option %c deprecated. Use 'grid' action instead!", n);
             break;
 
          case 'h':
@@ -1026,9 +970,6 @@ int main(int argc, char *argv[])
 
    init_bbox_mll(rd);
 
-   if (!user_grid)
-      auto_grid(rd);
-
    print_rdata(rd);
 
    if (init_exit)
@@ -1143,12 +1084,6 @@ int main(int argc, char *argv[])
          rd->ds.lu.lat, rd->ds.lu.lon, rd->ds.rb.lat, rd->ds.rb.lon);
    log_msg(LOG_INFO, " lo_addr = %p, hi_addr = %p", rd->ds.lo_addr, rd->ds.hi_addr);
 
-   if (gen_grid)
-   {
-      log_msg(LOG_INFO, "generating grid nodes/ways");
-      grid2(rd);
-   }
-
    install_sigint();
    init_cat_poly(rd);
 
@@ -1239,7 +1174,7 @@ int main(int argc, char *argv[])
       tv_end.tv_usec += 1000000;
    }
 
-   log_msg(LOG_INFO, "%d.%03d seconds elapsed. exiting", tv_end.tv_sec, tv_end.tv_usec / 1000);
+   log_msg(LOG_INFO, "%d.%03d seconds elapsed. exiting", (unsigned) tv_end.tv_sec, (unsigned) tv_end.tv_usec / 1000);
    log_msg(LOG_INFO, "Thanks for using smrender!");
    return EXIT_SUCCESS;
 }
