@@ -1,6 +1,9 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <osm version='0.6'>
    <node version="-10">
+      <tag k="_action_" v="grid"/>
+   </node>
+   <node version="-10">
       <tag k='seamark:type' v=''/>
       <tag k='_action_' v='vsector@libsmfilter.so'/>
    </node>
@@ -97,9 +100,9 @@
       <tag k='seamark:type' v='beacon_lateral'/>
       <tag k='_action_' v='img:file=icons/Beacon_Black.png'/>
    </node>
-   <node>
+   <node version='-10'>
       <tag k='natural' v='peak'/>
-      <tag k='_action_' v='img:file=icons/Dot_6x6.png'/>
+      <tag k='_action_' v='shape:style=circle;radius=.3'/>
    </node>
 
    <!--
@@ -284,6 +287,10 @@
    <way>
       <tag k='natural' v='coastline'/>
       <tag k='_action_' v='draw:color=yellow;bcolor=black'/>
+   </way>
+   <way>
+      <tag k='natural' v='peak'/>
+      <tag k='_action_' v='draw:color=black'/>
    </way>
    <way version='1'>
       <tag k='seamark:sounding:quality' v='/report/'/>

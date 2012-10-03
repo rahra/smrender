@@ -22,7 +22,94 @@
  */
 
 #include <string.h>
+#include <time.h>
 #include "smrender_dev.h"
+
+
+#define RULER_HEIGHT MM2LAT(2.0)
+
+
+int act_ruler_ini(smrule_t *r)
+{
+   struct rdata *rd = get_rdata();
+   struct coord p;
+   char buf[32];
+   osm_node_t *n[4], *on[2];
+   osm_way_t *w;
+   double lon_diff, rsec;
+   int rcnt, i, j;
+
+   rsec = -1.0;
+   (void) get_param("count", &rsec, r->act);
+   rcnt = rsec <= 0.0 ? 5 : rsec;
+
+   rsec = -1.0;
+   (void) get_param("section", &rsec, r->act);
+   if (rsec <= 0.0)
+      rsec = 1.0;
+
+   log_msg(LOG_INFO, "ruler sectioning = %.2f km x %d", rsec, rcnt);
+
+   // FIXME: G_ macros should be replaced by variables
+   p.lon = rd->x1c + MM2LON(G_MARGIN + G_TW + G_STW * 3);
+   p.lat = rd->y2c + MM2LAT(G_MARGIN + G_TW + G_STW * 3);
+
+   // 1° lat = 60 sm
+   // 1° lon / cos(lat) = 60 sm -> 1 / (cos(lat) * 60) = 1 sm = 1.852km -> 1 / (cos(lat) * 60 * 1.852) = 1km
+
+   //rsec = 1.0; // ruler sectioning -> 1 km
+   //rcnt = 5;   // number of ruler sections -> 5
+   lon_diff = (double) rsec / (60.0 * 1.852 * cos(DEG2RAD(p.lat)));
+
+   log_msg(LOG_INFO, "generating ruler: %d sections, %f degrees lon", rcnt, lon_diff);
+
+   on[0] = malloc_node(1);
+   osm_node_default(on[0]);
+   on[1] = malloc_node(2);
+   osm_node_default(on[1]);
+   set_const_tag(&on[1]->obj.otag[1], "distance", "0 km");
+
+   on[0]->lat = p.lat;
+   on[0]->lon = p.lon;
+   on[1]->lat = p.lat + RULER_HEIGHT;
+   on[1]->lon = p.lon;
+ 
+   put_object((osm_obj_t*) on[0]);
+   put_object((osm_obj_t*) on[1]);
+
+   for (i = 0; i < rcnt; i++)
+   {
+      n[0] = on[0];
+      n[3] = on[1];
+
+      on[0] = n[1] = malloc_node(1);
+      osm_node_default(n[1]);
+      on[1] = n[2] = malloc_node(2);
+      osm_node_default(n[2]);
+
+      snprintf(buf, sizeof(buf), "%d km", (int) ((i + 1) * rsec));
+      set_const_tag(&on[1]->obj.otag[1], "distance", strdup(buf));
+
+      n[1]->lat = n[0]->lat;
+      n[1]->lon = n[0]->lon + lon_diff;
+      n[2]->lat = n[3]->lat;
+      n[2]->lon = n[1]->lon;
+
+      put_object((osm_obj_t*) n[1]);
+      put_object((osm_obj_t*) n[2]);
+
+      w = malloc_way(2, 5);
+      osm_way_default(w);
+      set_const_tag(&w->obj.otag[1], "ruler_style", i & 1 ? "transparent" : "fill");
+
+      for (j = 0; j < 5; j++)
+         w->ref[j] = n[j % 4]->obj.id;
+
+      put_object((osm_obj_t*) w);
+   }
+
+   return 0;
+}
 
 
 void geo_description(double lat, double lon, char *text, char *pos)
@@ -39,6 +126,24 @@ void geo_description(double lat, double lon, char *text, char *pos)
    set_const_tag(&n->obj.otag[1], "grid", "text");
    set_const_tag(&n->obj.otag[2], "name", text);
    set_const_tag(&n->obj.otag[3], "border", pos);
+   put_object((osm_obj_t*) n);
+}
+
+
+void grid_date(struct rdata *rd, const struct grid *grd)
+{
+   osm_node_t *n;
+   char buf[256];
+
+   n = malloc_node(2);
+   n->obj.id = unique_node_id();
+   n->obj.tim = time(NULL);
+   n->obj.ver = 1;
+   n->lat = rd->y2c + MM2LAT(grd->g_margin - grd->g_stw);
+   n->lon = rd->x1c + MM2LON(grd->g_margin);
+   set_const_tag(&n->obj.otag[0], "generator", "smrender");
+   strftime(buf, sizeof(buf), "%e. %b. %Y, %R", localtime(&n->obj.tim));
+   set_const_tag(&n->obj.otag[1], "chartdate", strdup(buf));
    put_object((osm_obj_t*) n);
 }
 
@@ -197,37 +302,102 @@ void geo_lat_ticks(struct rdata *rd, double b, double b1, double b2, double b3, 
 }
 
 
-void geo_legend(struct rdata *rd)
+void geo_legend(struct rdata *rd, const struct grid *grd)
 {
    char buf[256], *s;
    int lat;
 
    lat = rd->mean_lat * T_RESCALE;
-   snprintf(buf, sizeof(buf), "Mean Latitude %02d %c %.1f', Scale = 1:%.0f, %.1f x %.1f mm", lat / T_RESCALE, lat < 0 ? 'S' : 'N', (double) (lat % T_RESCALE) / TM_RESCALE, rd->scale, PX2MM(rd->w) - 2 * G_MARGIN, PX2MM(rd->h) - 2 * G_MARGIN);
+   snprintf(buf, sizeof(buf), "Mean Latitude %02d %c %.1f', Scale = 1:%.0f, %.1f x %.1f mm", lat / T_RESCALE, lat < 0 ? 'S' : 'N', (double) (lat % T_RESCALE) / TM_RESCALE, rd->scale, PX2MM(rd->w) - 2 * grd->g_margin, PX2MM(rd->h) - 2 * grd->g_margin);
    s = strdup(buf);
-   geo_description(rd->y1c - MM2LAT(G_MARGIN), rd->x1c + rd->wc / 2, s, "top");
-   geo_description(rd->y1c - MM2LAT(G_MARGIN), rd->x1c + MM2LON(G_MARGIN), rd->title, "title");
-   geo_description(rd->y2c + MM2LAT(G_MARGIN + G_TW + G_STW), rd->x1c + rd->wc / 2, "Generated with " PACKAGE_STRING ", author Bernhard R. Fischer, 2048R/5C5FFD47 &lt;bf@abenteuerland.at&gt;, data source: OSM.", "copyright");
-   geo_description(rd->y2c + MM2LAT(G_MARGIN - G_TW), rd->x1c + rd->wc / 2, rd->cmdline, "copyright");
+   geo_description(rd->y1c - MM2LAT(grd->g_margin), rd->x1c + rd->wc / 2, s, "top");
+   geo_description(rd->y1c - MM2LAT(grd->g_margin), rd->x1c + MM2LON(grd->g_margin), rd->title, "title");
+   geo_description(rd->y2c + MM2LAT(grd->g_margin + grd->g_tw + grd->g_stw), rd->x1c + rd->wc / 2, "Generated with " PACKAGE_STRING ", author Bernhard R. Fischer, 2048R/5C5FFD47 &lt;bf@abenteuerland.at&gt;, data source: OSM.", "copyright");
+   geo_description(rd->y2c + MM2LAT(grd->g_margin - grd->g_tw), rd->x1c + rd->wc / 2, rd->cmdline, "copyright");
 }
 
 /*! ...
  *  Karte im Maßstab 1:100 000 (Silba-Pag): grid 10', ticks 1', subticks 0.25'
  *  ...
  */
-void grid2(struct rdata *rd)
+void grid(struct rdata *rd, const struct grid *grd)
 {
-   geo_square(rd, G_MARGIN, "outer_border");
-   geo_square(rd, G_MARGIN + G_TW, "ticks_border");
-   geo_square(rd, G_MARGIN + G_TW + G_STW, "subticks_border");
+   geo_square(rd, grd->g_margin, "outer_border");
+   geo_square(rd, grd->g_margin + grd->g_tw, "ticks_border");
+   geo_square(rd, grd->g_margin + grd->g_tw + grd->g_stw, "subticks_border");
 
-   geo_lon_ticks(rd, MM2LON(G_MARGIN + G_TW + G_STW), MM2LAT(G_MARGIN),
-         MM2LAT(G_MARGIN + G_TW), MM2LAT(G_MARGIN + G_TW + G_STW),
-         MIN10(rd->grd.lon_g), MIN10(rd->grd.lon_ticks), MIN10(rd->grd.lon_sticks));
-   geo_lat_ticks(rd, MM2LAT(G_MARGIN + G_TW + G_STW), MM2LON(G_MARGIN),
-         MM2LON(G_MARGIN + G_TW), MM2LON(G_MARGIN + G_TW + G_STW),
-         MIN10(rd->grd.lat_g), MIN10(rd->grd.lat_ticks), MIN10(rd->grd.lat_sticks));
+   grid_date(rd, grd);
 
-   geo_legend(rd);
+   geo_lon_ticks(rd, MM2LON(grd->g_margin + grd->g_tw + grd->g_stw), MM2LAT(grd->g_margin),
+         MM2LAT(grd->g_margin + grd->g_tw), MM2LAT(grd->g_margin + grd->g_tw + grd->g_stw),
+         MIN10(grd->lon_g), MIN10(grd->lon_ticks), MIN10(grd->lon_sticks));
+   geo_lat_ticks(rd, MM2LAT(grd->g_margin + grd->g_tw + grd->g_stw), MM2LON(grd->g_margin),
+         MM2LON(grd->g_margin + grd->g_tw), MM2LON(grd->g_margin + grd->g_tw + grd->g_stw),
+         MIN10(grd->lat_g), MIN10(grd->lat_ticks), MIN10(grd->lat_sticks));
+
+   geo_legend(rd, grd);
+}
+
+
+void auto_grid(const struct rdata *rd, struct grid *grd)
+{
+   grd->g_margin = G_MARGIN;
+   grd->g_tw = G_TW;
+   grd->g_stw = G_STW;
+ 
+   if (rd->scale >= 250000)
+   {
+      grd->lat_ticks = grd->lon_ticks = MIN2DEG(2);
+      grd->lat_sticks = grd->lon_sticks = MIN2DEG(0.5);
+      grd->lat_g = grd->lon_g = MIN2DEG(20);
+   }
+   else if (rd->scale >= 150000)
+   {
+      grd->lat_ticks = grd->lon_ticks = MIN2DEG(1);
+      grd->lat_sticks = grd->lon_sticks = MIN2DEG(0.25);
+      grd->lat_g = grd->lon_g = MIN2DEG(10);
+   }
+   else
+   {
+      grd->lat_ticks = grd->lon_ticks = MIN2DEG(1);
+      grd->lat_sticks = grd->lon_sticks = MIN2DEG(0.2);
+      grd->lat_g = grd->lon_g = MIN2DEG(5);
+   }
+}
+
+
+int act_grid_ini(smrule_t *r)
+{
+   struct rdata *rd = get_rdata();
+   double ticks, sticks, g;
+   struct grid grd;
+
+   log_msg(LOG_INFO, "init grid params");
+   memset(&grd, 0, sizeof(grd));
+   auto_grid(rd, &grd);
+
+   log_debug("parsing grid params");
+   (void) get_param("margin", &grd.g_margin, r->act);
+   (void) get_param("tickswidth", &grd.g_tw, r->act);
+   grd.g_tw = grd.g_tw <= 0.0 ? G_TW : grd.g_tw;
+   (void) get_param("subtickswidth", &grd.g_stw, r->act);
+   grd.g_stw = grd.g_stw <= 0.0 ? G_STW : grd.g_stw;
+   ticks = sticks = g = 0.0;
+   (void) get_param("grid", &g, r->act);
+   if (g > 0.0)
+      grd.lat_g = grd.lon_g = MIN2DEG(g);
+   (void) get_param("ticks", &ticks, r->act);
+   if (ticks > 0.0)
+      grd.lat_ticks = grd.lon_ticks = MIN2DEG(ticks);
+   (void) get_param("subticks", &sticks, r->act);
+   if (sticks > 0.0)
+      grd.lat_sticks = grd.lon_sticks = MIN2DEG(sticks);
+
+   log_msg(LOG_INFO, "grid parameters: margin = %.2f mm, tickswidth = %.2f mm, substickswidth = %.2f mm, grid = %.2f', ticks = %.2f', subticks = %.2f'", grd.g_margin, grd.g_tw, grd.g_stw, grd.lon_g * 60.0, grd.lon_ticks * 60.0, grd.lon_sticks * 60.0);
+   log_msg(LOG_INFO, "generating grid");
+   grid(rd, &grd);
+   log_debug("grid finished");
+
+   return 0;
 }
 

@@ -1,6 +1,9 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <osm version='0.6'>
    <node version="-10">
+      <tag k="_action_" v="grid"/>
+   </node>
+   <node version="-10">
       <tag k='seamark:type' v=''/>
       <tag k='_action_' v='vsector@libsmfilter.so'/>
    </node>
@@ -86,9 +89,9 @@
       <tag k='seamark:type' v='beacon_lateral'/>
       <tag k='_action_' v='img:file=icons/Beacon_Black.png'/>
    </node>
-   <node>
+   <node version='-10'>
       <tag k='natural' v='peak'/>
-      <tag k='_action_' v='img:file=icons/Dot_6x6.png'/>
+      <tag k='_action_' v='shape:style=circle;radius=.3'/>
    </node>
 
    <!--
@@ -102,7 +105,10 @@
         depths: Sans (1.5mm)
         channels/passages: Sans italic upper case (2.3mm)
    -->
-
+   <node>
+      <tag k='seamark:type' v='light_major'/>
+      <tag k='_action_' v='cap:font=sans-serif;size=1.4;key=seamark:name'/>
+   </node>
    <node>
       <!--<tag k='_action_' v='cap:sans-serif,1.4,cm,black,auto;white;0.7,seamark:light_character'/>-->
       <tag k='_action_' v='cap:font=sans-serif;size=1.4;key=seamark:light_character;angle=auto;auto-color=white;weight=0.7'/>
@@ -208,10 +214,15 @@
       <tag k='pointindex' v='3'/>
       <tag k='_action_' v='cap:font=sans-serif;size=2;key=lat;valign=south;halign=east'/>
    </node>
-    <node>
+   <node>
       <tag k='grid' v='outer_border'/>
       <tag k='pointindex' v='3'/>
       <tag k='_action_' v='cap:font=sans-serif;size=2;key=lon;angle=90;valign=north;halign=east'/>
+   </node>
+   <node>
+      <tag k='generator' v='smrender'/>
+      <tag k='chartdate' v=''/>
+      <tag k='_action_' v='cap:font=sans-serif;color=magenta;size=2;key=chartdate;valign=south;halign=east'/>
    </node>
    <node>
       <tag k='_action_' v='cap:font=sans-serif:bold;size=2;key=name;valign=north'/>
@@ -268,6 +279,10 @@
    <way>
       <tag k='natural' v='coastline'/>
       <tag k='_action_' v='draw:color=yellow;bcolor=black'/>
+   </way>
+   <way>
+      <tag k='natural' v='peak'/>
+      <tag k='_action_' v='draw:color=black'/>
    </way>
    <way version='1'>
       <tag k='seamark:sounding:quality' v='/report/'/>

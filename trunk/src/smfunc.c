@@ -338,7 +338,7 @@ int act_set_tags_ini(smrule_t *r)
 
    if ((rule = get_object0(get_rdata()->rules, templ_id, r->oo->type - 1)) == NULL)
    {
-      log_msg(LOG_WARN, "there is no rule of type %d with id 0x%016x", r->oo->type, templ_id);
+      log_msg(LOG_WARN, "there is no rule of type %d with id 0x%016lx", r->oo->type, templ_id);
       return 1;
    }
 
@@ -449,8 +449,9 @@ int act_shape_ini(smrule_t *r)
       as->pcount = MM2PX(2.0 * as->size * M_PI) / 3;
 
    (void) get_param("angle", &as->angle, r->act);
+   as->key = get_param("key", NULL, r->act);
 
-   log_debug("nodes = %d, radius = %.2f, angle = %.2f", as->pcount, as->size, as->angle);
+   log_debug("nodes = %d, radius = %.2f, angle = %.2f, key = '%s'", as->pcount, as->size, as->angle, as->key != NULL ? as->key : "(NULL)");
 
    r->data = as;
    return 0;
@@ -465,8 +466,22 @@ void shape_node(struct act_shape *as, osm_node_t *n)
    osm_way_t *w;
    int i;
 
+   angle = 0.0;
+   if (as->key != NULL)
+   {
+      if ((i = match_attr((osm_obj_t*) n, as->key, NULL)) >= 0)
+      {
+         angle = DEG2RAD(90.0 - bs_tod(n->obj.otag[i].v));
+         log_debug("shape bearing %.1f", 90 - RAD2DEG(angle));
+      }
+      else
+      {
+         log_msg(LOG_INFO, "node %ld has no tag '%s=*'", (long) n->obj.id, as->key);
+      }
+   }
+
    radius = MM2LAT(as->size);
-   angle = DEG2RAD(as->angle);
+   angle += DEG2RAD(as->angle);
    angle_step = 2 * M_PI / as->pcount;
 
    w = malloc_way(n->obj.tag_cnt + 1, as->pcount + 1);
@@ -529,6 +544,139 @@ int act_shape(smrule_t *r, osm_obj_t *o)
 
 
 int act_shape_fini(smrule_t *r)
+{
+   free(r->data);
+   r->data = NULL;
+   return 0;
+}
+
+
+int act_ins_eqdist_ini(smrule_t *r)
+{
+#define DEFAULT_DISTANCE 2.0
+   double *dist;
+
+   if ((dist = malloc(sizeof(*dist))) == NULL)
+   {
+      log_msg(LOG_ERR, "malloc() failed in act_ins_eqdist_ini(): %s", strerror(errno));
+      return -1;
+   }
+
+   r->data = dist;
+
+   if (get_param("distance", dist, r->act) == NULL)
+   {
+      *dist = DEFAULT_DISTANCE;
+   }
+   else if (*dist <= 0)
+   {
+      *dist = DEFAULT_DISTANCE;
+   }
+
+   *dist /= 60.0;
+   return 0;
+}
+
+
+int act_ins_eqdist(smrule_t *r, osm_way_t *w)
+{
+   struct pcoord pc;
+   struct coord sc, dc;
+   osm_node_t *s, *d, *n;
+   double dist = 2.0 / 60.0, ddist;
+   char buf[32];
+   int64_t *ref;
+   int i, pcnt;
+
+   if (w->obj.type != OSM_WAY)
+   {
+      log_msg(LOG_WARN, "ins_eqdist() may be applied to ways only!");
+      return 1;
+   }
+
+   dist = *((double*) r->data);
+
+   // find first valid point (usually this is ref[0])
+   for (i = 0; i < w->ref_cnt - 1; i++)
+   {
+      if ((s = get_object(OSM_NODE, w->ref[i])) != NULL)
+         break;
+      log_msg(LOG_WARN, "node %ld of way %ld does not exist", (long) w->ref[i], (long) w->obj.id);
+   }
+
+   sc.lat = s->lat;
+   sc.lon = s->lon;
+   ddist = dist;
+
+   for (++i, pcnt = 0; i < w->ref_cnt; i++)
+   {
+      if ((d = get_object(OSM_NODE, w->ref[i])) == NULL)
+      {
+         log_msg(LOG_WARN, "node %ld of way %ld does not exist", (long) w->ref[i], (long) w->obj.id);
+         continue;
+      }
+      dc.lat = d->lat;
+      dc.lon = d->lon;
+      pc = coord_diff(&sc, &dc);
+
+      if (pc.dist > ddist)
+      {
+         // create new node
+         n = malloc_node(w->obj.tag_cnt + 3);
+         n->obj.id = unique_node_id();
+         n->obj.tim = time(NULL);
+         n->obj.ver = 1;
+         memcpy(&n->obj.otag[3], w->obj.otag, sizeof(struct otag) * w->obj.tag_cnt);
+         set_const_tag(&n->obj.otag[0], "generator", "smrender");
+         pcnt++;
+         snprintf(buf, sizeof(buf), "%.1f", dist * pcnt * 60.0);
+         set_const_tag(&n->obj.otag[1], "distance", strdup(buf));
+         snprintf(buf, sizeof(buf), "%.1f", pc.bearing);
+         set_const_tag(&n->obj.otag[2], "bearing", strdup(buf));
+
+         // calculate coordinates
+         n->lat = s->lat + ddist * cos(DEG2RAD(pc.bearing));
+         n->lon = s->lon + ddist * sin(DEG2RAD(pc.bearing)) / cos(DEG2RAD((n->lat + s->lat) / 2));
+
+         log_debug("insert node %ld, lat_diff = %lf, lon_diff = %lf, cos = %lf", (long) n->obj.id,
+               (d->lat - s->lat) * cos(DEG2RAD(pc.bearing)), 
+               - (d->lon - s->lon) * sin(DEG2RAD(pc.bearing)),
+               cos(DEG2RAD(s->lat)));
+
+         // add object to tree
+         put_object((osm_obj_t*) n);
+
+         s = n;
+         sc.lat = s->lat;
+         sc.lon = s->lon;
+         ddist = dist;
+
+         // add node reference to way
+         if ((ref = realloc(w->ref, sizeof(int64_t) * (w->ref_cnt + 1))) == NULL)
+         {
+            log_msg(LOG_ERR, "realloc() failed in ins_eqdist(): %s", strerror(errno));
+            return -1;
+         }
+         w->ref = ref;
+         memmove(&ref[i + 1], &ref[i], sizeof(int64_t) * (w->ref_cnt - i));
+         ref[i] = n->obj.id;
+         w->ref_cnt++;
+         //i--;
+      }
+      else
+      {
+         ddist -= pc.dist;
+         s = d;
+         sc.lat = s->lat;
+         sc.lon = s->lon;
+      }
+   }
+
+   return 0;
+}
+
+
+int act_ins_eqdist_fini(smrule_t *r)
 {
    free(r->data);
    r->data = NULL;
