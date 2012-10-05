@@ -1,8 +1,10 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <osm version='0.6'>
+   <!--
    <node version="-10">
       <tag k="_action_" v="grid"/>
    </node>
+   -->
    <node version="-10">
       <tag k='seamark:type' v=''/>
       <tag k='_action_' v='vsector@libsmfilter.so'/>

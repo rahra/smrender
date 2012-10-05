@@ -578,12 +578,12 @@ int act_ins_eqdist_ini(smrule_t *r)
 }
 
 
-int act_ins_eqdist(smrule_t *r, osm_way_t *w)
+int ins_eqdist(osm_way_t *w, double dist)
 {
    struct pcoord pc;
    struct coord sc, dc;
    osm_node_t *s, *d, *n;
-   double dist = 2.0 / 60.0, ddist;
+   double ddist;
    char buf[32];
    int64_t *ref;
    int i, pcnt;
@@ -593,8 +593,6 @@ int act_ins_eqdist(smrule_t *r, osm_way_t *w)
       log_msg(LOG_WARN, "ins_eqdist() may be applied to ways only!");
       return 1;
    }
-
-   dist = *((double*) r->data);
 
    // find first valid point (usually this is ref[0])
    for (i = 0; i < w->ref_cnt - 1; i++)
@@ -676,10 +674,115 @@ int act_ins_eqdist(smrule_t *r, osm_way_t *w)
 }
 
 
+int act_ins_eqdist(smrule_t *r, osm_way_t *w)
+{
+   return ins_eqdist(w, *((double*) r->data));
+}
+
+
 int act_ins_eqdist_fini(smrule_t *r)
 {
    free(r->data);
    r->data = NULL;
+   return 0;
+}
+
+
+int cmp_double(const void *a, const void *b)
+{
+   if (*((double*) a) < *((double*) b))
+      return -1;
+   if (*((double*) a) > *((double*) b))
+      return 1;
+   return 0;
+}
+
+
+int dist_median(const osm_way_t *w, double *median)
+{
+   osm_node_t *n;
+   struct pcoord pc;
+   struct coord c[2];
+   double *dist;
+   int i;
+ 
+   if (w->obj.type != OSM_WAY)
+   {
+      log_msg(LOG_ERR, "dist_median() may only be called with ways");
+      return -1;
+   }
+   if (w->ref_cnt < 2)
+   {
+      log_msg(LOG_WARN, "way %ld has to less nodes (ref_cnt = %d)", w->obj.id, w->ref_cnt);
+      return -1;
+   }
+
+   if ((dist = malloc(sizeof(*dist) * (w->ref_cnt - 1))) == NULL)
+   {
+      log_msg(LOG_ERR, "cannot malloc() in dist_median(): %s", strerror(errno));
+      return -1;
+   }
+
+   if ((n = get_object(OSM_NODE, w->ref[0])) == NULL)
+   {
+      log_msg(LOG_WARN, "way %ld has no such node with id %ld", w->obj.id, w->ref[0]);
+      free(dist);
+      return -1;
+   }
+
+   c[1].lat = n->lat;
+   c[1].lon = n->lon;
+   for (i = 0; i < w->ref_cnt - 1; i++)
+   {
+      c[0] = c[1];
+      if ((n = get_object(OSM_NODE, w->ref[i + 1])) == NULL)
+      {
+         log_msg(LOG_WARN, "way %ld has no such node with id %ld", w->obj.id, w->ref[i + 1]);
+         free(dist);
+         return -1;
+      }
+      c[1].lat = n->lat;
+      c[1].lon = n->lon;
+      pc = coord_diff(&c[0], &c[1]);
+      dist[i] = pc.dist;
+   }
+
+   qsort(dist, w->ref_cnt - 1, sizeof(*dist), cmp_double);
+   *median = dist[(w->ref_cnt - 1) >> 1];
+   if (w->ref_cnt & 1)
+      *median = (*median + dist[((w->ref_cnt - 1) >> 1) - 1]) / 2.0;
+
+   free(dist);
+   return 0;
+}
+
+
+int act_dist_median(smrule_t *r, osm_way_t *w)
+{
+   struct otag *ot;
+   char buf[32];
+   double dist;
+
+   if (w->obj.type != OSM_WAY)
+   {
+      log_msg(LOG_WARN, "dist_median() may only be applied to ways");
+      return 1;
+   }
+
+   if (dist_median(w, &dist))
+      return 1;
+
+   if ((ot = realloc(w->obj.otag, sizeof(struct otag) * (w->obj.tag_cnt + 1))) == NULL)
+   {
+      log_msg(LOG_ERR, "could not realloc tag list in dist_median(): %s", strerror(errno));
+      return 1;
+   }
+
+   w->obj.otag = ot;
+   snprintf(buf, sizeof(buf), "%.8f", dist);
+   set_const_tag(&w->obj.otag[w->obj.tag_cnt], "smrender:dist_median", strdup(buf));
+   w->obj.tag_cnt++;
+
    return 0;
 }
 

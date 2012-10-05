@@ -206,6 +206,8 @@ int apply_smrules(smrule_t *r, struct rdata *rd, osm_obj_t *o)
 
    if (r->act->main.func != NULL)
       e = traverse(rd->obj, 0, r->oo->type - 1, (tree_func_t) apply_smrules0, rd, r);
+   else
+      log_debug("   -> no main function");
 
    if (e) log_debug("traverse(apply_smrules0) returned %d", e);
 
@@ -719,6 +721,8 @@ void usage(const char *s)
          "   -b <color> .......... Choose background color ('white' is default).\n"
          "   -d <density> ........ Set image density (300 is default).\n"
          "   -f .................. Use loading filter.\n"
+         "   -g <grd>[:<t>[:<s>]]  Distance of grid/ticks/subticks in minutes.\n"
+         "   -G .................. Do not generate grid nodes/ways.\n"
          "   -i <osm input> ...... OSM input data (default is stdin).\n"
          "   -k <filename> ....... Generate KAP file.\n"
          "   -K <filename> ....... Generate KAP header file.\n"
@@ -794,11 +798,11 @@ int main(int argc, char *argv[])
       NULL, *osm_rfile = NULL, *kap_file = NULL, *kap_hfile = NULL;
    struct rdata *rd;
    struct timeval tv_start, tv_end;
-   int landscape = 0, w_mmap = 1, load_filter = 0, init_exit = 0;
+   int landscape = 0, w_mmap = 1, load_filter = 0, init_exit = 0, gen_grid = AUTO_GRID;
    char *paper = "A3", *bg = NULL;
    struct filter fi;
    struct dstats rstats;
-   //struct osm_node nd;
+   struct grid grd;
    osm_obj_t o;
    char *s;
    double param;
@@ -808,6 +812,7 @@ int main(int argc, char *argv[])
    log_msg(LOG_INFO, "initializing structures");
    rd = get_rdata();
    set_util_rd(rd);
+   init_grid(&grd);
    rd->cmdline = mk_cmd_line((const char**) argv);
 
    while ((n = getopt(argc, argv, "b:d:fg:Ghi:k:K:lMmo:P:r:R:s:t:Vw:")) != -1)
@@ -824,8 +829,33 @@ int main(int argc, char *argv[])
             break;
 
          case 'g':
+            gen_grid = USER_GRID;
+            if ((s = strtok(optarg, ":")) == NULL)
+               log_msg(LOG_ERR, "ill grid parameter"), exit(EXIT_FAILURE);
+
+            grd.lat_g = grd.lon_g = atof(s) / 60;
+
+            if ((s = strtok(NULL, ":")) == NULL)
+            {
+               grd.lat_ticks = grd.lon_ticks = grd.lat_g / 10;
+               break;
+            }
+            grd.lat_ticks = grd.lon_ticks = atof(s) / 60;
+
+            if ((s = strtok(NULL, ":")) == NULL)
+            {
+               if (!((int) round(grd.lat_ticks * 600) % 4))
+                  grd.lat_sticks = grd.lon_sticks = grd.lat_ticks / 4;
+               else
+                  grd.lat_sticks = grd.lon_sticks = grd.lat_ticks / 5;
+               break;
+            }
+
+            grd.lat_sticks = grd.lon_sticks = atof(s) / 60;
+            break;
+
          case 'G':
-            log_msg(LOG_WARN, "Option %c deprecated. Use 'grid' action instead!", n);
+            gen_grid = 0;
             break;
 
          case 'h':
@@ -1083,6 +1113,20 @@ int main(int argc, char *argv[])
    log_msg(LOG_INFO, " left upper %.2f/%.2f, right bottom %.2f/%.2f",
          rd->ds.lu.lat, rd->ds.lu.lon, rd->ds.rb.lat, rd->ds.rb.lon);
    log_msg(LOG_INFO, " lo_addr = %p, hi_addr = %p", rd->ds.lo_addr, rd->ds.hi_addr);
+
+   switch (gen_grid)
+   {
+      case AUTO_GRID:
+         auto_grid(rd, &grd);
+         // intentionally, there's no break
+
+      case USER_GRID:
+         grid(rd, &grd);
+         break;
+
+      default:
+         log_debug("no command line grid");
+   }
 
    install_sigint();
    init_cat_poly(rd);
