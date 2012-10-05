@@ -40,6 +40,10 @@ typedef gdImage image_t;
 typedef void image_t;
 #endif
 
+#define USER_GRID 2
+#define AUTO_GRID 1
+#define NO_GRID 0
+
 #define SPECIAL_DIRECT 0x0000
 #define SPECIAL_REGEX 0x0001
 #define SPECIAL_GT 0x0002
@@ -318,9 +322,6 @@ void install_sigusr1(void);
 int is_closed_poly(const osm_way_t*);
 void init_cat_poly(struct rdata*);
 
-/* smgrid.c */
-void grid2(struct rdata*);
-
 /* smrules.c */
 void init_main_image(struct rdata*, const char*);
 void save_main_image(struct rdata*, FILE*);
@@ -342,6 +343,15 @@ void free_fparam(fparam_t **);
 /* smkap.c */
 int save_kap(FILE *, struct rdata *);
 int gen_kap_header(FILE *, struct rdata *);
+
+/* smfunc.c */
+int ins_eqdist(osm_way_t *, double);
+int dist_median(const osm_way_t *, double *);
+
+/* smgrid.c */
+void init_grid(struct grid *);
+void auto_grid(const struct rdata *, struct grid *);
+void grid(struct rdata *, const struct grid *);
 
 #endif
 

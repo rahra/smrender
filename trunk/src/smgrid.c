@@ -322,6 +322,11 @@ void geo_legend(struct rdata *rd, const struct grid *grd)
  */
 void grid(struct rdata *rd, const struct grid *grd)
 {
+   log_msg(LOG_INFO, "grid parameters: margin = %.2f mm, tickswidth = %.2f mm, "
+         "substickswidth = %.2f mm, grid = %.2f', ticks = %.2f', subticks = %.2f'",
+         grd->g_margin, grd->g_tw, grd->g_stw, grd->lon_g * 60.0,
+         grd->lon_ticks * 60.0, grd->lon_sticks * 60.0);
+ 
    geo_square(rd, grd->g_margin, "outer_border");
    geo_square(rd, grd->g_margin + grd->g_tw, "ticks_border");
    geo_square(rd, grd->g_margin + grd->g_tw + grd->g_stw, "subticks_border");
@@ -339,12 +344,19 @@ void grid(struct rdata *rd, const struct grid *grd)
 }
 
 
-void auto_grid(const struct rdata *rd, struct grid *grd)
+void init_grid(struct grid *grd)
 {
+   log_debug("initializing struct grid");
+   memset(grd, 0, sizeof(*grd));
    grd->g_margin = G_MARGIN;
    grd->g_tw = G_TW;
    grd->g_stw = G_STW;
- 
+}
+
+
+void auto_grid(const struct rdata *rd, struct grid *grd)
+{
+   log_debug("setting auto grid values");
    if (rd->scale >= 250000)
    {
       grd->lat_ticks = grd->lon_ticks = MIN2DEG(2);
@@ -372,8 +384,7 @@ int act_grid_ini(smrule_t *r)
    double ticks, sticks, g;
    struct grid grd;
 
-   log_msg(LOG_INFO, "init grid params");
-   memset(&grd, 0, sizeof(grd));
+   init_grid(&grd);
    auto_grid(rd, &grd);
 
    log_debug("parsing grid params");
@@ -393,10 +404,7 @@ int act_grid_ini(smrule_t *r)
    if (sticks > 0.0)
       grd.lat_sticks = grd.lon_sticks = MIN2DEG(sticks);
 
-   log_msg(LOG_INFO, "grid parameters: margin = %.2f mm, tickswidth = %.2f mm, substickswidth = %.2f mm, grid = %.2f', ticks = %.2f', subticks = %.2f'", grd.g_margin, grd.g_tw, grd.g_stw, grd.lon_g * 60.0, grd.lon_ticks * 60.0, grd.lon_sticks * 60.0);
-   log_msg(LOG_INFO, "generating grid");
    grid(rd, &grd);
-   log_debug("grid finished");
 
    return 0;
 }

@@ -29,7 +29,7 @@
  *  @param src Source coodinates (struct coord).
  *  @param dst Destination coordinates (struct coord).
  *  @return Returns a struct pcoord. Pcoord contains the orthodrome distance in
- *  degrees and the angle, 0 degress north, clockwise.
+ *  degrees and the bearing, 0 degress north, clockwise.
  */
 struct pcoord coord_diff(const struct coord *src, const struct coord *dst)
 {

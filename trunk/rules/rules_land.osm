@@ -1,8 +1,10 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <osm>
+   <!--
    <node version="-10">
       <tag k="_action_" v="grid"/>
    </node>
+   -->
    <node version="-10">
       <tag k="_action_" v="ruler:section=5;count=5"/>
    </node>
