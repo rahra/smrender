@@ -614,21 +614,23 @@ int save_osm(struct rdata *rd, const char *s, bx_node_t *tree)
 }
 
 
-struct rdata *get_rdata(void)
+static struct rdata rd_;
+
+
+static void __attribute__((constructor)) init_rdata(void)
 {
-   static struct rdata rd;
-   static int rd_init = 0;
+   log_debug("initializing struct rdata");
+   memset(&rd_, 0, sizeof(rd_));
+   rd_.dpi = 300;
+   rd_.ovs = DEFAULT_OVS;
+   rd_.title = "";
+   set_util_rd(&rd_);
+}
 
-   if (!rd_init)
-   {
-      rd_init++;
-      memset(&rd, 0, sizeof(rd));
-      rd.dpi = 300;
-      rd.ovs = DEFAULT_OVS;
-      rd.title = "";
-   }
 
-   return &rd;
+struct rdata inline *get_rdata(void)
+{
+   return &rd_;
 }
 
 
@@ -809,9 +811,7 @@ int main(int argc, char *argv[])
 
    (void) gettimeofday(&tv_start, NULL);
    init_log("stderr", LOG_DEBUG);
-   log_msg(LOG_INFO, "initializing structures");
    rd = get_rdata();
-   set_util_rd(rd);
    init_grid(&grd);
    rd->cmdline = mk_cmd_line((const char**) argv);
 

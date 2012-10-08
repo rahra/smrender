@@ -808,7 +808,6 @@ int act_dist_median_main(smrule_t *r, osm_way_t *w)
 }
 
 
-
 hpx_ctrl_t *get_ofile_ctl(const char *filename)
 {
    hpx_ctrl_t *ctl;

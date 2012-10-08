@@ -346,7 +346,6 @@ void grid(struct rdata *rd, const struct grid *grd)
 
 void init_grid(struct grid *grd)
 {
-   log_debug("initializing struct grid");
    memset(grd, 0, sizeof(*grd));
    grd->g_margin = G_MARGIN;
    grd->g_tw = G_TW;
