@@ -29,6 +29,36 @@
 #include "smcoast.h"
 
 
+int log_tags(int level, osm_obj_t *o)
+{
+   int len, i;
+   char *buf, *s;
+
+   for (i = 0, len = 0, buf = NULL; i < o->tag_cnt; i++)
+   {
+      len += o->otag[i].k.len + o->otag[i].v.len + 3;
+      s = buf;
+      if ((buf = realloc(s, len)) == NULL)
+      {
+         log_msg(LOG_ERR, "malloc() failed in log_tags(): %s", strerror(errno));
+         free(s);
+         return -1;
+      }
+      if (i)
+         strcat(buf, ", ");
+      else
+         *buf = '\0';
+      snprintf(buf + strlen(buf), len - strlen(buf), "%.*s=%.*s",
+            o->otag[i].k.len, o->otag[i].k.buf, o->otag[i].v.len, o->otag[i].v.buf);
+
+   }
+   log_msg(level, "obj(%d, %ld): %s", o->type, (long) o->id, buf);
+   free(buf);
+
+   return 0;
+}
+
+
 #ifdef HAVE_GD
 void init_main_image(struct rdata *rd, const char *bg)
 {
@@ -243,7 +273,7 @@ int act_cap_node_ini(smrule_t *r)
 #define DIVX 3
 
 
-int act_cap_node(smrule_t *r, osm_node_t *n)
+int act_cap_node_main(smrule_t *r, osm_node_t *n)
 {
    struct actCaption *cap = r->data;
    struct rdata *rd = get_rdata();
@@ -339,7 +369,7 @@ int act_cap_node(smrule_t *r, osm_node_t *n)
 }
 
 
-int act_cap_way(smrule_t *r, osm_way_t *w)
+int act_cap_way_main(smrule_t *r, osm_way_t *w)
 {
    struct actCaption *cap = r->data;
    struct actCaption tmp_cap;
@@ -377,22 +407,22 @@ int act_cap_way(smrule_t *r, osm_way_t *w)
    if (tmp_cap.size > MAX_AUTO_SIZE) tmp_cap.size = MAX_AUTO_SIZE;
    //log_debug("r->rule.cap.size = %f (%f 1/1000)", r->rule.cap.size, r->rule.cap.size / 100 * 1000);
 
-   e = act_cap_node(tmp_rule, n);
+   e = act_cap_node_main(tmp_rule, n);
    free_obj((osm_obj_t*) n);
 
    return e;
 }
 
 
-int act_cap(smrule_t *r, osm_obj_t *o)
+int act_cap_main(smrule_t *r, osm_obj_t *o)
 {
    switch (o->type)
    {
       case OSM_NODE:
-         return act_cap_node(r, (osm_node_t*) o);
+         return act_cap_node_main(r, (osm_node_t*) o);
 
       case OSM_WAY:
-         return act_cap_way(r, (osm_way_t*) o);
+         return act_cap_way_main(r, (osm_way_t*) o);
    }
    log_msg(LOG_WARN, "type %d not implemented yet", o->type);
    return -1;
@@ -580,7 +610,7 @@ int act_img_ini(smrule_t *r)
 }
 
 
-int act_img(smrule_t *r, osm_node_t *n)
+int act_img_main(smrule_t *r, osm_node_t *n)
 {
    struct actImage *img = r->data;
    struct rdata *rd = get_rdata();
@@ -793,7 +823,7 @@ int act_draw_ini(smrule_t *r)
 }
 
 
-int act_draw(smrule_t *r, osm_obj_t *o)
+int act_draw_main(smrule_t *r, osm_obj_t *o)
 {
    struct actDraw *d = r->data;
    osm_way_t *w;

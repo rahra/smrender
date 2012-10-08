@@ -23,6 +23,10 @@
 #include <stdio.h>
 #include <string.h>
 #include <errno.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/stat.h>
 
 #include "smrender_dev.h"
 
@@ -37,6 +41,14 @@ struct out_handle
    char *name;
    int cnt;
    bx_node_t *tree;
+};
+
+
+struct io_handle
+{
+   struct out_handle *oh;
+   bx_node_t *itree;
+   hpx_ctrl_t *ctl;
 };
 
 
@@ -85,10 +97,13 @@ int act_out_ini(smrule_t *r)
 }
 
 
-int act_out(smrule_t *r, osm_obj_t *o)
+int out0(struct out_handle *oh, osm_obj_t *o)
 {
    osm_node_t *n;
    int i;
+
+   if (o->type == OSM_REL)
+      log_msg(LOG_WARN, "output of relations not fully implemented yet!");
 
    if (o->type == OSM_WAY)
    {
@@ -101,11 +116,17 @@ int act_out(smrule_t *r, osm_obj_t *o)
          }
          // FIXME: return value should be honored (but put_object0() handles
          // errors correctly, hence, this is not a tragedy)
-         (void) put_object0(&((struct out_handle*) r->data)->tree, n->obj.id, n, n->obj.type - 1);
+         (void) put_object0(&oh->tree, n->obj.id, n, n->obj.type - 1);
       }
    }
 
-   return put_object0(&((struct out_handle*) r->data)->tree, o->id, o, o->type - 1);
+   return put_object0(&oh->tree, o->id, o, o->type - 1);
+}
+
+
+int act_out_main(smrule_t *r, osm_obj_t *o)
+{
+   return out0(r->data, o);
 }
 
 
@@ -201,7 +222,7 @@ int poly_area(const osm_way_t *w, struct coord *c, double *ar)
 }
 
 
-int act_poly_area(smrule_t *r, osm_way_t *w)
+int act_poly_area_main(smrule_t *r, osm_way_t *w)
 {
    double ar;
    struct otag *ot;
@@ -231,7 +252,7 @@ int act_poly_area(smrule_t *r, osm_way_t *w)
 }
 
 
-int act_poly_centroid(smrule_t *r, osm_way_t *w)
+int act_poly_centroid_main(smrule_t *r, osm_way_t *w)
 {
    struct coord c;
    double ar;
@@ -268,7 +289,7 @@ int act_poly_centroid(smrule_t *r, osm_way_t *w)
 }
 
 
-int act_reverse_way(smrule_t *r, osm_way_t *w)
+int act_reverse_way_main(smrule_t *r, osm_way_t *w)
 {
    int i;
    int64_t ref;
@@ -298,19 +319,19 @@ int set_way_direction(osm_way_t *w, int dir)
       return -1;
 
    if (((ar < 0) && (dir == DIR_CCW)) || ((ar > 0) && (dir == DIR_CW)))
-      return act_reverse_way(NULL, w);
+      return act_reverse_way_main(NULL, w);
 
    return 0;
 }
 
 
-int act_set_ccw(smrule_t *r, osm_way_t *w)
+int act_set_ccw_main(smrule_t *r, osm_way_t *w)
 {
    return set_way_direction(w, DIR_CCW);
 }
 
 
-int act_set_cw(smrule_t *r, osm_way_t *w)
+int act_set_cw_main(smrule_t *r, osm_way_t *w)
 {
    return set_way_direction(w, DIR_CW);
 }
@@ -352,7 +373,7 @@ int act_set_tags_ini(smrule_t *r)
 }
 
 
-int act_set_tags(smrule_t *r, osm_obj_t *o)
+int act_set_tags_main(smrule_t *r, osm_obj_t *o)
 {
    osm_obj_t *templ_o = r->data;
    struct otag *ot;
@@ -458,7 +479,7 @@ int act_shape_ini(smrule_t *r)
 }
 
 
-void shape_node(struct act_shape *as, osm_node_t *n)
+void shape_node(const struct act_shape *as, const osm_node_t *n)
 {
    rdata_t *rd = get_rdata();
    osm_node_t *nd[as->pcount];
@@ -524,7 +545,7 @@ void shape_way(struct act_shape *as, osm_way_t *w)
 }
 
 
-int act_shape(smrule_t *r, osm_obj_t *o)
+int act_shape_main(smrule_t *r, osm_obj_t *o)
 {
    if (o->type == OSM_NODE)
    {
@@ -674,7 +695,7 @@ int ins_eqdist(osm_way_t *w, double dist)
 }
 
 
-int act_ins_eqdist(smrule_t *r, osm_way_t *w)
+int act_ins_eqdist_main(smrule_t *r, osm_way_t *w)
 {
    return ins_eqdist(w, *((double*) r->data));
 }
@@ -757,7 +778,7 @@ int dist_median(const osm_way_t *w, double *median)
 }
 
 
-int act_dist_median(smrule_t *r, osm_way_t *w)
+int act_dist_median_main(smrule_t *r, osm_way_t *w)
 {
    struct otag *ot;
    char buf[32];
@@ -783,6 +804,200 @@ int act_dist_median(smrule_t *r, osm_way_t *w)
    set_const_tag(&w->obj.otag[w->obj.tag_cnt], "smrender:dist_median", strdup(buf));
    w->obj.tag_cnt++;
 
+   return 0;
+}
+
+
+
+hpx_ctrl_t *get_ofile_ctl(const char *filename)
+{
+   hpx_ctrl_t *ctl;
+   struct stat st;
+   int fd;
+
+   if ((fd = open(filename, O_RDONLY)) == -1)
+   {
+      log_msg(LOG_ERR, "cannot open file '%s': %s", filename, strerror(errno));
+      return NULL;
+   }
+
+   if (fstat(fd, &st) == -1)
+   {
+      log_msg(LOG_ERR, "fstat() failed: %s", strerror(errno));
+      (void) close(fd);
+      return NULL;
+   }
+
+   if ((ctl = hpx_init(fd, -st.st_size)) == NULL)
+   {
+      log_msg(LOG_ERR, "hpx_init() failed: %s", strerror(errno));
+      (void) close(fd);
+      return NULL;
+   }
+
+   return ctl;
+}
+
+
+/*! 
+ *  Action parameters: file=*, infile=*.
+ */
+int act_diff_ini(smrule_t *r)
+{
+   struct io_handle *ioh;
+   char *s;
+   int e;
+
+   if ((s = get_param("infile", NULL, r->act)) == NULL)
+   {
+      log_msg(LOG_WARN, "parameter 'outfile' missing");
+      return 1;
+   }
+
+   if ((ioh = malloc(sizeof(*ioh))) == NULL)
+   {
+      log_msg(LOG_ERR, "malloc failed in act_diff_ini(): %s", strerror(errno));
+      return 1;
+   }
+
+   if ((ioh->ctl = get_ofile_ctl(s)) == NULL)
+   {
+      log_debug("get_ofile_ctl() failed");
+      free(ioh);
+      return 1;
+   }
+
+   if ((e = act_out_ini(r)))
+   {
+      log_msg(LOG_WARN, "act_out_ini() returned %d", e);
+      (void) close(ioh->ctl->fd);
+      hpx_free(ioh->ctl);
+      free(ioh);
+      return e;
+   }
+
+   log_debug("reading file '%s'", s);
+   ioh->oh = r->data;
+   ioh->itree = NULL;
+   (void) read_osm_file(ioh->ctl, &ioh->itree, NULL);
+   r->data = ioh;
+
+   return 0;
+}
+
+
+int obj_exists(osm_obj_t *o, struct rdata *rd, struct out_handle *oh)
+{
+   if (get_object(o->type, o->id) == NULL)
+      out0(oh, o);
+
+   return 0;
+}
+
+
+int act_diff_fini(smrule_t *r)
+{
+   struct io_handle *ioh = r->data;
+   int e;
+
+   if (ioh == NULL)
+      return -1;
+
+   log_debug("traversing nodes");
+   traverse(ioh->itree, 0, IDX_NODE, (tree_func_t) obj_exists, NULL, ioh->oh);
+   log_debug("traversing ways");
+   traverse(ioh->itree, 0, IDX_WAY, (tree_func_t) obj_exists, NULL, ioh->oh);
+   log_debug("traversing relations");
+   traverse(ioh->itree, 0, IDX_REL, (tree_func_t) obj_exists, NULL, ioh->oh);
+
+   r->data = ioh->oh;
+   if ((e = act_out_fini(r)))
+      log_msg(LOG_WARN, "act_out_fini() returned %d", e);
+
+   (void) close(ioh->ctl->fd);
+   hpx_free(ioh->ctl);
+   // FIXME: free objects in tree before
+   bx_free_tree(ioh->itree);
+   free(ioh);
+
+   return 0;
+}
+
+
+int act_poly_len_ini(smrule_t *r)
+{
+   if (r->oo->type != OSM_WAY)
+   {
+      log_msg(LOG_WARN, "poly_len() may be applied to ways only!");
+      return 1;
+   }
+   return 0;
+}
+
+
+int poly_len(const osm_way_t *w, double *dist)
+{
+   osm_node_t *n;
+   struct coord c[2];  
+   struct pcoord pc;
+   int i;
+
+   if (w->ref_cnt < 2)
+   {
+      log_msg(LOG_WARN, "way %ld has less than 2 nodes (%d)", w->obj.id, w->ref_cnt);
+      return -1;
+   }
+
+   if ((n = get_object(OSM_NODE, w->ref[0])) == NULL)
+   {
+      log_msg(LOG_WARN, "way %ld has no such node with id %ld", w->obj.id, w->ref[0]);
+      return -1;
+   }
+
+   *dist = 0.0;
+   c[1].lat = n->lat;
+   c[1].lon = n->lon;
+   for (i = 0; i < w->ref_cnt - 1; i++)
+   {
+      c[0] = c[1];
+      if ((n = get_object(OSM_NODE, w->ref[i + 1])) == NULL)
+      {
+         log_msg(LOG_WARN, "way %ld has no such node with id %ld, ignoring", w->obj.id, w->ref[i + 1]);
+         continue;
+      }
+      c[1].lat = n->lat;
+      c[1].lon = n->lon;
+      pc = coord_diff(&c[0], &c[1]);
+      *dist += pc.dist;
+   }
+
+   *dist *= 60.0;
+   return 0;
+}
+
+
+int act_poly_len_main(smrule_t *r, osm_way_t *w)
+{
+   struct otag *ot;
+   char buf[32];
+   double dist;
+
+   if (poly_len(w, &dist))
+   {
+      log_msg(LOG_WARN, "could not calculate length of way %ld", w->obj.id);
+      return 1;
+   }
+   
+   if ((ot = realloc(w->obj.otag, sizeof(struct otag) * (w->obj.tag_cnt + 1))) == NULL)
+   {
+      log_msg(LOG_ERR, "could not realloc tag list in poly_len(): %s", strerror(errno));
+      return 1;
+   }
+
+   w->obj.otag = ot;
+   snprintf(buf, sizeof(buf), "%.8f", dist);
+   set_const_tag(&w->obj.otag[w->obj.tag_cnt], "smrender:length", strdup(buf));
+   w->obj.tag_cnt++;
    return 0;
 }
 

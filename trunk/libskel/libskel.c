@@ -48,7 +48,7 @@ int act_skelfunc_ini(smrule_t *r)
 
 /*! Rule function. Called every time an object matches the rule.
  */
-int skelfunc(smrule_t *r, osm_obj_t *o)
+int act_skelfunc_main(smrule_t *r, osm_obj_t *o)
 {
    struct some_data *s = r->act.data;
 
@@ -74,7 +74,7 @@ int skelfunc(smrule_t *r, osm_obj_t *o)
 
 /*! Deinitialization function. Called once after the last object match.
  */
-int skelfunc_fini(smrule_t *r)
+int act_skelfunc_fini(smrule_t *r)
 {
    struct some_data *s = r->act.data;
 
