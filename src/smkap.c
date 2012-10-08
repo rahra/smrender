@@ -37,12 +37,6 @@
 #include "smrender_dev.h"
 
 
-#define RED(x) ((((x) >> 16) & 0xff))
-#define GREEN(x) ((((x) >> 8) & 0xff))
-#define BLUE(x) (((x) & 0xff))
-#define SQR(x) ((long) (x) * (long) (x))
-
-
 struct hist_data
 {
    int col;
@@ -216,18 +210,12 @@ static int gen_hist(struct rdata *rd, struct hist_data **hy)
 }
 
 
-static long col_cmp(int c1, int c2)
-{
-   return SQR(RED(c1) - RED(c2)) + SQR(GREEN(c1) - GREEN(c2)) + SQR(BLUE(c1) - BLUE(c2));
-}
-
-
 static int col_index(struct hist_data *hist, int hcnt, int col)
 {
    long diff, delta;
    int i, j;
 
-   for (i = 0, j = 0, diff = SQR(0x1000000); i < hcnt; i++)
+   for (i = 0, j = 0, diff = SQRL(0x1000000); i < hcnt; i++)
    {
       delta = col_cmp(col, hist[i].col);
       if (delta < diff)
