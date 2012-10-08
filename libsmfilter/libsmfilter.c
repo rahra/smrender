@@ -172,7 +172,7 @@ char *bs_dup(const bstring_t *b)
  * combined tag of several light attributes.
  * The function is intended to be called by a rule action.
  */
-int act_pchar(smrule_t *r, osm_obj_t *o)
+int act_pchar_main(smrule_t *r, osm_obj_t *o)
 {
    char lchar[8] = "", group[8] = "", period[8] = "", range[8] = "", col[32] = "", buf[256];
    int col_mask[COL_CNT];
@@ -296,7 +296,7 @@ int act_vsector_fini(smrule_t *r)
  * library for smrender. The code was changed as less as possible.
  * The function is intended to be called by a rule action.
  */
-int act_vsector(smrule_t *r, osm_obj_t *o)
+int act_vsector_main(smrule_t *r, osm_obj_t *o)
 {
    struct vsec_data *vd = r->data;
    int i, j, n, k;
@@ -1166,7 +1166,7 @@ static int proc_sfrac(struct sector *sec, struct vsec_data *vd)
 }
 
 
-int act_sounding(smrule_t *rl, osm_obj_t *o)
+int act_sounding_main(smrule_t *rl, osm_obj_t *o)
 {
    osm_node_t *n;
    osm_way_t *w;

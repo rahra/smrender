@@ -606,7 +606,7 @@ int cat_relways(smrule_t *r, osm_obj_t *o)
 }
 
 
-int act_cat_poly(smrule_t *r, osm_obj_t *o)
+int act_cat_poly_main(smrule_t *r, osm_obj_t *o)
 {
    switch (r->oo->type)
    {
@@ -878,7 +878,7 @@ int act_refine_poly_ini(smrule_t *r)
 }
 
 
-int act_refine_poly(smrule_t *r, osm_way_t *w)
+int act_refine_poly_main(smrule_t *r, osm_way_t *w)
 {
    struct refine *rf = r->data;
    int i;

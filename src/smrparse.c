@@ -301,7 +301,7 @@ int init_rules(osm_obj_t *o, struct rdata *rd, void *p)
    else
       func = rl->act->func_name;
 
-   (void) get_structor(rl->act->libhandle, &rl->act->main.sym, func, "");
+   (void) get_structor(rl->act->libhandle, &rl->act->main.sym, func, "_main");
    (void) get_structor(rl->act->libhandle, &rl->act->ini.sym, func, "_ini");
    (void) get_structor(rl->act->libhandle, &rl->act->fini.sym, func, "_fini");
 
