@@ -372,12 +372,10 @@ int act_cap_node_main(smrule_t *r, osm_node_t *n)
 int act_cap_way_main(smrule_t *r, osm_way_t *w)
 {
    struct actCaption *cap = r->data;
-   struct actCaption tmp_cap;
    struct rdata *rd = get_rdata();
    struct coord c;
-   double ar;
+   double ar, size;
    osm_node_t *n;
-   smrule_t *tmp_rule;
    int e;
 
    if (!is_closed_poly(w))
@@ -386,28 +384,24 @@ int act_cap_way_main(smrule_t *r, osm_way_t *w)
    if (poly_area(w, &c, &ar))
       return 0;
 
-   if ((tmp_rule = malloc(sizeof(smrule_t) + sizeof(action_t) + sizeof(struct stag) * r->act->tag_cnt)) == NULL)
-   {
-      log_msg(LOG_ERR, "cannot malloc temp rule: %s", strerror(errno));
-      return -1;
-   }
-
-   memcpy(tmp_rule, r, sizeof(smrule_t) + sizeof(action_t) + sizeof(struct stag) * r->act->tag_cnt);
-
    n = malloc_node(w->obj.tag_cnt);
    memcpy(n->obj.otag, w->obj.otag, sizeof(struct otag) * w->obj.tag_cnt);
    n->lat = c.lat;
    n->lon = c.lon;
-   memcpy(&tmp_cap, cap, sizeof(tmp_cap));
-   tmp_rule->data = &tmp_cap;
-   tmp_cap.size = 100 * sqrt(fabs(ar) / (rd->mean_lat_len * rd->hc * 3600));
+
+   size = cap->size;
+   if (cap->size == 0.0)
+   {
+      cap->size = 100 * sqrt(fabs(ar) / (rd->mean_lat_len * rd->hc * 3600));
 #define MIN_AUTO_SIZE 0.7
 #define MAX_AUTO_SIZE 12.0
-   if (tmp_cap.size < MIN_AUTO_SIZE) tmp_cap.size = MIN_AUTO_SIZE;
-   if (tmp_cap.size > MAX_AUTO_SIZE) tmp_cap.size = MAX_AUTO_SIZE;
-   //log_debug("r->rule.cap.size = %f (%f 1/1000)", r->rule.cap.size, r->rule.cap.size / 100 * 1000);
+      if (cap->size < MIN_AUTO_SIZE) cap->size = MIN_AUTO_SIZE;
+      if (cap->size > MAX_AUTO_SIZE) cap->size = MAX_AUTO_SIZE;
+      //log_debug("r->rule.cap.size = %f (%f 1/1000)", r->rule.cap.size, r->rule.cap.size / 100 * 1000);
+   }
 
-   e = act_cap_node_main(tmp_rule, n);
+   e = act_cap_node_main(r, n);
+   cap->size = size;
    free_obj((osm_obj_t*) n);
 
    return e;

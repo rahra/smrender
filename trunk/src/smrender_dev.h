@@ -105,6 +105,11 @@ typedef void image_t;
 #define T_RESCALE (60 * TM_RESCALE)
 #define MIN10(x) round((x) * T_RESCALE)
 
+#define RED(x) ((((x) >> 16) & 0xff))
+#define GREEN(x) ((((x) >> 8) & 0xff))
+#define BLUE(x) (((x) & 0xff))
+#define SQRL(x) ((long) (x) * (long) (x))
+
 
 typedef int (*tree_func_t)(osm_obj_t*, struct rdata*, void*);
 
@@ -311,7 +316,7 @@ void set_util_rd(struct rdata*);
 int put_object0(bx_node_t**, int64_t, void*, int);
 void *get_object0(bx_node_t*, int64_t, int);
 int coord_str(double, int, char*, int);
-
+long inline col_cmp(int, int);
 
 /* smloadosm.c */
 void osm_read_exit(void);
