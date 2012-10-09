@@ -141,7 +141,7 @@ int act_out_fini(smrule_t *r)
       log_debug("file ref count = %d", oh->cnt);
       return 0;
    }
-   (void) save_osm(get_rdata(), oh->name, oh->tree);
+   (void) save_osm(oh->name, oh->tree, NULL, NULL);
    free(oh->name);
    log_debug("freeing temporary object tree");
    bx_free_tree(oh->tree);

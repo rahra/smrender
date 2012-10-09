@@ -392,13 +392,36 @@ int traverse(const bx_node_t *nt, int d, int idx, tree_func_t dhandler, struct r
 }
 
 
+void print_url(struct bbox bb)
+{
+   char *url[] = {
+      "http://www.overpass-api.de/api/xapi?map?",
+      "http://overpass.osm.rambler.ru/cgi/xapi?map?",
+      "http://jxapi.openstreetmap.org/xapi/api/0.6/map?",
+      "http://open.mapquestapi.com/xapi/api/0.6/map?",
+      NULL};
+   double d;
+   int i;
+
+   d = (bb.ru.lon - bb.ll.lon) * BB_SCALE;
+   bb.ll.lon -= d;
+   bb.ru.lon += d;
+   d = (bb.ru.lat - bb.ll.lat) * BB_SCALE;
+   bb.ll.lat -= d;
+   bb.ru.lat += d;
+
+   for (i = 0; url[i] != NULL; i++)
+      printf("%sbbox=%.3f,%.3f,%.3f,%.3f\n", url[i], bb.ll.lon, bb.ll.lat, bb.ru.lon, bb.ru.lat);
+}
+
+
 void print_rdata(const struct rdata *rd)
 {
    log_msg(LOG_NOTICE, "*** chart parameters for rendering ****");
    log_msg(LOG_NOTICE, "   %.3f %.3f -- %.3f %.3f",
-         rd->y1c, rd->x1c, rd->y1c, rd->x2c);
+         rd->bb.ru.lat, rd->bb.ll.lon, rd->bb.ru.lat, rd->bb.ru.lon);
    log_msg(LOG_NOTICE, "   %.3f %.3f -- %.3f %.3f",
-         rd->y2c, rd->x1c, rd->y2c, rd->x2c);
+         rd->bb.ll.lat, rd->bb.ll.lon, rd->bb.ll.lat, rd->bb.ru.lon);
    log_msg(LOG_NOTICE, "   wc = %.3f°, hc = %.3f°", rd->wc, rd->hc);
    log_msg(LOG_NOTICE, "   mean_lat = %.3f°, mean_lat_len = %.3f (%.1f nm)",
          rd->mean_lat, rd->mean_lat_len, rd->mean_lat_len * 60);
@@ -422,14 +445,31 @@ void print_rdata(const struct rdata *rd)
 void init_bbox_mll(struct rdata *rd)
 {
    rd->wc = rd->mean_lat_len / cos(rd->mean_lat * M_PI / 180);
-   rd->x1c = rd->mean_lon - rd->wc / 2;
-   rd->x2c = rd->mean_lon + rd->wc / 2;
+   rd->bb.ll.lon = rd->mean_lon - rd->wc / 2;
+   rd->bb.ru.lon = rd->mean_lon + rd->wc / 2;
    rd->hc = rd->mean_lat_len * rd->h / rd->w;
-   rd->y1c = rd->mean_lat + rd->hc / 2.0;
-   rd->y2c = rd->mean_lat - rd->hc / 2.0;
+   rd->bb.ru.lat = rd->mean_lat + rd->hc / 2.0;
+   rd->bb.ll.lat = rd->mean_lat - rd->hc / 2.0;
    rd->scale = (rd->mean_lat_len * 60.0 * 1852 * 100 / 2.54) / ((double) rd->w / (double) rd->dpi);
    rd->lath = asinh(tan(DEG2RAD(rd->mean_lat)));
-   rd->lath_len = asinh(tan(DEG2RAD(rd->y1c))) - asinh(tan(DEG2RAD(rd->y2c)));
+   rd->lath_len = asinh(tan(DEG2RAD(rd->bb.ru.lat))) - asinh(tan(DEG2RAD(rd->bb.ll.lat)));
+}
+
+
+int bs_safe_put_xml(FILE *f, const bstring_t *b)
+{
+   int i, c;
+
+   for (i = 0, c = 0; i < b->len; i++)
+   {
+      if (b->buf[i] == '"')
+      {
+         c += fputs("&quot;", f);
+         continue;
+      }
+      c += fputc(b->buf[i], f);
+   }
+   return c;
 }
 
 
@@ -473,8 +513,15 @@ int print_onode(FILE *f, const osm_obj_t *o)
    }
 
    for (i = 0; i < o->tag_cnt; i++)
-      fprintf(f, "<tag k=\"%.*s\" v=\"%.*s\"/>\n",
-            (int) o->otag[i].k.len, o->otag[i].k.buf, (int) o->otag[i].v.len, o->otag[i].v.buf);
+   {
+      fputs("<tag k=\"", f);
+      bs_safe_put_xml(f, &o->otag[i].k);
+      fputs("\" v=\"", f);
+      bs_safe_put_xml(f, &o->otag[i].v);
+      fputs("\"/>\n", f);
+      /*fprintf(f, "<tag k=\"%.*s\" v=\"%.*s\"/>\n",
+            (int) o->otag[i].k.len, o->otag[i].k.buf, (int) o->otag[i].v.len, o->otag[i].v.buf);*/
+   }
 
   switch (o->type)
    {
@@ -585,7 +632,14 @@ int free_objects(osm_obj_t *o, struct rdata *rd, void *p)
 }
 
 
-int save_osm(struct rdata *rd, const char *s, bx_node_t *tree)
+/*! Save OSM data of tree to file s.
+ *  @param s Filename of output file.
+ *  @param Pointer to bxtree containing the information.
+ *  @param bb Optional bounding box (written to tag <bounds>).
+ *  @param info Optional information written to the header as comment (<!-- info -->).
+ *  @return The function returns 0, or -1 in case of error.
+ */
+int save_osm(const char *s, bx_node_t *tree, const struct bbox *bb, const char *info)
 {
    FILE *f;
 
@@ -596,14 +650,15 @@ int save_osm(struct rdata *rd, const char *s, bx_node_t *tree)
    if ((f = fopen(s, "w")) != NULL)
    {
       fprintf(f, "<?xml version='1.0' encoding='UTF-8'?>\n"
-                 "<osm version='0.6' generator='smrender'>\n"
-                 "<!-- cmdline: `%s` -->\n"
-                 "<bounds minlat='%f' minlon='%f' maxlat='%f' maxlon='%f'/>\n",
-                 rd->cmdline, rd->y2c, rd->x1c, rd->y1c, rd->x2c
-                 );
-      traverse(tree, 0, IDX_NODE, print_tree, rd, f);
-      traverse(tree, 0, IDX_WAY, print_tree, rd, f);
-      traverse(tree, 0, IDX_REL, print_tree, rd, f);
+                 "<osm version='0.6' generator='smrender'>\n");
+      if (info != NULL)
+         fprintf(f, "<!--\n%s\n-->\n", info);
+      if (bb != NULL)
+         fprintf(f, "<bounds minlat='%f' minlon='%f' maxlat='%f' maxlon='%f'/>\n",
+               bb->ll.lat, bb->ll.lon, bb->ru.lat, bb->ru.lon);
+      traverse(tree, 0, IDX_NODE, print_tree, NULL, f);
+      traverse(tree, 0, IDX_WAY, print_tree, NULL, f);
+      traverse(tree, 0, IDX_REL, print_tree, NULL, f);
       fprintf(f, "</osm>\n");
       fclose(f);
    }
@@ -736,6 +791,8 @@ void usage(const char *s)
          "   -t <title> .......... Set descriptional chart title.\n"
          "   -o <image file> ..... Filename of output image (stdout is default).\n"
          "   -P <page format> .... Select output page format.\n"
+         "   -u .................. Output URLs suitable for OSM data download and\n"
+         "                         exit.\n"
          "   -V .................. Show chart parameters and exit.\n"
          "   -w <osm file> ....... Output OSM data to file.\n",
          s, DEFAULT_OVS
@@ -759,7 +816,11 @@ int cnt_cmd_args(const char **argv)
    int i;
 
    for (i = 0; *argv; argv++)
+   {
       i += strlen(*argv) + 1;
+      if (strchr(*argv, ' ') != NULL)
+         i += 2;
+   }
 
    return i;
 }
@@ -781,8 +842,15 @@ char *mk_cmd_line(const char **argv)
          cmdl[i] = ' ';
          i++;
       }
-      strcpy(&cmdl[i], *argv);
-      i += strlen(*argv);
+      if (strchr(*argv, ' '))
+      {
+         i += sprintf(&cmdl[i], "\"%s\"", *argv);
+      }
+      else
+      {
+         strcpy(&cmdl[i], *argv);
+         i += strlen(*argv);
+      }
    }
    cmdl[i] = '\0';
 
@@ -800,7 +868,7 @@ int main(int argc, char *argv[])
       NULL, *osm_rfile = NULL, *kap_file = NULL, *kap_hfile = NULL;
    struct rdata *rd;
    struct timeval tv_start, tv_end;
-   int landscape = 0, w_mmap = 1, load_filter = 0, init_exit = 0, gen_grid = AUTO_GRID;
+   int landscape = 0, w_mmap = 1, load_filter = 0, init_exit = 0, gen_grid = AUTO_GRID, prt_url = 0;
    char *paper = "A3", *bg = NULL;
    struct filter fi;
    struct dstats rstats;
@@ -815,7 +883,7 @@ int main(int argc, char *argv[])
    init_grid(&grd);
    rd->cmdline = mk_cmd_line((const char**) argv);
 
-   while ((n = getopt(argc, argv, "b:d:fg:Ghi:k:K:lMmo:P:r:R:s:t:Vw:")) != -1)
+   while ((n = getopt(argc, argv, "b:d:fg:Ghi:k:K:lMmo:P:r:R:s:t:uVw:")) != -1)
       switch (n)
       {
          case 'b':
@@ -922,6 +990,10 @@ int main(int argc, char *argv[])
             rd->title = optarg;
             break;
 
+         case 'u':
+            prt_url = 1;
+            break;
+
          case 'V':
             init_exit = 1;
             break;
@@ -933,7 +1005,7 @@ int main(int argc, char *argv[])
 
    if (argv[optind] == NULL)
    {
-      log_msg(LOG_NOTICE, "window parameter missing, setting defaults 0:0:100000");
+      log_msg(LOG_WARN, "window parameter missing, setting defaults 0:0:100000");
       rd->scale = 100000;
    }
    else
@@ -971,8 +1043,6 @@ int main(int argc, char *argv[])
       else
          log_msg(LOG_ERR, "illegal size parameter"), exit(EXIT_FAILURE);
    }
- 
-   install_sigusr1();
 
    // install exit handlers
    osm_read_exit();
@@ -1000,10 +1070,18 @@ int main(int argc, char *argv[])
 
    init_bbox_mll(rd);
 
+   if (prt_url)
+   {
+      print_url(rd->bb);
+      exit(EXIT_SUCCESS);
+   }
+
    print_rdata(rd);
 
    if (init_exit)
       exit(EXIT_SUCCESS);
+
+   install_sigusr1();
 
    // preparing image
    init_main_image(rd, bg);
@@ -1036,7 +1114,7 @@ int main(int argc, char *argv[])
       traverse(rd->rules, 0, IDX_NODE, norm_rule_node, rd, NULL);
       traverse(rd->rules, 0, IDX_WAY, norm_rule_way, rd, &rstats);
       // FIXME: saving relation rules missing
-      save_osm(rd, osm_rfile, rd->rules);
+      save_osm(osm_rfile, rd->rules, NULL, NULL);
    }
 
    log_msg(LOG_INFO, "preparing node rules");
@@ -1079,10 +1157,10 @@ int main(int argc, char *argv[])
    if (load_filter)
    {
       memset(&fi, 0, sizeof(fi));
-      fi.c1.lat = rd->y1c + rd->hc * 0.05;
-      fi.c1.lon = rd->x1c - rd->wc * 0.05;
-      fi.c2.lat = rd->y2c - rd->hc * 0.05;
-      fi.c2.lon = rd->x2c + rd->wc * 0.05;
+      fi.c1.lat = rd->bb.ru.lat + rd->hc * 0.05;
+      fi.c1.lon = rd->bb.ll.lon - rd->wc * 0.05;
+      fi.c2.lat = rd->bb.ll.lat - rd->hc * 0.05;
+      fi.c2.lon = rd->bb.ru.lon + rd->wc * 0.05;
       fi.use_bbox = 1;
       log_msg(LOG_INFO, "using input bounding box %.3f/%.3f - %.3f/%.3f",
             fi.c1.lat, fi.c1.lon, fi.c2.lat, fi.c2.lon);
@@ -1147,7 +1225,7 @@ int main(int argc, char *argv[])
    }
    int_ = 0;
 
-   save_osm(rd, osm_ofile, rd->obj);
+   save_osm(osm_ofile, rd->obj, &rd->bb, rd->cmdline);
    (void) close(ctl->fd);
    hpx_free(ctl);
    hpx_free(cfctl);

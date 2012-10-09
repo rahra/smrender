@@ -142,15 +142,15 @@ int gen_kap_header(FILE *f, struct rdata *rd)
    off += fprintf(f, "    UN=METRES,SD=MLWS,DX=%.2f,DY=%.2f\r\n",
          mppx, mppx);
    off += fprintf(f, "REF/1,%d,%d,%.8f,%.8f\r\nREF/2,%d,%d,%.8f,%.8f\r\nREF/3,%d,%d,%.8f,%.8f\r\nREF/4,%d,%d,%.8f,%.8f\r\n",
-         0, 0, lat1, rd->x1c,
-         rd->fw, 0, lat1, rd->x2c,
-         rd->fw, rd->fh, lat2, rd->x2c,
-         0, rd->fh, lat2, rd->x1c);
+         0, 0, lat1, rd->bb.ll.lon,
+         rd->fw, 0, lat1, rd->bb.ru.lon,
+         rd->fw, rd->fh, lat2, rd->bb.ru.lon,
+         0, rd->fh, lat2, rd->bb.ll.lon);
    off += fprintf(f, "PLY/1,%.8f,%.8f\r\nPLY/2,%.8f,%.8f\r\nPLY/3,%.8f,%.8f\r\nPLY/4,%.8f,%.8f\r\n",
-         rd->y1c, rd->x1c,
-         rd->y1c, rd->x2c,
-         rd->y2c, rd->x2c,
-         rd->y2c, rd->x1c);
+         rd->bb.ru.lat, rd->bb.ll.lon,
+         rd->bb.ru.lat, rd->bb.ru.lon,
+         rd->bb.ll.lat, rd->bb.ru.lon,
+         rd->bb.ll.lat, rd->bb.ll.lon);
    off += fprintf(f, "DTM/0.0,0.0\r\nCPH/0.0\r\n");
    return off;
 }

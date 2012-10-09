@@ -51,8 +51,10 @@ void osm_read_exit(void)
    switch (ae)
    {
       case 0:
+#ifdef USE_ATEXIT
          if (atexit(osm_read_exit))
             log_msg(LOG_ERR, "atexit(osm_read_exit) failed");
+#endif
          break;
 
       default:

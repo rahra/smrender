@@ -51,8 +51,8 @@ int act_ruler_ini(smrule_t *r)
    log_msg(LOG_INFO, "ruler sectioning = %.2f km x %d", rsec, rcnt);
 
    // FIXME: G_ macros should be replaced by variables
-   p.lon = rd->x1c + MM2LON(G_MARGIN + G_TW + G_STW * 3);
-   p.lat = rd->y2c + MM2LAT(G_MARGIN + G_TW + G_STW * 3);
+   p.lon = rd->bb.ll.lon + MM2LON(G_MARGIN + G_TW + G_STW * 3);
+   p.lat = rd->bb.ll.lat + MM2LAT(G_MARGIN + G_TW + G_STW * 3);
 
    // 1° lat = 60 sm
    // 1° lon / cos(lat) = 60 sm -> 1 / (cos(lat) * 60) = 1 sm = 1.852km -> 1 / (cos(lat) * 60 * 1.852) = 1km
@@ -139,8 +139,8 @@ void grid_date(struct rdata *rd, const struct grid *grd)
    n->obj.id = unique_node_id();
    n->obj.tim = time(NULL);
    n->obj.ver = 1;
-   n->lat = rd->y2c + MM2LAT(grd->g_margin - grd->g_stw);
-   n->lon = rd->x1c + MM2LON(grd->g_margin);
+   n->lat = rd->bb.ll.lat + MM2LAT(grd->g_margin - grd->g_stw);
+   n->lon = rd->bb.ll.lon + MM2LON(grd->g_margin);
    set_const_tag(&n->obj.otag[0], "generator", "smrender");
    strftime(buf, sizeof(buf), "%e. %b. %Y, %R", localtime(&n->obj.tim));
    set_const_tag(&n->obj.otag[1], "chartdate", strdup(buf));
@@ -151,8 +151,8 @@ void grid_date(struct rdata *rd, const struct grid *grd)
 void geo_square(struct rdata *rd, double b, char *v)
 {
    char buf[256];
-   double lat[4] = {rd->y1c - MM2LAT(b), rd->y1c - MM2LAT(b), rd->y2c + MM2LAT(b), rd->y2c + MM2LAT(b)};
-   double lon[4] = {rd->x1c + MM2LON(b), rd->x2c - MM2LON(b), rd->x2c - MM2LON(b), rd->x1c + MM2LON(b)};
+   double lat[4] = {rd->bb.ru.lat - MM2LAT(b), rd->bb.ru.lat - MM2LAT(b), rd->bb.ll.lat + MM2LAT(b), rd->bb.ll.lat + MM2LAT(b)};
+   double lon[4] = {rd->bb.ll.lon + MM2LON(b), rd->bb.ru.lon - MM2LON(b), rd->bb.ru.lon - MM2LON(b), rd->bb.ll.lon + MM2LON(b)};
    osm_node_t *n;
    osm_way_t *w;
    int i;
@@ -235,24 +235,24 @@ void geo_lon_ticks(struct rdata *rd, double b, double b1, double b2, double b3, 
    int bi, lon;
    char buf[32], *s;
 
-   bi = (lround((b + rd->x1c) * T_RESCALE) / st) * st;
+   bi = (lround((b + rd->bb.ll.lon) * T_RESCALE) / st) * st;
    log_msg(LOG_DEBUG, "g = %d, t = %d, st = %d, bi = %d", g, t, st, bi);
 
-   for (lon = bi + st; lon < (rd->x2c - b) * T_RESCALE; lon += st)
+   for (lon = bi + st; lon < (rd->bb.ru.lon - b) * T_RESCALE; lon += st)
    {
       if (lon % g)
       {
-         geo_tick(rd->y1c - b3, (double) lon / T_RESCALE, rd->y1c - ((lon % t) ? b2 : b1), (double) lon / T_RESCALE, lon % t ? "subtick" : "tick");
-         geo_tick(rd->y2c + b3, (double) lon / T_RESCALE, rd->y2c + ((lon % t) ? b2 : b1), (double) lon / T_RESCALE, lon % t ? "subtick" : "tick");
+         geo_tick(rd->bb.ru.lat - b3, (double) lon / T_RESCALE, rd->bb.ru.lat - ((lon % t) ? b2 : b1), (double) lon / T_RESCALE, lon % t ? "subtick" : "tick");
+         geo_tick(rd->bb.ll.lat + b3, (double) lon / T_RESCALE, rd->bb.ll.lat + ((lon % t) ? b2 : b1), (double) lon / T_RESCALE, lon % t ? "subtick" : "tick");
       }
       else
       {
-         geo_tick(rd->y2c + b1, (double) lon / T_RESCALE, rd->y1c - b1, (double) lon / T_RESCALE, "grid");
+         geo_tick(rd->bb.ll.lat + b1, (double) lon / T_RESCALE, rd->bb.ru.lat - b1, (double) lon / T_RESCALE, "grid");
 
          snprintf(buf, sizeof(buf), "%03d° %02d'", lon / T_RESCALE, (lon % T_RESCALE) / TM_RESCALE);
          s = strdup(buf);
-         geo_description(rd->y1c - b2, (double) lon / T_RESCALE, s, "top");
-         geo_description(rd->y2c + b2, (double) lon / T_RESCALE, s, "bottom");
+         geo_description(rd->bb.ru.lat - b2, (double) lon / T_RESCALE, s, "top");
+         geo_description(rd->bb.ll.lat + b2, (double) lon / T_RESCALE, s, "bottom");
 
       }
    }
@@ -271,32 +271,32 @@ void geo_lat_ticks(struct rdata *rd, double b, double b1, double b2, double b3, 
    int bi, lat;
    char buf[32], *s;
 
-   bi = (lround((b + rd->y2c) * T_RESCALE) / st) * st;
+   bi = (lround((b + rd->bb.ll.lat) * T_RESCALE) / st) * st;
    log_msg(LOG_DEBUG, "g = %d, t = %d, st = %d, bi = %d", g, t, st, bi);
 
-   for (lat = bi + st; lat < (rd->y1c - b) * T_RESCALE; lat += st)
+   for (lat = bi + st; lat < (rd->bb.ru.lat - b) * T_RESCALE; lat += st)
    {
       //log_debug("grid: lat = %d", lat);
       if (lat % g)
       {
-         geo_tick((double) lat / T_RESCALE, rd->x1c + b3, (double) lat / T_RESCALE,
-               rd->x1c + ((lat % t) ? b2 : b1), lat % t ? "subtick" : "tick");
-         geo_tick((double) lat / T_RESCALE, rd->x2c - b3, (double) lat / T_RESCALE,
-               rd->x2c - ((lat % t) ? b2 : b1), lat % t ? "subtick" : "tick");
+         geo_tick((double) lat / T_RESCALE, rd->bb.ll.lon + b3, (double) lat / T_RESCALE,
+               rd->bb.ll.lon + ((lat % t) ? b2 : b1), lat % t ? "subtick" : "tick");
+         geo_tick((double) lat / T_RESCALE, rd->bb.ru.lon - b3, (double) lat / T_RESCALE,
+               rd->bb.ru.lon - ((lat % t) ? b2 : b1), lat % t ? "subtick" : "tick");
       }
       else
       {
-         geo_tick((double) lat / T_RESCALE, rd->x2c - b1, (double) lat / T_RESCALE,
-               rd->x1c + b1, "grid");
+         geo_tick((double) lat / T_RESCALE, rd->bb.ru.lon - b1, (double) lat / T_RESCALE,
+               rd->bb.ll.lon + b1, "grid");
 
          snprintf(buf, sizeof(buf), "%02d° %02d'", lat / T_RESCALE, (lat % T_RESCALE) / TM_RESCALE);
          s = strdup(buf);
-         geo_description((double) lat / T_RESCALE, rd->x2c - b2, s, "right");
-         geo_description((double) lat / T_RESCALE, rd->x1c + b2, s, "left");
+         geo_description((double) lat / T_RESCALE, rd->bb.ru.lon - b2, s, "right");
+         geo_description((double) lat / T_RESCALE, rd->bb.ll.lon + b2, s, "left");
 //         snprintf(buf, sizeof(buf), "%02.1f'", (double) (lat % T_RESCALE) / 10);
 //         s = strdup(buf);
-//         geo_description((double) lat / T_RESCALE, rd->x2c - b3, s, "en");
-//         geo_description((double) lat / T_RESCALE, rd->x1c + b3, s, "wn");
+//         geo_description((double) lat / T_RESCALE, rd->bb.ru.lon - b3, s, "en");
+//         geo_description((double) lat / T_RESCALE, rd->bb.ll.lon + b3, s, "wn");
       }
    }
 }
@@ -310,10 +310,10 @@ void geo_legend(struct rdata *rd, const struct grid *grd)
    lat = rd->mean_lat * T_RESCALE;
    snprintf(buf, sizeof(buf), "Mean Latitude %02d %c %.1f', Scale = 1:%.0f, %.1f x %.1f mm", lat / T_RESCALE, lat < 0 ? 'S' : 'N', (double) (lat % T_RESCALE) / TM_RESCALE, rd->scale, PX2MM(rd->w) - 2 * grd->g_margin, PX2MM(rd->h) - 2 * grd->g_margin);
    s = strdup(buf);
-   geo_description(rd->y1c - MM2LAT(grd->g_margin), rd->x1c + rd->wc / 2, s, "top");
-   geo_description(rd->y1c - MM2LAT(grd->g_margin), rd->x1c + MM2LON(grd->g_margin), rd->title, "title");
-   geo_description(rd->y2c + MM2LAT(grd->g_margin + grd->g_tw + grd->g_stw), rd->x1c + rd->wc / 2, "Generated with " PACKAGE_STRING ", author Bernhard R. Fischer, 2048R/5C5FFD47 &lt;bf@abenteuerland.at&gt;, data source: OSM.", "copyright");
-   geo_description(rd->y2c + MM2LAT(grd->g_margin - grd->g_tw), rd->x1c + rd->wc / 2, rd->cmdline, "copyright");
+   geo_description(rd->bb.ru.lat - MM2LAT(grd->g_margin), rd->bb.ll.lon + rd->wc / 2, s, "top");
+   geo_description(rd->bb.ru.lat - MM2LAT(grd->g_margin), rd->bb.ll.lon + MM2LON(grd->g_margin), rd->title, "title");
+   geo_description(rd->bb.ll.lat + MM2LAT(grd->g_margin + grd->g_tw + grd->g_stw), rd->bb.ll.lon + rd->wc / 2, "Generated with " PACKAGE_STRING ", author Bernhard R. Fischer, 2048R/5C5FFD47 &lt;bf@abenteuerland.at&gt;, data source: OSM.", "copyright");
+   geo_description(rd->bb.ll.lat + MM2LAT(grd->g_margin - grd->g_tw), rd->bb.ll.lon + rd->wc / 2, rd->cmdline, "copyright");
 }
 
 /*! ...
