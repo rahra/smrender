@@ -91,8 +91,8 @@ typedef void image_t;
 // convert pixels to mm
 #define PX2MM(x) ((double) (x) * 25.4 / rd->dpi)
 // convert mm to degrees
-#define MM2LAT(x) ((x) * (rd->y1c - rd->y2c) / PX2MM(rd->h))
-#define MM2LON(x) ((x) * (rd->x2c - rd->x1c) / PX2MM(rd->w))
+#define MM2LAT(x) ((x) * (rd->bb.ru.lat - rd->bb.ll.lat) / PX2MM(rd->h))
+#define MM2LON(x) ((x) * (rd->bb.ru.lon - rd->bb.ll.lon) / PX2MM(rd->w))
 // maximum number if different rule versions (processing iterations)
 #define MAX_ITER 8
 // default oversampling factor
@@ -110,6 +110,8 @@ typedef void image_t;
 #define BLUE(x) (((x) & 0xff))
 #define SQRL(x) ((long) (x) * (long) (x))
 
+// scaling factor for bbox of URL output (-u)
+#define BB_SCALE 0.01
 
 typedef int (*tree_func_t)(osm_obj_t*, struct rdata*, void*);
 
@@ -247,15 +249,20 @@ struct dstats
    int ver[MAX_ITER];
 };
 
+struct bbox
+{
+   struct coord ll, ru;
+};
+
 struct rdata
 {
    // root node of objects (nodes and ways)
    bx_node_t *obj;
    // root nodes of node rules and way rules
    bx_node_t *rules;
-  // left upper and right bottom coordinates
-   double x1c, y1c, x2c, y2c;
-   // coordinate with/height (wc=x2c-x1c, hc=y1c-y2c)
+   // bounding box (left lower and right upper coordinates)
+   struct bbox bb;
+   // coordinate with/height (wc=bb.ru.lon-bb.ll.lon, hc=bb.ru.lat-bb.ll.lat)
    double wc, hc;
    // mean latitude and its length in degrees corresponding to the real nautical miles
    double mean_lat, mean_lat_len;
@@ -307,7 +314,8 @@ double color_frequency(struct rdata *, int, int, int, int, int);
 void mk_chart_coords(int, int, struct rdata*, double*, double*);
 int poly_area(const osm_way_t*, struct coord *, double *);
 struct rdata *get_rdata(void);
-int save_osm(struct rdata *, const char *, bx_node_t *);
+int save_osm(const char *, bx_node_t *, const struct bbox *, const char *);
+
 
 /* smutil.c */
 int bs_match_attr(const osm_obj_t*, const struct otag *, const struct stag*);

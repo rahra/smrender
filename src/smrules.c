@@ -105,7 +105,7 @@ void save_main_image(struct rdata *rd, FILE *f)
  */
 void mk_paper_coords(double lat, double lon, struct rdata *rd, int *x, int *y)
 {
-   *x = round(        (                         lon    - rd->x1c)  * rd->w / rd->wc);
+   *x = round(        (                         lon    - rd->bb.ll.lon) * rd->w / rd->wc);
    *y = round(rd->h * (0.5 - (asinh(tan(DEG2RAD(lat))) - rd->lath)         / rd->lath_len));
 }
 

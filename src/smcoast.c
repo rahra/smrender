@@ -316,7 +316,7 @@ int compare_pdef(const struct pdef *p1, const struct pdef *p2)
 
 void init_corner_brg(const struct rdata *rd, const struct coord *src, struct corner_point *co_pt)
 {
-   struct coord corner_coord[4] = {{rd->y1c, rd->x2c}, {rd->y2c, rd->x2c}, {rd->y2c, rd->x1c}, {rd->y1c, rd->x1c}};
+   struct coord corner_coord[4] = {rd->bb.ru, {rd->bb.ll.lat, rd->bb.ru.lon}, rd->bb.ll, {rd->bb.ru.lat, rd->bb.ll.lon}};
    int i;
 
    for (i = 0; i < 4; i++)

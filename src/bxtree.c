@@ -41,8 +41,10 @@ void bx_exit(void)
    switch (ae)
    {
       case 0:
+#ifdef USE_ATEXIT
          if (atexit(bx_exit))
             log_msg(LOG_ERR, "atexit(bx_exit) failed");
+#endif
          break;
 
       default:
