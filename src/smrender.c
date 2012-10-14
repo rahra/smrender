@@ -39,6 +39,8 @@
 #include <fcntl.h>         // stat()
 #include <syslog.h>
 #include <signal.h>
+#include <dirent.h>
+#include <regex.h>
 #ifdef HAVE_DLFCN_H
 #define __USE_GNU
 #include <dlfcn.h>
@@ -858,6 +860,173 @@ char *mk_cmd_line(const char **argv)
 }
 
 
+int file_cmp(const struct file *a, const struct file *b)
+{
+   return strcmp(a->name, b->name);
+}
+
+
+hpx_ctrl_t *open_osm_source(const char *s)
+{
+   int d, e, i, j, fd, fcnt, pfd[2];
+   struct file *file = NULL, *p;
+   char buf[1024], *mem;
+   struct dirent *de;
+   hpx_ctrl_t *ctl;
+   struct stat st;
+   regex_t re;
+   long size;
+   DIR *dir;
+
+   if ((s != NULL) && ((fd = open(s, O_RDONLY)) == -1))
+   {
+      log_msg(LOG_ERR, "cannot open file %s: %s", s, strerror(errno));
+      return NULL;
+   }
+
+   if (fstat(fd, &st) == -1)
+   {
+      log_msg(LOG_ERR, "stat() failed: %s", strerror(errno));
+      goto oos_close_fd;
+   }
+
+   if (S_ISDIR(st.st_mode))
+   {
+      if ((dir = fdopendir(fd)) == NULL)
+      {
+         log_msg(LOG_ERR, "fdopendir() failed: %s", strerror(errno));
+         goto oos_close_fd;
+      }
+
+      if ((e = regcomp(&re, ".*osm", REG_ICASE | REG_NOSUB)))
+      {
+         log_msg(LOG_ERR, "regcomp() failed: %d", e);
+         goto oos_close_fd;
+      }
+
+      errno = 0;
+      for (size = 0, fcnt = 0; (de = readdir(dir)) != NULL;)
+      {
+         //if (S_ISDIR(st.st_mode))
+         //   continue;
+
+         if (regexec(&re, de->d_name, 0, NULL, 0))
+            continue;
+
+         if ((p = realloc(file, sizeof(*file) * (fcnt + 1))) == NULL)
+         {
+            log_msg(LOG_ERR, "realloc() failed: %s", strerror(errno));
+            goto oos_freeall;
+         }
+         file = p;
+         fcnt++;
+
+         snprintf(buf, sizeof(buf), "%s/%s", s, de->d_name);
+         if (stat(buf, &st) == -1)
+         {
+            log_msg(LOG_ERR, "stat() failed: %s", strerror(errno));
+            goto oos_close_fd;
+         }
+
+         if ((file[fcnt - 1].name = strdup(buf)) == NULL)
+         {
+            log_msg(LOG_ERR, "strdup() failed: %s", strerror(errno));
+            goto oos_freeall;
+         }
+
+         log_debug("%s %ld", buf, (long) st.st_size);
+         size += st.st_size;
+         file[fcnt - 1].size = st.st_size;
+      }
+
+      if (errno)
+         log_msg(LOG_ERR, "readdir() failed: %s", strerror(errno));
+
+      qsort(file, fcnt, sizeof(*file), (int(*)(const void*, const void*)) file_cmp);
+
+      if (pipe(pfd) == -1)
+      {
+         log_msg(LOG_ERR, "pipe() failed: %s", strerror(errno));
+         goto oos_freeall;
+      }
+
+      switch (fork())
+      {
+         case -1:
+            log_msg(LOG_ERR, "fork() failed: %s", strerror(errno));
+            goto oos_freeallp;
+
+         // child
+         case 0:
+            log_debug("reader child forked, pid = %d", (int) getpid());
+            if ((mem = malloc(size)) == NULL)
+            {
+               log_msg(LOG_ERR, "malloc(%ld) failed: %s", size, strerror(errno));
+               goto oos_freeallp;
+            }
+            for (i = 0, j = 0; i < fcnt; i++)
+            {
+               log_debug("reading '%s'...", file[i].name);
+               if ((d = open(file[i].name, O_RDONLY)) == -1)
+               {
+                  log_msg(LOG_ERR, "open(%s) failed: %s", buf, strerror(errno));
+                  goto oos_freeallp;
+               }
+
+               for (; j < size; j++)
+                  if ((e = read(d, &mem[j], 1)) <= 0)
+                     break;
+
+               if (e == -1)
+               {
+                  log_msg(LOG_ERR, "write(%d) failed: %s", pfd[1], strerror(errno));
+                  (void) close(d);
+                  goto oos_freeallp;
+               }
+               (void) close(d);
+            }
+
+            write(pfd[1], mem, j);
+
+            log_debug("child exiting");
+            exit(EXIT_SUCCESS);
+
+         //parent
+         default:
+            if ((ctl = hpx_init(pfd[0], size)) == NULL)
+               goto oos_freeallp;
+ 
+            (void) close(pfd[1]);
+            while (fcnt--)
+               free(file[fcnt].name);
+            free(file);
+            (void) closedir(dir);
+            (void) close(fd);
+            return ctl;
+      }
+   }
+
+   if ((ctl = hpx_init(fd, st.st_size)) != NULL)
+      return ctl;
+   log_msg(LOG_ERR, "hpx_init failed: %s", strerror(errno));
+   goto oos_close_fd;
+
+oos_freeallp:
+   (void) close(pfd[0]);
+   (void) close(pfd[1]);
+
+oos_freeall:
+   while (fcnt--)
+      free(file[fcnt].name);
+   free(file);
+   (void) closedir(dir);
+ 
+oos_close_fd:
+   (void) close(fd);
+   return NULL;
+}
+
+
 int main(int argc, char *argv[])
 {
    hpx_ctrl_t *ctl, *cfctl;
@@ -1086,17 +1255,10 @@ int main(int argc, char *argv[])
    // preparing image
    init_main_image(rd, bg);
 
-   if ((fd = open(cf, O_RDONLY)) == -1)
-      log_msg(LOG_ERR, "cannot open file %s: %s", cf, strerror(errno)),
-         exit(EXIT_FAILURE);
+   if ((cfctl = open_osm_source(cf)) == NULL)
+      exit(EXIT_FAILURE);
 
-   if (fstat(fd, &st) == -1)
-      perror("stat"), exit(EXIT_FAILURE);
-
-   if ((cfctl = hpx_init(fd, st.st_size)) == NULL)
-      perror("hpx_init_simple"), exit(EXIT_FAILURE);
-
-   log_msg(LOG_INFO, "reading rules (file size %ld kb)", (long) st.st_size / 1024);
+   log_msg(LOG_INFO, "reading rules (file size %ld kb)", (long) cfctl->len / 1024);
    (void) read_osm_file(cfctl, &rd->rules, NULL);
    (void) close(cfctl->fd);
 

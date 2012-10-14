@@ -108,6 +108,21 @@ void clear_ostor(osm_storage_t *o)
 }
 
 
+uint64_t get_osm_id(const osm_obj_t *o)
+{
+   switch (o->type)
+   {
+      case OSM_NODE:
+         return unique_node_id();
+      case OSM_WAY:
+         return unique_way_id();
+      case OSM_REL:
+         return 0; //FIXME: unique_rel_id();
+   }
+   return 0;
+}
+
+
 int read_osm_file(hpx_ctrl_t *ctl, bx_node_t **tree, struct filter *fi)
 {
    hpx_tag_t *tag;
@@ -175,6 +190,7 @@ int read_osm_file(hpx_ctrl_t *ctl, bx_node_t **tree, struct filter *fi)
 #endif
                o.o.type = t;
                if (!o.o.id) o.o.id = nid++;
+               //if (o.o.id <= 0) o.o.id = get_osm_id(&o.o);
 
                if (tlist->nsub >= tlist->msub)
                {
@@ -208,6 +224,7 @@ int read_osm_file(hpx_ctrl_t *ctl, bx_node_t **tree, struct filter *fi)
 #endif
                o.o.type = t;
                if (!o.o.id) o.o.id = nid++;
+               //if (o.o.id <= 0) o.o.id = get_osm_id(&o.o);
 
                switch (o.o.type)
                {

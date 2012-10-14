@@ -304,6 +304,14 @@ struct filter
 };
 
 
+struct file
+{
+   char *name;
+   long size;
+   int fd;
+};
+
+
 /* smrender.c */
 int traverse(const bx_node_t*, int, int, tree_func_t, struct rdata*, void*);
 int print_onode(FILE *, const osm_obj_t*);
