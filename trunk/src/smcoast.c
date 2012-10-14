@@ -46,6 +46,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <errno.h>
+#include <math.h>
 
 #include "smrender_dev.h"
 #include "smcoast.h"
@@ -653,7 +654,6 @@ void add_blind_node(const struct coord *c)
 
 
 #define SQR(a) ((a) * (a))
-#define HYPOT(a,b) sqrt(SQR(a) + SQR(b))
 #define MAX_DEVIATION 50
 #define MAX_ITERATION 3
 #define MAX_CFAC 2.0
@@ -783,14 +783,13 @@ void circle_calc(osm_node_t **n, osm_node_t **s, double deviation)
    c.lon = (d[1] - d[0]) / (k[0] - k[1]);
    c.lat = k[0] * c.lon + d[0];
     // radius
-   r = HYPOT(s[0]->lon - c.lon, s[0]->lat - c.lat);
+   r = hypot(s[0]->lon - c.lon, s[0]->lat - c.lat);
    
    for (i = 0; i < 2; i++)
    {
       if (isnormal(r))
       {
-         //add_blind_node(&c);
-         t = HYPOT(p[i].lon - c.lon, p[i].lat - c.lat);
+         t = hypot(p[i].lon - c.lon, p[i].lat - c.lat);
          node_to_circle(n[i], &c, r - t > deviation ? t + deviation : r, k[i], c.lon < p[i].lon ? -1 : 1);
       }
       else
