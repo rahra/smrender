@@ -32,12 +32,11 @@
 #include <fcntl.h>
 #include <signal.h>
 #include <limits.h>
+#include <dirent.h>
+#include <regex.h>
 
 #include "smrender_dev.h"
-//#include "osm_inplace.h"
-//#include "bstring.h"
 #include "libhpxml.h"
-//#include "bxtree.h"
 
 
 static size_t oline_ = 0;
@@ -74,7 +73,12 @@ void usr1_handler(int sig)
 void install_sigusr1(void)
 {
    struct sigaction sa;
+   static int sig_inst = 0;
 
+   if (sig_inst)
+      return;
+
+   sig_inst++;
    memset(&sa, 0, sizeof(sa));
    sa.sa_handler = usr1_handler;
 
@@ -136,6 +140,8 @@ int read_osm_file(hpx_ctrl_t *ctl, bx_node_t **tree, struct filter *fi)
    int64_t nid = MIN_ID + 1;
    time_t tim;
    struct rmember *mem;
+
+   install_sigusr1();
 
    if (hpx_tree_resize(&tlist, 0) == -1)
       perror("hpx_tree_resize"), exit(EXIT_FAILURE);
@@ -426,5 +432,174 @@ int read_osm_file(hpx_ctrl_t *ctl, bx_node_t **tree, struct filter *fi)
    hpx_tm_free(tag);
 
    return 0;
+}
+
+
+int file_cmp(const struct file *a, const struct file *b)
+{
+   return strcmp(a->name, b->name);
+}
+
+
+hpx_ctrl_t *open_osm_source(const char *s, int w_mmap)
+{
+   int d, e, i, fd, tfd, fcnt;
+   struct file *file = NULL, *p;
+   char buf[1024];
+   struct dirent *de;
+   hpx_ctrl_t *ctl;
+   struct stat st;
+   regex_t re;
+   long size;
+   DIR *dir;
+
+   if ((s != NULL) && ((fd = open(s, O_RDONLY)) == -1))
+   {
+      log_msg(LOG_ERR, "cannot open file %s: %s", s, strerror(errno));
+      return NULL;
+   }
+
+   if (fstat(fd, &st) == -1)
+   {
+      log_msg(LOG_ERR, "stat() failed: %s", strerror(errno));
+      goto oos_close_fd;
+   }
+
+   if (S_ISDIR(st.st_mode))
+   {
+      if ((dir = fdopendir(fd)) == NULL)
+      {
+         log_msg(LOG_ERR, "fdopendir() failed: %s", strerror(errno));
+         goto oos_close_fd;
+      }
+
+      if ((e = regcomp(&re, ".*osm", REG_ICASE | REG_NOSUB)))
+      {
+         log_msg(LOG_ERR, "regcomp() failed: %d", e);
+         goto oos_close_dir;
+      }
+
+      errno = 0;
+      for (size = 0, fcnt = 0; (de = readdir(dir)) != NULL;)
+      {
+         //if (S_ISDIR(st.st_mode))
+         //   continue;
+
+         if (regexec(&re, de->d_name, 0, NULL, 0))
+            continue;
+
+         if ((p = realloc(file, sizeof(*file) * (fcnt + 1))) == NULL)
+         {
+            log_msg(LOG_ERR, "realloc() failed: %s", strerror(errno));
+            goto oos_freeall;
+         }
+         file = p;
+         fcnt++;
+
+         snprintf(buf, sizeof(buf), "%s/%s", s, de->d_name);
+         if (stat(buf, &st) == -1)
+         {
+            log_msg(LOG_ERR, "stat() failed: %s", strerror(errno));
+            goto oos_close_fd;
+         }
+
+         if ((file[fcnt - 1].name = strdup(buf)) == NULL)
+         {
+            log_msg(LOG_ERR, "strdup() failed: %s", strerror(errno));
+            goto oos_freeall;
+         }
+
+         log_debug("%s %ld", buf, (long) st.st_size * -(w_mmap != 0));
+         size += st.st_size;
+         file[fcnt - 1].size = st.st_size;
+      }
+
+      if (errno)
+         log_msg(LOG_ERR, "readdir() failed: %s", strerror(errno));
+
+      qsort(file, fcnt, sizeof(*file), (int(*)(const void*, const void*)) file_cmp);
+
+#define TEMPFILE "/tmp/smrulesXXXXXX"
+      strcpy(buf, TEMPFILE);
+      if ((tfd = mkstemp(buf)) == -1)
+      {
+         log_msg(LOG_ERR, "mkstemp() failed: %s", strerror(errno));
+         goto oos_freeall;
+      }
+      log_debug("created temporary file '%s'", buf);
+
+      if (unlink(buf) == -1)
+         log_msg(LOG_WARN, "unlink(%s) failed: %s", buf, strerror(errno));
+
+      for (i = 0; i < fcnt; i++)
+      {
+         log_debug("reading '%s'...", file[i].name);
+         if ((d = open(file[i].name, O_RDONLY)) == -1)
+         {
+            log_msg(LOG_WARN, "open(%s) failed: %s", buf, strerror(errno));
+            continue;
+         }
+
+         while ((e = read(d, buf, sizeof(buf))) > 0)
+         {
+            if (write(tfd, buf, e) == -1)
+            {
+               log_msg(LOG_ERR, "could not write to temporary file: %s", strerror(errno));
+               goto oos_freeallt;
+            }
+         }
+
+         if (e == -1)
+         {
+            log_msg(LOG_ERR, "read(%d) failed: %s", d, strerror(errno));
+            (void) close(d);
+            goto oos_freeallt;
+         }
+
+         (void) close(d);
+      }
+
+      (void) close(fd);
+      fd = tfd;
+      regfree(&re);
+      while (fcnt--)
+         free(file[fcnt].name);
+      free(file);
+      (void) closedir(dir);
+ 
+      if (lseek(fd, 0, SEEK_SET) == -1)
+      {
+         log_msg(LOG_ERR, "lseek(%d) failed: %s", fd, strerror(errno));
+         goto oos_close_fd;
+      }
+
+      if (fstat(fd, &st) == -1)
+      {
+         log_msg(LOG_ERR, "fstat(%d) failed: %s", fd, strerror(errno));
+         goto oos_close_fd;
+      }
+   }
+
+   if ((ctl = hpx_init(fd, st.st_size)) != NULL)
+      return ctl;
+
+   log_msg(LOG_ERR, "hpx_init failed: %s", strerror(errno));
+   goto oos_close_fd;
+
+oos_freeallt:
+   (void) close(tfd);
+
+oos_freeall:
+   regfree(&re);
+   while (fcnt--)
+      free(file[fcnt].name);
+   free(file);
+
+oos_close_dir:
+   (void) closedir(dir);
+ 
+oos_close_fd:
+   (void) close(fd);
+   return NULL;
 }
 

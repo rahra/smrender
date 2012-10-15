@@ -337,7 +337,8 @@ long inline col_cmp(int, int);
 /* smloadosm.c */
 void osm_read_exit(void);
 int read_osm_file(hpx_ctrl_t*, bx_node_t**, struct filter*);
-void install_sigusr1(void);
+//void install_sigusr1(void);
+hpx_ctrl_t *open_osm_source(const char*, int);
 
 /* smcoast.c */
 int is_closed_poly(const osm_way_t*);
