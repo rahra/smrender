@@ -375,6 +375,11 @@ void init_grid(struct grid *);
 void auto_grid(const struct rdata *, struct grid *);
 void grid(struct rdata *, const struct grid *);
 
+/* smqr.c */
+
+image_t *smqr_image(void);
+
+
 #endif
 
 
