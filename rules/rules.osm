@@ -1,10 +1,5 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <osm version='0.6'>
-   <!--
-   <node version="-10">
-      <tag k="_action_" v="grid"/>
-   </node>
-   -->
    <node version="-10">
       <tag k='seamark:type' v=''/>
       <tag k='_action_' v='vsector@libsmfilter.so'/>
@@ -107,6 +102,7 @@
         depths: Sans (1.5mm)
         channels/passages: Sans italic upper case (2.3mm)
    -->
+
    <node>
       <tag k='seamark:type' v='light_major'/>
       <tag k='_action_' v='cap:font=sans-serif;size=1.4;key=seamark:name'/>
@@ -216,7 +212,7 @@
       <tag k='pointindex' v='3'/>
       <tag k='_action_' v='cap:font=sans-serif;size=2;key=lat;valign=south;halign=east'/>
    </node>
-   <node>
+    <node>
       <tag k='grid' v='outer_border'/>
       <tag k='pointindex' v='3'/>
       <tag k='_action_' v='cap:font=sans-serif;size=2;key=lon;angle=90;valign=north;halign=east'/>
@@ -329,13 +325,88 @@
       <tag k='_action_' v='draw:bcolor=black'/>
    </way>
    <way>
-      <tag k='_action_' v='cap:font=sans-serif:bold;size=2.5;key=*name'/>
+      <tag k='_action_' v='cap:font=sans-serif:bold;size=auto;key=*name'/>
       <tag k='place' v='/island|islet/'/>
+   </way>
+   <way>
+      <tag k='_action_' v='cap:font=sans-serif:bold;color=#000080;size=2.0;key=name'/>
+      <tag k='natural' v='water'/>
    </way>
    <relation>
       <tag k='place' v='island'/>
       <tag k='type' v='multipolygon'/>
       <tag k='_action_' v='cat_poly:no_corner=1'/>
    </relation>
+   <relation>
+      <tag k='natural' v='water'/>
+      <tag k='type' v='multipolygon'/>
+      <tag k='_action_' v='cat_poly:no_corner=1'/>
+   </relation>
+   <way version='-10'>
+      <tag k='way' v='route'/>
+      <tag k='_action_' v='ins_eqdist:distance=5'/>
+   </way>
+   <way version='-10'>
+      <tag k='way' v='route'/>
+      <tag k='_action_' v='refine_poly'/>
+   </way>
+
+   <way version="-10">
+      <tag k='natural' v='cliff'/>
+      <tag k='_action_' v='ins_eqdist:distance=.15'/>
+   </way>
+
+   <way>
+      <tag k='natural' v='cliff'/>
+      <tag k='_action_' v='draw:color=#black;width=0.2'/>
+   </way>
+
+
+   <node version="-10">
+      <tag k='natural' v='cliff'/>
+      <tag k='bearing' v=''/>
+      <tag k='_action_' v='shape:style=triangle;radius=.5;angle=180;key=bearing'/>
+   </node>
+
+   <node version='-10'>
+      <tag k='way' v='route'/>
+      <tag k='bearing' v=''/>
+      <tag k='_action_' v='shape:style=triangle;radius=2;angle=-90;key=bearing'/>
+   </node>
+
+   <way>
+      <tag k='way' v='route'/>
+      <tag k='_action_' v='draw:color=#00600000;width=0.3'/>
+   </way>
+
+   <way>
+      <tag k='o' v='b'/>
+      <tag k='_action_' v='draw:bcolor=#00600000;bwidth=0.2'/>
+   </way>
+   <node version="-10">
+      <tag k='o' v='b'/>
+      <tag k='_action_' v='shape:style=circle;radius=3'/>
+   </node>
+   <node version="-10">
+      <tag k='o' v='b'/>
+      <tag k='_action_' v='shape:style=square;angle=45;radius=.5'/>
+   </node>
+   
+   <!--
+   <node version="-10">
+      <tag k='way' v='route'/>
+      <tag k='_action_' v='shape:style=triangle;radius=1.5;key=bearing'/>
+   </node>
+-->
+ 
+   <node>
+      <tag k='_action_' v='cap:font=sans-serif;size=4;key=log;valign=south;color=#00600000'/>
+      <tag k='log' v=''/>
+   </node>
+   <node>
+      <tag k='_action_' v='cap:font=sans-serif;size=4;key=date;valign=north;color=#00600000'/>
+      <tag k='date' v=''/>
+   </node>
+
 </osm>
 
