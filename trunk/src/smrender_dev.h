@@ -52,6 +52,8 @@ typedef void image_t;
 #define SPECIAL_NOT 0x4000
 #define SPECIAL_MASK 0x00ff
 
+#define ACTION_THREADED 1
+
 #define POS_M 0
 #define POS_N 1
 #define POS_S 2
@@ -223,6 +225,7 @@ struct action
    char *func_name;  // pointer to function name
    char *parm;       // function argument string
    fparam_t **fp;    // pointer to parsed parameter list
+   short flags;      // execution control flags.
    short tag_cnt;
    struct stag stag[];
 };
