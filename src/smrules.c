@@ -309,9 +309,28 @@ int act_cap_node_main(smrule_t *r, osm_node_t *n)
 
    if (isnan(cap->angle))
    {
+#ifdef NEW_AUTOROT
+      // FIXME: this is not finished yet!
+      struct diff_vec *dv;
+      gdImage *cap_img;
+      int n;
+
+      if ((cap_img = gdImageCreateTrueColor(br[4] - br[0], br[1] - br[5])) == NULL)
+      {
+         log_msg(LOG_ERR, "gdImageCreateTrueColor() failed");
+         free(v);
+         return -1;
+      }
+      gdImageSaveAlpha(cap_img, 1);
+      gdImageAlphaBlending(cap_img, 0);
+      gdImageStringFTEx(cap_img, br, c, cap->font, cap->size * 2.8699, 0, x, y, v, &fte);
+      dv = get_diff_vec(rd->img, cap_img, x, y, &n);
+
+#else
       ma = color_frequency_w(rd, x, y, br[4] - br[0] + MAX_OFFSET, br[1] - br[5], &cap->rot);
       //FIXME: WHITE?
       off = cf_dist(rd, x, y, br[4] - br[0], br[1] - br[5], DEG2RAD(ma), rd->col[WHITE], MAX_OFFSET);
+#endif
 
       oy =(br[1] - br[5]) / DIVX;
       if ((ma < 90) || (ma >= 270))
