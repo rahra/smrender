@@ -23,14 +23,20 @@
  *  @author Bernhard R. Fischer
  */
 
+#include "smrender_dev.h"
+
 #include <stdint.h>
 #include <limits.h>
 #include <string.h>
 #include <syslog.h>
 #include <errno.h>
-
-#include "smrender_dev.h"
-//#include "bstring.h"
+#ifdef WITH_THREADS
+#include <pthread.h>
+#endif
+#ifdef HAVE_DLFCN_H
+#define __USE_GNU
+#include <dlfcn.h>
+#endif
 
 
 static struct rdata *rd;
@@ -54,16 +60,36 @@ void set_const_tag(struct otag *tag, char *k, char *v)
 //int64_t unique_node_id(struct rdata *rd)
 int64_t unique_node_id(void)
 {
+#ifdef WITH_THREADS
+   static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
+   int64_t id;
+
+   pthread_mutex_lock(&mutex);
+   id = rd->ds.min_nid = rd->ds.min_nid < 0 ? rd->ds.min_nid - 1 : -1;
+   pthread_mutex_unlock(&mutex);
+   return id;
+#else
    rd->ds.min_nid = rd->ds.min_nid < 0 ? rd->ds.min_nid - 1 : -1;
    return rd->ds.min_nid;
+#endif
 }
 
 
 //int64_t unique_way_id(struct rdata *rd)
 int64_t unique_way_id(void)
 {
+#ifdef WITH_THREADS
+   static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
+   int64_t id;
+
+   pthread_mutex_lock(&mutex);
+   id = rd->ds.min_wid = rd->ds.min_wid < 0 ? rd->ds.min_wid - 1 : -1;
+   pthread_mutex_unlock(&mutex);
+   return id;
+#else
    rd->ds.min_wid = rd->ds.min_wid < 0 ? rd->ds.min_wid - 1 : -1;
    return rd->ds.min_wid;
+#endif
 }
 
 
@@ -257,5 +283,28 @@ int coord_str(double c, int lat_lon, char *buf, int len)
 long inline col_cmp(int c1, int c2)
 {
    return SQRL(RED(c1) - RED(c2)) + SQRL(GREEN(c1) - GREEN(c2)) + SQRL(BLUE(c1) - BLUE(c2));
+}
+
+
+int func_name(char *buf, int size, void *sym_addr)
+{
+#ifdef HAVE_DLADDR
+   Dl_info dli;
+
+   memset(&dli, 0, sizeof(dli));
+   (void) dladdr(sym_addr, &dli);
+
+   if (dli.dli_sname == NULL && size)
+      *buf = '\0';
+   else if (strlen(dli.dli_sname) >= size)
+      strncpy(buf, dli.dli_sname, size - 1), 
+         buf[size - 1] = '\0';
+   else
+      strcpy(buf, dli.dli_sname);
+#else
+   *buf = '\0';
+#endif
+
+   return strlen(buf);
 }
 

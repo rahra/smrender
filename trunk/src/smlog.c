@@ -22,6 +22,10 @@
  *  @version 2011/12/20
  */
 
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>
@@ -30,6 +34,9 @@
 #include <string.h>
 #include <time.h>
 #include <sys/time.h>
+#ifdef WITH_THREADS
+#include <pthread.h>
+#endif
 
 
 #define SIZE_1K 1024
@@ -67,6 +74,9 @@ FILE *init_log(const char *s, int level)
  */
 void vlog_msgf(FILE *out, int lf, const char *fmt, va_list ap)
 {
+#ifdef WITH_THREADS
+   static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
+#endif
    static struct timeval tv_stat = {0, 0};
    struct timeval tv, tr;
    struct tm *tm;
@@ -101,9 +111,15 @@ void vlog_msgf(FILE *out, int lf, const char *fmt, va_list ap)
 
    if (out)
    {
+#ifdef WITH_THREADS
+      pthread_mutex_lock(&mutex);
+#endif
       fprintf(out, "%s.%03d %s (+%2d.%03d) [%7s] ", timestr, (int) (tv.tv_usec / 1000), timez, (int) tr.tv_sec, (int) (tr.tv_usec / 1000), flty_[level]);
       vfprintf(out, fmt, ap);
       fprintf(out, "\n");
+#ifdef WITH_THREADS
+      pthread_mutex_unlock(&mutex);
+#endif
    }
    else
    {

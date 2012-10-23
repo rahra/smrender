@@ -39,10 +39,6 @@
 #include <fcntl.h>         // stat()
 #include <syslog.h>
 #include <signal.h>
-#ifdef HAVE_DLFCN_H
-#define __USE_GNU
-#include <dlfcn.h>
-#endif
 
 #include "smrender_dev.h"
 
@@ -182,7 +178,7 @@ int apply_smrules0(osm_obj_t *o, struct rdata *rd, smrule_t *r)
       if (bs_match_attr(o, &r->oo->otag[i], &r->act->stag[i]) == -1)
          return 0;
 
-   return r->act->main.func(r, o);
+   return sm_exec_rule(r, o, r->act->main.func);
 }
 
 
@@ -210,6 +206,11 @@ int apply_smrules(smrule_t *r, struct rdata *rd, osm_obj_t *o)
       log_debug("   -> no main function");
 
    if (e) log_debug("traverse(apply_smrules0) returned %d", e);
+
+#ifdef WITH_THREADS
+   if (r->act->flags & ACTION_THREADED)
+      sm_wait_threads();
+#endif
 
    // call de-initialization rule of function rule if available
    if (e >= 0 && r->act->fini.func != NULL)
@@ -307,6 +308,7 @@ int traverse(const bx_node_t *nt, int d, int idx, tree_func_t dhandler, struct r
 {
    int i, e, sidx, eidx;
    static int sig_msg = 0;
+   char buf[32];
 
    if (int_)
    {
@@ -349,18 +351,8 @@ int traverse(const bx_node_t *nt, int d, int idx, tree_func_t dhandler, struct r
          {
             if ((e = dhandler(nt->next[i], rd, p)))
             {
-#ifdef HAVE_DLADDR
-               Dl_info dli;
-
-               memset(&dli, 0, sizeof(dli));
-               (void) dladdr(dhandler, &dli);
-               if (dli.dli_sname == NULL)
-                  dli.dli_sname = "";
-
-               log_msg(LOG_WARNING, "dhandler(), sym = '%s', addr = '%p' returned %d", dli.dli_sname, dhandler, e);
-#else
-               log_msg(LOG_WARNING, "dhandler() %p returned %d", dhandler, e);
-#endif
+               (void) func_name(buf, sizeof(buf), dhandler);
+               log_msg(LOG_WARNING, "dhandler(), sym = '%s', addr = '%p' returned %d", buf, dhandler, e);
                if (e < 0)
                {
                   log_msg(LOG_INFO, "breaking recursion");

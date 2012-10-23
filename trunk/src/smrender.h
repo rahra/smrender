@@ -55,5 +55,8 @@ char *get_param(const char*, double*, const action_t*);
 /* smlog.c */
 void log_msg(int, const char*, ...) __attribute__((format (printf, 2, 3)));
 
+/* smthread.c */
+void sm_threaded(smrule_t*);
+
 #endif
 
