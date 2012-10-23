@@ -336,6 +336,7 @@ int put_object0(bx_node_t**, int64_t, void*, int);
 void *get_object0(bx_node_t*, int64_t, int);
 int coord_str(double, int, char*, int);
 long inline col_cmp(int, int);
+int func_name(char*, int, void*);
 
 /* smloadosm.c */
 void osm_read_exit(void);
@@ -379,8 +380,11 @@ void auto_grid(const struct rdata *, struct grid *);
 void grid(struct rdata *, const struct grid *);
 
 /* smqr.c */
-
 image_t *smqr_image(void);
+
+/* smthread.c */
+void sm_wait_threads(void);
+int sm_exec_rule(smrule_t*, osm_obj_t*, int(*)(smrule_t*, osm_obj_t*));
 
 
 #endif

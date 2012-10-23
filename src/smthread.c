@@ -45,6 +45,7 @@ struct sm_thread
    osm_obj_t *obj;
    int result;
    int status;
+   int nr;
    pthread_mutex_t *mutex;
    pthread_cond_t *smr_cond;
    pthread_t rule_thread;
@@ -53,7 +54,6 @@ struct sm_thread
 
 
 void *sm_rule_thread(struct sm_thread*);
-void sm_wait_threads(void);
 
 
 static pthread_mutex_t mutex_ = PTHREAD_MUTEX_INITIALIZER;
@@ -73,6 +73,7 @@ void __attribute__((constructor)) init_threads(void)
       smth[i].status = SM_THREAD_WAIT;
       smth[i].mutex = &mutex_;
       smth[i].smr_cond = &cond_;
+      smth[i].nr = i;
       pthread_cond_init(&smth[i].rule_cond, NULL);
       pthread_create(&smth[i].rule_thread, NULL, (void*(*)(void*)) sm_rule_thread, &smth[i]);
    }
@@ -116,6 +117,7 @@ void *sm_rule_thread(struct sm_thread *smth)
       pthread_mutex_unlock(smth->mutex);
 
       // execute rule
+      //log_debug("thread %d executing action %p", smth->nr, smth->rule);
       smth->result = smth->func(smth->rule, smth->obj);
 
       pthread_mutex_lock(smth->mutex);
@@ -132,6 +134,7 @@ void sm_wait_threads(void)
 {
    int i;
 
+   log_debug("waiting for all threads to finish action");
    for (i = 0; i < SM_THREADS; i++)
    {
       pthread_mutex_lock(&mutex_);
@@ -149,6 +152,7 @@ int sm_exec_rule(smrule_t *r, osm_obj_t *o, int(*func)(smrule_t*, osm_obj_t*))
    if (!(r->act->flags & ACTION_THREADED))
       return func(r, o);
 
+   //log_debug("looking up thread");
    pthread_mutex_lock(&mutex_);
    for (;;)
    {
@@ -161,6 +165,7 @@ int sm_exec_rule(smrule_t *r, osm_obj_t *o, int(*func)(smrule_t*, osm_obj_t*))
             smth_[i].func = func;
             smth_[i].rule = r;
             smth_[i].obj = o;
+            smth_[i].status = SM_THREAD_EXEC;
             pthread_cond_signal(&smth_[i].rule_cond);
             break;
          }
@@ -186,4 +191,11 @@ int sm_exec_rule(smrule_t *r, osm_obj_t *o, int(*func)(smrule_t*, osm_obj_t*))
 
 
 #endif
+
+
+void sm_threaded(smrule_t *r)
+{
+   log_debug("activating multi-threading for rule 0x%016lx", r->oo->id);
+   r->act->flags |= ACTION_THREADED;
+}
 

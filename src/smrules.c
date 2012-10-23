@@ -77,6 +77,8 @@ void init_main_image(struct rdata *rd, const char *bg)
 
    if (!gdFTUseFontConfig(1))
       log_msg(LOG_NOTICE, "fontconfig library not available");
+   if (gdFontCacheSetup())
+      log_msg(LOG_WARN, "could not init freetype font cache");
 }
 
 
@@ -236,6 +238,10 @@ int act_cap_ini(smrule_t *r)
       log_msg(LOG_ERR, "cannot malloc: %s", strerror(errno));
       return -1;
    }
+
+   // activate multi-threading if angle is not "auto"
+   if (!isnan(cap.angle))
+      sm_threaded(r);
 
    log_msg(LOG_DEBUG, "%04x, %08x, '%s', '%s', %.1f, %.1f, {%.1f, %08x, %.1f}",
          cap.pos, cap.col, cap.font, cap.key, cap.size, cap.angle,
@@ -616,6 +622,9 @@ int act_img_ini(smrule_t *r)
       log_msg(LOG_ERR, "cannot malloc: %s", strerror(errno));
       return -1;
    }
+
+   if (!isnan(img.angle))
+      sm_threaded(r);
 
    memcpy(r->data, &img, sizeof(img));
 
