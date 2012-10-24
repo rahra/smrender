@@ -878,7 +878,7 @@ int act_diff_ini(smrule_t *r)
    log_debug("reading file '%s'", s);
    ioh->oh = r->data;
    ioh->itree = NULL;
-   (void) read_osm_file(ioh->ctl, &ioh->itree, NULL);
+   (void) read_osm_file(ioh->ctl, &ioh->itree, NULL, NULL);
    r->data = ioh;
 
    return 0;

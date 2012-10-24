@@ -539,74 +539,6 @@ int print_onode(FILE *f, const osm_obj_t *o)
 }
 
 
-void init_stats(struct dstats *ds)
-{
-   memset(ds, 0, sizeof(*ds));
-   ds->min_nid = ds->min_wid = MAX_ID;
-   ds->max_nid = ds->max_wid = MIN_ID;
-   ds->lu.lat = -90;
-   ds->rb.lat = 90;
-   ds->lu.lon = 180;
-   ds->rb.lon = -180;
-   ds->lo_addr = (void*) (-1L);
-   //ds->hi_addr = 0;
-}
-
- 
-void node_stats(osm_node_t *n, struct dstats *ds)
-{
-   ds->ncnt++;
-   if (ds->lu.lat < n->lat) ds->lu.lat = n->lat;
-   if (ds->lu.lon > n->lon) ds->lu.lon = n->lon;
-   if (ds->rb.lat > n->lat) ds->rb.lat = n->lat;
-   if (ds->rb.lon < n->lon) ds->rb.lon = n->lon;
-}
-
-int onode_stats(osm_obj_t *o, struct rdata *rd, struct dstats *ds)
-{
-   int i;
-
-   switch (o->type)
-   {
-      case OSM_NODE:
-      ds->ncnt++;
-      node_stats((osm_node_t*) o, ds);
-      if (ds->min_nid > o->id) ds->min_nid = o->id;
-      if (ds->max_nid < o->id) ds->max_nid = o->id;
-      break;
-
-      case OSM_WAY:
-      ds->wcnt++;
-      if (ds->min_wid > o->id) ds->min_wid = o->id;
-      if (ds->max_wid < o->id) ds->max_wid = o->id;
-      break;
-
-      case OSM_REL:
-      ds->rcnt++;
-      break;
-   }
-   if ((void*) o > ds->hi_addr)
-      ds->hi_addr = o;
-   if ((void*) o < ds->lo_addr)
-      ds->lo_addr = o;
-
-   // look if version is registered
-   for (i = 0; i < ds->ver_cnt; i++)
-   {
-      if (ds->ver[i] == o->ver)
-         break;
-   }
-   //version was not found and array has enough entries
-   if ((i >= ds->ver_cnt) && (ds->ver_cnt < MAX_ITER))
-   {
-      ds->ver[ds->ver_cnt] = o->ver;
-      ds->ver_cnt++;
-   }
-
-   return 0;
-}
-
-
 int free_rules(smrule_t *r, struct rdata *rd, void *p)
 {
    free_obj(r->oo);
@@ -1075,14 +1007,9 @@ int main(int argc, char *argv[])
       exit(EXIT_FAILURE);
 
    log_msg(LOG_INFO, "reading rules (file size %ld kb)", (long) cfctl->len / 1024);
-   (void) read_osm_file(cfctl, &rd->rules, NULL);
+   (void) read_osm_file(cfctl, &rd->rules, NULL, &rstats);
    (void) close(cfctl->fd);
 
-   log_msg(LOG_INFO, "gathering rule stats");
-   init_stats(&rstats);
-   traverse(rd->rules, 0, IDX_REL, (tree_func_t) onode_stats, rd, &rstats);
-   traverse(rd->rules, 0, IDX_WAY, (tree_func_t) onode_stats, rd, &rstats);
-   traverse(rd->rules, 0, IDX_NODE, (tree_func_t) onode_stats, rd, &rstats);
    qsort(rstats.ver, rstats.ver_cnt, sizeof(int), (int(*)(const void*, const void*)) cmp_int);
    for (n = 0; n < rstats.ver_cnt; n++)
       log_msg(LOG_DEBUG, " rstats.ver[%d] = %d", n, rstats.ver[n]);
@@ -1142,11 +1069,11 @@ int main(int argc, char *argv[])
       fi.use_bbox = 1;
       log_msg(LOG_INFO, "using input bounding box %.3f/%.3f - %.3f/%.3f",
             fi.c1.lat, fi.c1.lon, fi.c2.lat, fi.c2.lon);
-      (void) read_osm_file(ctl, &rd->obj, &fi);
+      (void) read_osm_file(ctl, &rd->obj, &fi, &rd->ds);
    }
    else
    {
-      (void) read_osm_file(ctl, &rd->obj, NULL);
+      (void) read_osm_file(ctl, &rd->obj, NULL, &rd->ds);
    }
 
    log_debug("tree memory used: %ld kb", (long) bx_sizeof() / 1024);
@@ -1154,21 +1081,6 @@ int main(int argc, char *argv[])
 
    log_msg(LOG_INFO, "stripping filtered way nodes");
    traverse(rd->obj, 0, IDX_WAY, (tree_func_t) strip_ways, rd, NULL);
-
-   log_msg(LOG_INFO, "gathering stats");
-   init_stats(&rd->ds);
-   traverse(rd->obj, 0, IDX_REL, (tree_func_t) onode_stats, rd, &rd->ds);
-   traverse(rd->obj, 0, IDX_WAY, (tree_func_t) onode_stats, rd, &rd->ds);
-   traverse(rd->obj, 0, IDX_NODE, (tree_func_t) onode_stats, rd, &rd->ds);
-   log_msg(LOG_INFO, " ncnt = %ld, min_nid = %ld, max_nid = %ld",
-         rd->ds.ncnt, rd->ds.min_nid, rd->ds.max_nid);
-   log_msg(LOG_INFO, " wcnt = %ld, min_wid = %ld, max_wid = %ld",
-         rd->ds.wcnt, rd->ds.min_wid, rd->ds.max_wid);
-   log_msg(LOG_INFO, " rcnt = %ld",
-         rd->ds.rcnt);
-   log_msg(LOG_INFO, " left upper %.2f/%.2f, right bottom %.2f/%.2f",
-         rd->ds.lu.lat, rd->ds.lu.lon, rd->ds.rb.lat, rd->ds.rb.lon);
-   log_msg(LOG_INFO, " lo_addr = %p, hi_addr = %p", rd->ds.lo_addr, rd->ds.hi_addr);
 
    switch (gen_grid)
    {
