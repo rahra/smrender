@@ -40,6 +40,9 @@ typedef gdImage image_t;
 typedef void image_t;
 #endif
 
+#define EXIT_NORULES 128
+#define EXIT_NODATA 129
+
 #define USER_GRID 2
 #define AUTO_GRID 1
 #define NO_GRID 0
@@ -238,10 +241,16 @@ struct grid
    double g_margin, g_tw, g_stw;
 };
 
+struct bbox
+{
+   struct coord ll, ru;
+};
+
 struct dstats
 {
-   struct coord lu;  // left upper
-   struct coord rb;  // right bottom
+   //struct coord lu;  // left upper
+   //struct coord rb;  // right bottom
+   struct bbox bb;
    long ncnt, wcnt, rcnt;
    int64_t min_nid;
    int64_t max_nid;
@@ -250,11 +259,6 @@ struct dstats
    const void *lo_addr, *hi_addr;   // lowest and highest memory address
    int ver_cnt;
    int ver[MAX_ITER];
-};
-
-struct bbox
-{
-   struct coord ll, ru;
 };
 
 struct rdata

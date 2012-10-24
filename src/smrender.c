@@ -1010,6 +1010,12 @@ int main(int argc, char *argv[])
    (void) read_osm_file(cfctl, &rd->rules, NULL, &rstats);
    (void) close(cfctl->fd);
 
+   if (!rstats.ncnt && !rstats.wcnt && !rstats.rcnt)
+   {
+      log_msg(LOG_ERR, "no rules found");
+      exit(EXIT_NORULES);
+   }
+
    qsort(rstats.ver, rstats.ver_cnt, sizeof(int), (int(*)(const void*, const void*)) cmp_int);
    for (n = 0; n < rstats.ver_cnt; n++)
       log_msg(LOG_DEBUG, " rstats.ver[%d] = %d", n, rstats.ver[n]);
@@ -1074,6 +1080,12 @@ int main(int argc, char *argv[])
    else
    {
       (void) read_osm_file(ctl, &rd->obj, NULL, &rd->ds);
+   }
+
+   if (!rd->ds.ncnt)
+   {
+      log_msg(LOG_ERR, "no data to render");
+      exit(EXIT_NODATA);
    }
 
    log_debug("tree memory used: %ld kb", (long) bx_sizeof() / 1024);

@@ -48,10 +48,10 @@ void init_stats(struct dstats *ds)
    memset(ds, 0, sizeof(*ds));
    ds->min_nid = ds->min_wid = MAX_ID;
    ds->max_nid = ds->max_wid = MIN_ID;
-   ds->lu.lat = -90;
-   ds->rb.lat = 90;
-   ds->lu.lon = 180;
-   ds->rb.lon = -180;
+   ds->bb.ll.lat = 90;
+   ds->bb.ru.lat = -90;
+   ds->bb.ll.lon = 180;
+   ds->bb.ru.lon = -180;
    ds->lo_addr = (void*) (-1L);
    //ds->hi_addr = 0;
 }
@@ -62,7 +62,7 @@ void log_stats(const struct dstats *ds)
    log_debug(" ncnt = %ld, min_nid = %ld, max_nid = %ld", ds->ncnt, ds->min_nid, ds->max_nid);
    log_debug(" wcnt = %ld, min_wid = %ld, max_wid = %ld", ds->wcnt, ds->min_wid, ds->max_wid);
    log_debug(" rcnt = %ld", ds->rcnt);
-   log_debug(" left upper %.2f/%.2f, right bottom %.2f/%.2f", ds->lu.lat, ds->lu.lon, ds->rb.lat, ds->rb.lon);
+   log_debug(" left lower %.3f,%.3f right bottom %.3f,%.3f", ds->bb.ll.lon, ds->bb.ll.lat, ds->bb.ru.lon, ds->bb.ru.lat);
    log_debug(" lo_addr = %p, hi_addr = %p", ds->lo_addr, ds->hi_addr);
 }
 
@@ -70,10 +70,10 @@ void log_stats(const struct dstats *ds)
 void update_node_stats(const osm_node_t *n, struct dstats *ds)
 {
    ds->ncnt++;
-   if (ds->lu.lat < n->lat) ds->lu.lat = n->lat;
-   if (ds->lu.lon > n->lon) ds->lu.lon = n->lon;
-   if (ds->rb.lat > n->lat) ds->rb.lat = n->lat;
-   if (ds->rb.lon < n->lon) ds->rb.lon = n->lon;
+   if (ds->bb.ru.lat < n->lat) ds->bb.ru.lat = n->lat;
+   if (ds->bb.ll.lon > n->lon) ds->bb.ll.lon = n->lon;
+   if (ds->bb.ll.lat > n->lat) ds->bb.ll.lat = n->lat;
+   if (ds->bb.ru.lon < n->lon) ds->bb.ru.lon = n->lon;
 }
 
 int update_stats(const osm_obj_t *o, struct dstats *ds)
