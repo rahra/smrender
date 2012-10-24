@@ -87,7 +87,10 @@ int act_ruler_ini(smrule_t *r)
       on[1] = n[2] = malloc_node(2);
       osm_node_default(n[2]);
 
-      snprintf(buf, sizeof(buf), "%d km", (int) ((i + 1) * rsec));
+      if (rsec < 1.0)
+         snprintf(buf, sizeof(buf), "%d m", (int) ((i + 1) * rsec * 1000.0));
+      else
+         snprintf(buf, sizeof(buf), "%d km", (int) ((i + 1) * rsec));
       set_const_tag(&on[1]->obj.otag[1], "distance", strdup(buf));
 
       n[1]->lat = n[0]->lat;

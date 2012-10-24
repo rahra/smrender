@@ -247,7 +247,7 @@ struct dstats
    int64_t max_nid;
    int64_t min_wid;
    int64_t max_wid;
-   void *lo_addr, *hi_addr;   // lowest and highest memory address
+   const void *lo_addr, *hi_addr;   // lowest and highest memory address
    int ver_cnt;
    int ver[MAX_ITER];
 };
@@ -340,7 +340,7 @@ int func_name(char*, int, void*);
 
 /* smloadosm.c */
 void osm_read_exit(void);
-int read_osm_file(hpx_ctrl_t*, bx_node_t**, struct filter*);
+int read_osm_file(hpx_ctrl_t*, bx_node_t**, const struct filter*, struct dstats*);
 //void install_sigusr1(void);
 hpx_ctrl_t *open_osm_source(const char*, int);
 
