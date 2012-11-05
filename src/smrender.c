@@ -688,8 +688,12 @@ void usage(const char *s)
 {
    printf("Seamark renderer V" PACKAGE_VERSION ", (c) 2011-2012, Bernhard R. Fischer, <bf@abenteuerland.at>.\n"
          "usage: %s [OPTIONS] <window>\n"
-         "   <window> := <lat>:<lon>:<size>\n"
-         "               <lat> and <lon> specify the coordinates of the centerpoint.\n"
+         "   <window> := <center> | <bbox>\n"
+         "   <bbox>   := <left lower>:<right upper>\n"
+         "   <left lower> := <coords>\n"
+         "   <right upper> := <coords>\n"
+         "   <center> := <coords>:<size>\n"
+         "   <coords> := <lat>:<lon>\n"
          "   <size>   := <scale> | <length>'d' | <length>'m'\n"
          "               <scale> Scale of chart.\n"
          "               <length> Length of mean latitude in either degrees ('d') or\n"
@@ -794,7 +798,6 @@ int main(int argc, char *argv[])
    struct grid grd;
    osm_obj_t o;
    char *s;
-   double param;
 
    (void) gettimeofday(&tv_start, NULL);
    init_log("stderr", LOG_DEBUG);
@@ -929,38 +932,64 @@ int main(int argc, char *argv[])
    }
    else
    {
-      if ((s = strtok(argv[optind], ":")) == NULL)
-         log_msg(LOG_ERR, "latitude paramter missing"), exit(EXIT_FAILURE);
+      int i = strcnt(argv[optind], ':');
+      double param;
 
+      if (i < 2 || i > 3)
+         log_msg(LOG_ERR, "format error in window"), exit(EXIT_FAILURE);
+
+      s = strtok(argv[optind], ":");
       n = parse_coord(s, &param);
       if (n == COORD_LON)
          rd->mean_lon = param;
       else
          rd->mean_lat = param;
 
-      if ((s = strtok(NULL, ":")) == NULL)
-         log_msg(LOG_ERR, "longitude paramter missing"), exit(EXIT_FAILURE);
-
+      s = strtok(NULL, ":");
       n = parse_coord(s, &param);
       if (n == COORD_LAT)
          rd->mean_lat = param;
       else
          rd->mean_lon = param;
 
-      if ((s = strtok(NULL, ":")) == NULL)
-         log_msg(LOG_ERR, "size parameter missing"), exit(EXIT_FAILURE);
-
-      if ((param = atof(s)) <= 0)
-         log_msg(LOG_ERR, "illegal size argument for"), exit(EXIT_FAILURE);
+      s = strtok(NULL, ":");
+      // window contains length of mean latitude
+      if (i == 2)
+      {
+         if ((param = atof(s)) <= 0)
+            log_msg(LOG_ERR, "illegal size argument, must be > 0"), exit(EXIT_FAILURE);
  
-      if (isdigit((unsigned) s[strlen(s) - 1]) || (s[strlen(s) - 1] == '.'))
-         rd->scale = param;
-      else if (s[strlen(s) - 1] == 'm')
-         rd->mean_lat_len = param / 60;
-      else if (s[strlen(s) - 1] == 'd')
-         rd->wc = param;
+         if (isdigit((unsigned) s[strlen(s) - 1]) || (s[strlen(s) - 1] == '.'))
+            rd->scale = param;
+         else if (s[strlen(s) - 1] == 'm')
+            rd->mean_lat_len = param / 60;
+         else if (s[strlen(s) - 1] == 'd')
+            rd->wc = param;
+         else
+            log_msg(LOG_ERR, "illegal size parameter"), exit(EXIT_FAILURE);
+      }
+      // window is bounding box
       else
-         log_msg(LOG_ERR, "illegal size parameter"), exit(EXIT_FAILURE);
+      {
+         rd->bb.ll.lon = rd->mean_lon;
+         rd->bb.ll.lat = rd->mean_lat;
+   
+         n = parse_coord(s, &param);
+         if (n == COORD_LON)
+            rd->bb.ru.lon = param;
+         else
+            rd->bb.ru.lat = param;
+
+         s = strtok(NULL, ":");
+         n = parse_coord(s, &param);
+         if (n == COORD_LAT)
+            rd->bb.ru.lat = param;
+         else
+            rd->bb.ru.lon = param;
+
+         rd->mean_lon = (rd->bb.ru.lon + rd->bb.ll.lon) / 2.0;
+         rd->mean_lat = (rd->bb.ru.lat + rd->bb.ll.lat) / 2.0;
+      }
    }
 
    // install exit handlers
@@ -986,7 +1015,16 @@ int main(int argc, char *argv[])
       rd->mean_lat_len = rd->scale * ((double) rd->w / (double) rd->dpi) * 2.54 / (60.0 * 1852 * 100);
    else if (rd->wc > 0)
       rd->mean_lat_len  = rd->wc * cos(rd->mean_lat * M_PI / 180);
-
+   else if (rd->mean_lat_len == 0)
+   {
+      rd->mean_lat_len = (rd->bb.ru.lon - rd->bb.ll.lon) * cos(DEG2RAD(rd->mean_lat));
+      if (rd->mean_lat_len * rd->h / rd->w < rd->bb.ru.lat - rd->bb.ll.lat)
+      {
+         rd->mean_lat_len = (rd->bb.ru.lat - rd->bb.ll.lat) * rd->w / rd->h;
+         //log_msg(LOG_INFO, "bbox widened from %.2f to %.2f nm", (rd->bb.ru.lon - rd->bb.ll.lon) * cos(DEG2RAD(rd->mean_lat)) * 60, rd->mean_lat_len * 60);
+      }
+   }
+ 
    init_bbox_mll(rd);
 
    if (prt_url)

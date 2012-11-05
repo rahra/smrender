@@ -771,7 +771,7 @@ void circle_calc(osm_node_t **n, osm_node_t **s, double deviation)
       p[i].lon = (s[i]->lon + s[i + 1]->lon) / 2;
 
       // prevent DIV0
-      if (s[i + 1]->lat - s[i]->lat == 0.0)
+      if (s[i + 1]->lat == s[i]->lat)
          k[i] = 0.0;
       else
          k[i] = -(s[i + 1]->lon - s[i]->lon) / (s[i + 1]->lat - s[i]->lat);
@@ -781,7 +781,10 @@ void circle_calc(osm_node_t **n, osm_node_t **s, double deviation)
 
    // center point
    c.lon = (d[1] - d[0]) / (k[0] - k[1]);
-   c.lat = k[0] * c.lon + d[0];
+   if (k[0] != 0.0)
+      c.lat = k[0] * c.lon + d[0];
+   else
+      c.lat = k[1] * c.lon + d[1];
     // radius
    r = hypot(s[0]->lon - c.lon, s[0]->lat - c.lat);
    
