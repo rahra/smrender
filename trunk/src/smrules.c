@@ -27,8 +27,11 @@
 
 #include "smrender_dev.h"
 #include "smcoast.h"
+#include "memimg.h"
 
 
+// FIXME: this function should be moved somewhere else (smfunc.c? smutil.c?
+// smlog.c?)
 int log_tags(int level, osm_obj_t *o)
 {
    int len, i;
@@ -60,6 +63,43 @@ int log_tags(int level, osm_obj_t *o)
 
 
 #ifdef HAVE_GD
+
+int get_char_height(const char *ch, int fg, const char *font, double ptsize, const gdFTStringExtra *fte, int *height)
+{
+   char *error;
+   int br[8];
+
+   if ((error = gdImageStringFTEx(NULL, br, fg, (char*) font, ptsize, 0, 0, 0, (char*) ch, (gdFTStringExtra*) fte)) != NULL)
+   {
+      log_msg(LOG_ERR, "gdImageStringFTEx(\"%s\") failed: %s", ch, error);
+      return -1;
+   }
+
+   *height = br[1] - br[5];
+   return 0;
+}
+
+
+int get_font_metric(int fg, const char *font, double ptsize, int dpi, struct font_metric *fm)
+{
+   gdFTStringExtra fte;
+
+   memset(&fte, 0, sizeof(fte));
+   fte.flags = gdFTEX_RESOLUTION;
+   fte.hdpi = fte.vdpi = dpi;
+
+   get_char_height("m", fg, font, ptsize, &fte, &fm->xheight);
+   get_char_height("d", fg, font, ptsize, &fte, &fm->ascent);
+   get_char_height("g", fg, font, ptsize, &fte, &fm->descent);
+   get_char_height("gd", fg, font, ptsize, &fte, &fm->lineheight);
+
+   fm->ascent -= fm->xheight;
+   fm->descent -= fm->xheight;
+
+   return 0;
+}
+
+
 void init_main_image(struct rdata *rd, const char *bg)
 {
    // preparing image
@@ -91,6 +131,19 @@ void reduce_resolution(struct rdata *rd)
    gdImageCopyResampled(img, rd->img, 0, 0, 0, 0, gdImageSX(img), gdImageSY(img), gdImageSX(rd->img), gdImageSY(rd->img));
    gdImageDestroy(rd->img);
    rd->img = img;
+}
+
+
+int save_gdimage(const char *s, gdImage *img)
+{  
+   FILE *f;
+
+   if ((f = fopen(s, "w")) == NULL)
+      return -1;
+
+   gdImagePng(img, f);
+   fclose(f);
+   return 0;
 }
 
 
@@ -233,6 +286,8 @@ int act_cap_ini(smrule_t *r)
          log_msg(LOG_WARN, "unknown alignment '%s'", s);
    }
 
+   get_font_metric(cap.col, cap.font, MM2PT(cap.size), rd->dpi, &cap.fm);
+
    if ((r->data = malloc(sizeof(cap))) == NULL)
    {
       log_msg(LOG_ERR, "cannot malloc: %s", strerror(errno));
@@ -271,7 +326,6 @@ int act_cap_node_ini(smrule_t *r)
    }
    return act_cap_ini(r);
 }
-
 
 
 #define POS_OFFSET MM2PX(1.3)
@@ -315,23 +369,88 @@ int act_cap_node_main(smrule_t *r, osm_node_t *n)
 
    if (isnan(cap->angle))
    {
+#define NEW_AUTOROT
 #ifdef NEW_AUTOROT
       // FIXME: this is not finished yet!
       struct diff_vec *dv;
       gdImage *cap_img;
       int n;
 
-      if ((cap_img = gdImageCreateTrueColor(br[4] - br[0], br[1] - br[5])) == NULL)
+      //for (n = 0; n < 8; n++) log_debug("br[%d] = %d", n, br[n]);
+      if ((cap_img = gdImageCreateTrueColor(br[4] - br[0] - cap->fm.lineheight / 6, cap->fm.xheight + cap->fm.ascent)) == NULL)
       {
          log_msg(LOG_ERR, "gdImageCreateTrueColor() failed");
          free(v);
          return -1;
       }
-      gdImageSaveAlpha(cap_img, 1);
-      gdImageAlphaBlending(cap_img, 0);
-      gdImageStringFTEx(cap_img, br, c, cap->font, cap->size * 2.8699, 0, x, y, v, &fte);
-      dv = get_diff_vec(rd->img, cap_img, x, y, &n);
+      //gdImageSaveAlpha(cap_img, 1);
+      //gdImageAlphaBlending(cap_img, 0);
+      //gdImageFill(cap_img, 0, 0, 0x7f000000);
+      //gdImageStringFTEx(cap_img, br, c, cap->font, cap->size * 2.8699, 0, 0, gdImageSY(cap_img) - gdImageSY(cap_img) / 4, v, &fte);
+      //gdImageStringFTEx(cap_img, br, c, cap->font, MM2PT(cap->size), 0,
+      //      cap->fm.lineheight / 12, gdImageSY(cap_img) - cap->fm.descent - cap->fm.descent / 2, v, &fte);
+      gdImageFill(cap_img, 0, 0, c);
 
+      if ((n = get_diff_vec(rd->img, cap_img, x, y, MAX_OFFSET, 10, &dv)) == -1)
+         return -1;
+      
+      //for (m = 0; m < n; m += 10) log_debug("m = %d, angle = %.1f, diff = %f", m, RAD2DEG(dv[m].dv_angle), dv[m].dv_diff);
+
+      weight_diff_vec(dv, n * MAX_OFFSET, DEG2RAD(cap->rot.phase), cap->rot.weight);
+      index_diff_vec(dv, n * MAX_OFFSET);
+      qsort(dv, n * MAX_OFFSET, sizeof(*dv), (int(*)(const void*, const void*)) cmp_dv);
+
+      //for (m = 0; m < n; m += 10) log_debug("m = %d, angle = %.1f, diff = %f", m, RAD2DEG(dv[m].dv_angle), dv[m].dv_diff);
+
+      m = diff_vec_count_eq(dv, n * MAX_OFFSET);
+      if (m > 1)
+      {
+         //log_debug("m = %d", m);
+         ma = RAD2DEG((dv[0].dv_angle + dv[m - 1].dv_angle) / 2.0);
+         //ma = (dv[0].dv_angle + dv[m - 1].dv_angle) / 2.0;
+         off = (dv[0].dv_x + dv[m - 1].dv_x) / 2;
+      }
+      else
+      {
+         ma = RAD2DEG(dv->dv_angle);
+         //ma = dv->dv_angle;
+         off = dv->dv_x;
+      }
+
+#if 0
+      ox = off + gdImageSX(cap_img) / 2;
+      oy = gdImageSY(cap_img) / 2;
+      if (ma >= M_PI_2 && ma < M_PI_2 * 3)
+      {
+         ma -= M_PI;
+         ox = -ox;
+      }
+      rot_pos(ox, -oy, ma, &rx, &ry);
+      log_debug("x = %d, y = %d, ma = %.1f, off = %d, ox = %d, oy = %d, rx = %d, ry = %d", x, y, RAD2DEG(ma), off, ox, oy, rx, ry);
+
+      //gdImageCopyRotated(rd->img, cap_img, x + rx, y - ry, 0, 0, gdImageSX(cap_img), gdImageSY(cap_img), round(RAD2DEG(ma)));
+      if ((s = gdImageStringFTEx(rd->img, NULL, c, cap->font, MM2PT(cap->size), ma, x + rx, y - ry, v, &fte)) != NULL)
+         log_msg(LOG_ERR, "error rendering caption: %s", s);
+#endif
+
+      free(dv);
+      
+      //<debug>
+      /*char buf[32];
+      snprintf(buf, sizeof(buf), "string_%d-%d.png", x, y);
+      save_gdimage(buf, cap_img);*/
+      //</debug>
+
+      gdImageDestroy(cap_img);
+      //free(v);
+
+      /*ox = 10;
+      oy = 5;
+      ma = M_PI_2;
+      rot_pos(ox, -oy, ma, &rx, &ry);
+      log_debug("TEST: x = %d, y = %d, ma = %.1f, off = %d, ox = %d, oy = %d, rx = %d, ry = %d", x, y, RAD2DEG(ma), off, ox, oy, rx, ry);*/
+
+      //return 0;
 #else
       ma = color_frequency_w(rd, x, y, br[4] - br[0] + MAX_OFFSET, br[1] - br[5], &cap->rot);
       //FIXME: WHITE?
@@ -348,6 +467,7 @@ int act_cap_node_main(smrule_t *r, osm_node_t *n)
          ma -= 180;
          ox = br[0] - br[2] - off;
       }
+      log_debug("ma = %.1f, off = %d, ox = %d, oy = %d", ma, off, ox, oy);
    }
    else
    {
@@ -386,7 +506,7 @@ int act_cap_node_main(smrule_t *r, osm_node_t *n)
 
    rot_pos(ox, oy, DEG2RAD(ma), &rx, &ry);
 
-   if ((s = gdImageStringFTEx(rd->img, br, c, cap->font, cap->size * 2.8699, DEG2RAD(ma), x + rx, y - ry, v, &fte)) != NULL)
+   if ((s = gdImageStringFTEx(rd->img, br, c, cap->font, MM2PT(cap->size), DEG2RAD(ma), x + rx, y - ry, v, &fte)) != NULL)
       log_msg(LOG_ERR, "error rendering caption: %s", s);
 
    free(v);
@@ -736,7 +856,7 @@ double rot_pos(int x, int y, double a, int *rx, int *ry)
 {
    double r, b;
 
-   r = sqrt(x * x + y * y);
+   r = hypot(x, y);
    b = atan2((double) y, (double) x);
    *rx = round(r * cos(a - b));
    *ry = round(r * sin(a - b));
@@ -1021,7 +1141,6 @@ int get_pixel(struct rdata *rd, int x, int y)
 {
    return gdImageGetPixel(rd->img, x, y);
 }
-
 
 #else
 

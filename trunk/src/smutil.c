@@ -308,3 +308,15 @@ int func_name(char *buf, int size, void *sym_addr)
    return strlen(buf);
 }
 
+
+int strcnt(const char *s, int c)
+{
+   int n;
+
+   for (n = 0; *s != '\0'; s++)
+      if (*s == c)
+         n++;
+
+   return n;
+}
+

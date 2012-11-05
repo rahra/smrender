@@ -33,6 +33,7 @@
 #include "bstring.h"
 #include "bxtree.h"
 #include "smath.h"
+#include "lists.h"
 
 #ifdef HAVE_GD
 typedef gdImage image_t;
@@ -164,6 +165,29 @@ struct actImage
    image_t *img;
 };
 
+struct cap_data
+{
+   osm_obj_t *o;
+   struct diff_vec *dv;
+   int n;
+   int x, y;
+   double angle;
+   int offset;
+};
+
+struct font_metric
+{
+                  // Libgd does not directly provide access to font metrics.
+                  // Thus it is retrieved in a special way which was found at
+                  // http://search.cpan.org/~lds/GD-2.46/GD/Simple.pm and was
+                  // slightly adapted.
+  int xheight;    // the base height of the font from the bottom to the top of a lowercase 'm'
+  int ascent;     // the length of the upper stem of the lowercase 'd'
+  int descent;    // the length of the lower step of the lowercase 'g'
+  int lineheight; // the distance from the bottom of the 'g' to the top of the 'd'
+  int leading;    // the distance between two adjacent lines
+};
+
 struct actCaption
 {
    short pos;        // position, or'd POS_x macros
@@ -174,6 +198,9 @@ struct actCaption
    double angle;     // angle to rotate caption. 0 degress equals east,
                      // counterclockwise. NAN means auto-rotate
    struct auto_rot rot;
+   list_t *list;
+   image_t *img;
+   struct font_metric fm;
 };
 
 struct actParam
@@ -341,6 +368,7 @@ void *get_object0(bx_node_t*, int64_t, int);
 int coord_str(double, int, char*, int);
 long inline col_cmp(int, int);
 int func_name(char*, int, void*);
+int strcnt(const char*, int);
 
 /* smloadosm.c */
 void osm_read_exit(void);
