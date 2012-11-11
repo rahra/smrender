@@ -257,6 +257,7 @@ struct action
    fparam_t **fp;    // pointer to parsed parameter list
    short flags;      // execution control flags.
    short tag_cnt;
+   short finished;   // set to 1 after _fini was called, otherwise 0
    struct stag stag[];
 };
 
@@ -320,7 +321,7 @@ struct rdata
    // chart title
    char *title;
 
-   // ***** this id libgd2 specific ***** 
+   // ***** this is libgd2 specific ***** 
    // pointer to image data
    image_t *img;
    // image colors
@@ -373,7 +374,6 @@ int strcnt(const char*, int);
 /* smloadosm.c */
 void osm_read_exit(void);
 int read_osm_file(hpx_ctrl_t*, bx_node_t**, const struct filter*, struct dstats*);
-//void install_sigusr1(void);
 hpx_ctrl_t *open_osm_source(const char*, int);
 
 /* smcoast.c */
@@ -416,7 +416,8 @@ image_t *smqr_image(void);
 
 /* smthread.c */
 void sm_wait_threads(void);
-int sm_exec_rule(smrule_t*, osm_obj_t*, int(*)(smrule_t*, osm_obj_t*));
+int traverse_queue(const bx_node_t *, int , tree_func_t , void *);
+int sm_is_threaded(const smrule_t *);
 
 
 #endif

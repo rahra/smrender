@@ -40,12 +40,13 @@
 
 struct sm_thread
 {
-   int (*func)(smrule_t*, osm_obj_t*);
-   smrule_t *rule;
-   osm_obj_t *obj;
-   int result;
-   int status;
-   int nr;
+   const bx_node_t *tree;  // tree to traverse
+   int idx;                // leaf index
+   tree_func_t dhandler;   // function to call at each tree node
+   void *param;            // parameter to dhandler
+   int result;             // result of dhandler
+   int status;             // state of process (EXEC/WAIT/EXIT)
+   int nr;                 // number of thread
    pthread_mutex_t *mutex;
    pthread_cond_t *smr_cond;
    pthread_t rule_thread;
@@ -53,7 +54,7 @@ struct sm_thread
 };
 
 
-void *sm_rule_thread(struct sm_thread*);
+void *sm_traverse_thread(struct sm_thread*);
 
 
 static pthread_mutex_t mutex_ = PTHREAD_MUTEX_INITIALIZER;
@@ -75,7 +76,7 @@ void __attribute__((constructor)) init_threads(void)
       smth[i].smr_cond = &cond_;
       smth[i].nr = i;
       pthread_cond_init(&smth[i].rule_cond, NULL);
-      pthread_create(&smth[i].rule_thread, NULL, (void*(*)(void*)) sm_rule_thread, &smth[i]);
+      pthread_create(&smth[i].rule_thread, NULL, (void*(*)(void*)) sm_traverse_thread, &smth[i]);
    }
 }
 
@@ -99,7 +100,7 @@ void __attribute__((destructor)) delete_threads(void)
 }
 
 
-void *sm_rule_thread(struct sm_thread *smth)
+void *sm_traverse_thread(struct sm_thread *smth)
 {
    for (;;)
    {
@@ -117,8 +118,9 @@ void *sm_rule_thread(struct sm_thread *smth)
       pthread_mutex_unlock(smth->mutex);
 
       // execute rule
-      //log_debug("thread %d executing action %p", smth->nr, smth->rule);
-      smth->result = smth->func(smth->rule, smth->obj);
+      log_debug("thread %d executing action %p", smth->nr, smth->dhandler);
+      //smth->result = smth->func(smth->rule, smth->obj);
+      smth->result = traverse(smth->tree, 0, smth->idx, smth->dhandler, NULL, smth->param);
 
       pthread_mutex_lock(smth->mutex);
       smth->status = SM_THREAD_WAIT;
@@ -145,12 +147,9 @@ void sm_wait_threads(void)
 }
 
 
-int sm_exec_rule(smrule_t *r, osm_obj_t *o, int(*func)(smrule_t*, osm_obj_t*))
+int traverse_queue(const bx_node_t *tree, int idx, tree_func_t dhandler, void *p)
 {
    int i;
-
-   if (!(r->act->flags & ACTION_THREADED))
-      return func(r, o);
 
    //log_debug("looking up thread");
    pthread_mutex_lock(&mutex_);
@@ -160,11 +159,12 @@ int sm_exec_rule(smrule_t *r, osm_obj_t *o, int(*func)(smrule_t*, osm_obj_t*))
       {
          if (smth_[i].status == SM_THREAD_WAIT)
          {
-            if ((smth_[i].func == NULL) && smth_[i].status)
-               log_msg(LOG_WARN, "last rule returned %d", smth_[i].status);
-            smth_[i].func = func;
-            smth_[i].rule = r;
-            smth_[i].obj = o;
+            if (smth_[i].result)
+               log_msg(LOG_WARN, "last traverse returned %d", smth_[i].result);
+            smth_[i].tree = tree;
+            smth_[i].idx = idx;
+            smth_[i].dhandler = dhandler;
+            smth_[i].param = p;
             smth_[i].status = SM_THREAD_EXEC;
             pthread_cond_signal(&smth_[i].rule_cond);
             break;
@@ -181,16 +181,14 @@ int sm_exec_rule(smrule_t *r, osm_obj_t *o, int(*func)(smrule_t*, osm_obj_t*))
    return 0;
 }
 
-#else
-
-
-int sm_exec_rule(smrule_t *r, osm_obj_t *o, int(*func)(smrule_t*, osm_obj_t*))
-{
-   return func(r, o);
-}
-
 
 #endif
+
+
+int sm_is_threaded(const smrule_t *r)
+{
+   return (r->act->flags & ACTION_THREADED) != 0;
+}
 
 
 void sm_threaded(smrule_t *r)

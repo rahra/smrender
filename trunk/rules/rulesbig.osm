@@ -342,7 +342,7 @@
       <tag k='_action_' v='draw:bcolor=black'/>
    </way>
    <way>
-      <tag k='_action_' v='cap:font=sans-serif:bold;size=2.5;key=*name'/>
+      <tag k='_action_' v='cap:font=sans-serif:bold;size=auto;key=*name'/>
       <tag k='place' v='/island|islet/'/>
    </way>
    <way>

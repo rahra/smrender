@@ -1,3 +1,27 @@
+/* Copyright 2012 Bernhard R. Fischer, 2048R/5C5FFD47 <bf@abenteuerland.at>
+ *
+ * This file is part of Smrender.
+ *
+ * Smrender is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, version 3 of the License.
+ *
+ * Smrender is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with Smrender. If not, see <http://www.gnu.org/licenses/>.
+ */
+
+/*! This files contains the code for memory based image processing.
+ *  It is used for region comparison and "rectification" of image parts. This
+ *  is necessary for the auto-rotation functions.
+ *
+ *  @author Bernhard R. Fischer
+ */
+
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
@@ -7,7 +31,9 @@
 #include "memimg.h"
 
 
-//#define MI_THREADS 4
+#ifdef WITH_THREADS
+#define MI_THREADS 4
+#endif
 #define MI_TH_RR(x, y) ((x + y) % MI_THREADS)
 
 
@@ -520,9 +546,9 @@ int get_diff_vec(gdImage *dst, gdImage *src, int x, int y, int xvar, int res, st
    mi[0] = rectify_circle(dst, x, y, gdImageSX(src) + xvar - 1);
 
    // <debug>
-   char buf[32];
+   /*char buf[32];
    snprintf(buf, sizeof(buf), "rectify_%d-%d.png", x, y);
-   mi_save(buf, mi[0]);
+   mi_save(buf, mi[0]);*/
    // </debug>
 
    if ((*dv = malloc(mi[0]->h * sizeof(**dv) * xvar)) == NULL)
@@ -542,7 +568,6 @@ int get_diff_vec(gdImage *dst, gdImage *src, int x, int y, int xvar, int res, st
    for (i = 0; i < MI_THREADS; i++)
    {
       mt[i].boss = &cn_boss;
-      //mt[i].worker = PTHREAD_COND_INITIALIZER;
       pthread_cond_init(&mt[i].worker, NULL);
       mt[i].mutex = &mx;
       mt[i].dst = mi[0];
@@ -642,10 +667,6 @@ int get_best_rotation(gdImage *dst, gdImage *src, int x, int y, int xvar, int re
 
    qsort(dv, n * xvar, sizeof(*dv), (int(*)(const void*, const void*)) cmp_dv);
    *res = dv[0];
-
-   /*int i;
-   for (i = 0; i < n; i++)
-      printf("angle = %.1f, diff = %f, x = %d, %s\n", dv[i].dv_angle * 180.0 / M_PI, dv[i].dv_diff, dv[i].dv_x, bar(dv[i].dv_diff));*/
 
    free(dv);
    return 0;

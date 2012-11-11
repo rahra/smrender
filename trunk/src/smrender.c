@@ -41,6 +41,7 @@
 #include <signal.h>
 
 #include "smrender_dev.h"
+#include "lists.h"
 
 
 #define COORD_LAT 0
@@ -178,8 +179,74 @@ int apply_smrules0(osm_obj_t *o, struct rdata *rd, smrule_t *r)
       if (bs_match_attr(o, &r->oo->otag[i], &r->act->stag[i]) == -1)
          return 0;
 
-   return sm_exec_rule(r, o, r->act->main.func);
+   return r->act->main.func(r, o);
 }
+
+
+int call_fini(smrule_t *r)
+{
+   int e = 0;
+
+   // call de-initialization rule of function rule if available
+   if (r->act->fini.func != NULL && !r->act->finished)
+   {
+      log_msg(LOG_INFO, "calling rule %016lx, %s_fini", (long) r->oo->id, r->act->func_name);
+      if ((e = r->act->fini.func(r)))
+         log_debug("_fini returned %d", e);
+      r->act->finished = 1;
+   }
+
+   return e;
+}
+
+
+#ifdef WITH_THREADS
+
+static list_t *li_fini_;
+
+
+static void __attribute__((constructor)) init_fini_list(void)
+{
+   if ((li_fini_ = li_new()) == NULL)
+      perror("li_new()"), exit(EXIT_FAILURE);
+}
+
+
+static void __attribute__((destructor)) del_fini_list(void)
+{
+   li_destroy(li_fini_, NULL);
+}
+
+
+int queue_fini(smrule_t *r)
+{
+   if ((li_add(li_fini_, r->oo->id, r)) == NULL)
+   {
+      log_msg(LOG_ERR, "li_add() failed: %s", strerror(errno));
+      return -1;
+   }
+   return 0;
+}
+
+
+int dequeue_fini(void)
+{
+   list_t *elem, *prev;
+
+   log_msg(LOG_INFO, "calling pending _finis");
+   for (elem = li_last(li_fini_); elem != li_head(li_fini_); elem = prev)
+   {
+      li_unlink(elem);
+      call_fini(elem->data);
+      prev = elem->prev;
+      li_del(elem, NULL);
+   }
+
+   return 0;
+}
+
+
+#endif
 
 
 int apply_smrules(smrule_t *r, struct rdata *rd, osm_obj_t *o)
@@ -195,29 +262,43 @@ int apply_smrules(smrule_t *r, struct rdata *rd, osm_obj_t *o)
    if (o != NULL && r->oo->ver != o->ver)
       return 0;
 
+   // FIXME: wtf is this?
    if (r->act->func_name == NULL)
       return 0;
+
+#ifdef WITH_THREADS
+   // if rule is not threaded
+   if (!sm_is_threaded(r))
+   {
+      // wait for all threads (previous rules) to finish
+      sm_wait_threads();
+      // call finalization functions in the appropriate order
+      dequeue_fini();
+   }
+#endif
 
    log_debug("applying rule id 0x%016lx '%s'", (long) r->oo->id, r->act->func_name);
 
    if (r->act->main.func != NULL)
-      e = traverse(rd->obj, 0, r->oo->type - 1, (tree_func_t) apply_smrules0, rd, r);
+   {
+#ifdef WITH_THREADS
+      if (sm_is_threaded(r))
+         e = traverse_queue(rd->obj, r->oo->type - 1, (tree_func_t) apply_smrules0, r);
+      else
+#endif
+         e = traverse(rd->obj, 0, r->oo->type - 1, (tree_func_t) apply_smrules0, rd, r);
+   }
    else
       log_debug("   -> no main function");
 
    if (e) log_debug("traverse(apply_smrules0) returned %d", e);
 
+   if (e >= 0)
 #ifdef WITH_THREADS
-   if (r->act->flags & ACTION_THREADED)
-      sm_wait_threads();
+      queue_fini(r);
+#else
+      call_fini(r);
 #endif
-
-   // call de-initialization rule of function rule if available
-   if (e >= 0 && r->act->fini.func != NULL)
-   {
-      e = r->act->fini.func(r);
-      if (e) log_debug("_fini returned %d", e);
-   }
 
    return e;
 }
@@ -1158,11 +1239,24 @@ int main(int argc, char *argv[])
       // FIXME: order rel -> way -> node?
       log_msg(LOG_INFO, " relations...");
       traverse(rd->rules, 0, IDX_REL, (tree_func_t) apply_smrules, rd, &o);
+#ifdef WITH_THREADS
+      sm_wait_threads();
+      dequeue_fini();
+#endif
       log_msg(LOG_INFO, " ways...");
       traverse(rd->rules, 0, IDX_WAY, (tree_func_t) apply_smrules, rd, &o);
+#ifdef WITH_THREADS
+      sm_wait_threads();
+      dequeue_fini();
+#endif
       log_msg(LOG_INFO, " nodes...");
       traverse(rd->rules, 0, IDX_NODE, (tree_func_t) apply_smrules, rd, &o);
+#ifdef WITH_THREADS
+      sm_wait_threads();
+      dequeue_fini();
+#endif
    }
+
    int_ = 0;
 
    save_osm(osm_ofile, rd->obj, &rd->bb, rd->cmdline);
