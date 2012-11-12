@@ -100,6 +100,17 @@ void __attribute__((destructor)) delete_threads(void)
 }
 
 
+int sm_thread_id(void)
+{
+   int i;
+
+   for (i = 0; i < SM_THREADS; i++)
+      if (pthread_self() == smth_[i].rule_thread)
+         return i + 1;
+   return 0;
+}
+
+
 void *sm_traverse_thread(struct sm_thread *smth)
 {
    for (;;)
@@ -178,6 +189,15 @@ int traverse_queue(const bx_node_t *tree, int idx, tree_func_t dhandler, void *p
    }
    pthread_mutex_unlock(&mutex_);
 
+   return 0;
+}
+
+
+#else
+
+
+int sm_thread_id(void)
+{
    return 0;
 }
 

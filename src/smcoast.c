@@ -523,6 +523,7 @@ int act_cat_poly_ini(smrule_t *r)
    if (r->oo->type == OSM_WAY)
       ((struct catpoly*) r->data)->wl = init_wlist();
 
+   sm_threaded(r);
    return 0;
 }
 
@@ -873,6 +874,8 @@ int act_refine_poly_ini(smrule_t *r)
 
    rf->deviation /= (1852.0 * 60.0);
    log_msg(LOG_INFO, "refine_poly using iteration = %d, deviation = %.1f", rf->iteration, rf->deviation * 1852.0 * 60.0);
+
+   sm_threaded(r);
 
    r->data = rf;
 
