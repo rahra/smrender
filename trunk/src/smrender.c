@@ -220,7 +220,7 @@ static void __attribute__((destructor)) del_fini_list(void)
 
 int queue_fini(smrule_t *r)
 {
-   if ((li_add(li_fini_, r->oo->id, r)) == NULL)
+   if ((li_add(li_fini_, r)) == NULL)
    {
       log_msg(LOG_ERR, "li_add() failed: %s", strerror(errno));
       return -1;
