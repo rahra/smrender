@@ -65,7 +65,7 @@ static struct sm_thread *smth_;
 void __attribute__((constructor)) init_threads(void)
 {
    static struct sm_thread smth[SM_THREADS];
-   int i;
+   int i, e;
 
    memset(smth, 0, sizeof(smth));
    smth_ = smth;
@@ -76,7 +76,9 @@ void __attribute__((constructor)) init_threads(void)
       smth[i].smr_cond = &cond_;
       smth[i].nr = i;
       pthread_cond_init(&smth[i].rule_cond, NULL);
-      pthread_create(&smth[i].rule_thread, NULL, (void*(*)(void*)) sm_traverse_thread, &smth[i]);
+      // FIXME: error handling should be improved!
+      if ((e = pthread_create(&smth[i].rule_thread, NULL, (void*(*)(void*)) sm_traverse_thread, &smth[i])))
+         log_msg(LOG_ERR, "pthread_create() failed: %s", strerror(e));
    }
 }
 

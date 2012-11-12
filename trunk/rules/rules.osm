@@ -27,6 +27,30 @@
       <tag k='_action_' v='img:file=icons/Light_Major.png'/>
    </node>
    <node>
+      <tag k='seamark:type' v='beacon_safe_water'/>
+      <tag k='_action_' v='img:file=icons/Safe_Water_Beacon.png'/>
+   </node>
+   <node>
+      <tag k='seamark:type' v='buoy_safe_water'/>
+      <tag k='seamark:buoy_safe_water:shape' v='pillar'/>
+      <tag k='_action_' v='img:file=icons/Safe_Water_Pillar.png'/>
+   </node>
+   <node>
+      <tag k='seamark:type' v='buoy_safe_water'/>
+      <tag k='~seamark:buoy_safe_water:shape~' v=''/>
+      <tag k='_action_' v='img:file=icons/Safe_Water_Spar.png'/>
+   </node>
+   <node>
+      <tag k='seamark:type' v='buoy_safe_water'/>
+      <tag k='seamark:topmark:shape' v='sphere'/>
+      <tag k='_action_' v='img:file=icons/Top_Sphere_Red_Buoy.png'/>
+   </node>
+   <node>
+      <tag k='seamark:type' v='beacon_safe_water'/>
+      <tag k='seamark:topmark:shape' v='sphere'/>
+      <tag k='_action_' v='img:file=icons/Top_Sphere_Red_Beacon.png'/>
+   </node>
+   <node>
       <tag k='seamark:type' v='beacon_isolated_danger'/>
       <tag k='seamark:beacon_isolated_danger:shape' v='tower'/>
       <tag k='_action_' v='img:file=icons/Cardinal_Tower_Single.png'/>
@@ -362,7 +386,7 @@
 
    <way>
       <tag k='natural' v='cliff'/>
-      <tag k='_action_' v='draw:color=black;width=0.2'/>
+      <tag k='_action_' v='draw:color=#black;width=0.2'/>
    </way>
 
 

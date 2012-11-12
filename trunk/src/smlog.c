@@ -53,6 +53,12 @@ static FILE *log_ = NULL;
 static int level_ = LOG_INFO;
 
 
+void __attribute__((constructor(101))) init_log0(void)
+{
+   log_ = stderr;
+}
+
+
 FILE *init_log(const char *s, int level)
 {
    level_ = level;
@@ -82,7 +88,7 @@ void vlog_msgf(FILE *out, int lf, const char *fmt, va_list ap)
    struct tm *tm;
    time_t t;
    char timestr[TIMESTRLEN] = "", timez[TIMESTRLEN] = "";
-   int level = LOG_PRI(lf);
+   int level = LOG_PRI(lf), id = 0;
    char buf[SIZE_1K];
 
    if (level_ < level) return;
@@ -112,9 +118,11 @@ void vlog_msgf(FILE *out, int lf, const char *fmt, va_list ap)
    if (out)
    {
 #ifdef WITH_THREADS
+      int sm_thread_id(void);
+      id = sm_thread_id();
       pthread_mutex_lock(&mutex);
 #endif
-      fprintf(out, "%s.%03d %s (+%2d.%03d) %d:[%7s] ", timestr, (int) (tv.tv_usec / 1000), timez, (int) tr.tv_sec, (int) (tr.tv_usec / 1000), sm_thread_id(), flty_[level]);
+      fprintf(out, "%s.%03d %s (+%2d.%03d) %d:[%7s] ", timestr, (int) (tv.tv_usec / 1000), timez, (int) tr.tv_sec, (int) (tr.tv_usec / 1000), id, flty_[level]);
       vfprintf(out, fmt, ap);
       fprintf(out, "\n");
 #ifdef WITH_THREADS
