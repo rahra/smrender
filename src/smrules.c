@@ -998,7 +998,7 @@ int act_draw_main(smrule_t *r, osm_obj_t *o)
 }
 
 
-void poly_fill(struct rdata *rd, gdImage *img, osm_way_t *w, int fg, int bg, int cw, int thick)
+void poly_fill(struct rdata *rd, gdImage *img, osm_way_t *w, int fg, int bg, int cw, int thick, int style)
 {
    int e, t;
    gdPoint p[w->ref_cnt];
@@ -1017,7 +1017,8 @@ void poly_fill(struct rdata *rd, gdImage *img, osm_way_t *w, int fg, int bg, int
    {
       t = gdImageGetThickness(img);
       gdImageSetThickness(img, thick);
-      gdImageOpenPolygon(img, p, w->ref_cnt, rd->ovs ? fg : thick > 1 ? fg : gdAntiAliased);
+      gdImageOpenPolygon(img, p, w->ref_cnt,
+            set_style(img, style, rd->ovs ? fg : thick > 1 ? fg : gdAntiAliased));
       gdImageSetThickness(img, t);
    }
 }
@@ -1108,7 +1109,7 @@ int act_draw_fini(smrule_t *r)
       gdImageSetAntiAliased(img, fg);
       gdImageFilledRectangle(img, 0, 0, gdImageSX(img), gdImageSY(img), !d->wl->ref[0].cw ? bg : rd->ovs ? fg : gdAntiAliased);
       for (i = 0; i < d->wl->ref_cnt; i++)
-         poly_fill(rd, img, d->wl->ref[i].w, fg, bg, d->wl->ref[i].cw, d->fill.width > 0 ? MM2PX(d->fill.width) : (rd->ovs ? rd->ovs : 1));
+         poly_fill(rd, img, d->wl->ref[i].w, fg, bg, d->wl->ref[i].cw, d->fill.width > 0 ? MM2PX(d->fill.width) : (rd->ovs ? rd->ovs : 1), d->fill.style);
 
       gdImageCopy(rd->img, img, 0, 0, 0, 0, gdImageSX(img), gdImageSY(img));
    }
