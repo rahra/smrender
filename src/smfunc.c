@@ -1014,3 +1014,12 @@ int act_poly_len_main(smrule_t *r, osm_way_t *w)
    return 0;
 }
 
+
+int act_sync_threads_ini(smrule_t *r)
+{
+#ifdef WITH_THREADS
+   sm_threaded(r);
+#endif
+   return 0;
+}
+
