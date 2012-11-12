@@ -22,6 +22,9 @@
  *  @author Bernhard R. Fischer
  */
 
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
@@ -29,6 +32,7 @@
 #include <pthread.h>
 
 #include "memimg.h"
+#include "smrender.h"
 
 
 #ifdef WITH_THREADS
@@ -519,6 +523,69 @@ void weight_diff_vec(struct diff_vec *dv, int len, double phase, double weight)
 }
 
 
+#ifdef MI_THREADS
+
+static pthread_cond_t cn_boss = PTHREAD_COND_INITIALIZER;
+static pthread_mutex_t mx = PTHREAD_MUTEX_INITIALIZER;
+static struct mi_thread_param mt[MI_THREADS];
+
+static void mi_wait_threads(void)
+{
+   int i;
+
+   // wait for all threads to finish and destroy them
+   log_debug("waiting for mi_ workers");
+   for (i = 0; i < MI_THREADS; i++)
+   {
+      pthread_mutex_lock(&mx);
+      while (mt[i].status == 1)
+         pthread_cond_wait(&cn_boss, &mx);
+      pthread_mutex_unlock(&mx);
+   }
+}
+
+
+void __attribute__((constructor)) init_mi_threads(void)
+{
+   int i, e;
+ 
+   log_debug("creating %d worker threads", MI_THREADS);
+   for (i = 0; i < MI_THREADS; i++)
+   {
+      mt[i].boss = &cn_boss;
+      pthread_cond_init(&mt[i].worker, NULL);
+      mt[i].mutex = &mx;
+      mt[i].status = 0;
+      if ((e = pthread_create(&mt[i].th, NULL, (void*(*)(void*)) mi_diff_vector_vert_thread, &mt[i])))
+         log_msg(LOG_ERR, "pthread_create() failed: %s", strerror(e)),
+            exit(EXIT_FAILURE);
+   }
+}
+
+
+void __attribute__((destructor)) destroy_mi_threads(void)
+{
+   int i;
+
+   // wait for all threads to finish and destroy them
+   log_debug("joining and destroying workers");
+   mi_wait_threads();
+   for (i = 0; i < MI_THREADS; i++)
+   {
+      pthread_mutex_lock(&mx);
+      mt[i].status = -1;
+      pthread_cond_signal(&mt[i].worker);
+      pthread_mutex_unlock(&mx);
+      pthread_join(mt[i].th, NULL);
+      pthread_cond_destroy(&mt[i].worker);
+   }
+   pthread_cond_destroy(&cn_boss);
+   pthread_mutex_destroy(&mx);
+}
+
+#endif
+
+
 /*! Calculate difference of source image to destination image where the source
  * image is rotate 360 degress around a center point in the destination.
  * Optionally it rotates the image several times, for each rotation the source
@@ -560,11 +627,13 @@ int get_diff_vec(gdImage *dst, gdImage *src, int x, int y, int xvar, int res, st
    mi[1] = mi_from_gdimage(src);
 
 #ifdef MI_THREADS
-
+#if 0
    pthread_cond_t cn_boss = PTHREAD_COND_INITIALIZER;
    pthread_mutex_t mx = PTHREAD_MUTEX_INITIALIZER;
    struct mi_thread_param mt[MI_THREADS];
+   int e;
  
+   log_debug("creating %d worker threads", MI_THREADS);
    for (i = 0; i < MI_THREADS; i++)
    {
       mt[i].boss = &cn_boss;
@@ -574,9 +643,10 @@ int get_diff_vec(gdImage *dst, gdImage *src, int x, int y, int xvar, int res, st
       mt[i].src = mi[1];
       mt[i].res = res;
       mt[i].status = 0;
-      pthread_create(&mt[i].th, NULL, (void*(*)(void*)) mi_diff_vector_vert_thread, &mt[i]);
+      if ((e = pthread_create(&mt[i].th, NULL, (void*(*)(void*)) mi_diff_vector_vert_thread, &mt[i])))
+         log_msg(LOG_ERR, "pthread_create() failed: %s", strerror(e));
    }
-
+#endif 
    for (i = 0; i < xvar; i += res)
    {
       pthread_mutex_lock(&mx);
@@ -586,6 +656,9 @@ int get_diff_vec(gdImage *dst, gdImage *src, int x, int y, int xvar, int res, st
          {
             if (!mt[j].status)
             {
+               mt[j].dst = mi[0];
+               mt[j].src = mi[1];
+               mt[j].res = res;
                mt[j].dv = *dv + mi[0]->h * i;
                mt[j].xoff = i;
                mt[j].status = 1;
@@ -603,6 +676,7 @@ int get_diff_vec(gdImage *dst, gdImage *src, int x, int y, int xvar, int res, st
    }
 
    // wait for all threads to finish and destroy them
+   /*log_debug("joining and destroying workers");
    for (i = 0; i < MI_THREADS; i++)
    {
       pthread_mutex_lock(&mx);
@@ -615,7 +689,8 @@ int get_diff_vec(gdImage *dst, gdImage *src, int x, int y, int xvar, int res, st
       pthread_cond_destroy(&mt[i].worker);
    }
    pthread_cond_destroy(&cn_boss);
-   pthread_mutex_destroy(&mx);
+   pthread_mutex_destroy(&mx);*/
+   mi_wait_threads();
 
 #else
 
