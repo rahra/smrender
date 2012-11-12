@@ -114,7 +114,7 @@ void vlog_msgf(FILE *out, int lf, const char *fmt, va_list ap)
 #ifdef WITH_THREADS
       pthread_mutex_lock(&mutex);
 #endif
-      fprintf(out, "%s.%03d %s (+%2d.%03d) [%7s] ", timestr, (int) (tv.tv_usec / 1000), timez, (int) tr.tv_sec, (int) (tr.tv_usec / 1000), flty_[level]);
+      fprintf(out, "%s.%03d %s (+%2d.%03d) %d:[%7s] ", timestr, (int) (tv.tv_usec / 1000), timez, (int) tr.tv_sec, (int) (tr.tv_usec / 1000), sm_thread_id(), flty_[level]);
       vfprintf(out, fmt, ap);
       fprintf(out, "\n");
 #ifdef WITH_THREADS

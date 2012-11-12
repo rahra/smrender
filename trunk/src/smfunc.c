@@ -224,7 +224,7 @@ int poly_area(const osm_way_t *w, struct coord *c, double *ar)
 
 int act_poly_area_ini(smrule_t *r)
 {
-   //sm_threaded(r);
+   sm_threaded(r);
    return 0;
 }
 
@@ -261,7 +261,7 @@ int act_poly_area_main(smrule_t *r, osm_way_t *w)
 
 int act_poly_centroid_ini(smrule_t *r)
 {
-   //sm_threaded(r);
+   sm_threaded(r);
    return 0;
 }
 

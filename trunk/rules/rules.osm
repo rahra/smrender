@@ -279,6 +279,10 @@
       <tag k='_action_' v='draw:color=yellow;bcolor=black'/>
    </way>
    <way>
+      <tag k='man_made' v='breakwater'/>
+      <tag k='_action_' v='draw:color=black'/>
+   </way>
+   <way>
       <tag k='natural' v='peak'/>
       <tag k='_action_' v='draw:color=black'/>
    </way>
@@ -358,7 +362,7 @@
 
    <way>
       <tag k='natural' v='cliff'/>
-      <tag k='_action_' v='draw:color=#black;width=0.2'/>
+      <tag k='_action_' v='draw:color=black;width=0.2'/>
    </way>
 
 

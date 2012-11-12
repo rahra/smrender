@@ -57,6 +57,7 @@ void log_msg(int, const char*, ...) __attribute__((format (printf, 2, 3)));
 
 /* smthread.c */
 void sm_threaded(smrule_t*);
+int sm_thread_id(void);
 
 #endif
 
