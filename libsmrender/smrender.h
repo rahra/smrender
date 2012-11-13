@@ -22,12 +22,16 @@
 #include <syslog.h>
 
 #include "osm_inplace.h"
-#include "smath.h"
+#include "bxtree.h"
+//#include "smath.h"
 
 
 #define LOG_WARN LOG_WARNING
 #define log_debug(x...) log_msg(LOG_DEBUG, ## x)
 #define log_warn(x...) log_msg(LOG_WARN, ## x)
+
+#define DEG2RAD(x) ((x) * M_PI / 180.0)
+#define RAD2DEG(x) ((x) * 180.0 / M_PI)
 
 
 typedef struct rdata rdata_t;
@@ -49,6 +53,7 @@ int64_t unique_way_id(void);
 void set_const_tag(struct otag*, char*, char*);
 int match_attr(const osm_obj_t*, const char *, const char *);
 char *get_param(const char*, double*, const action_t*);
+void set_static_obj_tree(bx_node_t **);
 
 /* smlog.c */
 void log_msg(int, const char*, ...) __attribute__((format (printf, 2, 3)));

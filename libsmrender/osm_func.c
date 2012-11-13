@@ -25,11 +25,11 @@
 #include <time.h>
 #include <string.h>
 #include <errno.h>
+#include <stdlib.h>
 
 #include "smrender.h"
 #include "osm_inplace.h"
 #include "bstring.h"
-#include "libhpxml.h"
 
 
 #define TLEN 20
@@ -80,65 +80,6 @@ time_t parse_time(bstring_t b)
 #endif
 
    return mktime(&tm);
-}
-
-
-int proc_osm_node(const hpx_tag_t *tag, osm_obj_t *o)
-{
-   int i;
-
-   if (!bs_cmp(tag->tag, "node"))
-      o->type = OSM_NODE;
-   else if (!bs_cmp(tag->tag, "way"))
-      o->type = OSM_WAY;
-   else if (!bs_cmp(tag->tag, "relation"))
-      o->type = OSM_REL;
-   else 
-      return -1;
-
-   for (i = 0; i < tag->nattr; i++)
-   {
-      if (o->type == OSM_NODE)
-      {
-         if (!bs_cmp(tag->attr[i].name, "lat"))
-            ((osm_node_t*) o)->lat = bs_tod(tag->attr[i].value);
-         else if (!bs_cmp(tag->attr[i].name, "lon"))
-            ((osm_node_t*) o)->lon = bs_tod(tag->attr[i].value);
-      }
-
-      if (!bs_cmp(tag->attr[i].name, "id"))
-         o->id = bs_tol(tag->attr[i].value);
-      else if (!bs_cmp(tag->attr[i].name, "version"))
-         o->ver = bs_tol(tag->attr[i].value);
-      else if (!bs_cmp(tag->attr[i].name, "changeset"))
-         o->cs = bs_tol(tag->attr[i].value);
-      else if (!bs_cmp(tag->attr[i].name, "uid"))
-         o->uid = bs_tol(tag->attr[i].value);
-      else if (!bs_cmp(tag->attr[i].name, "timestamp"))
-         o->tim = parse_time(tag->attr[i].value);
-   }
-
-   if (!o->ver)
-      o->ver = 1;
-   if (!o->tim)
-      o->tim = time(NULL);
-
-   return tag->type;
-}
-
-
-int get_value(const char *k, hpx_tag_t *tag, bstring_t *b)
-{
-   int i;
-
-   for (i = 0; i < tag->nattr; i++)
-      if (!bs_cmp(tag->attr[i].name, k))
-      {
-         *b = tag->attr[i].value;
-         return 0;
-      }
-
-   return -1;
 }
 
 

@@ -45,6 +45,6 @@ fi
 
 AC_SUBST([SMFILTER_NAME], [["libsmfilter$shrext_cmds"]])
 
-AC_CONFIG_FILES([Makefile src/Makefile libsmfilter/Makefile libskel/Makefile tools/smfilter2])
+AC_CONFIG_FILES([Makefile libsmrender/Makefile src/Makefile libsmfilter/Makefile libskel/Makefile tools/smfilter2])
 AC_OUTPUT
 

@@ -684,7 +684,7 @@ static void __attribute__((constructor)) init_rdata(void)
    rd_.dpi = 300;
    rd_.ovs = DEFAULT_OVS;
    rd_.title = "";
-   set_util_rd(&rd_);
+   set_static_obj_tree(&rd_.obj);
 }
 
 
