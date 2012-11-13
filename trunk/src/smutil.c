@@ -320,3 +320,78 @@ int strcnt(const char *s, int c)
    return n;
 }
 
+
+char *get_param(const char *attr, double *dval, const action_t *act)
+{
+   fparam_t **fp;
+
+   if ((act == NULL) || (act->fp == NULL) || (attr == NULL))
+      return NULL;
+
+   for (fp = act->fp; *fp != NULL; fp++)
+   {
+      if (!strcmp(attr, (*fp)->attr))
+      {
+         if (dval != NULL)
+            *dval = (*fp)->dval;
+         return (*fp)->val;
+      }
+   }
+   return NULL;
+}
+
+
+int sm_is_threaded(const smrule_t *r)
+{
+   return (r->act->flags & ACTION_THREADED) != 0;
+}
+
+
+void sm_threaded(smrule_t *r)
+{
+   log_debug("activating multi-threading for rule 0x%016lx", r->oo->id);
+   r->act->flags |= ACTION_THREADED;
+}
+
+#ifdef WITH_THREADS
+
+#define MAX_THREAD_HANDLE 32
+
+int sm_thread_id(void)
+{
+   static pthread_t thandle[MAX_THREAD_HANDLE];
+   static int tcnt = 0;
+   pthread_t this;
+   int i;
+
+   this = pthread_self();
+
+   // check if thread handle already exists
+   for (i = 0; i < tcnt; i++)
+      if (this == thandle[i])
+         return i;
+
+   // check if list of thread handles is already full
+   if (tcnt >= MAX_THREAD_HANDLE)
+      return -1;
+
+   thandle[tcnt] = this;
+   return tcnt++;
+}
+
+
+void __attribute__((constructor(101))) init_sm_thread_id(void)
+{
+   (void) sm_thread_id();
+}
+
+
+#else
+
+int sm_thread_id(void)
+{
+   return 0;
+}
+
+#endif
+
