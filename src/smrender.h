@@ -48,8 +48,6 @@ int64_t unique_node_id(void);
 int64_t unique_way_id(void);
 void set_const_tag(struct otag*, char*, char*);
 int match_attr(const osm_obj_t*, const char *, const char *);
-
-/* smrparse.c */
 char *get_param(const char*, double*, const action_t*);
 
 /* smlog.c */

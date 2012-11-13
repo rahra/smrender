@@ -53,7 +53,7 @@ static FILE *log_ = NULL;
 static int level_ = LOG_INFO;
 
 
-void __attribute__((constructor(101))) init_log0(void)
+void __attribute__((constructor(102))) init_log0(void)
 {
    log_ = stderr;
 }

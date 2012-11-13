@@ -402,23 +402,3 @@ fparam_t **parse_fparam(char *parm)
    return fp;
 }
 
-
-char *get_param(const char *attr, double *dval, const action_t *act)
-{
-   fparam_t **fp;
-
-   if ((act == NULL) || (act->fp == NULL) || (attr == NULL))
-      return NULL;
-
-   for (fp = act->fp; *fp != NULL; fp++)
-   {
-      if (!strcmp(attr, (*fp)->attr))
-      {
-         if (dval != NULL)
-            *dval = (*fp)->dval;
-         return (*fp)->val;
-      }
-   }
-   return NULL;
-}
-
