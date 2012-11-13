@@ -1,0 +1,57 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<osm version='0.6'>
+   <node version='-10'>
+      <tag k='natural' v='peak'/>
+      <tag k='_action_' v='shape:style=circle;radius=.3'/>
+   </node>
+   <node>
+      <tag k='_action_' v='cap:font=serif:bold;size=1.8;key=name;angle=auth;auto-color=yellow'/>
+      <tag k='place' v='village'/>
+   </node>
+   <node>
+      <tag k='_action_' v='cap:font=serif;size=1.5;key=name'/>
+      <tag k='place' v='hamlet'/>
+   </node>
+   <node>
+      <tag k='_action_' v='cap:font=serif;valign=north;size=1.2;key=name'/>
+      <tag k='natural' v='peak'/>
+   </node>
+   <node>
+      <tag k='_action_' v='cap:font=roman;size=1.2;valign=south;key=ele'/>
+      <tag k='natural' v='peak'/>
+   </node>
+   <node>
+      <tag k='_action_' v='cap:font=sans-serif:bold;size=2.5;angle=auto;auto-color=yellow;key=name'/>
+      <tag k='place' v='/town|city/'/>
+   </node>
+   <way>
+      <tag k='man_made' v='breakwater'/>
+      <tag k='_action_' v='draw:color=black'/>
+   </way>
+   <way>
+      <tag k='natural' v='peak'/>
+      <tag k='_action_' v='draw:color=black'/>
+   </way>
+   <way>
+      <tag k='building' v=''/>
+      <tag k='_action_' v='draw:color=black'/>
+   </way>
+   <way>
+      <tag k='highway' v='/^(secondary|primary|residential)$/'/>
+      <tag k='_action_' v='draw:color=black'/>
+   </way>
+   <way version="-10">
+      <tag k='natural' v='cliff'/>
+      <tag k='_action_' v='ins_eqdist:distance=.15'/>
+   </way>
+   <way>
+      <tag k='natural' v='cliff'/>
+      <tag k='_action_' v='draw:color=#black;width=0.2'/>
+   </way>
+   <node version="-10">
+      <tag k='natural' v='cliff'/>
+      <tag k='bearing' v=''/>
+      <tag k='_action_' v='shape:style=triangle;radius=.5;angle=180;key=bearing'/>
+   </node>
+</osm>
+
