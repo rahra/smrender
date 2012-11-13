@@ -534,7 +534,6 @@ static void mi_wait_threads(void)
    int i;
 
    // wait for all threads to finish and destroy them
-   log_debug("waiting for mi_ workers");
    for (i = 0; i < MI_THREADS; i++)
    {
       pthread_mutex_lock(&mx);

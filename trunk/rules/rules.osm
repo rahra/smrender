@@ -338,7 +338,13 @@
    </way>
    <way>
       <tag k='seamark:light_arc' v=''/>
+      <tag k='seamark:arc_style' v='solid'/>
       <tag k='_action_' v='draw:color=black'/>
+   </way>
+   <way>
+      <tag k='seamark:light_arc' v=''/>
+      <tag k='seamark:arc_style' v='dashed'/>
+      <tag k='_action_' v='draw:color=black;style=dashed'/>
    </way>
    <way>
       <tag k='natural' v='water'/>

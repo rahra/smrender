@@ -7,6 +7,8 @@ LT_INIT
 AC_SUBST([CFLAGS], [["$CFLAGS -Wall"]])
 #AC_SUBST([CFLAGS], [["-g -Wall"]])
 AC_PROG_CC
+AC_PROG_LN_S
+AC_PROG_MKDIR_P
 AC_CONFIG_HEADERS([config.h])
 
 
