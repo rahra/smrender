@@ -5,10 +5,6 @@
 #include <math.h>
 
 
-#define DEG2RAD(x) ((x) * M_PI / 180.0)
-#define RAD2DEG(x) ((x) * 180.0 / M_PI)
-
-
 struct coord
 {
    double lat, lon;

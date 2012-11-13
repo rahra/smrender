@@ -43,7 +43,66 @@ static size_t oline_ = 0;
 static volatile sig_atomic_t usr1_ = 0;
 
 
-void init_stats(struct dstats *ds)
+static int proc_osm_node(const hpx_tag_t *tag, osm_obj_t *o)
+{
+   int i;
+
+   if (!bs_cmp(tag->tag, "node"))
+      o->type = OSM_NODE;
+   else if (!bs_cmp(tag->tag, "way"))
+      o->type = OSM_WAY;
+   else if (!bs_cmp(tag->tag, "relation"))
+      o->type = OSM_REL;
+   else 
+      return -1;
+
+   for (i = 0; i < tag->nattr; i++)
+   {
+      if (o->type == OSM_NODE)
+      {
+         if (!bs_cmp(tag->attr[i].name, "lat"))
+            ((osm_node_t*) o)->lat = bs_tod(tag->attr[i].value);
+         else if (!bs_cmp(tag->attr[i].name, "lon"))
+            ((osm_node_t*) o)->lon = bs_tod(tag->attr[i].value);
+      }
+
+      if (!bs_cmp(tag->attr[i].name, "id"))
+         o->id = bs_tol(tag->attr[i].value);
+      else if (!bs_cmp(tag->attr[i].name, "version"))
+         o->ver = bs_tol(tag->attr[i].value);
+      else if (!bs_cmp(tag->attr[i].name, "changeset"))
+         o->cs = bs_tol(tag->attr[i].value);
+      else if (!bs_cmp(tag->attr[i].name, "uid"))
+         o->uid = bs_tol(tag->attr[i].value);
+      else if (!bs_cmp(tag->attr[i].name, "timestamp"))
+         o->tim = parse_time(tag->attr[i].value);
+   }
+
+   if (!o->ver)
+      o->ver = 1;
+   if (!o->tim)
+      o->tim = time(NULL);
+
+   return tag->type;
+}
+
+
+static int get_value(const char *k, hpx_tag_t *tag, bstring_t *b)
+{
+   int i;
+
+   for (i = 0; i < tag->nattr; i++)
+      if (!bs_cmp(tag->attr[i].name, k))
+      {
+         *b = tag->attr[i].value;
+         return 0;
+      }
+
+   return -1;
+}
+
+
+static void init_stats(struct dstats *ds)
 {
    memset(ds, 0, sizeof(*ds));
    ds->min_nid = ds->min_wid = MAX_ID;
@@ -57,7 +116,7 @@ void init_stats(struct dstats *ds)
 }
 
  
-void log_stats(const struct dstats *ds)
+static void log_stats(const struct dstats *ds)
 {
    log_debug(" ncnt = %ld, min_nid = %ld, max_nid = %ld", ds->ncnt, ds->min_nid, ds->max_nid);
    log_debug(" wcnt = %ld, min_wid = %ld, max_wid = %ld", ds->wcnt, ds->min_wid, ds->max_wid);
@@ -67,7 +126,7 @@ void log_stats(const struct dstats *ds)
 }
 
 
-void update_node_stats(const osm_node_t *n, struct dstats *ds)
+static void update_node_stats(const osm_node_t *n, struct dstats *ds)
 {
    ds->ncnt++;
    if (ds->bb.ru.lat < n->lat) ds->bb.ru.lat = n->lat;
@@ -76,7 +135,7 @@ void update_node_stats(const osm_node_t *n, struct dstats *ds)
    if (ds->bb.ru.lon < n->lon) ds->bb.ru.lon = n->lon;
 }
 
-int update_stats(const osm_obj_t *o, struct dstats *ds)
+static int update_stats(const osm_obj_t *o, struct dstats *ds)
 {
    int i;
 
@@ -142,21 +201,21 @@ void osm_read_exit(void)
 }
 
 
-void usr1_handler(int sig)
+static void usr1_handler(int sig)
 {
    usr1_++;
 }
 
 
-void install_sigusr1(void)
+void __attribute__((constructor)) install_sigusr1(void)
 {
    struct sigaction sa;
-   static int sig_inst = 0;
+   //static int sig_inst = 0;
 
-   if (sig_inst)
-      return;
+   //if (sig_inst)
+   //   return;
 
-   sig_inst++;
+   //sig_inst++;
    memset(&sa, 0, sizeof(sa));
    sa.sa_handler = usr1_handler;
 
@@ -167,7 +226,7 @@ void install_sigusr1(void)
 }
 
 
-void assign_o(osm_obj_t *dst, const osm_obj_t *src)
+static void assign_o(osm_obj_t *dst, const osm_obj_t *src)
 {
    dst->vis = src->vis;
    dst->id = src->id;
@@ -184,13 +243,13 @@ void assign_o(osm_obj_t *dst, const osm_obj_t *src)
 }
 
 
-void clear_ostor(osm_storage_t *o)
+static void clear_ostor(osm_storage_t *o)
 {
    memset(o, 0, sizeof(*o));
 }
 
 
-uint64_t get_osm_id(const osm_obj_t *o)
+static uint64_t get_osm_id(const osm_obj_t *o)
 {
    switch (o->type)
    {
@@ -219,7 +278,7 @@ int read_osm_file(hpx_ctrl_t *ctl, bx_node_t **tree, const struct filter *fi, st
    time_t tim;
    struct rmember *mem;
 
-   install_sigusr1();
+   //install_sigusr1();
 
    if (hpx_tree_resize(&tlist, 0) == -1)
       perror("hpx_tree_resize"), exit(EXIT_FAILURE);
@@ -525,7 +584,7 @@ int read_osm_file(hpx_ctrl_t *ctl, bx_node_t **tree, const struct filter *fi, st
 }
 
 
-int file_cmp(const struct file *a, const struct file *b)
+static int file_cmp(const struct file *a, const struct file *b)
 {
    return strcmp(a->name, b->name);
 }

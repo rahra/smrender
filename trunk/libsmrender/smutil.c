@@ -23,13 +23,17 @@
  *  @author Bernhard R. Fischer
  */
 
-#include "smrender_dev.h"
-
+//#include "smrender_dev.h"
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
+#include <stdio.h>
 #include <stdint.h>
 #include <limits.h>
 #include <string.h>
 #include <syslog.h>
 #include <errno.h>
+#include <math.h>
 #ifdef WITH_THREADS
 #include <pthread.h>
 #endif
@@ -38,13 +42,17 @@
 #include <dlfcn.h>
 #endif
 
+#include "smrender.h"
+#include "bxtree.h"
+#include "smaction.h"
 
-static struct rdata *rd;
+
+static bx_node_t **obj_tree_ = NULL;
 
 
-void set_util_rd(struct rdata *r)
+void set_static_obj_tree(bx_node_t **tree)
 {
-   rd = r;
+   obj_tree_ = tree;
 }
 
 
@@ -57,38 +65,37 @@ void set_const_tag(struct otag *tag, char *k, char *v)
 }
 
 
-//int64_t unique_node_id(struct rdata *rd)
+#define UNIQUE_ID_START -100000000000L
 int64_t unique_node_id(void)
 {
+   static int64_t uid = UNIQUE_ID_START;
 #ifdef WITH_THREADS
    static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
    int64_t id;
 
    pthread_mutex_lock(&mutex);
-   id = rd->ds.min_nid = rd->ds.min_nid < 0 ? rd->ds.min_nid - 1 : -1;
+   id = uid--;
    pthread_mutex_unlock(&mutex);
    return id;
 #else
-   rd->ds.min_nid = rd->ds.min_nid < 0 ? rd->ds.min_nid - 1 : -1;
-   return rd->ds.min_nid;
+   return uid--;
 #endif
 }
 
 
-//int64_t unique_way_id(struct rdata *rd)
 int64_t unique_way_id(void)
 {
+   static int64_t uid = UNIQUE_ID_START;
 #ifdef WITH_THREADS
    static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
    int64_t id;
 
    pthread_mutex_lock(&mutex);
-   id = rd->ds.min_wid = rd->ds.min_wid < 0 ? rd->ds.min_wid - 1 : -1;
+   id = uid--;
    pthread_mutex_unlock(&mutex);
    return id;
 #else
-   rd->ds.min_wid = rd->ds.min_wid < 0 ? rd->ds.min_wid - 1 : -1;
-   return rd->ds.min_wid;
+   return uid--;
 #endif
 }
 
@@ -121,7 +128,13 @@ int put_object0(bx_node_t **tree, int64_t id, void *p, int idx)
 
 int put_object(osm_obj_t *o)
 {
-   return put_object0(&rd->obj, o->id, o, o->type - 1);
+   if (obj_tree_ == NULL)
+   {
+      log_msg(LOG_EMERG, "static object tree unset in libsmrender. Call set_static_obj_tree()!");
+      return -1;
+   }
+ 
+   return put_object0(obj_tree_, o->id, o, o->type - 1);
 }
 
 
@@ -152,7 +165,12 @@ void *get_object0(bx_node_t *tree, int64_t id, int idx)
 
 void *get_object(int type, int64_t id)
 {
-   return get_object0(rd->obj, id, type - 1);
+   if (obj_tree_ == NULL)
+   {
+      log_msg(LOG_EMERG, "static object tree unset in libsmrender. Call set_static_obj_tree()!");
+      return NULL;
+   }
+   return get_object0(*obj_tree_, id, type - 1);
 }
 
 
@@ -267,7 +285,7 @@ int match_attr(const osm_obj_t *o, const char *k, const char *v)
 }
 
 
-/*! Convert coordinate c to string.
+/*! Convert coordinate d to string.
  *  @param lat_lon 0 for latitude, other values for longitude.
  */
 int coord_str(double c, int lat_lon, char *buf, int len)

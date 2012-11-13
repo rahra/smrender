@@ -28,12 +28,15 @@
 #include <regex.h>
 
 #include "smrender.h"
+#include "smaction.h"
 
 #include "osm_inplace.h"
 #include "bstring.h"
 #include "bxtree.h"
 #include "smath.h"
 #include "lists.h"
+#include "libhpxml.h"
+
 
 #ifdef HAVE_GD
 typedef gdImage image_t;
@@ -47,16 +50,6 @@ typedef void image_t;
 #define USER_GRID 2
 #define AUTO_GRID 1
 #define NO_GRID 0
-
-#define SPECIAL_DIRECT 0x0000
-#define SPECIAL_REGEX 0x0001
-#define SPECIAL_GT 0x0002
-#define SPECIAL_LT 0x0003
-#define SPECIAL_INVERT 0x8000
-#define SPECIAL_NOT 0x4000
-#define SPECIAL_MASK 0x00ff
-
-#define ACTION_THREADED 1
 
 #define POS_M 0
 #define POS_N 1
@@ -107,15 +100,6 @@ typedef void image_t;
 #define MIN_ID 0xffffff0000000000LL
 #define MAX_ID INT64_MAX
 
-#define TM_RESCALE 100
-#define T_RESCALE (60 * TM_RESCALE)
-#define MIN10(x) round((x) * T_RESCALE)
-
-#define RED(x) ((((x) >> 16) & 0xff))
-#define GREEN(x) ((((x) >> 8) & 0xff))
-#define BLUE(x) (((x) & 0xff))
-#define SQRL(x) ((long) (x) * (long) (x))
-
 // scaling factor for bbox of URL output (-u)
 #define BB_SCALE 0.01
 
@@ -126,29 +110,6 @@ enum {IDX_NODE, IDX_WAY, IDX_REL};
 enum {WHITE, YELLOW, BLACK, BLUE, MAGENTA, BROWN, TRANSPARENT, BGCOLOR, MAX_COLOR};
 enum {LAT, LON};
 enum {DRAW_SOLID, DRAW_DASHED, DRAW_DOTTED, DRAW_TRANSPARENT};
-
-typedef struct fparam
-{
-   char *attr;
-   char *val;
-   double dval;
-} fparam_t;
-
-struct specialTag
-{
-   short type;
-   union
-   {
-      regex_t re;
-      double val;
-   };
-};
-
-struct stag
-{
-   struct specialTag stk;
-   struct specialTag stv;
-};
 
 struct auto_rot
 {
@@ -203,12 +164,6 @@ struct actCaption
    struct font_metric fm;
 };
 
-struct actParam
-{
-   char *buf;
-   fparam_t **fp;
-};
-
 struct drawStyle
 {
    int col;
@@ -232,33 +187,6 @@ struct act_shape
    double size;
    double angle;
    char *key;
-};
-
-struct action
-{
-   union             // initialization function _ini()
-   {
-      int (*func)(smrule_t*);
-      void *sym;
-   } ini;
-   union             // rule function
-   {
-      int (*func)(smrule_t*, osm_obj_t*);
-      void *sym;
-   } main;
-   union             // finalization function _fini()
-   {
-      int (*func)(smrule_t*);
-      void *sym;
-   } fini;
-   void *libhandle;  // pointer to lib base
-   char *func_name;  // pointer to function name
-   char *parm;       // function argument string
-   fparam_t **fp;    // pointer to parsed parameter list
-   short flags;      // execution control flags.
-   short tag_cnt;
-   short finished;   // set to 1 after _fini was called, otherwise 0
-   struct stag stag[];
 };
 
 struct grid

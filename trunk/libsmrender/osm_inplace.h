@@ -22,7 +22,6 @@
 #include <time.h>
 
 #include "bstring.h"
-#include "libhpxml.h"
 
 
 #define JAN2004 1072915200
@@ -90,8 +89,6 @@ typedef union osm_storage
 
 
 time_t parse_time(bstring_t);
-int proc_osm_node(const hpx_tag_t*, osm_obj_t*);
-int get_value(const char *k, hpx_tag_t *tag, bstring_t *b);
 void free_obj(osm_obj_t*);
 osm_node_t *malloc_node(short );
 osm_way_t *malloc_way(short , int );

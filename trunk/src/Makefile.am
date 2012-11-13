@@ -1,7 +1,10 @@
 #AM_LDFLAGS = -Wl,-export-dynamic $(GD_LDFLAGS) $(GD_LIBS)
 AM_LDFLAGS = $(EXP_DYN) $(GD_LDFLAGS) $(GD_LIBS)
+#AM_LDFLAGS = $(GD_LDFLAGS) $(GD_LIBS)
 AM_CFLAGS = $(GD_CFLAGS)
+AM_CPPFLAGS = -I$(srcdir)/../libsmrender
 bin_PROGRAMS = smrender
-smrender_SOURCES = bstring.c smath.c smfunc.c smloadosm.c smrparse.c smutil.c bxtree.c libhpxml.c osm_func.c smcoast.c smgrid.c smlog.c smrender.c smrules.c smkap.c smqr.c smthread.c memimg.c lists.c
-noinst_HEADERS = bstring.h libhpxml.h osm_inplace.h bxtree.h smath.h smrender.h smrender_dev.h smcoast.h memimg.h lists.h
+smrender_SOURCES = smath.c smfunc.c smloadosm.c smrparse.c libhpxml.c smcoast.c smgrid.c smrender.c smrules.c smkap.c smqr.c smthread.c memimg.c
+smrender_LDADD = $(srcdir)/../libsmrender/libsmrender.la
+noinst_HEADERS = libhpxml.h smath.h smrender_dev.h smcoast.h memimg.h
 
