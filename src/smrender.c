@@ -56,6 +56,13 @@
 
 
 static volatile sig_atomic_t int_ = 0;
+static struct rdata rd_;
+
+
+struct rdata *get_rdata(void)
+{
+   return &rd_;
+}
 
 
 /*! This function parse a coordinate string of format "[-]dd.ddd[NESW]" or
@@ -283,10 +290,10 @@ int apply_smrules(smrule_t *r, struct rdata *rd, osm_obj_t *o)
    {
 #ifdef WITH_THREADS
       if (sm_is_threaded(r))
-         e = traverse_queue(rd->obj, r->oo->type - 1, (tree_func_t) apply_smrules0, r);
+         e = traverse_queue(*get_objtree(), r->oo->type - 1, (tree_func_t) apply_smrules0, r);
       else
 #endif
-         e = traverse(rd->obj, 0, r->oo->type - 1, (tree_func_t) apply_smrules0, rd, r);
+         e = traverse(*get_objtree(), 0, r->oo->type - 1, (tree_func_t) apply_smrules0, rd, r);
    }
    else
       log_debug("   -> no main function");
@@ -674,24 +681,25 @@ int save_osm(const char *s, bx_node_t *tree, const struct bbox *bb, const char *
 }
 
 
-static struct rdata rd_;
+//static struct rdata rd_;
 
 
 static void __attribute__((constructor)) init_rdata(void)
 {
+   struct rdata *rd = get_rdata();
    log_debug("initializing struct rdata");
-   memset(&rd_, 0, sizeof(rd_));
-   rd_.dpi = 300;
-   rd_.ovs = DEFAULT_OVS;
-   rd_.title = "";
-   set_static_obj_tree(&rd_.obj);
+   memset(rd, 0, sizeof(*rd));
+   rd->dpi = 300;
+   rd->ovs = DEFAULT_OVS;
+   rd->title = "";
+   //set_static_obj_tree(&rd_.obj);
 }
 
 
-struct rdata inline *get_rdata(void)
+/*struct rdata inline *get_rdata(void)
 {
    return &rd_;
-}
+}*/
 
 
 /*! Initializes data about paper (image) size.
@@ -1075,7 +1083,6 @@ int main(int argc, char *argv[])
 
    // install exit handlers
    osm_read_exit();
-   bx_exit();
 
    if (rd->ovs)
       rd->dpi *= rd->ovs;
@@ -1194,11 +1201,11 @@ int main(int argc, char *argv[])
       fi.use_bbox = 1;
       log_msg(LOG_INFO, "using input bounding box %.3f/%.3f - %.3f/%.3f",
             fi.c1.lat, fi.c1.lon, fi.c2.lat, fi.c2.lon);
-      (void) read_osm_file(ctl, &rd->obj, &fi, &rd->ds);
+      (void) read_osm_file(ctl, get_objtree(), &fi, &rd->ds);
    }
    else
    {
-      (void) read_osm_file(ctl, &rd->obj, NULL, &rd->ds);
+      (void) read_osm_file(ctl, get_objtree(), NULL, &rd->ds);
    }
 
    if (!rd->ds.ncnt)
@@ -1211,7 +1218,7 @@ int main(int argc, char *argv[])
    log_debug("onode memory used: %ld kb", (long) onode_mem() / 1024);
 
    log_msg(LOG_INFO, "stripping filtered way nodes");
-   traverse(rd->obj, 0, IDX_WAY, (tree_func_t) strip_ways, rd, NULL);
+   traverse(*get_objtree(), 0, IDX_WAY, (tree_func_t) strip_ways, rd, NULL);
 
    switch (gen_grid)
    {
@@ -1259,15 +1266,15 @@ int main(int argc, char *argv[])
 
    int_ = 0;
 
-   save_osm(osm_ofile, rd->obj, &rd->bb, rd->cmdline);
+   save_osm(osm_ofile, *get_objtree(), &rd->bb, rd->cmdline);
    (void) close(ctl->fd);
    hpx_free(ctl);
    hpx_free(cfctl);
 
    log_debug("freeing main objects");
-   traverse(rd->obj, 0, IDX_REL, free_objects, rd, NULL);
-   traverse(rd->obj, 0, IDX_WAY, free_objects, rd, NULL);
-   traverse(rd->obj, 0, IDX_NODE, free_objects, rd, NULL);
+   traverse(*get_objtree(), 0, IDX_REL, free_objects, rd, NULL);
+   traverse(*get_objtree(), 0, IDX_WAY, free_objects, rd, NULL);
+   traverse(*get_objtree(), 0, IDX_NODE, free_objects, rd, NULL);
 
    log_debug("freeing rule objects");
    traverse(rd->rules, 0, IDX_REL, (tree_func_t) free_rules, rd, NULL);
@@ -1275,7 +1282,7 @@ int main(int argc, char *argv[])
    traverse(rd->rules, 0, IDX_NODE, (tree_func_t) free_rules, rd, NULL);
 
    log_debug("freeing main object tree");
-   bx_free_tree(rd->obj);
+   bx_free_tree(*get_objtree());
    log_debug("freeing rules tree");
    bx_free_tree(rd->rules);
 

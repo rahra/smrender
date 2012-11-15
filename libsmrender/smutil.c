@@ -23,7 +23,6 @@
  *  @author Bernhard R. Fischer
  */
 
-//#include "smrender_dev.h"
 #ifdef HAVE_CONFIG_H
 #include "config.h"
 #endif
@@ -47,12 +46,12 @@
 #include "smaction.h"
 
 
-static bx_node_t **obj_tree_ = NULL;
+static bx_node_t *obj_tree_ = NULL;
 
 
-void set_static_obj_tree(bx_node_t **tree)
+bx_node_t **get_objtree(void)
 {
-   obj_tree_ = tree;
+   return &obj_tree_;
 }
 
 
@@ -128,13 +127,13 @@ int put_object0(bx_node_t **tree, int64_t id, void *p, int idx)
 
 int put_object(osm_obj_t *o)
 {
-   if (obj_tree_ == NULL)
+   /*if (obj_tree_ == NULL)
    {
       log_msg(LOG_EMERG, "static object tree unset in libsmrender. Call set_static_obj_tree()!");
       return -1;
-   }
+   }*/
  
-   return put_object0(obj_tree_, o->id, o, o->type - 1);
+   return put_object0(&obj_tree_, o->id, o, o->type - 1);
 }
 
 
@@ -165,12 +164,12 @@ void *get_object0(bx_node_t *tree, int64_t id, int idx)
 
 void *get_object(int type, int64_t id)
 {
-   if (obj_tree_ == NULL)
+   /*if (obj_tree_ == NULL)
    {
       log_msg(LOG_EMERG, "static object tree unset in libsmrender. Call set_static_obj_tree()!");
       return NULL;
-   }
-   return get_object0(*obj_tree_, id, type - 1);
+   }*/
+   return get_object0(obj_tree_, id, type - 1);
 }
 
 

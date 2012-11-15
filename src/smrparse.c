@@ -28,6 +28,23 @@
 #include "smrender_dev.h"
 
 
+static const char *rgbcol_name_[] = {
+   "white", "yellow", "black", "blue", "magenta", "brown", "transparent", "bgcolor", NULL
+};
+
+static int rgbcol_[] = {
+   0x00fffffe, // WHITE
+   0x00e7d14a, // YELLOW
+   0x00000000, // BLACK
+   0x0089c7b2, // BLUE
+   0x0078082c, // MAGENTA
+   0x009a2a02, // BROWN
+   0x7f000000, // TRANSPARENT
+   0x00ffffff, // BGCOLOR
+   -1
+};
+
+
 int parse_matchtype(bstring_t *b, struct specialTag *t)
 {
    t->type = 0;
@@ -114,10 +131,37 @@ short ppos(const char *s)
 }
 
 
-int parse_color(const struct rdata *rd, const char *s)
+int get_color(int n)
+{
+   if (n < 0 || n >= MAXCOLOR)
+      return -1;
+   return rgbcol_[n];
+}
+
+
+int set_color(const char *s, int col)
+{
+   int i, c = -1;
+
+   for (i = 0; rgbcol_name_[i] != NULL; i++)
+      if (!strcmp(s, rgbcol_name_[i]))
+      {
+         c = rgbcol_[i];
+         rgbcol_[i] = col;
+         break;
+      }
+   return c;
+}
+
+
+int parse_color(const char *s)
 {
    long c;
-   int l;
+   int i, l;
+
+   // safety check
+   if (s == NULL)
+      return -1;
 
    if (*s == '#')
    {
@@ -126,7 +170,7 @@ int parse_color(const struct rdata *rd, const char *s)
       if ((l != 6) && (l != 8))
       {
          log_msg(LOG_WARN, "format error in HTML color '#%s'", s);
-         return rd->col[BLACK];
+         return rgbcol_[BLACK];
       }
 
       errno = 0;
@@ -134,28 +178,18 @@ int parse_color(const struct rdata *rd, const char *s)
       if (errno)
       {
          log_msg(LOG_WARN, "cannot convert HTML color '#%s': %s", s, strerror(errno));
-         return rd->col[BLACK];
+         return rgbcol_[BLACK];
       }
 
-      return get_color(rd, (c >> 16) & 0xff, (c >> 8) & 0xff, c & 0xff, (c >> 24) & 0x7f);
+      return ((c >> 16) & 0xff) | ((c >> 8) & 0xff) | (c & 0xff) | ((c >> 24) & 0x7f);
    }
-   if (!strcmp(s, "white"))
-      return rd->col[WHITE];
-   if (!strcmp(s, "yellow"))
-      return rd->col[YELLOW];
-   if (!strcmp(s, "black"))
-      return rd->col[BLACK];
-   if (!strcmp(s, "blue"))
-      return rd->col[BLUE];
-   if (!strcmp(s, "magenta"))
-      return rd->col[MAGENTA];
-   if (!strcmp(s, "brown"))
-      return rd->col[BROWN];
-   if (!strcmp(s, "transparent"))
-      return rd->col[TRANSPARENT];
+
+   for (i = 0; rgbcol_name_[i] != NULL; i++)
+      if (!strcmp(s, rgbcol_name_[i]))
+         return rgbcol_[i];
 
    log_msg(LOG_WARN, "unknown color %s, defaulting to black", s);
-   return rd->col[BLACK];
+   return rgbcol_[BLACK];
 }
 
 
