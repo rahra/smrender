@@ -35,7 +35,7 @@ bx_node_t *bx_add_node0(bx_node_t **, bx_hash_t, bx_hash_t);
 bx_node_t *bx_get_node0(bx_node_t *, bx_hash_t, bx_hash_t);
 void bx_free_tree0(bx_node_t *node, bx_hash_t d);
 size_t bx_sizeof(void);
-void bx_exit(void);
+//void bx_exit(void);
 
 
 #endif

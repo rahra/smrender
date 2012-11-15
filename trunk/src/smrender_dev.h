@@ -29,6 +29,7 @@
 
 #include "smrender.h"
 #include "smaction.h"
+#include "rdata.h"
 
 #include "osm_inplace.h"
 #include "bstring.h"
@@ -38,11 +39,11 @@
 #include "libhpxml.h"
 
 
-#ifdef HAVE_GD
+/*#ifdef HAVE_GD
 typedef gdImage image_t;
 #else
 typedef void image_t;
-#endif
+#endif*/
 
 #define EXIT_NORULES 128
 #define EXIT_NODATA 129
@@ -92,8 +93,6 @@ typedef void image_t;
 // convert mm to degrees
 #define MM2LAT(x) ((x) * (rd->bb.ru.lat - rd->bb.ll.lat) / PX2MM(rd->h))
 #define MM2LON(x) ((x) * (rd->bb.ru.lon - rd->bb.ll.lon) / PX2MM(rd->w))
-// maximum number if different rule versions (processing iterations)
-#define MAX_ITER 8
 // default oversampling factor
 #define DEFAULT_OVS 2
 
@@ -107,7 +106,7 @@ typedef int (*tree_func_t)(osm_obj_t*, struct rdata*, void*);
 
 // indexes to object tree
 enum {IDX_NODE, IDX_WAY, IDX_REL};
-enum {WHITE, YELLOW, BLACK, BLUE, MAGENTA, BROWN, TRANSPARENT, BGCOLOR, MAX_COLOR};
+enum {WHITE, YELLOW, BLACK, BLUE, MAGENTA, BROWN, TRANSPARENT, BGCOLOR, MAXCOLOR};
 enum {LAT, LON};
 enum {DRAW_SOLID, DRAW_DASHED, DRAW_DOTTED, DRAW_TRANSPARENT};
 
@@ -123,7 +122,7 @@ struct actImage
 {
    double angle;
    struct auto_rot rot;
-   image_t *img;
+   gdImage *img;
 };
 
 struct cap_data
@@ -197,65 +196,6 @@ struct grid
    double g_margin, g_tw, g_stw;
 };
 
-struct bbox
-{
-   struct coord ll, ru;
-};
-
-struct dstats
-{
-   //struct coord lu;  // left upper
-   //struct coord rb;  // right bottom
-   struct bbox bb;
-   long ncnt, wcnt, rcnt;
-   int64_t min_nid;
-   int64_t max_nid;
-   int64_t min_wid;
-   int64_t max_wid;
-   const void *lo_addr, *hi_addr;   // lowest and highest memory address
-   int ver_cnt;
-   int ver[MAX_ITER];
-};
-
-struct rdata
-{
-   // root node of objects (nodes and ways)
-   bx_node_t *obj;
-   // root nodes of node rules and way rules
-   bx_node_t *rules;
-   // bounding box (left lower and right upper coordinates)
-   struct bbox bb;
-   // coordinate with/height (wc=bb.ru.lon-bb.ll.lon, hc=bb.ru.lat-bb.ll.lat)
-   double wc, hc;
-   // mean latitude and its length in degrees corresponding to the real nautical miles
-   double mean_lat, mean_lat_len;
-   double mean_lon;
-   // hyperbolic values for transversial Mercator (latitude stretching)
-   double lath, lath_len;
-   // (pixel) image width and height of rendered image
-   int w, h;
-   // (pixel) image width and height of final image
-   int fw, fh;
-   // pixel resolution
-   int dpi;
-   // oversampling factor
-   int ovs;
-   // scale
-   double scale;
-   // node/way stats
-   struct dstats ds;
-   // pointer to cmd line string
-   char *cmdline;
-   // chart title
-   char *title;
-
-   // ***** this is libgd2 specific ***** 
-   // pointer to image data
-   image_t *img;
-   // image colors
-   int col[MAX_COLOR];
-};
-
 struct filter
 {
    // c1 = left upper corner, c2 = right lower corner of bounding box
@@ -265,7 +205,6 @@ struct filter
    // pointer to rules tree (or NULL if it should be ignored)
    bx_node_t *rules;
 };
-
 
 struct file
 {
@@ -311,7 +250,7 @@ void init_cat_poly(struct rdata*);
 /* smrules.c */
 void init_main_image(struct rdata*, const char*);
 void save_main_image(struct rdata*, FILE*);
-int get_color(const struct rdata*, int, int, int, int);
+//int get_color(const struct rdata*, int, int, int, int);
 int get_pixel(struct rdata*, int , int );
 void reduce_resolution(struct rdata *);
 
@@ -319,7 +258,9 @@ void reduce_resolution(struct rdata *);
 FILE *init_log(const char*, int);
 
 /* smrparse.c */
-int parse_color(const struct rdata *, const char *);
+int set_color(const char *, int);
+int get_color(int);
+int parse_color(const char *);
 int parse_style(const char *s);
 int parse_matchtype(bstring_t*, struct specialTag*);
 int init_rules(osm_obj_t*, struct rdata*, void*);

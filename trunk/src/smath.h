@@ -5,10 +5,10 @@
 #include <math.h>
 
 
-struct coord
+/*struct coord
 {
    double lat, lon;
-};
+};*/
 
 struct pcoord
 {
