@@ -20,10 +20,17 @@
  *
  *  @author Bernhard R. Fischer
  */
+
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
 #include <string.h>
 #include <syslog.h>
 #include <errno.h>
 #include <ctype.h>
+#ifdef WITH_THREADS
+#include <pthread.h>
+#endif
 
 #include "smrender_dev.h"
 #include "smcoast.h"
@@ -963,6 +970,8 @@ int act_draw_ini(smrule_t *r)
 
    d->wl = init_wlist();
 
+   sm_threaded(r);
+
    //log_msg(LOG_DEBUG, "directional = %d, ignore_open = %d", d->directional, !d->collect_open);
    log_msg(LOG_DEBUG, "{%08x, %.1f, %d, %d}, {%08x, %.1f, %d, %d}, %d, %d, %p",
         d->fill.col, d->fill.width, d->fill.style, d->fill.used,
@@ -975,6 +984,9 @@ int act_draw_ini(smrule_t *r)
 
 int act_draw_main(smrule_t *r, osm_obj_t *o)
 {
+#ifdef WITH_THREADS
+   static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
+#endif
    struct actDraw *d = r->data;
    osm_way_t *w;
    int i;
@@ -984,7 +996,14 @@ int act_draw_main(smrule_t *r, osm_obj_t *o)
       if (!d->collect_open && !is_closed_poly((osm_way_t*) o))
          return 0;
 
-      return gather_poly0((osm_way_t*) o, &d->wl);
+#ifdef WITH_THREADS
+      pthread_mutex_lock(&mutex);
+#endif
+      (void) gather_poly0((osm_way_t*) o, &d->wl);
+#ifdef WITH_THREADS
+      pthread_mutex_unlock(&mutex);
+#endif
+      return 0;
    }
    else if (o->type == OSM_REL)
    {
@@ -996,7 +1015,13 @@ int act_draw_main(smrule_t *r, osm_obj_t *o)
             //FIXME: error message may be output here
             continue;
 
-         (void) gather_poly0(w, &d->wl);
+#ifdef WITH_THREADS
+         pthread_mutex_lock(&mutex);
+#endif
+         (void) gather_poly0((osm_way_t*) o, &d->wl);
+#ifdef WITH_THREADS
+         pthread_mutex_unlock(&mutex);
+#endif
       }
       return 0;
    }

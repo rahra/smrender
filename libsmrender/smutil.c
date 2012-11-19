@@ -397,10 +397,10 @@ int sm_thread_id(void)
 }
 
 
-void __attribute__((constructor(101))) init_sm_thread_id(void)
+/*void __attribute__((constructor(101))) init_sm_thread_id(void)
 {
    (void) sm_thread_id();
-}
+}*/
 
 
 #else
