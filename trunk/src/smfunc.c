@@ -1015,11 +1015,14 @@ int act_poly_len_main(smrule_t *r, osm_way_t *w)
 }
 
 
+/*! Unthreaded action, simple does nothing. Smrender automatically syncs
+ * threads before calling this function. Because this does nothing, the
+ * following action is also called "thread-synced" (without any other thread
+ * running). With this one can force previous _main functions to have finished
+ * before the next action is executed.
+ */
 int act_sync_threads_ini(smrule_t *r)
 {
-#ifdef WITH_THREADS
-   sm_threaded(r);
-#endif
    return 0;
 }
 

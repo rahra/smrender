@@ -39,6 +39,9 @@
       <tag k='_action_' v='poly_centroid'/>
    </way>
    <way>
+      <tag k='_action_' v='sync_threads'/>
+   </way>
+   <way>
       <tag k='natural' v='coastline'/>
       <tag k='_action_' v='draw:color=yellow;bcolor=black'/>
    </way>

@@ -80,19 +80,19 @@ int parse_coord(const char *s, double *a)
    double e, f, n = 1.0;
    int r;
 
-   for (; isspace(*s); s++);
+   for (; isspace((int) *s); s++);
    if (*s == '-')
    {
       s++;
       n = -1.0;
    }
-   for (*a = 0.0; isdigit(*s); s++)
+   for (*a = 0.0; isdigit((int) *s); s++)
    {
       *a *= 10.0;
       *a += *s - '0';
    }
 
-   for (; isspace(*s); s++);
+   for (; isspace((int) *s); s++);
    if (*s == '\0')
    {
       *a *= n;
@@ -112,7 +112,7 @@ int parse_coord(const char *s, double *a)
    else if (*s == '.')
    {
       s++;
-      for (e = 1.0, f = 0.0; isdigit(*s); e *= 10.0, s++)
+      for (e = 1.0, f = 0.0; isdigit((int) *s); e *= 10.0, s++)
       {
          f *= 10.0;
          f += *s - '0';
@@ -120,7 +120,7 @@ int parse_coord(const char *s, double *a)
       *a += f / e;
       *a *= n;
 
-      for (; isspace(*s); s++);
+      for (; isspace((int) *s); s++);
       if (*s == '\0') return -1;
 
       if (ISLAT(*s))
@@ -143,7 +143,7 @@ int parse_coord(const char *s, double *a)
    }
 
    s++;
-   for (; isspace(*s); s++);
+   for (; isspace((int) *s); s++);
    f = atof(s);
    *a += f / 60.0;
    *a *= n;
@@ -271,7 +271,10 @@ int apply_smrules(smrule_t *r, struct rdata *rd, osm_obj_t *o)
 
    // FIXME: wtf is this?
    if (r->act->func_name == NULL)
+   {
+      log_debug("function has no name");
       return 0;
+   }
 
 #ifdef WITH_THREADS
    // if rule is not threaded
