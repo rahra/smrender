@@ -149,16 +149,31 @@ void reduce_resolution(struct rdata *rd)
 }
 
 
-int save_gdimage(const char *s, gdImage *img)
+int save_gdimage(const char *s, gdImage *img, int ftype)
 {  
    FILE *f;
 
    if ((f = fopen(s, "w")) == NULL)
       return -1;
 
-   gdImagePng(img, f);
+   if (!ftype)
+      gdImagePng(img, f);
+   else if (ftype == 1)
+      gdImageJpeg(img, f, JPG_QUALITY);
+   else
+   {
+      fclose(f);
+      return -1;
+   }
+
    fclose(f);
    return 0;
+}
+
+
+int save_image(const char *s, void *img, int ftype)
+{
+   return save_gdimage(s, img, ftype);
 }
 
 
@@ -1175,6 +1190,42 @@ int get_pixel(struct rdata *rd, int x, int y)
 {
    return gdImageGetPixel(img_, x, y);
 }
+
+
+#define TILE_SIZE 256
+void *create_tile(void)
+{
+   gdImage *img;
+
+   if ((img = gdImageCreateTrueColor(TILE_SIZE, TILE_SIZE)) == NULL)
+   {
+      log_msg(LOG_ERR, "failed to create empty tile");
+      return NULL;
+   }
+   return img;
+}
+
+
+void delete_tile(void *img)
+{
+   gdImageDestroy(img);
+}
+
+
+void cut_tile(const struct bbox *bb, void *img)
+{
+   struct rdata *rd = get_rdata();
+   int x, y, w, h;
+
+   mk_paper_coords(bb->ru.lat, bb->ll.lon, rd, &x, &y);
+   mk_paper_coords(bb->ll.lat, bb->ru.lon, rd, &w, &h);
+
+   w -= x;
+   h -= y;
+
+   gdImageCopyResampled(img, img_, 0, 0, x, y, TILE_SIZE, TILE_SIZE, w, h);
+}
+
 
 #else
 

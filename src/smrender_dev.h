@@ -102,6 +102,8 @@ typedef void image_t;
 // scaling factor for bbox of URL output (-u)
 #define BB_SCALE 0.01
 
+#define JPG_QUALITY 80
+
 typedef int (*tree_func_t)(osm_obj_t*, struct rdata*, void*);
 
 // indexes to object tree
@@ -253,6 +255,10 @@ void save_main_image(struct rdata*, FILE*);
 //int get_color(const struct rdata*, int, int, int, int);
 int get_pixel(struct rdata*, int , int );
 void reduce_resolution(struct rdata *);
+void *create_tile(void);
+void delete_tile(void *);
+void cut_tile(const struct bbox *, void *);
+int save_image(const char *, void *, int);
 
 /* smlog.c */
 FILE *init_log(const char*, int);
@@ -288,6 +294,8 @@ void sm_wait_threads(void);
 int traverse_queue(const bx_node_t *, int , tree_func_t , void *);
 int sm_is_threaded(const smrule_t *);
 
+/* smtile.c */
+int create_tiles(const char *, const struct rdata *, int , int );
 
 #endif
 

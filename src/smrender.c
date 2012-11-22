@@ -55,6 +55,13 @@
 #define ISLON(x) (ISEAST(x) || ISWEST(x))
 
 
+struct tile_info
+{
+   char *path;    // path to tiles
+   int zlo, zhi;  // lowest and highest zoom level
+   int ftype;     // 0 ... png, 1 ... jpg
+};
+
 static volatile sig_atomic_t int_ = 0;
 static struct rdata rd_;
 
@@ -804,6 +811,9 @@ void usage(const char *s)
          "   -r <rules file> ..... Rules file ('rules.osm' is default).\n"
          "   -s <ovs> ............ Set oversampling factor (0-10) (default = %d).\n"
          "   -t <title> .......... Set descriptional chart title.\n"
+         "   -T <tile_info> ...... Create tiles.\n"
+         "      <tile_info> := <zoom_lo> [ '-' <zoom_hi> ] ':' <tile_path> [ ':' <file_type> ]\n"
+         "      <file_type> := 'png' | 'jpg'\n"
          "   -o <image file> ..... Filename of output image (stdout is default).\n"
          "   -P <page format> .... Select output page format.\n"
          "   -u .................. Output URLs suitable for OSM data download and\n"
@@ -873,10 +883,51 @@ char *mk_cmd_line(const char **argv)
 }
 
 
+int parse_tile_info(char *tstr, struct tile_info *ti)
+{
+   char *s, *p;
+
+   if (tstr == NULL)
+      return -1;
+
+   memset(ti, 0, sizeof(*ti));
+
+   s = strtok(tstr, ":");
+   ti->zlo = atoi(s);
+   if ((p = strchr(tstr, '-')) != NULL)
+      ti->zhi = atoi(p + 1);
+   else
+      ti->zhi = ti->zlo;
+
+   if (ti->zlo < 0)
+      ti->zlo = 0;
+
+   if (ti->zhi < ti->zlo)
+   {
+      log_msg(LOG_ERR, "error in tile_info string '%s'", tstr);
+      return -1;
+   }
+
+   if ((ti->path = strtok(NULL, ":")) == NULL)
+   {
+      ti->path = ".";
+      return 0;
+   }
+
+   if ((s = strtok(NULL, ":")) == NULL)
+      return 0;
+
+   if (!strcasecmp("jpg", s))
+      ti->ftype = 1;
+
+   return 0;
+}
+
+
 int main(int argc, char *argv[])
 {
    hpx_ctrl_t *ctl, *cfctl;
-   int fd = 0, n;
+   int fd = 0, n, i;
    struct stat st;
    FILE *f = stdout;
    char *cf = "rules.osm", *img_file = NULL, *osm_ifile = NULL, *osm_ofile =
@@ -890,14 +941,16 @@ int main(int argc, char *argv[])
    struct grid grd;
    osm_obj_t o;
    char *s;
+   struct tile_info ti;
 
    (void) gettimeofday(&tv_start, NULL);
    init_log("stderr", LOG_DEBUG);
    rd = get_rdata();
    init_grid(&grd);
    rd->cmdline = mk_cmd_line((const char**) argv);
+   memset(&ti, 0, sizeof(ti));
 
-   while ((n = getopt(argc, argv, "b:d:fg:Ghi:k:K:lMmo:P:r:R:s:t:uVw:")) != -1)
+   while ((n = getopt(argc, argv, "b:d:fg:Ghi:k:K:lMmo:P:r:R:s:t:T:uVw:")) != -1)
       switch (n)
       {
          case 'b':
@@ -1002,6 +1055,14 @@ int main(int argc, char *argv[])
 
          case 't':
             rd->title = optarg;
+            break;
+
+         case 'T':
+            if (parse_tile_info(optarg, &ti))
+            {
+               log_msg(LOG_ERR, "failed to parse tile info '%s'", optarg);
+               exit(EXIT_FAILURE);
+            }
             break;
 
          case 'u':
@@ -1326,6 +1387,16 @@ int main(int argc, char *argv[])
          //gen_kap_header(f, rd);
          gen_kap_header(f, rd);
          fclose(f);
+      }
+   }
+
+   if (ti.path != NULL)
+   {
+      log_msg(LOG_INFO, "creating tiles in directory %s", ti.path);
+      for (i = ti.zlo; i <= ti.zhi; i++)
+      {
+         log_msg(LOG_INFO, "zoom level %d", i);
+         (void) create_tiles(ti.path, rd, i, ti.ftype);
       }
    }
 
