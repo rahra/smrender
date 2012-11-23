@@ -1223,6 +1223,7 @@ void cut_tile(const struct bbox *bb, void *img)
    w -= x;
    h -= y;
 
+   log_debug("cut tile x/y/w/h %d/%d/%d/%d", x, y, w, h);
    gdImageCopyResampled(img, img_, 0, 0, x, y, TILE_SIZE, TILE_SIZE, w, h);
 }
 
