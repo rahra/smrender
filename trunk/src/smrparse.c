@@ -181,7 +181,7 @@ int parse_color(const char *s)
          return rgbcol_[BLACK];
       }
 
-      return ((c >> 16) & 0xff) | ((c >> 8) & 0xff) | (c & 0xff) | ((c >> 24) & 0x7f);
+      return c;
    }
 
    for (i = 0; rgbcol_name_[i] != NULL; i++)

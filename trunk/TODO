@@ -2,3 +2,6 @@
 * border width of closed polygons seams to have a bug.
 * Negative OSM IDs may colide, read_osm() does not assign IDs properly.
 * Buf refine_poly() if lat[0] == lat[1]
+* signal handling in threaded mode does not work (sigprocmask)
+* free objects sometimes segfaults in threaded mode
+
