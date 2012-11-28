@@ -125,6 +125,7 @@ void init_main_image(struct rdata *rd, const char *bg)
    rd->col[MAGENTA] = gdImageColorAllocate(img_, 120, 8, 44);
    rd->col[BROWN] = gdImageColorAllocate(img_, 154, 42, 2);
    rd->col[BGCOLOR] = bg == NULL ? 0x00ffffff : parse_color(bg);*/
+   gdImageSaveAlpha(img_, 1);
    if (bg != NULL)
       set_color("bgcolor", parse_color(bg));
    log_msg(LOG_DEBUG, "background color is set to 0x%08x", get_color(BGCOLOR));
