@@ -735,8 +735,12 @@ void init_rd_paper(struct rdata *rd, const char *paper, int landscape)
             exit(EXIT_FAILURE);
       rd->h = MM2PX(atof(s));
       
-      if ((rd->w <= 0) || (rd->h <= 0))
+      if ((rd->w < 0) || (rd->h < 0))
          log_msg(LOG_ERR, "page width and height must be a decimal value greater than 0"),
+            exit(EXIT_FAILURE);
+
+      if (!rd->w && !rd->h)
+         log_msg(LOG_ERR, "width and height cannot both be 0"),
             exit(EXIT_FAILURE);
 
       return;
@@ -1152,6 +1156,37 @@ int main(int argc, char *argv[])
       rd->dpi *= rd->ovs;
 
    init_rd_paper(rd, paper, landscape);
+   if (rd->scale > 0)
+   {
+      if (!rd->w || !rd->h)
+         log_msg(LOG_ERR, "zero height or width only possible with bounding box window"),
+            exit(EXIT_FAILURE);
+      rd->mean_lat_len = rd->scale * ((double) rd->w / (double) rd->dpi) * 2.54 / (60.0 * 1852 * 100);
+   }
+   else if (rd->wc > 0)
+   {
+      if (!rd->w || !rd->h)
+         log_msg(LOG_ERR, "zero height or width only possible with bounding box window"),
+            exit(EXIT_FAILURE);
+      rd->mean_lat_len  = rd->wc * cos(rd->mean_lat * M_PI / 180);
+   }
+   else if (rd->mean_lat_len == 0)
+   {
+      rd->mean_lat_len = (rd->bb.ru.lon - rd->bb.ll.lon) * cos(DEG2RAD(rd->mean_lat));
+
+      // autofit page
+      if (!rd->w)
+         rd->w = round((double) rd->h * rd->mean_lat_len / (rd->bb.ru.lat - rd->bb.ll.lat));
+      else if (!rd->h)
+         rd->h = round((double) rd->w * (rd->bb.ru.lat - rd->bb.ll.lat) / rd->mean_lat_len);
+
+      if (rd->mean_lat_len * rd->h / rd->w < rd->bb.ru.lat - rd->bb.ll.lat)
+      {
+         rd->mean_lat_len = (rd->bb.ru.lat - rd->bb.ll.lat) * rd->w / rd->h;
+         //log_msg(LOG_INFO, "bbox widened from %.2f to %.2f nm", (rd->bb.ru.lon - rd->bb.ll.lon) * cos(DEG2RAD(rd->mean_lat)) * 60, rd->mean_lat_len * 60);
+      }
+   }
+
    if (rd->ovs > 1)
    {
       rd->fw = rd->w / rd->ovs;
@@ -1163,20 +1198,6 @@ int main(int argc, char *argv[])
       rd->fh = rd->h;
    }
 
-   if (rd->scale > 0)
-      rd->mean_lat_len = rd->scale * ((double) rd->w / (double) rd->dpi) * 2.54 / (60.0 * 1852 * 100);
-   else if (rd->wc > 0)
-      rd->mean_lat_len  = rd->wc * cos(rd->mean_lat * M_PI / 180);
-   else if (rd->mean_lat_len == 0)
-   {
-      rd->mean_lat_len = (rd->bb.ru.lon - rd->bb.ll.lon) * cos(DEG2RAD(rd->mean_lat));
-      if (rd->mean_lat_len * rd->h / rd->w < rd->bb.ru.lat - rd->bb.ll.lat)
-      {
-         rd->mean_lat_len = (rd->bb.ru.lat - rd->bb.ll.lat) * rd->w / rd->h;
-         //log_msg(LOG_INFO, "bbox widened from %.2f to %.2f nm", (rd->bb.ru.lon - rd->bb.ll.lon) * cos(DEG2RAD(rd->mean_lat)) * 60, rd->mean_lat_len * 60);
-      }
-   }
- 
    init_bbox_mll(rd);
 
    if (prt_url)
@@ -1350,6 +1371,18 @@ int main(int argc, char *argv[])
    log_debug("freeing rules tree");
    bx_free_tree(rd->rules);
 
+   // FIXME: this is done before reduce_resolution() because mk_paper_coords()
+   // used in cut_tile() (smrules.c) referes to the rendering resolution.
+   if (ti.path != NULL)
+   {
+      log_msg(LOG_INFO, "creating tiles in directory %s", ti.path);
+      for (i = ti.zlo; i <= ti.zhi; i++)
+      {
+         log_msg(LOG_INFO, "zoom level %d", i);
+         (void) create_tiles(ti.path, rd, i, ti.ftype);
+      }
+   }
+
    if (rd->ovs > 1)
       reduce_resolution(rd);
 
@@ -1387,16 +1420,6 @@ int main(int argc, char *argv[])
          //gen_kap_header(f, rd);
          gen_kap_header(f, rd);
          fclose(f);
-      }
-   }
-
-   if (ti.path != NULL)
-   {
-      log_msg(LOG_INFO, "creating tiles in directory %s", ti.path);
-      for (i = ti.zlo; i <= ti.zhi; i++)
-      {
-         log_msg(LOG_INFO, "zoom level %d", i);
-         (void) create_tiles(ti.path, rd, i, ti.ftype);
       }
    }
 
