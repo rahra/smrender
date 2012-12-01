@@ -35,11 +35,12 @@
  * 6.3) copy node ids of all connected ways to newly created way (join_open_poly()). Mark ways which have been processed as deleteable (from list). Mark those which are still open (i.e. not already looped) as open.
  * 6.4) put new way to way pool.
  * 7) Free list of pdef
- * 8) create new pdef list with number of still open ways.
- * 9) add all end points to pdef list and calculate bearing from center point (poly_get_brg() returns number of open ways)
- * 10) sort points by bearing
- * 11) connect_open()
- * 11.1)
+ * 8) Trim open ways to edges of page
+ * 9) create new pdef list with number of still open ways.
+ * 10) add all end points to pdef list and calculate bearing from center point (poly_get_brg() returns number of open ways)
+ * 11) sort points by bearing
+ * 12) connect_open()
+ * 12.1)
  *
  */
 #include <unistd.h>
@@ -59,6 +60,7 @@ struct refine
 
 static struct corner_point co_pt_[4];
 static struct coord center_;
+
 
 
 /*! Check if way is a closed polygon and is an area (i.e. it has at least 4 points)
@@ -106,7 +108,7 @@ int gather_poly0(osm_way_t *w, struct wlist **wl)
  * @param wl Pointer to wlist containing all open polygons.
  * @return Pointer to pdef containg all nodes. Obviously it is of length wl->ref_cnt * 2.
  */
-struct pdef *poly_get_node_ids(const struct wlist *wl)
+static struct pdef *poly_get_node_ids(const struct wlist *wl)
 {
    int i;
    struct pdef *pd;
@@ -131,7 +133,7 @@ struct pdef *poly_get_node_ids(const struct wlist *wl)
 }
 
 
-int poly_get_brg(struct pdef *pd, struct wlist *wl, int ocnt)
+static int poly_get_brg(struct pdef *pd, struct wlist *wl, int ocnt)
 {
    int i, j;
 
@@ -153,7 +155,198 @@ int poly_get_brg(struct pdef *pd, struct wlist *wl, int ocnt)
 }
 
 
-int poly_find_adj2(struct wlist *wl, struct pdef *pd)
+static int octant(const struct coord *crd)
+{
+   int pos = 0;
+
+   if (crd->lat > co_pt_[0].n->lat)
+      pos |= POS_N;
+   else if (crd->lat < co_pt_[1].n->lat)
+      pos |= POS_S;
+
+   if (crd->lon > co_pt_[0].n->lon)
+      pos |= POS_E;
+   else if (crd->lon < co_pt_[3].n->lon)
+      pos |= POS_W;
+
+   return pos;
+}
+
+
+static int64_t edge_point(struct coord crd, int pos, int64_t nid)
+{
+   osm_node_t *n;
+
+   //log_debug("trimming way %ld, %d - %d out of page, octant = 0x%02x", (long) w->obj.id, 0, i - 1, p[0]);
+   // FIXME: inserting corner points is not really correct
+   // Bearing between inner point and out pointer should be compare to
+   // the bearing from the inner point to the corner point.
+   if ((pos & POS_N) && (pos & POS_E))
+   {
+      return co_pt_[0].n->obj.id;
+   }
+   else if ((pos & POS_S) && (pos & POS_E))
+   {
+      return co_pt_[1].n->obj.id;
+   }
+   else if ((pos & POS_S) && (pos & POS_W))
+   {
+      return co_pt_[2].n->obj.id;
+   }
+   else if ((pos & POS_N) && (pos & POS_W))
+   {
+      return co_pt_[3].n->obj.id;
+   }
+   else 
+   {
+      // FIXME: coordinates of new edge points are not correct. They deviate from
+      // their intended location.
+      n = get_object(OSM_NODE, nid);
+      switch (pos)
+      {
+         case POS_N:
+            crd.lon += (n->lon - crd.lon) * (n->lat - co_pt_[0].n->lat) / (n->lat - crd.lat);
+            crd.lat = co_pt_[0].n->lat;
+            break;
+         case POS_S:
+            crd.lon += (n->lon - crd.lon) * (n->lat - co_pt_[1].n->lat) / (n->lat - crd.lat);
+            crd.lat = co_pt_[1].n->lat;
+            break;
+         case POS_E:
+            crd.lat += (n->lat - crd.lat) * (n->lon - co_pt_[0].n->lon) / (n->lon - crd.lon);
+            crd.lon = co_pt_[0].n->lon;
+            break;
+         case POS_W:
+            crd.lat += (n->lat - crd.lat) * (n->lon - co_pt_[3].n->lon) / (n->lon - crd.lon);
+            crd.lon = co_pt_[3].n->lon;
+            break;
+         default:
+            log_msg(LOG_EMERG, "octant not allowed: 0x%02x", pos);
+            return 0;
+      }
+      n = malloc_node(1);
+      osm_node_default(n);
+      n->lat = crd.lat;
+      n->lon = crd.lon;
+      put_object((osm_obj_t*) n);
+//        w->ref[0] = n->obj.id;
+//         log_debug("added new edge point %ld at lat = %f, lon = %f", (long) n->obj.id, n->lat, n->lon);
+      return n->obj.id;
+   }
+}
+
+
+static int trim_way_rev(osm_way_t *w)
+{
+   struct coord crd;
+   osm_node_t *n;
+   int i, p[2] = {0, 0};
+   int64_t nid;
+
+   for (i = w->ref_cnt - 1; i >= 0; i--)
+   {
+      if ((n = get_object(OSM_NODE, w->ref[i])) == NULL)
+      {
+         log_msg(LOG_ERR, "node %ld in way %ld does not exist", (long) w->ref[i], (long) w->obj.id);
+         return -1;
+      }
+
+      crd.lat = n->lat;
+      crd.lon = n->lon;
+      p[0] = p[1];
+      if (!(p[1] = octant(&crd)))
+         break;
+   }
+
+   if (i < 0)
+   {
+      log_msg(LOG_ERR, "unhandled error: all nodes of way %ld are outside the page", (long) w->obj.id);
+      return -1;
+   }
+
+   if (i < w->ref_cnt - 1)
+   {
+      log_debug("trimming way %ld, %d - %d out of page, octant = 0x%02x", (long) w->obj.id, w->ref_cnt - 1, i + 1, p[0]);
+
+      if (!(nid = edge_point(crd, p[0], w->ref[i + 1])))
+         return -1;
+
+      w->ref[i + 1] = nid;
+      log_debug("added new edge point %ld", (long) nid);
+
+      //memmove(&w->ref[1], &w->ref[i], sizeof(int64_t) * (w->ref_cnt - i));
+      w->ref_cnt = i + 2;
+   }
+
+   return w->ref_cnt - 1 - i;
+}
+
+
+static int trim_way(osm_way_t *w)
+{
+   struct coord crd;
+   osm_node_t *n;
+   int i, p[2] = {0, 0};
+   int64_t nid;
+
+   for (i = 0; i < w->ref_cnt; i++)
+   {
+      if ((n = get_object(OSM_NODE, w->ref[i])) == NULL)
+      {
+         log_msg(LOG_ERR, "node %ld in way %ld does not exist", (long) w->ref[i], (long) w->obj.id);
+         return -1;
+      }
+
+      crd.lat = n->lat;
+      crd.lon = n->lon;
+      p[0] = p[1];
+      if (!(p[1] = octant(&crd)))
+         break;
+   }
+
+   if (i >= w->ref_cnt)
+   {
+      log_msg(LOG_ERR, "unhandled error: all nodes of way %ld are outside the page", (long) w->obj.id);
+      return -1;
+   }
+
+   if (i)
+   {
+      log_debug("trimming way %ld, %d - %d out of page, octant = 0x%02x", (long) w->obj.id, 0, i - 1, p[0]);
+
+      if (!(nid = edge_point(crd, p[0], w->ref[i - 1])))
+         return -1;
+
+      w->ref[0] = nid;
+      log_debug("added new edge point %ld", (long) nid);
+
+      memmove(&w->ref[1], &w->ref[i], sizeof(int64_t) * (w->ref_cnt - i));
+      w->ref_cnt -= i - 1;
+   }
+
+   return i;
+}
+
+
+static void trim_ways(struct wlist *wl, int ocnt)
+{
+   int i, j;
+
+   for (i = 0, j = 0; (i < wl->ref_cnt) && (j < ocnt); i++)
+   {
+      if (!wl->ref[i].open)
+         continue;
+
+      if (trim_way(wl->ref[i].w) > 0)
+         log_debug("wl_index = %d", i);
+
+      if (trim_way_rev(wl->ref[i].w) > 0)
+         log_debug("wl_index = %d", i);
+   }
+}
+
+
+static int poly_find_adj2(struct wlist *wl, struct pdef *pd)
 {
    int i, n;
 
@@ -179,7 +372,7 @@ int poly_find_adj2(struct wlist *wl, struct pdef *pd)
  * @param cnt Pointer to integer which will reveive the number of nodes.
  * @return The function returns 1 of it is a loop, 0 if it is unclosed, and -1 on error.
  */
-int count_poly_refs(struct poly *pl, int *cnt)
+static int count_poly_refs(struct poly *pl, int *cnt)
 {
    struct poly *list;
 
@@ -202,7 +395,7 @@ int count_poly_refs(struct poly *pl, int *cnt)
 }
 
 
-osm_way_t *create_new_coastline(const osm_obj_t *o, int ref_cnt)
+static osm_way_t *create_new_coastline(const osm_obj_t *o, int ref_cnt)
 {
    osm_way_t *w;
 
@@ -225,7 +418,7 @@ osm_way_t *create_new_coastline(const osm_obj_t *o, int ref_cnt)
 }
 
 
-int join_open_poly(struct poly *pl, osm_way_t *w)
+static int join_open_poly(struct poly *pl, osm_way_t *w)
 {
    int pos, wcnt = 0;
    struct poly *list;
@@ -253,7 +446,7 @@ int join_open_poly(struct poly *pl, osm_way_t *w)
 }
 
 
-int loop_detect(const osm_obj_t *o, struct wlist *wl)
+static int loop_detect(const osm_obj_t *o, struct wlist *wl)
 {
    osm_way_t *w;
    int i, cnt, ret, ocnt = 0;
@@ -295,7 +488,7 @@ int loop_detect(const osm_obj_t *o, struct wlist *wl)
 }
 
 
-int compare_pdef_nid(const struct pdef *p1, const struct pdef *p2)
+static int compare_pdef_nid(const struct pdef *p1, const struct pdef *p2)
 {
    if (p1->nid < p2->nid) return -1;
    if (p1->nid > p2->nid) return 1;
@@ -307,7 +500,7 @@ int compare_pdef_nid(const struct pdef *p1, const struct pdef *p2)
 }
 
 
-int compare_pdef(const struct pdef *p1, const struct pdef *p2)
+static int compare_pdef(const struct pdef *p1, const struct pdef *p2)
 {
    if (p1->pc.bearing < p2->pc.bearing) return -1;
    if (p1->pc.bearing > p2->pc.bearing) return 1;
@@ -315,11 +508,14 @@ int compare_pdef(const struct pdef *p1, const struct pdef *p2)
 }
 
 
-void init_corner_brg(const struct rdata *rd, const struct coord *src, struct corner_point *co_pt)
+static void init_corner_brg(const struct rdata *rd, const struct coord *src, struct corner_point *co_pt)
 {
    struct coord corner_coord[4] = {rd->bb.ru, {rd->bb.ll.lat, rd->bb.ru.lon}, rd->bb.ll, {rd->bb.ru.lat, rd->bb.ll.lon}};
+   osm_way_t *w;
    int i;
 
+   w = malloc_way(2, 5);
+   osm_way_default(w);
    for (i = 0; i < 4; i++)
    {
       co_pt[i].pc = coord_diff(src, &corner_coord[i]);
@@ -333,11 +529,18 @@ void init_corner_brg(const struct rdata *rd, const struct coord *src, struct cor
       set_const_tag(&co_pt[i].n->obj.otag[1], "generator", "smrender");
       put_object((osm_obj_t*) co_pt[i].n);
       log_msg(LOG_DEBUG, "corner_point[%d].bearing = %f (id = %ld)", i, co_pt[i].pc.bearing, co_pt[i].n->obj.id);
+
+      w->ref[i] = co_pt[i].n->obj.id;
    }
+
+   w->ref[4] = w->ref[0];
+   w->ref_cnt = 5;
+   set_const_tag(&w->obj.otag[1], "border", "page");
+   put_object((osm_obj_t*) w);
 }
 
 
-void node_brg(struct pcoord *pc, struct coord *src, int64_t nid)
+static void node_brg(struct pcoord *pc, struct coord *src, int64_t nid)
 {
    osm_node_t *n;
    struct coord dst;
@@ -358,7 +561,7 @@ void node_brg(struct pcoord *pc, struct coord *src, int64_t nid)
  *  @param no_corner Set to 1 if no corner points should be inserted, otherwise set to 0.
  *  @return 0 On success, -1 if connect_open() should be recalled with pd being resorted.
  */
-int connect_open(struct pdef *pd, struct wlist *wl, int ocnt, short no_corner)
+static int connect_open(struct pdef *pd, struct wlist *wl, int ocnt, short no_corner)
 {
    int i, j, k, l;
    int64_t *ref;
@@ -369,7 +572,7 @@ int connect_open(struct pdef *pd, struct wlist *wl, int ocnt, short no_corner)
       // skip end points and loops
       if (pd[i].pn || !wl->ref[pd[i].wl_index].open)
       {
-         //log_debug("skipping i = %d", i);
+         log_debug("skipping i = %d", i);
          continue;
       }
 
@@ -485,7 +688,7 @@ struct wlist *init_wlist(void)
 }
 
 
-int cat_poly_ini(smrule_t *r)
+static int cat_poly_ini(smrule_t *r)
 {
    double d;
 
@@ -528,7 +731,7 @@ int act_cat_poly_ini(smrule_t *r)
 }
 
 
-int cat_poly(smrule_t *r, osm_obj_t *o)
+static int cat_poly(smrule_t *r, osm_obj_t *o)
 {
    // check if it is an open polygon
    if (((osm_way_t*) o)->ref_cnt < 2)
@@ -541,7 +744,7 @@ int cat_poly(smrule_t *r, osm_obj_t *o)
 }
 
 
-int cat_poly_fini(smrule_t *r)
+static int cat_poly_fini(smrule_t *r)
 {
    struct catpoly *cp = r->data;
    struct wlist *wl = cp->wl;
@@ -554,9 +757,12 @@ int cat_poly_fini(smrule_t *r)
    ocnt = loop_detect(r->oo, wl);
    free(pd);
 
+   log_debug("trimming ways");
+   trim_ways(wl, ocnt);
+
    if (!cp->ign_incomplete)
    {
-      log_msg(LOG_DEBUG, "connecting incomplete polygons loops");
+      log_debug("connecting incomplete polygons loops");
       if ((pd = calloc(ocnt << 1, sizeof(struct pdef))) == NULL)
          log_msg(LOG_EMERG, "cat_poly()/calloc(): %s", strerror(errno)), exit(EXIT_FAILURE);
 
@@ -581,7 +787,7 @@ int cat_poly_fini(smrule_t *r)
 }
 
 
-int cat_relways(smrule_t *r, osm_obj_t *o)
+static int cat_relways(smrule_t *r, osm_obj_t *o)
 {
    osm_way_t *w;
    smrule_t tr;
@@ -643,7 +849,7 @@ int compare_poly_area(const struct poly *p1, const struct poly *p2)
 }
 
 
-void add_blind_node(const struct coord *c)
+static void add_blind_node(const struct coord *c)
 {
    osm_node_t *n = malloc_node(0);
 
@@ -720,7 +926,7 @@ int norm_adj_line_len(osm_way_t *w)
 /*! 
  *  @param sgn Sign; this may be 1 or -1.
  */
-void node_to_circle(osm_node_t *n, const struct coord *c, double r, double k, int sgn)
+static void node_to_circle(osm_node_t *n, const struct coord *c, double r, double k, int sgn)
 {
    double e;
 
@@ -740,7 +946,7 @@ void node_to_circle(osm_node_t *n, const struct coord *c, double r, double k, in
 }
 
 
-void avg_point(osm_node_t *n, const struct coord *p)
+static void avg_point(osm_node_t *n, const struct coord *p)
 {
    if (n->obj.ver)
    {
@@ -760,7 +966,7 @@ void avg_point(osm_node_t *n, const struct coord *p)
  *  @param n Array of two node pointers which will receive the result.
  *  @param s Array of three nodes which are the source of calculation.
  */
-void circle_calc(osm_node_t **n, osm_node_t **s, double deviation)
+static void circle_calc(osm_node_t **n, osm_node_t **s, double deviation)
 {
    int i;
    double k[2], d[2], r, t;
@@ -804,7 +1010,7 @@ void circle_calc(osm_node_t **n, osm_node_t **s, double deviation)
 }
 
 
-int refine_poly0(osm_way_t *w, double deviation)
+static int refine_poly0(osm_way_t *w, double deviation)
 {
    osm_node_t *n[w->ref_cnt - 1], *s[w->ref_cnt];
    int64_t *ref;
