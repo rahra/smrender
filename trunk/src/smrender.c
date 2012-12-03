@@ -273,6 +273,12 @@ int apply_smrules(smrule_t *r, struct rdata *rd, osm_obj_t *o)
       return 1;
    }
 
+   if (!r->oo->vis)
+   {
+      log_msg(LOG_INFO, "ignoring invisible rule %016lx", (long) r->oo->id);
+      return 0;
+   }
+
    if (o != NULL && r->oo->ver != o->ver)
       return 0;
 

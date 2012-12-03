@@ -1221,6 +1221,9 @@ void cut_tile(const struct bbox *bb, void *img)
    mk_paper_coords(bb->ru.lat, bb->ll.lon, rd, &x, &y);
    mk_paper_coords(bb->ll.lat, bb->ru.lon, rd, &w, &h);
 
+   if (x < 0) x = 0;
+   if (y < 0) y = 0;
+
    w -= x;
    h -= y;
 
