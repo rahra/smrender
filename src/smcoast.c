@@ -530,7 +530,7 @@ static void init_corner_brg(const struct rdata *rd, const struct coord *src, str
       put_object((osm_obj_t*) co_pt[i].n);
       log_msg(LOG_DEBUG, "corner_point[%d].bearing = %f (id = %ld)", i, co_pt[i].pc.bearing, co_pt[i].n->obj.id);
 
-      w->ref[i] = co_pt[i].n->obj.id;
+      w->ref[3 - i] = co_pt[i].n->obj.id;
    }
 
    w->ref[4] = w->ref[0];

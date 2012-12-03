@@ -4,6 +4,25 @@
       <tag k='_action_' v='cap:font=sans-serif:italic;size=1.4;angle=auto;auto-color=white;key=name'/>
       <tag k='natural' v='bay'/>
    </node>
+
+   <!-- the following rules try to detect if on land or sea -->
+   <way version="-100" id="100">
+      <tag k='natural' v='coastline'/>
+      <tag k='_action_' v='disable_rule:id=110'/>
+   </way>
+   <way version="-100" id="110">
+      <tag k='/natural|building/' v=''/>
+      <tag k='_action_' v='enable_rule:id=120'/>
+   </way>
+   <way version="-100" id="115">
+      <tag k='natural' v='coastline'/>
+   </way>
+   <way version="-100" id="120" visible="false">
+      <tag k='border' v='page'/>
+      <tag k='generator' v='smrender'/>
+      <tag k='_action_' v='set_tags:id=115'/>
+   </way>
+ 
    <way>
       <tag k='natural' v='coastline'/>
       <tag k='_action_' v='refine_poly'/>
@@ -61,6 +80,7 @@
    </way>
    <way>
       <tag k='natural' v='water'/>
+      <tag k='water' v='/river|lake|canal/'/>
       <tag k='_action_' v='draw:color=blue;bcolor=#000080'/>
    </way>
    <way>

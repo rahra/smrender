@@ -176,6 +176,8 @@ void osm_obj_default(osm_obj_t *o)
 {
    o->tim = time(NULL);
    o->ver = 1;
+   o->vis = 1;
+   // FIXME: this does not check if tag 0 exists and if tag_cnt > 0
    set_const_tag(&o->otag[0], "generator", "smrender");
 }
 

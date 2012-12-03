@@ -56,6 +56,9 @@ static int proc_osm_node(const hpx_tag_t *tag, osm_obj_t *o)
    else 
       return -1;
 
+   // set visibile by default to 1
+   o->vis = 1;
+
    for (i = 0; i < tag->nattr; i++)
    {
       if (o->type == OSM_NODE)
@@ -76,6 +79,8 @@ static int proc_osm_node(const hpx_tag_t *tag, osm_obj_t *o)
          o->uid = bs_tol(tag->attr[i].value);
       else if (!bs_cmp(tag->attr[i].name, "timestamp"))
          o->tim = parse_time(tag->attr[i].value);
+      else if (!bs_cmp(tag->attr[i].name, "visible") && !bs_cmp(tag->attr[i].value, "false"))
+            o->vis = 0;
    }
 
    if (!o->ver)

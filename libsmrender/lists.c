@@ -22,6 +22,7 @@
  */
 #include <stdlib.h>
 #include <stdint.h>
+#include <errno.h>
 
 #include "lists.h"
 
@@ -92,6 +93,7 @@ void li_destroy(list_t *first, void(*free_data)(void*))
 /* Add element to list.
  * @param list Pointer to list_t.
  * @param p Pointer to the data of the element.
+ * @return Returns pointer to new element.
  */
 list_t *li_add(list_t *list, void *p)
 {
@@ -99,7 +101,10 @@ list_t *li_add(list_t *list, void *p)
 
    // safety check
    if (list == NULL || list->next == NULL)
+   {
+      errno = EFAULT;
       return NULL;
+   }
 
    if ((li = malloc(sizeof(*li))) == NULL)
       return NULL;

@@ -1026,3 +1026,54 @@ int act_sync_threads_ini(smrule_t *r)
    return 0;
 }
 
+
+static int parse_id(smrule_t *r)
+{
+   int64_t id;
+   char *s;
+
+   if ((s = get_param("id", NULL, r->act)) == NULL)
+   {
+      log_msg(LOG_WARN, "rule requires missing parameter 'id'");
+      return -1;
+   }
+
+   errno = 0;
+   id = strtoll(s, NULL, 0);
+   if (errno)
+      return -1;
+
+   if ((r->data = get_object0(get_rdata()->rules, id, r->oo->type - 1)) == NULL)
+      return -1;
+
+   return 0;
+}
+
+
+int act_enable_rule_ini(smrule_t *r)
+{
+   return parse_id(r);
+}
+
+
+int act_enable_rule_main(smrule_t *r, osm_obj_t *o)
+{
+   log_msg(LOG_INFO, "enabling rule %016lx", ((osm_obj_t*) r->data)->id);
+   ((osm_obj_t*) r->data)->vis = 1;
+   return 1;
+}
+
+
+int act_disable_rule_ini(smrule_t *r)
+{
+   return parse_id(r);
+}
+
+
+int act_disable_rule_main(smrule_t *r, osm_obj_t *o)
+{
+   log_msg(LOG_INFO, "disabling rule %016lx", ((osm_obj_t*) r->data)->id);
+   ((osm_obj_t*) r->data)->vis = 0;
+   return 1;
+}
+
