@@ -627,7 +627,7 @@ hpx_ctrl_t *open_osm_source(const char *s, int w_mmap)
          goto oos_close_fd;
       }
 
-      if ((e = regcomp(&re, ".*osm", REG_ICASE | REG_NOSUB)))
+      if ((e = regcomp(&re, "\\.osm$", REG_ICASE | REG_NOSUB)))
       {
          log_msg(LOG_ERR, "regcomp() failed: %d", e);
          goto oos_close_dir;

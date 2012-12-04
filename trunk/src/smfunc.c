@@ -100,10 +100,24 @@ int act_out_ini(smrule_t *r)
 int out0(struct out_handle *oh, osm_obj_t *o)
 {
    osm_node_t *n;
+   osm_rel_t *r;
    int i;
 
    if (o->type == OSM_REL)
-      log_msg(LOG_WARN, "output of relations not fully implemented yet!");
+   {
+      r = (osm_rel_t*) o;
+      //log_msg(LOG_WARN, "output of relations not fully implemented yet!");
+      for (i = 0; i < r->mem_cnt; i++)
+      {
+         if ((o = get_object(r->mem->type, r->mem->id)) == NULL)
+         {
+            log_debug("get_object(%d, %ld) returned NULL", r->mem->type, (long) r->mem->id);
+            continue;
+         }
+         (void) out0(oh, o);
+      }
+      o = (osm_obj_t*) r;
+   }
 
    if (o->type == OSM_WAY)
    {
@@ -1058,9 +1072,9 @@ int act_enable_rule_ini(smrule_t *r)
 
 int act_enable_rule_main(smrule_t *r, osm_obj_t *o)
 {
-   log_msg(LOG_INFO, "enabling rule %016lx", ((osm_obj_t*) r->data)->id);
+   //log_msg(LOG_INFO, "enabling rule %016lx", ((osm_obj_t*) r->data)->id);
    ((osm_obj_t*) r->data)->vis = 1;
-   return 1;
+   return 0;
 }
 
 
@@ -1072,8 +1086,8 @@ int act_disable_rule_ini(smrule_t *r)
 
 int act_disable_rule_main(smrule_t *r, osm_obj_t *o)
 {
-   log_msg(LOG_INFO, "disabling rule %016lx", ((osm_obj_t*) r->data)->id);
+   //log_msg(LOG_INFO, "disabling rule %016lx", ((osm_obj_t*) r->data)->id);
    ((osm_obj_t*) r->data)->vis = 0;
-   return 1;
+   return 0;
 }
 
