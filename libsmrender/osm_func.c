@@ -195,3 +195,19 @@ void osm_node_default(osm_node_t *n)
    osm_obj_default((osm_obj_t*) n);
 }
 
+const char *role_str(int role)
+{
+   switch (role)
+   {
+      case ROLE_EMPTY:
+         return "";
+      case ROLE_INNER:
+         return "inner";
+      case ROLE_OUTER:
+         return "outer";
+      case ROLE_NA:
+      default:
+         return "n/a";
+   }
+}
+

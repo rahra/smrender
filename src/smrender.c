@@ -638,8 +638,9 @@ int print_onode(FILE *f, const osm_obj_t *o)
 
       case OSM_REL:
          for (i = 0; i < ((osm_rel_t*) o)->mem_cnt; i++)
-            fprintf(f, "<member type=\"%s\" ref=\"%ld\" role=\"\"/>\n",
-                  ((osm_rel_t*) o)->mem[i].type == OSM_NODE ? "node" : "way", (long) ((osm_rel_t*) o)->mem[i].id);
+            fprintf(f, "<member type=\"%s\" ref=\"%ld\" role=\"%s\"/>\n",
+                  ((osm_rel_t*) o)->mem[i].type == OSM_NODE ? "node" : "way", (long) ((osm_rel_t*) o)->mem[i].id,
+                  role_str(((osm_rel_t*) o)->mem[i].role));
          fprintf(f, "</relation>\n");
          break;
    }

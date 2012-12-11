@@ -106,14 +106,15 @@ int out0(struct out_handle *oh, osm_obj_t *o)
    if (o->type == OSM_REL)
    {
       r = (osm_rel_t*) o;
-      //log_msg(LOG_WARN, "output of relations not fully implemented yet!");
       for (i = 0; i < r->mem_cnt; i++)
       {
-         if ((o = get_object(r->mem->type, r->mem->id)) == NULL)
+         if ((o = get_object(r->mem[i].type, r->mem[i].id)) == NULL)
          {
-            log_debug("get_object(%d, %ld) returned NULL", r->mem->type, (long) r->mem->id);
+            log_debug("get_object(%d, %ld) returned NULL", r->mem[i].type, (long) r->mem[i].id);
             continue;
          }
+         // FIXME: if there is a cyclic dependency of a relation in a relation
+         // a stack overflow will occur.
          (void) out0(oh, o);
       }
       o = (osm_obj_t*) r;
@@ -259,7 +260,7 @@ int act_poly_area_main(smrule_t *r, osm_way_t *w)
          return 0;
       }
       w->obj.otag = ot;
-      snprintf(buf, sizeof(buf), "%.8f", ar);
+      snprintf(buf, sizeof(buf), "%.8f", fabs(ar));
       if ((s = strdup(buf)) == NULL)
       {
          log_msg(LOG_DEBUG, "could not strdup");
