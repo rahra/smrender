@@ -24,6 +24,7 @@
 
 #include <string.h>
 #include <pthread.h>
+#include <signal.h>
 
 
 #ifdef WITH_THREADS
@@ -115,6 +116,13 @@ void __attribute__((destructor)) delete_threads(void)
 
 void *sm_traverse_thread(struct sm_thread *smth)
 {
+   sigset_t sset;
+   int e;
+
+   sigemptyset(&sset);
+   if ((e = pthread_sigmask(SIG_BLOCK, &sset, NULL)))
+      log_msg(LOG_ERR, "pthread_sigmask() failed: %s", strerror(e));
+
    for (;;)
    {
       pthread_mutex_lock(smth->mutex);

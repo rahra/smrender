@@ -511,6 +511,20 @@ int read_osm_file(hpx_ctrl_t *ctl, bx_node_t **tree, const struct filter *fi, st
                      {
                         mem->id = bs_tol(b);
                      }
+                     if (get_value("role", tlist->subtag[i]->tag, &b) != -1)
+                     {
+                        if (!b.len)
+                           mem->role = ROLE_EMPTY;
+                        else if (!bs_cmp(b, "inner"))
+                           mem->role = ROLE_INNER;
+                        else if (!bs_cmp(b, "outer"))
+                           mem->role = ROLE_OUTER;
+                        else
+                        {
+                           log_msg(LOG_WARN, "relation %ld: role type not implemented yet: '%.*s'",
+                                 (long) o.o.id, b.len, b.buf);
+                        }
+                     }
                      // FIXME: 'role' not parsed yet
                      if (mem->type)
                      {

@@ -27,6 +27,7 @@
 #include "config.h"
 #endif
 #include <stdio.h>
+#include <stdlib.h>
 #include <stdint.h>
 #include <limits.h>
 #include <string.h>
@@ -285,15 +286,34 @@ int match_attr(const osm_obj_t *o, const char *k, const char *v)
 
 
 /*! Convert coordinate d to string.
- *  @param lat_lon 0 for latitude, other values for longitude.
+ *  @param c Coordinate.
+ *  @param lat_lon Format parameter.
+ *  @param buf Output buffer.
+ *  @param len Length of output buffer.
+ *  @return returns the length of the new string or -1 in case of error.
  */
 int coord_str(double c, int lat_lon, char *buf, int len)
 {
-   if (!lat_lon)
-      return snprintf(buf, len, "%02d %c %.1f'", (int) c, c < 0 ? 'S' : 'N', (double) ((int) round(c * T_RESCALE) % T_RESCALE) / TM_RESCALE);
-   else
-      return snprintf(buf, len, "%03d %c %.1f'", (int) c, c < 0 ? 'W' : 'E', (double) ((int) round(c * T_RESCALE) % T_RESCALE) / TM_RESCALE);
+   // safety check
+   if (buf == NULL)
+      return -1;
 
+   switch (lat_lon)
+   {
+      case LAT_CHAR:
+         return snprintf(buf, len, "%02d %c %.1f'", abs(c), c < 0 ? 'S' : 'N', (double) ((int) round(fabs(c) * T_RESCALE) % T_RESCALE) / TM_RESCALE);
+
+      case LON_CHAR:
+         return snprintf(buf, len, "%03d %c %.1f'", abs(c), c < 0 ? 'W' : 'E', (double) ((int) round(fabs(c) * T_RESCALE) % T_RESCALE) / TM_RESCALE);
+
+      case LAT_DEG:
+         return snprintf(buf, len, "%02d° %.1f'", abs(c), (double) ((int) round(fabs(c) * T_RESCALE) % T_RESCALE) / TM_RESCALE);
+
+      case LON_DEG:
+         return snprintf(buf, len, "%03d° %.1f'", abs(c), (double) ((int) round(fabs(c) * T_RESCALE) % T_RESCALE) / TM_RESCALE);
+   }
+
+   return -1;
 }
 
 

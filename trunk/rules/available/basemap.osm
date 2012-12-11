@@ -80,8 +80,12 @@
    </way>
    <way>
       <tag k='natural' v='water'/>
-      <tag k='water' v='/river|lake|canal/'/>
+      <!--<tag k='water' v='/river|lake|canal/'/>-->
       <tag k='_action_' v='draw:color=blue;bcolor=#000080'/>
+   </way>
+   <way>
+      <tag k='natural' v='water'/>
+      <tag k='_action_' v='poly_area'/>
    </way>
    <way>
       <tag k='waterway' v=''/>
@@ -93,6 +97,7 @@
    </way>
    <way>
       <tag k='_action_' v='cap:font=sans-serif:bold;color=#000080;size=2.0;key=name'/>
+      <tag k='smrender:area' v=']0.004['/>
       <tag k='natural' v='water'/>
    </way>
    <relation>

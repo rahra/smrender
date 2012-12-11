@@ -178,9 +178,9 @@ void geo_square(struct rdata *rd, double b, char *v)
       n->lon = lon[i];
       set_const_tag(&n->obj.otag[0], "generator", "smrender");
       set_const_tag(&n->obj.otag[1], "grid", v);
-      coord_str(lat[i], 0, buf, sizeof(buf));
+      coord_str(lat[i], LAT_CHAR, buf, sizeof(buf));
       set_const_tag(&n->obj.otag[2], "lat", strdup(buf));
-      coord_str(lon[i], 1, buf, sizeof(buf));
+      coord_str(lon[i], LON_CHAR, buf, sizeof(buf));
       set_const_tag(&n->obj.otag[3], "lon", strdup(buf));
       snprintf(buf, sizeof(buf), "%d", i);
       set_const_tag(&n->obj.otag[4], "pointindex", strdup(buf));
@@ -252,7 +252,7 @@ void geo_lon_ticks(struct rdata *rd, double b, double b1, double b2, double b3, 
       {
          geo_tick(rd->bb.ll.lat + b1, (double) lon / T_RESCALE, rd->bb.ru.lat - b1, (double) lon / T_RESCALE, "grid");
 
-         snprintf(buf, sizeof(buf), "%03d° %02d'", lon / T_RESCALE, (lon % T_RESCALE) / TM_RESCALE);
+         coord_str((double) lon / T_RESCALE, LON_DEG, buf, sizeof(buf));
          s = strdup(buf);
          geo_description(rd->bb.ru.lat - b2, (double) lon / T_RESCALE, s, "top");
          geo_description(rd->bb.ll.lat + b2, (double) lon / T_RESCALE, s, "bottom");
@@ -292,7 +292,7 @@ void geo_lat_ticks(struct rdata *rd, double b, double b1, double b2, double b3, 
          geo_tick((double) lat / T_RESCALE, rd->bb.ru.lon - b1, (double) lat / T_RESCALE,
                rd->bb.ll.lon + b1, "grid");
 
-         snprintf(buf, sizeof(buf), "%02d° %02d'", lat / T_RESCALE, (lat % T_RESCALE) / TM_RESCALE);
+         coord_str((double) lat / T_RESCALE, LAT_DEG, buf, sizeof(buf));
          s = strdup(buf);
          geo_description((double) lat / T_RESCALE, rd->bb.ru.lon - b2, s, "right");
          geo_description((double) lat / T_RESCALE, rd->bb.ll.lon + b2, s, "left");
