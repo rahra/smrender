@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdlib.h>
 
 #include "smrender.h"
 
@@ -36,10 +37,10 @@ int act_skelfunc_ini(smrule_t *r)
       return 1;
 
    s->f = stderr;
-   r->act.data = s;
+   r->data = s;
 
    fprintf(s->f, "print_out_init() called\n");
-   if ((b = get_param("foo", NULL, r->act.fp)) != NULL)
+   if ((b = get_param("foo", NULL, r->act)) != NULL)
       fprintf(s->f, "parameter 'foo' = '%s'\n", b);
 
    return 0;
@@ -50,7 +51,7 @@ int act_skelfunc_ini(smrule_t *r)
  */
 int act_skelfunc_main(smrule_t *r, osm_obj_t *o)
 {
-   struct some_data *s = r->act.data;
+   struct some_data *s = r->data;
 
    fprintf(s->f, "object has %d tags and is ", o->tag_cnt);
 
@@ -76,12 +77,12 @@ int act_skelfunc_main(smrule_t *r, osm_obj_t *o)
  */
 int act_skelfunc_fini(smrule_t *r)
 {
-   struct some_data *s = r->act.data;
+   struct some_data *s = r->data;
 
    fprintf(s->f, "skel_func_fini() called\n");
    fflush(s->f);
    free(s);
-   r->act.data = NULL;
+   r->data = NULL;
    return 0;
 }
 
