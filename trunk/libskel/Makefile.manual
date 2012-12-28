@@ -16,8 +16,8 @@
 # */
 
 CC	= gcc
-CFLAGS = -g -O2 -fPIC -I../src
-LDFLAGS =
+CFLAGS = -g -O2 -fPIC -I../src -I../libsmrender
+LDFLAGS = -lsmrender
 LIBNAME = libskel
 
 all: $(LIBNAME).so
