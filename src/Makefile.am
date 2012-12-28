@@ -6,5 +6,5 @@ AM_CPPFLAGS = -I$(srcdir)/../libsmrender
 bin_PROGRAMS = smrender
 smrender_SOURCES = smath.c smfunc.c smloadosm.c smrparse.c libhpxml.c smcoast.c smgrid.c smrender.c smrules.c smkap.c smqr.c smthread.c memimg.c smtile.c
 smrender_LDADD = ../libsmrender/libsmrender.la
-noinst_HEADERS = libhpxml.h smath.h smrender_dev.h smcoast.h memimg.h
+noinst_HEADERS = libhpxml.h smath.h smrender_dev.h smcoast.h memimg.h colors.c
 

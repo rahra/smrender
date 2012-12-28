@@ -128,8 +128,8 @@ void init_main_image(struct rdata *rd, const char *bg)
    gdImageSaveAlpha(img_, 1);
    if (bg != NULL)
       set_color("bgcolor", parse_color(bg));
-   log_msg(LOG_DEBUG, "background color is set to 0x%08x", get_color(BGCOLOR));
-   gdImageFill(img_, 0, 0, get_color(BGCOLOR));
+   log_msg(LOG_DEBUG, "background color is set to 0x%08x", parse_color("bgcolor"));
+   gdImageFill(img_, 0, 0, parse_color("bgcolor"));
 
    if (!gdFTUseFontConfig(1))
       log_msg(LOG_NOTICE, "fontconfig library not available");
@@ -196,7 +196,7 @@ void mk_paper_coords(double lat, double lon, struct rdata *rd, int *x, int *y)
 }
 
 
-void rot_rect(const struct rdata *rd, int x, int y, double a, int br[])
+static void rot_rect(const struct rdata *rd, int x, int y, double a, int br[])
 {
    gdPoint p[5];
    int i;
@@ -214,7 +214,7 @@ void rot_rect(const struct rdata *rd, int x, int y, double a, int br[])
 
    p[4] = p[0];
 
-   gdImagePolygon(img_, p, 5, get_color(BLACK));
+   gdImagePolygon(img_, p, 5, parse_color("black"));
 }
 
 
@@ -288,7 +288,7 @@ int act_cap_ini(smrule_t *r)
       if (!strcmp(s, "auto"))
       {
          cap.angle = NAN;
-         cap.rot.autocol = get_color(BGCOLOR);
+         cap.rot.autocol = parse_color("bgcolor");
          if ((s = get_param("auto-color", NULL, r->act)) != NULL)
          {
             cap.rot.autocol = parse_color(s);
@@ -757,7 +757,7 @@ int act_img_ini(smrule_t *r)
       if (!strcmp(name, "auto"))
       {
          img.angle = NAN;
-         img.rot.autocol = get_color(BGCOLOR);
+         img.rot.autocol = parse_color("bgcolor");
          if ((s = get_param("auto-color", NULL, r->act)) != NULL)
          {
             img.rot.autocol = parse_color(s);
@@ -1144,12 +1144,12 @@ int act_draw_fini(smrule_t *r)
    }
 
    rd = rd_;
-   bg = get_color(BGCOLOR);
+   bg = parse_color("bgcolor");
    img = gdImageCreateTrueColor(gdImageSX((gdImage*) img_), gdImageSY((gdImage*) img_));
-   bg = gdImageColorAllocate(img,
-         gdImageRed((gdImage*) img_, get_color(BGCOLOR)),
-         gdImageGreen((gdImage*) img_, get_color(BGCOLOR)),
-         gdImageBlue((gdImage*) img_, get_color(BGCOLOR)));
+   /*bg = gdImageColorAllocate(img,
+         gdImageRed((gdImage*) img_, parse_color(BGCOLOR)),
+         gdImageGreen((gdImage*) img_, parse_color(BGCOLOR)),
+         gdImageBlue((gdImage*) img_, get_color(BGCOLOR)));*/
    gdImageColorTransparent(img, bg);
 
    if (d->fill.used)

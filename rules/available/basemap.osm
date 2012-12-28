@@ -39,7 +39,7 @@
    <way>
       <tag k='seamark:type' v='depthcont'/>
       <tag k='seamark:depthcont' v='10'/>
-      <tag k='_action_' v='draw:color=blue;ignore_open=1;directional=1'/>
+      <tag k='_action_' v='draw:color=skyblue;ignore_open=1;directional=1'/>
    </way>
    <way>
       <tag k='seamark:type' v='depthcont'/>
@@ -62,7 +62,7 @@
    </way>
    <way>
       <tag k='natural' v='coastline'/>
-      <tag k='_action_' v='draw:color=yellow;bcolor=black'/>
+      <tag k='_action_' v='draw:color=navajowhite;bcolor=black'/>
    </way>
    <way version='1'>
       <tag k='seamark:sounding:quality' v='/report/'/>
@@ -72,7 +72,7 @@
    <way version='1'>
       <tag k='seamark:sounding:quality' v='/report/'/>
       <tag k='seamark:sounding' v='[10.01]'/>
-      <tag k='_action_' v='draw:color=blue;bcolor=black;bstyle=dotted'/>
+      <tag k='_action_' v='draw:color=skyblue;bcolor=black;bstyle=dotted'/>
    </way>
    <way version='1'>
       <tag k='seamark:sounding:quality' v='approx'/>
@@ -81,7 +81,7 @@
    <way>
       <tag k='natural' v='water'/>
       <!--<tag k='water' v='/river|lake|canal/'/>-->
-      <tag k='_action_' v='draw:color=blue;bcolor=#000080'/>
+      <tag k='_action_' v='draw:color=skyblue;bcolor=#000080'/>
    </way>
    <way>
       <tag k='natural' v='water'/>
@@ -89,7 +89,7 @@
    </way>
    <way>
       <tag k='waterway' v=''/>
-      <tag k='_action_' v='draw:color=blue;bcolor=blue'/>
+      <tag k='_action_' v='draw:color=skyblue;bcolor=skyblue'/>
    </way>
    <way>
       <tag k='_action_' v='cap:font=sans-serif:bold;size=auto;key=*name'/>
