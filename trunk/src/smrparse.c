@@ -28,21 +28,7 @@
 #include "smrender_dev.h"
 
 
-static const char *rgbcol_name_[] = {
-   "white", "yellow", "black", "blue", "magenta", "brown", "transparent", "bgcolor", NULL
-};
-
-static int rgbcol_[] = {
-   0x00fffffe, // WHITE
-   0x00e7d14a, // YELLOW
-   0x00000000, // BLACK
-   0x0089c7b2, // BLUE
-   0x0078082c, // MAGENTA
-   0x009a2a02, // BROWN
-   0x7f000000, // TRANSPARENT
-   0x00ffffff, // BGCOLOR
-   -1
-};
+#include "colors.c"
 
 
 int parse_matchtype(bstring_t *b, struct specialTag *t)
@@ -135,7 +121,7 @@ int get_color(int n)
 {
    if (n < 0 || n >= MAXCOLOR)
       return -1;
-   return rgbcol_[n];
+   return color_def_[n].col;
 }
 
 
@@ -143,11 +129,11 @@ int set_color(const char *s, int col)
 {
    int i, c = -1;
 
-   for (i = 0; rgbcol_name_[i] != NULL; i++)
-      if (!strcmp(s, rgbcol_name_[i]))
+   for (i = 0; color_def_[i].name != NULL; i++)
+      if (!strcasecmp(s, color_def_[i].name))
       {
-         c = rgbcol_[i];
-         rgbcol_[i] = col;
+         c = color_def_[i].col;
+         color_def_[i].col = col;
          break;
       }
    return c;
@@ -170,7 +156,7 @@ int parse_color(const char *s)
       if ((l != 6) && (l != 8))
       {
          log_msg(LOG_WARN, "format error in HTML color '#%s'", s);
-         return rgbcol_[BLACK];
+         return 0;
       }
 
       errno = 0;
@@ -178,18 +164,18 @@ int parse_color(const char *s)
       if (errno)
       {
          log_msg(LOG_WARN, "cannot convert HTML color '#%s': %s", s, strerror(errno));
-         return rgbcol_[BLACK];
+         return 0;
       }
 
       return c;
    }
 
-   for (i = 0; rgbcol_name_[i] != NULL; i++)
-      if (!strcmp(s, rgbcol_name_[i]))
-         return rgbcol_[i];
+   for (i = 0; color_def_[i].name != NULL; i++)
+      if (!strcmp(s, color_def_[i].name))
+         return color_def_[i].col;
 
    log_msg(LOG_WARN, "unknown color %s, defaulting to black", s);
-   return rgbcol_[BLACK];
+   return 0;
 }
 
 

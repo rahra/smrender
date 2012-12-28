@@ -108,7 +108,7 @@ typedef int (*tree_func_t)(osm_obj_t*, struct rdata*, void*);
 
 // indexes to object tree
 enum {IDX_NODE, IDX_WAY, IDX_REL};
-enum {WHITE, YELLOW, BLACK, BLUE, MAGENTA, BROWN, TRANSPARENT, BGCOLOR, MAXCOLOR};
+//enum {WHITE, YELLOW, BLACK, BLUE, MAGENTA, BROWN, TRANSPARENT, BGCOLOR, MAXCOLOR};
 enum {LAT, LON};
 enum {DRAW_SOLID, DRAW_DASHED, DRAW_DOTTED, DRAW_TRANSPARENT};
 
