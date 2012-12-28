@@ -521,8 +521,10 @@ int read_osm_file(hpx_ctrl_t *ctl, bx_node_t **tree, const struct filter *fi, st
                            mem->role = ROLE_OUTER;
                         else
                         {
+                           /* too much debugging
                            log_msg(LOG_WARN, "relation %ld: role type not implemented yet: '%.*s'",
                                  (long) o.o.id, b.len, b.buf);
+                                 */
                         }
                      }
                      // FIXME: 'role' not parsed yet
