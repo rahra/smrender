@@ -46,6 +46,10 @@
       <tag k='_action_' v='draw:bcolor=black'/>
    </way>
    <way>
+      <tag k='tidal' v='yes'/>
+      <tag k='_action_' v='draw:color=palegreen'/>
+   </way>
+   <way>
       <tag k='natural' v='coastline'/>
       <tag k='_action_' v='cat_poly'/>
    </way>
