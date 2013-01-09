@@ -361,14 +361,14 @@ void auto_grid(const struct rdata *rd, struct grid *grd)
    log_debug("setting auto grid values");
    if (rd->scale >= 250000)
    {
-      grd->lat_ticks = grd->lon_ticks = MIN2DEG(2);
+      grd->lat_ticks = grd->lon_ticks = MIN2DEG(1);
       grd->lat_sticks = grd->lon_sticks = MIN2DEG(0.5);
-      grd->lat_g = grd->lon_g = MIN2DEG(20);
+      grd->lat_g = grd->lon_g = MIN2DEG(30);
    }
-   else if (rd->scale >= 150000)
+   else if (rd->scale >= 100000)
    {
       grd->lat_ticks = grd->lon_ticks = MIN2DEG(1);
-      grd->lat_sticks = grd->lon_sticks = MIN2DEG(0.25);
+      grd->lat_sticks = grd->lon_sticks = MIN2DEG(0.2);
       grd->lat_g = grd->lon_g = MIN2DEG(10);
    }
    else
