@@ -409,11 +409,8 @@ static osm_way_t *create_new_coastline(const osm_obj_t *o, int ref_cnt)
       memcpy(&w->obj.otag[1], &o->otag[0], sizeof(struct otag) * o->tag_cnt);
    }
 
-   w->obj.id = unique_way_id();
-   w->obj.ver = 1;
-   w->obj.tim = time(NULL);
-   set_const_tag(&w->obj.otag[0], "generator", "smrender");
- 
+   osm_way_default(w);
+
    return w;
 }
 
@@ -520,13 +517,10 @@ static void init_corner_brg(const struct rdata *rd, const struct coord *src, str
    {
       co_pt[i].pc = coord_diff(src, &corner_coord[i]);
       co_pt[i].n = malloc_node(2);
-      co_pt[i].n->obj.id = unique_node_id();
-      co_pt[i].n->obj.ver = 1;
-      co_pt[i].n->obj.tim = time(NULL);
+      osm_node_default(co_pt[i].n);
       co_pt[i].n->lat = corner_coord[i].lat;
       co_pt[i].n->lon = corner_coord[i].lon;
-      set_const_tag(&co_pt[i].n->obj.otag[0], "grid", "pagecorner");
-      set_const_tag(&co_pt[i].n->obj.otag[1], "generator", "smrender");
+      set_const_tag(&co_pt[i].n->obj.otag[1], "grid", "pagecorner");
       put_object((osm_obj_t*) co_pt[i].n);
       log_msg(LOG_DEBUG, "corner_point[%d].bearing = %f (id = %ld)", i, co_pt[i].pc.bearing, co_pt[i].n->obj.id);
 
@@ -1032,7 +1026,10 @@ static int refine_poly0(osm_way_t *w, double deviation)
 
    // get new nodes
    for (i = 0; i < w->ref_cnt - 1; i++)
+   {
       n[i] = malloc_node(0);
+      n[i]->obj.vis = 1;
+   }
 
    for (i = 0; i < w->ref_cnt - 2; i++)
       circle_calc(&n[i], &s[i], deviation);

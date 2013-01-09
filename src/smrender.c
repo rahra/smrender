@@ -180,10 +180,10 @@ void install_sigint(void)
 }
 
 
-/*! Match and apply ruleset to node.
- *  @param nd Node which should be rendered.
+/*! Match and apply ruleset to object if it is visible.
+ *  @param o Object which should be rendered.
  *  @param rd Pointer to general rendering parameters.
- *  @param mnd Ruleset.
+ *  @param r Rule object.
  */
 int apply_smrules0(osm_obj_t *o, struct rdata *rd, smrule_t *r)
 {
@@ -193,7 +193,10 @@ int apply_smrules0(osm_obj_t *o, struct rdata *rd, smrule_t *r)
       if (bs_match_attr(o, &r->oo->otag[i], &r->act->stag[i]) == -1)
          return 0;
 
-   return r->act->main.func(r, o);
+   if (o->vis)
+      return r->act->main.func(r, o);
+
+   return 0;
 }
 
 
