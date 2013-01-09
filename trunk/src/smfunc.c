@@ -295,9 +295,8 @@ int act_poly_centroid_main(smrule_t *r, osm_way_t *w)
       return 1;
 
    n = malloc_node(w->obj.tag_cnt + 1);
-   n->obj.id = unique_node_id();
-   n->obj.ver = 1;
-   n->obj.tim = time(NULL);
+   // FIXME: generator=smrender gets overwritten
+   osm_node_default(n);
    n->lat = c.lat;
    n->lon = c.lon;
 
@@ -535,9 +534,7 @@ void shape_node(const struct act_shape *as, const osm_node_t *n)
    angle_step = 2 * M_PI / as->pcount;
 
    w = malloc_way(n->obj.tag_cnt + 1, as->pcount + 1);
-   w->obj.id = unique_way_id();
-   w->obj.ver = 1;
-   set_const_tag(w->obj.otag, "generator", "smrender");
+   osm_way_default(w);
    memcpy(&w->obj.otag[1], n->obj.otag, sizeof(struct otag) * n->obj.tag_cnt);
 
    log_debug("generating shape way %ld with %d nodes", (long) w->obj.id, as->pcount);
@@ -545,11 +542,10 @@ void shape_node(const struct act_shape *as, const osm_node_t *n)
    for (i = 0; i < as->pcount; i++)
    {
          nd[i] = malloc_node(1);
+         osm_node_default(nd[i]);
          nd[i]->lat = n->lat + radius * cos(angle + angle_step * i);
          nd[i]->lon = n->lon - radius * sin(angle + angle_step * i) / cos(DEG2RAD(n->lat)); 
-         nd[i]->obj.id = w->ref[i] = unique_node_id();
-         nd[i]->obj.ver = 1;
-         set_const_tag(nd[i]->obj.otag, "generator", "smrender");
+         w->ref[i] = nd[i]->obj.id;
          put_object((osm_obj_t*) nd[i]);
    }
    w->ref[i] = nd[0]->obj.id;
@@ -671,11 +667,8 @@ int ins_eqdist(osm_way_t *w, double dist)
       {
          // create new node
          n = malloc_node(w->obj.tag_cnt + 3);
-         n->obj.id = unique_node_id();
-         n->obj.tim = time(NULL);
-         n->obj.ver = 1;
+         osm_node_default(n);
          memcpy(&n->obj.otag[3], w->obj.otag, sizeof(struct otag) * w->obj.tag_cnt);
-         set_const_tag(&n->obj.otag[0], "generator", "smrender");
          pcnt++;
          snprintf(buf, sizeof(buf), "%.1f", dist * pcnt * 60.0);
          set_const_tag(&n->obj.otag[1], "distance", strdup(buf));
@@ -1065,6 +1058,24 @@ static int parse_id(smrule_t *r)
 }
 
 
+/*! Disable object, i.e. set visibility to 0.
+ */
+int act_disable_main(smrule_t *r, osm_obj_t *o)
+{
+   o->vis = 0;
+   return 0;
+}
+
+
+/*! Enable object, i.e. set visibility to 1.
+ */
+int act_enable_main(smrule_t *r, osm_obj_t *o)
+{
+   o->vis = 1;
+   return 0;
+}
+
+
 int act_enable_rule_ini(smrule_t *r)
 {
    return parse_id(r);
@@ -1073,9 +1084,7 @@ int act_enable_rule_ini(smrule_t *r)
 
 int act_enable_rule_main(smrule_t *r, osm_obj_t *o)
 {
-   //log_msg(LOG_INFO, "enabling rule %016lx", ((osm_obj_t*) r->data)->id);
-   ((osm_obj_t*) r->data)->vis = 1;
-   return 0;
+   return act_enable_main(r, r->data);
 }
 
 
@@ -1087,8 +1096,6 @@ int act_disable_rule_ini(smrule_t *r)
 
 int act_disable_rule_main(smrule_t *r, osm_obj_t *o)
 {
-   //log_msg(LOG_INFO, "disabling rule %016lx", ((osm_obj_t*) r->data)->id);
-   ((osm_obj_t*) r->data)->vis = 0;
-   return 0;
+   return act_disable_main(r, r->data);
 }
 
