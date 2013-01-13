@@ -131,6 +131,7 @@ osm_node_t *malloc_node(short tag_cnt)
       log_msg(LOG_ERR, "could not malloc_node(): %s", strerror(errno)),
       exit(EXIT_FAILURE);
    n->obj.type = OSM_NODE;
+   n->obj.vis = 2;
    n->obj.otag = malloc_mem(sizeof(struct otag), tag_cnt);
    n->obj.tag_cnt = tag_cnt;
    mem_usage_ += sizeof(osm_node_t);
@@ -146,6 +147,7 @@ osm_way_t *malloc_way(short tag_cnt, int ref_cnt)
       log_msg(LOG_ERR, "could not malloc_way(): %s", strerror(errno)),
       exit(EXIT_FAILURE);
    w->obj.type = OSM_WAY;
+   w->obj.vis = 2;
    w->obj.otag = malloc_mem(sizeof(struct otag), tag_cnt);
    w->obj.tag_cnt = tag_cnt;
    w->ref = malloc_mem(sizeof(int64_t), ref_cnt);
@@ -163,6 +165,7 @@ osm_rel_t *malloc_rel(short tag_cnt, short mem_cnt)
       log_msg(LOG_ERR, "could not malloc_rel(): %s", strerror(errno)),
          exit(EXIT_FAILURE);
    r->obj.type = OSM_REL;
+   r->obj.vis = 2;
    r->obj.otag = malloc_mem(sizeof(struct otag), tag_cnt);
    r->obj.tag_cnt = tag_cnt;
    r->mem = malloc_mem(sizeof(struct rmember), mem_cnt);

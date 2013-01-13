@@ -572,12 +572,23 @@ int bs_safe_put_xml(FILE *f, const bstring_t *b)
 }
 
 
-int print_onode(FILE *f, const osm_obj_t *o)
+static int fprint_defattr(FILE *f, const osm_obj_t *o, const char *ostr)
 {
-   int i;
 #define TBUFLEN 24
    char ts[TBUFLEN] = "0000-00-00T00:00:00Z";
    struct tm *tm;
+
+   if ((tm = gmtime(&o->tim)) != NULL)
+      strftime(ts, sizeof(ts), "%Y-%m-%dT%H:%M:%SZ", tm);
+
+   return fprintf(f, "<%s id=\"%ld\" version=\"%d\" timestamp=\"%s\" uid=\"%d\" visible=\"%s\"",
+         ostr, (long) o->id, o->ver, ts, o->uid, o->vis ? "true" : "false");
+}
+
+
+int print_onode(FILE *f, const osm_obj_t *o)
+{
+   int i;
 
    if (o == NULL)
    {
@@ -585,29 +596,24 @@ int print_onode(FILE *f, const osm_obj_t *o)
       return -1;
    }
 
-   if ((tm = gmtime(&o->tim)) != NULL)
-      strftime(ts, sizeof(ts), "%Y-%m-%dT%H:%M:%SZ", tm);
-
-   // FIXME: 'visible' missing?
    switch (o->type)
    {
       case OSM_NODE:
-         fprintf(f, "<node id=\"%ld\" version=\"%d\" lat=\"%.7f\" lon=\"%.7f\" timestamp=\"%s\" uid=\"%d\"",
-               (long) o->id, o->ver, ((osm_node_t*) o)->lat, ((osm_node_t*) o)->lon, ts, o->uid);
+         fprint_defattr(f, o, "node");
          if (o->tag_cnt)
-            fprintf(f, ">\n");
+            fprintf(f, " lat=\"%.7f\" lon=\"%.7f\">\n", ((osm_node_t*) o)->lat, ((osm_node_t*) o)->lon);
          else
-            fprintf(f, "/>\n");
+            fprintf(f, " lat=\"%.7f\" lon=\"%.7f\"/>\n", ((osm_node_t*) o)->lat, ((osm_node_t*) o)->lon);
          break;
 
       case OSM_WAY:
-         fprintf(f, "<way id=\"%ld\" version=\"%d\" timestamp=\"%s\" uid=\"%d\">\n",
-               (long) o->id, o->ver, ts, o->uid);
+         fprint_defattr(f, o, "way");
+         fprintf(f, ">\n");
          break;
 
       case OSM_REL:
-         fprintf(f, "<relation id=\"%ld\" version=\"%d\" timestamp=\"%s\" uid=\"%d\">\n",
-               (long) o->id, o->ver, ts, o->uid);
+         fprint_defattr(f, o, "relation");
+         fprintf(f, ">\n");
          break;
 
       default:
