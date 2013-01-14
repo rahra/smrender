@@ -25,6 +25,9 @@
 #ifdef HAVE_GD
 #include <gd.h>
 #endif
+#ifdef HAVE_CAIRO
+#include <cairo.h>
+#endif
 #include <regex.h>
 
 #include "smrender.h"
@@ -38,12 +41,6 @@
 #include "lists.h"
 #include "libhpxml.h"
 
-
-/*#ifdef HAVE_GD
-typedef gdImage image_t;
-#else
-typedef void image_t;
-#endif*/
 
 #define EXIT_NORULES 128
 #define EXIT_NODATA 129
@@ -124,7 +121,7 @@ struct actImage
 {
    double angle;
    struct auto_rot rot;
-   gdImage *img;
+   image_t *img;
 };
 
 struct cap_data

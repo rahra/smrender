@@ -19,32 +19,52 @@ AC_DEFINE([BX_RES], [4], [Set bit resolution for bxtree.])
 AC_DEFINE([WITH_MMAP], [], [Add mmap() support.])
 AC_DEFINE([READ_FILTER], [], [Add code for read filter.])
 
-AC_ARG_ENABLE([threads], AS_HELP_STRING([--enable-threads],[compile with pthreads support]),
+AC_ARG_ENABLE([threads], [AS_HELP_STRING([--enable-threads],[compile with pthreads support])],
    AC_DEFINE([WITH_THREADS], [], [enable multi-threading]))
-AC_ARG_ENABLE([mithreads], AS_HELP_STRING([--enable-mithreads],[compile memory image functions with pthreads support]),
+AC_ARG_ENABLE([mithreads], [AS_HELP_STRING([--enable-mithreads],[compile memory image functions with pthreads support])],
    AC_DEFINE([MI_THREADS], [4], [enable memimg multi-threading]))
 
+AC_ARG_WITH([gd], [AS_HELP_STRING([--without-gd], [disable support for libgd])], [], [with_gd=yes])
+AC_ARG_WITH([cairo], [AS_HELP_STRING([--with-cairo], [compile with support for libcairo])], [], [with_cairo=no])
 
+AS_IF([test "x$with_cairo" != xno], [
+# disable libgd if libcairo is used
+with_gd=no
+PKG_CHECK_MODULES([CAIRO], [cairo],
+                  AC_DEFINE([HAVE_CAIRO], [], [compile with support for libcairo.])
+                  )
+# this should be done just for the src directory
+#AC_SUBST([CAIRO_CFLAGS])
+#AC_SUBST([CAIRO_LIBS])
+AC_DEFINE([image_t], [cairo_surface_t], [default type of image_t])
+])
+
+AS_IF([test "x$with_gd" != xno], [
 AX_CHECK_GD
+AC_DEFINE([image_t], [gdImage], [default type of image_t])
+])
 
-if test "${enable_threads+set}" = set -o "${enable_mithreads+set}" = set ; then :
+AS_IF([test "x$with_gd" = xno -a "x$with_cairo" = xno], [
+AC_DEFINE([image_t], [void], [default type of image_t])
+])
+
+AS_IF([test "${enable_threads+set}" = set -o "${enable_mithreads+set}" = set], [
 AX_PTHREAD([
    LIBS="$PTHREAD_LIBS $LIBS"
    CFLAGS="$CFLAGS $PTHREAD_CFLAGS"
    CC="$PTHREAD_CC"
             ])
-fi
+])
 
-#AC_SEARCH_LIBS([gdImageSetPixel], [gd])
 AC_SEARCH_LIBS([sin], [m])
 AC_SEARCH_LIBS([dlopen], [dl])
 
 AC_CHECK_FUNCS([strptime dladdr])
 
-if test -n "$export_dynamic_flag_spec" ; then
+AS_IF([test -n "$export_dynamic_flag_spec"], [
    exp_dyn=`eval echo $export_dynamic_flag_spec`
    AC_SUBST([EXP_DYN], [["$exp_dyn"]])
-fi
+])
 
 AC_SUBST([SMFILTER_NAME], [["libsmfilter$shrext_cmds"]])
 

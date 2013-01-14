@@ -25,10 +25,16 @@
 #ifdef HAVE_CONFIG_H
 #include "config.h"
 #endif
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+#ifdef HAVE_GD
 #include <gd.h>
+#endif
+#ifdef HAVE_CAIRO
+#include <cairo.h>
+#endif
 #include <pthread.h>
 #include <signal.h>
 
@@ -125,26 +131,29 @@ void mi_free(mem_img_t *mi)
 }
 
 
-mem_img_t *mi_from_gdimage(gdImage *img)
+mem_img_t *mi_from_gdimage(image_t *img)
 {
    mem_img_t *mi;
    int i;
 
+#ifdef HAVE_GD
    if ((mi = mi_create(gdImageSX(img), gdImageSY(img))) == NULL)
       return NULL;
 
    for (i = 0; i < mi->w * mi->h; i++)
       mi->p[i] = gdImageGetPixel(img, i % mi->w, i / mi->w);
+#endif
 
    return mi;
 }
 
 
-gdImage *mi_to_gdimage(mem_img_t *mi)
+image_t *mi_to_gdimage(mem_img_t *mi)
 {
-   gdImage *img;
+   image_t *img;
    int i;
 
+#ifdef HAVE_GD
    if ((img = gdImageCreateTrueColor(mi->w, mi->h)) == NULL)
       return NULL;
 
@@ -153,6 +162,7 @@ gdImage *mi_to_gdimage(mem_img_t *mi)
 
    for (i = 0; i < mi->w * mi->h; i++)
       gdImageSetPixel(img, i % mi->w, i / mi->w, mi->p[i]);
+#endif
 
    return img;
 }
@@ -233,7 +243,7 @@ void mi_remove_blind(mem_img_t *mi)
 }
 
 
-mem_img_t *rectify_circle(gdImage *img, int cx, int cy, int R)
+mem_img_t *rectify_circle(image_t *img, int cx, int cy, int R)
 {
    mem_img_t *mi;
    double U, x0, y0, fi, l;
@@ -244,6 +254,7 @@ mem_img_t *rectify_circle(gdImage *img, int cx, int cy, int R)
    mi = mi_create(R, maxY);
    mi_init_plane(mi, -1);
 
+#ifdef HAVE_GD
    for (y = -R; y < R; y++)
    {
       for (x = -R; x < R; x++)
@@ -264,6 +275,7 @@ mem_img_t *rectify_circle(gdImage *img, int cx, int cy, int R)
          }
       }
    }
+#endif
 
    mi_remove_blind(mi);
 
@@ -412,16 +424,19 @@ void mi_diff_vector_vert(const mem_img_t *dst, const mem_img_t *src, struct diff
 
 static int mi_save(const char *s, mem_img_t *mi)
 {
-   gdImage *img;
+   image_t *img;
    FILE *f;
 
    img = mi_to_gdimage(mi);
    if ((f = fopen(s, "w")) == NULL)
       return -1;
 
+#ifdef HAVE_GD
    gdImagePng(img, f);
-   fclose(f);
    gdImageDestroy(img);
+#endif
+
+   fclose(f);
 
    return 0;
 }
@@ -609,7 +624,7 @@ void __attribute__((destructor)) destroy_mi_threads(void)
  * @param dv Pointer to struct dv_vec Pointer.
  * @return Returns the number of items in dv.
  */
-int get_diff_vec(gdImage *dst, gdImage *src, int x, int y, int xvar, int res, struct diff_vec **dv)
+int get_diff_vec(image_t *dst, image_t *src, int x, int y, int xvar, int res, struct diff_vec **dv)
 {
    mem_img_t *mi[2];
    int i, j;
@@ -617,7 +632,9 @@ int get_diff_vec(gdImage *dst, gdImage *src, int x, int y, int xvar, int res, st
    // safety check
    if (xvar < 1) xvar = 1;
 
+#ifdef HAVE_GD
    mi[0] = rectify_circle(dst, x, y, gdImageSX(src) + xvar - 1);
+#endif
 
    // <debug>
    /*char buf[32];
@@ -683,7 +700,7 @@ int get_diff_vec(gdImage *dst, gdImage *src, int x, int y, int xvar, int res, st
 }
 
 
-int get_best_rotation(gdImage *dst, gdImage *src, int x, int y, int xvar, int resolution, struct diff_vec *res)
+int get_best_rotation(image_t *dst, image_t *src, int x, int y, int xvar, int resolution, struct diff_vec *res)
 {
    struct diff_vec *dv;
    int n;

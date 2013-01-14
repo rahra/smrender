@@ -1,7 +1,12 @@
 #ifndef MEMIMG_H
 #define MEMIMG_H
 
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
+#ifdef HAVE_GD
 #include <gd.h>
+#endif
 
 #define CVLI_COMP(x, y, z) (((x) >> (y)) & (z))
 #define CVL_COMP(x, y, z) ((double) CVLI_COMP(x, y, z) / (double) (z))
@@ -35,9 +40,9 @@ struct diff_vec
 int inline mi_getpixel(const mem_img_t *mi, int x, int y);
 mem_img_t *mi_create(int w, int h);
 void mi_free(mem_img_t *mi);
-mem_img_t *rectify_circle(gdImage *img, int cx, int cy, int R);
-gdImage *mi_to_gdimage(mem_img_t *mi);
-mem_img_t *mi_from_gdimage(gdImage *img);
+mem_img_t *rectify_circle(image_t *img, int cx, int cy, int R);
+image_t *mi_to_gdimage(mem_img_t *mi);
+mem_img_t *mi_from_gdimage(image_t *img);
 void mi_diff_vector(const mem_img_t *dst, const mem_img_t *src, struct diff_vec *dv);
 mem_img_t *mi_from_diff_vec(const struct diff_vec *dv, int len, int xvar);
 int cmp_dv(const struct diff_vec *src, const struct diff_vec *dst);
@@ -45,8 +50,8 @@ int cmp_dv(const struct diff_vec *src, const struct diff_vec *dst);
 int diff_vec_count_eq(const struct diff_vec *dv, int len);
 void weight_diff_vec(struct diff_vec *dv, int len, double phase, double weight);
 void index_diff_vec(struct diff_vec * dv, int len);
-int get_diff_vec(gdImage *dst, gdImage *src, int x, int y, int xvar, int res, struct diff_vec **dv);
-int get_best_rotation(gdImage *dst, gdImage *src, int x, int y, int xvar, int, struct diff_vec *res);
+int get_diff_vec(image_t *dst, image_t *src, int x, int y, int xvar, int res, struct diff_vec **dv);
+int get_best_rotation(image_t *dst, image_t *src, int x, int y, int xvar, int, struct diff_vec *res);
 
 
 #endif

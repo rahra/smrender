@@ -1232,7 +1232,9 @@ void cut_tile(const struct bbox *bb, void *img)
 }
 
 
-#else
+#endif
+
+#if ! defined(HAVE_GD) && ! defined(HAVE_CAIRO)
 
 void init_main_image(struct rdata *rd, const char *bg)
 {
@@ -1241,6 +1243,12 @@ void init_main_image(struct rdata *rd, const char *bg)
 
 void reduce_resolution(struct rdata *rd)
 {
+}
+
+
+int save_image(const char *s, void *img, int ftype)
+{
+   return 0;
 }
 
 
@@ -1258,6 +1266,22 @@ void save_main_image(struct rdata *rd, FILE *f)
 int get_pixel(struct rdata *rd, int x, int y)
 {
    return 0;
+}
+
+
+void *create_tile(void)
+{
+   return NULL;
+}
+
+
+void delete_tile(void *img)
+{
+}
+
+
+void cut_tile(const struct bbox *bb, void *img)
+{
 }
 
 #endif
