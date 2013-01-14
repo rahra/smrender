@@ -1,0 +1,39 @@
+#/* Copyright 2011 Bernhard R. Fischer, 2048R/5C5FFD47 <bf@abenteuerland.at>
+# *
+# * This file is part of smrender.
+# *
+# * Smrender is free software: you can redistribute it and/or modify
+# * it under the terms of the GNU General Public License as published by
+# * the Free Software Foundation, version 3 of the License.
+# *
+# * Smrender is distributed in the hope that it will be useful,
+# * but WITHOUT ANY WARRANTY; without even the implied warranty of
+# * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# * GNU General Public License for more details.
+# *
+# * You should have received a copy of the GNU General Public License
+# * along with smrender. If not, see <http://www.gnu.org/licenses/>.
+# */
+
+CC	= gcc
+CFLAGS = -g -O2 -fPIC -I../src -I../libsmrender
+LDFLAGS = -lsmrender
+LIBNAME = libskel
+
+all: $(LIBNAME).so
+
+$(LIBNAME).o: $(LIBNAME).c
+
+$(LIBNAME).so.1: $(LIBNAME).o
+	gcc -g -shared -Wl,-soname,$(LIBNAME).so.1 -o $(LIBNAME).so.1.0.1 $(LIBNAME).o -lc $(LDFLAGS)
+
+$(LIBNAME).so: $(LIBNAME).so.1
+	if test ! -e $(LIBNAME).so ; then \
+		ln -s $(LIBNAME).so.1.0.1 $(LIBNAME).so ; \
+	fi
+
+clean:
+	rm -f *.o *.so *.so.1.0.1
+
+.PHONY: clean
+

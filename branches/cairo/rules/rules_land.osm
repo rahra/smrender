@@ -1,0 +1,192 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<osm>
+   <!--
+   <node version="-10">
+      <tag k="_action_" v="grid"/>
+   </node>
+   -->
+   <node version="-10">
+      <tag k="_action_" v="ruler:section=5;count=5"/>
+   </node>
+   <way>
+      <tag k='natural' v='coastline'/>
+      <tag k='_action_' v='refine_poly'/>
+   </way>
+   <way>
+      <tag k='natural' v='coastline'/>
+      <tag k='_action_' v='cat_poly'/>
+   </way>
+
+   <way>
+      <tag k='natural' v='coastline'/>
+      <tag k='_action_' v='draw:color=#e0e0e0;bcolor=blue'/>
+   </way>
+
+
+<way>
+   <tag k='landuse' v='forest'/>
+   <tag k='_action_' v='draw:color=#8dc56c'/>
+</way>
+
+<way>
+   <tag k='landuse' v='meadow'/>
+   <tag k='_action_' v='draw:color=#aed1a0'/>
+</way>
+
+<way>
+   <tag k='landuse' v='farmyard'/>
+   <tag k='_action_' v='draw:color=#dcbe92'/>
+</way>
+
+
+<way>
+   <tag k='highway' v='/residential|unclassified/'/>
+   <tag k='_action_' v='draw:color=#a0a0a0;width=0.8'/>
+</way>
+
+<way>
+   <tag k='highway' v='/residential|unclassified/'/>
+   <tag k='_action_' v='draw:color=#e0e0e0;width=0.65'/>
+</way>
+
+<way>
+   <tag k='highway' v='track'/>
+   <tag k='_action_' v='draw:color=#aed1a0;width=.25'/>
+</way>
+
+<way>
+   <tag k='highway' v='track'/>
+   <tag k='_action_' v='draw:color=#d6c29b;width=.2;style=dashed'/>
+</way>
+
+<way>
+   <tag k='highway' v='/primary|secondary/'/>
+   <tag k='_action_' v='draw:color=#ec989a;width=1.1;bcolor=#a0a0a0'/>
+</way>
+
+
+
+<way>
+   <tag k='building' v=''/>
+   <tag k='_action_' v='draw:color=#beaaa5;bcolor=black'/>
+</way>
+
+<way>
+   <tag k='waterway' v=''/>
+   <tag k='_action_' v='draw:color=blue'/>
+</way>
+
+   <node>
+      <tag k='place' v=''/>
+      <tag k='_action_' v='cap:font=sans-serif;size=3;key=name'/>
+   </node>
+
+   <node version='-1'>
+      <tag k='natural' v='peak'/>
+      <tag k='_action_' v='shape:style=triangle;radius=.7'/>
+   </node>
+
+   <node>
+      <tag k='_action_' v='cap:font=serif;valign=north;size=1.2;key=name'/>
+      <tag k='natural' v='peak'/>
+   </node>
+   <node>
+      <tag k='_action_' v='cap:font=roman;size=1.2;valign=south;key=ele'/>
+      <tag k='natural' v='peak'/>
+   </node>
+
+   <node>
+      <tag k='_action_' v='cap:font=sans-serif:bold;size=4;key=name;angle=90;valign=north'/>
+      <tag k='grid' v='text'/>
+      <tag k='border' v='left'/>
+   </node>
+   <node>
+      <tag k='_action_' v='cap:font=sans-serif:bold;size=4;key=name;angle=270;valign=north'/>
+      <tag k='grid' v='text'/>
+      <tag k='border' v='right'/>
+   </node>
+   <node>
+      <tag k='_action_' v='cap:font=sans-serif:bold;size=4;key=name;valign=north'/>
+      <tag k='grid' v='text'/>
+      <tag k='border' v='top'/>
+   </node>
+   <node>
+      <tag k='_action_' v='cap:font=sans-serif:bold;size=6;key=name;valign=north;halign=east;color=brown'/>
+      <tag k='grid' v='text'/>
+      <tag k='border' v='title'/>
+   </node>
+   <node>
+      <tag k='_action_' v='cap:font=sans-serif;size=4;key=name;valign=south'/>
+      <tag k='grid' v='text'/>
+      <tag k='border' v='bottom'/>
+   </node>
+   <node>
+      <tag k='grid' v='outer_border'/>
+      <tag k='pointindex' v='0'/>
+      <tag k='_action_' v='cap:font=sans-serif;size=2;key=lat;valign=north;halign=east'/>
+   </node>
+    <node>
+      <tag k='grid' v='outer_border'/>
+      <tag k='pointindex' v='0'/>
+      <tag k='_action_' v='cap:font=sans-serif;size=2;key=lon;valign=north;halign=west;angle=90'/>
+   </node>
+ 
+   <node>
+      <tag k='grid' v='outer_border'/>
+      <tag k='pointindex' v='1'/>
+      <tag k='_action_' v='cap:font=sans-serif;size=2;key=lat;valign=north;halign=west'/>
+   </node>
+    <node>
+      <tag k='grid' v='outer_border'/>
+      <tag k='pointindex' v='1'/>
+      <tag k='_action_' v='cap:font=sans-serif;size=2;key=lon;valign=north;halign=east;angle=270'/>
+   </node>
+ 
+   <node>
+      <tag k='grid' v='outer_border'/>
+      <tag k='pointindex' v='2'/>
+      <tag k='_action_' v='cap:font=sans-serif;size=2;key=lat;valign=south;halign=west'/>
+   </node>
+    <node>
+      <tag k='grid' v='outer_border'/>
+      <tag k='pointindex' v='2'/>
+      <tag k='_action_' v='cap:font=sans-serif;size=2;key=lon;angle=270;valign=north;halign=west'/>
+   </node>
+    <node>
+      <tag k='grid' v='outer_border'/>
+      <tag k='pointindex' v='3'/>
+      <tag k='_action_' v='cap:font=sans-serif;size=2;key=lat;valign=south;halign=east'/>
+   </node>
+    <node>
+      <tag k='grid' v='outer_border'/>
+      <tag k='pointindex' v='3'/>
+      <tag k='_action_' v='cap:font=sans-serif;size=2;key=lon;angle=90;valign=north;halign=east'/>
+   </node>
+   <node>
+      <tag k='_action_' v='cap:font=sans-serif:bold;size=2;key=name;valign=north'/>
+      <tag k='grid' v='text'/>
+      <tag k='border' v='copyright'/>
+   </node>
+
+    <way>
+      <tag k='generator' v='smrender'/>
+      <tag k='_action_' v='out:file=smrender.osm'/>
+   </way>
+  
+   <way>
+      <tag k='grid' v=''/>
+      <tag k='_action_' v='draw:bcolor=black'/>
+   </way>
+
+   <way>
+      <tag k='natural' v='peak'/>
+      <tag k='_action_' v='draw:color=#906030'/>
+   </way>
+
+   <relation version='10'>
+      <tag k='route' v='horse'/>
+      <tag k='_action_' v='draw:color=#ff0000;width=.7'/>
+   </relation>
+
+</osm>
+
