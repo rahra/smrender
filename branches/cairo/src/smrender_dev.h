@@ -91,7 +91,11 @@
 #define MM2LAT(x) ((x) * (rd->bb.ru.lat - rd->bb.ll.lat) / PX2MM(rd->h))
 #define MM2LON(x) ((x) * (rd->bb.ru.lon - rd->bb.ll.lon) / PX2MM(rd->w))
 // default oversampling factor
+#ifdef HAVE_CAIRO
+#define DEFAULT_OVS 1
+#else
 #define DEFAULT_OVS 2
+#endif
 
 #define MIN_ID 0xffffff0000000000LL
 #define MAX_ID INT64_MAX
@@ -100,6 +104,12 @@
 #define BB_SCALE 0.01
 
 #define JPG_QUALITY 80
+
+#define DCX_OPEN_FILL 0
+#define DCX_OPEN_BORDER 1
+#define DCX_CLOSED_FILL 2
+#define DCX_CLOSED_BORDER 3
+
 
 typedef int (*tree_func_t)(osm_obj_t*, struct rdata*, void*);
 
@@ -178,7 +188,7 @@ struct actDraw
    int collect_open;
    struct wlist *wl;
 #ifdef HAVE_CAIRO
-   cairo_t *ctx;
+   cairo_t *ctx[4];
 #endif
 };
 

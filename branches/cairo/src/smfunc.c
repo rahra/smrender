@@ -428,7 +428,6 @@ int act_set_tags_main(smrule_t *r, osm_obj_t *o)
 
 int act_shape_ini(smrule_t *r)
 {
-   struct rdata *rd = get_rdata();
    struct act_shape *as;
    double pcount = 0.0;
    char *s = "";

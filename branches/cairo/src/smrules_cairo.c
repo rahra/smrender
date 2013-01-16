@@ -40,27 +40,45 @@
 #include "smcoast.h"
 //#include "memimg.h"
 
-#define COL_COMPD(x,y) ((double) (((x) >> (y)) & 0xff) / 255)
+#define COL_COMPD(x,y) ((double) (((x) >> (y)) & 0xff) / 255.0)
 #define REDD(x) COL_COMPD(x, 16)
 #define GREEND(x) COL_COMPD(x, 8)
 #define BLUED(x) COL_COMPD(x, 0)
-#define ALPHAD(x) COL_COMPD(x & 0x7f000000, 24)
+#define ALPHAD(x) (1.0 - COL_COMPD(x & 0x7f000000, 23))
 
 
 static cairo_surface_t *sfc_;
-static struct rdata *rd_;
+
+
+static void cairo_set_source_color(cairo_t *ctx, int col)
+{
+   log_debug("cairo_set_source_rgba(r = %.2f, g = %.2f, b = %.2f, a = %.2f",
+         REDD(col), GREEND(col), BLUED(col), ALPHAD(col));
+   cairo_set_source_rgba(ctx, REDD(col), GREEND(col), BLUED(col), ALPHAD(col));
+}
 
 
 void init_main_image(struct rdata *rd, const char *bg)
 {
    cairo_status_t stat;
-
-   rd_ = rd;
+   cairo_t *ctx;
 
    sfc_ = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, rd->w, rd->h);
    if ((stat = cairo_surface_status(sfc_)) != CAIRO_STATUS_SUCCESS)
       log_msg(LOG_ERR, "failed to create cairo surface: %s", cairo_status_to_string(stat)),
          exit(EXIT_FAILURE);
+
+   if (bg != NULL)
+      set_color("bgcolor", parse_color(bg));
+
+   ctx = cairo_create(sfc_);
+   cairo_set_source_color(ctx, parse_color("bgcolor"));
+   //cairo_set_source_rgb(ctx, 1, 1, 1);
+   //cairo_set_source_rgba(ctx, 1, 1, 1, 1);
+   cairo_paint(ctx);
+   cairo_destroy(ctx);
+
+   log_msg(LOG_DEBUG, "background color is set to 0x%08x", parse_color("bgcolor"));
 }
 
 
@@ -124,6 +142,7 @@ int act_draw_ini(smrule_t *r)
    cairo_status_t e;
    double a;
    char *s;
+   int i;
 
    // just to be on the safe side
    if ((r->oo->type != OSM_WAY) && (r->oo->type != OSM_REL))
@@ -171,23 +190,51 @@ int act_draw_ini(smrule_t *r)
    d->collect_open = a == 0;
 
    d->wl = init_wlist();
-   
-   d->ctx = cairo_create(sfc_);
-   if ((e = cairo_status(d->ctx)) != CAIRO_STATUS_SUCCESS)
+
+   //FIXME: not all errors are handled
+   for (i = 0; i < 4; i ++)
    {
-      log_msg(LOG_ERR, "failed to create cairo surface: %s", cairo_status_to_string(e));
-      free(d);
-      r->data = NULL;
-      return -1;
+      d->ctx[i] = cairo_create(sfc_);
+      if ((e = cairo_status(d->ctx[i])) != CAIRO_STATUS_SUCCESS)
+      {
+         log_msg(LOG_ERR, "failed to create cairo surface: %s", cairo_status_to_string(e));
+         free(d);
+         r->data = NULL;
+         return -1;
+      }
    }
+
    if (d->fill.used)
    {
       if (d->fill.width)
-         // FIXME: MM2PX contains rd. Should somehow be decoupled
-         cairo_set_line_width(d->ctx, MM2PX(d->fill.width));
+      {
+         cairo_set_line_width(d->ctx[DCX_OPEN_FILL], mm2pxf(d->fill.width));
+         cairo_set_line_width(d->ctx[DCX_CLOSED_FILL], 0);
+      }
       else
-         cairo_set_line_width(d->ctx, 1);
-      cairo_set_source_rgba(d->ctx, REDD(d->fill.col), GREEND(d->fill.col), BLUED(d->fill.col), ALPHAD(d->fill.col));
+      {
+         cairo_set_line_width(d->ctx[DCX_OPEN_FILL], 1);
+         cairo_set_line_width(d->ctx[DCX_CLOSED_FILL], 0);
+      }
+      cairo_set_source_color(d->ctx[DCX_OPEN_FILL], d->fill.col);
+      cairo_set_source_color(d->ctx[DCX_CLOSED_FILL], d->fill.col);
+   }
+
+   if (d->border.used)
+   {
+      if (d->border.width)
+      {
+         cairo_set_line_width(d->ctx[DCX_OPEN_BORDER], mm2pxf(d->border.width * 2 + d->fill.used * d->fill.width));
+         cairo_set_line_width(d->ctx[DCX_CLOSED_BORDER], mm2pxf(d->border.width * 2));
+      }
+      else
+      {
+         cairo_set_line_width(d->ctx[DCX_OPEN_BORDER], 1);
+         cairo_set_line_width(d->ctx[DCX_CLOSED_BORDER], 1);
+      }
+      cairo_set_source_color(d->ctx[DCX_OPEN_BORDER], d->border.col);
+      cairo_set_source_color(d->ctx[DCX_CLOSED_BORDER], d->border.col);
+
    }
 
    sm_threaded(r);
@@ -198,6 +245,42 @@ int act_draw_ini(smrule_t *r)
         d->border.col, d->border.width, d->border.style, d->border.used,
         d->directional, d->collect_open, d->wl);
 
+   return 0;
+}
+
+
+int poly_line(const osm_way_t *w, cairo_t *fgctx, cairo_t *bgctx)
+{
+   int i, first = 0;
+   osm_node_t *n;
+   double x, y;
+
+   for (i = 0; i < w->ref_cnt; i++)
+   {
+      if ((n = get_object(OSM_NODE, w->ref[i])) == NULL)
+      {
+         log_msg(LOG_WARN, "node %ld of way %ld at pos %d does not exist", (long) w->ref[i], (long) w->obj.id, i);
+         continue;
+      }
+
+      geo2pxf(n->lon, n->lat, &x, &y);
+
+      if (!first)
+      {
+         if (fgctx != NULL)
+            cairo_move_to(fgctx, x, y);
+         if (bgctx != NULL)
+            cairo_move_to(bgctx, x, y);
+         first++;
+      }
+      else
+      {
+         if (fgctx != NULL)
+            cairo_line_to(fgctx, x, y);
+         if (bgctx != NULL)
+            cairo_line_to(bgctx, x, y);
+      }
+   }
    return 0;
 }
 
@@ -213,11 +296,23 @@ int act_draw_main(smrule_t *r, osm_obj_t *o)
 
    if (o->type == OSM_WAY)
    {
-      if (!d->collect_open && !is_closed_poly((osm_way_t*) o))
-         return 0;
-
-      if (d->collect_open && !is_closed_poly((osm_way_t*) o))
+      if (!is_closed_poly((osm_way_t*) o))
       {
+         if (!d->collect_open)
+            return 0;
+
+         poly_line((osm_way_t*) o, d->fill.used ? d->ctx[DCX_OPEN_FILL] : NULL, d->border.used ? d->ctx[DCX_OPEN_BORDER] : NULL);
+         cairo_stroke(d->ctx[DCX_OPEN_BORDER]);
+         cairo_stroke(d->ctx[DCX_OPEN_FILL]);
+         return 0;
+      }
+
+      if (!d->directional)
+      {
+         poly_line((osm_way_t*) o, d->fill.used ? d->ctx[DCX_CLOSED_FILL] : NULL, d->border.used ? d->ctx[DCX_CLOSED_BORDER] : NULL);
+         cairo_stroke(d->ctx[DCX_CLOSED_BORDER]);
+         cairo_fill(d->ctx[DCX_CLOSED_FILL]);
+         return 0;
       }
 
 #ifdef WITH_THREADS
@@ -249,6 +344,22 @@ int act_draw_main(smrule_t *r, osm_obj_t *o)
    log_msg(LOG_WARN, "draw() may not be applied to object type %d", o->type);
    return 1;
 }
+
+
+int act_draw_fine(smrule_t *r)
+{
+   struct actDraw *d = r->data;
+   int i;
+
+   for (i = 0; i < 4; i++)
+      cairo_destroy(d->ctx[i]);
+
+   free(d);
+   r->data = NULL;
+
+   return 0;
+}
+
 
 #endif
 

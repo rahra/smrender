@@ -62,6 +62,23 @@ double px2mm(double x)
 }
 
 
+void geo2pxf(double lon, double lat, double *x, double *y)
+{
+   *x = (lon - rd_.bb.ll.lon) * rd_.w / rd_.wc;
+   *y = rd_.h * (0.5 - (asinh(tan(DEG2RAD(lat))) - rd_.lath) / rd_.lath_len);
+}
+
+
+void geo2pxi(double lon, double lat, int *x, int *y)
+{
+   double xf, yf;
+
+   geo2pxf(lat, lon, &xf, &yf);
+   *x = round(xf);
+   *y = round(yf);
+}
+
+
 void rdata_log(void)
 {
    //struct rdata *rd = get_rdata();

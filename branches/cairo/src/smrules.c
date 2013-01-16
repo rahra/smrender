@@ -189,11 +189,11 @@ void save_main_image(struct rdata *rd, FILE *f)
 /*! Convert latitude and longitude coordinates into x and y coordinates of
  * pixel image.
  */
-void mk_paper_coords(double lat, double lon, struct rdata *rd, int *x, int *y)
+/*void mk_paper_coords(double lat, double lon, struct rdata *rd, int *x, int *y)
 {
    *x = round(        (                         lon    - rd->bb.ll.lon) * rd->w / rd->wc);
    *y = round(rd->h * (0.5 - (asinh(tan(DEG2RAD(lat))) - rd->lath)         / rd->lath_len));
-}
+}*/
 
 
 static void rot_rect(const struct rdata *rd, int x, int y, double a, int br[])
@@ -1215,7 +1215,6 @@ void delete_tile(void *img)
 
 void cut_tile(const struct bbox *bb, void *img)
 {
-   struct rdata *rd = get_rdata();
    int x, y, w, h;
 
    mk_paper_coords(bb->ru.lat, bb->ll.lon, rd, &x, &y);
