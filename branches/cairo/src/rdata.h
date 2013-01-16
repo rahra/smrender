@@ -23,19 +23,13 @@
 #endif
 #include <stdint.h>
 
+#include "smrender.h"
+#include "bxtree.h"
+
+
 // maximum number if different rule versions (processing iterations)
 #define MAX_ITER 8
-//#define MAX_COLOR 32
 
-
-/*#ifdef HAVE_GD
-typedef gdImage image_t;
-#else
-typedef void image_t;
-#endif*/
-#ifndef image_t
-#define image_t void
-#endif
 
 struct bbox
 {
@@ -44,8 +38,6 @@ struct bbox
 
 struct dstats
 {
-   //struct coord lu;  // left upper
-   //struct coord rb;  // right bottom
    struct bbox bb;
    long ncnt, wcnt, rcnt;
    int64_t min_nid;
@@ -88,14 +80,16 @@ struct rdata
    char *cmdline;
    // chart title
    char *title;
-
-   // ***** this is libgd2 specific ***** 
-   // pointer to image data
-   //image_t *img;
-   // image colors
-   //int col[MAX_COLOR];
 };
 
+
+double mm2pxf(double);
+int mm2pxi(double);
+double px2mm(double);
+
+struct rdata *rdata_get(void);
+#define get_rdata rdata_get
+void rdata_log(void);
 
 #endif
 

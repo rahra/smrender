@@ -41,6 +41,7 @@
 #include <signal.h>
 
 #include "smrender_dev.h"
+#include "rdata.h"
 #include "lists.h"
 
 
@@ -63,13 +64,6 @@ struct tile_info
 };
 
 static volatile sig_atomic_t int_ = 0;
-static struct rdata rd_;
-
-
-struct rdata *get_rdata(void)
-{
-   return &rd_;
-}
 
 
 /*! This function parse a coordinate string of format "[-]dd.ddd[NESW]" or
@@ -514,33 +508,6 @@ void print_url(struct bbox bb)
 }
 
 
-void print_rdata(const struct rdata *rd)
-{
-   log_msg(LOG_NOTICE, "*** chart parameters for rendering ****");
-   log_msg(LOG_NOTICE, "   %.3f %.3f -- %.3f %.3f",
-         rd->bb.ru.lat, rd->bb.ll.lon, rd->bb.ru.lat, rd->bb.ru.lon);
-   log_msg(LOG_NOTICE, "   %.3f %.3f -- %.3f %.3f",
-         rd->bb.ll.lat, rd->bb.ll.lon, rd->bb.ll.lat, rd->bb.ru.lon);
-   log_msg(LOG_NOTICE, "   wc = %.3f°, hc = %.3f°", rd->wc, rd->hc);
-   log_msg(LOG_NOTICE, "   mean_lat = %.3f°, mean_lat_len = %.3f (%.1f nm)",
-         rd->mean_lat, rd->mean_lat_len, rd->mean_lat_len * 60);
-   log_msg(LOG_NOTICE, "   lath = %f, lath_len = %f", rd->lath, rd->lath_len);
-   log_msg(LOG_NOTICE, "   page size = %.1f x %.1f mm, oversampling = %d",
-         PX2MM(rd->w), PX2MM(rd->h), rd->ovs);
-   log_msg(LOG_NOTICE, "   rendering: %dx%d px, dpi = %d",
-         rd->w, rd->h, rd->dpi);
-   log_msg(LOG_NOTICE, "   final: %dx%d px, dpi = %d",
-         rd->fw, rd->fh, rd->ovs ? rd->dpi / rd->ovs : rd->dpi);
-   log_msg(LOG_NOTICE, "   1 px = %.3f mm, 1mm = %d px", PX2MM(1), (int) MM2PX(1));
-   log_msg(LOG_NOTICE, "   scale 1:%.0f, %.1f x %.1f nm",
-         rd->scale, rd->wc * 60 * cos(DEG2RAD(rd->mean_lat)), rd->hc * 60);
-
-   log_debug("   G_GRID %.3f, G_TICKS %.3f, G_STICKS %.3f, G_MARGIN %.2f, G_TW %.2f, G_STW %.2f, G_BW %.2f",
-         G_GRID, G_TICKS, G_STICKS, G_MARGIN, G_TW, G_STW, G_BW);
-   log_msg(LOG_NOTICE, "***");
-}
-
-
 void init_bbox_mll(struct rdata *rd)
 {
    rd->wc = rd->mean_lat_len / cos(rd->mean_lat * M_PI / 180);
@@ -710,27 +677,6 @@ int save_osm(const char *s, bx_node_t *tree, const struct bbox *bb, const char *
 
    return 0;
 }
-
-
-//static struct rdata rd_;
-
-
-static void __attribute__((constructor)) init_rdata(void)
-{
-   struct rdata *rd = get_rdata();
-   log_debug("initializing struct rdata");
-   memset(rd, 0, sizeof(*rd));
-   rd->dpi = 300;
-   rd->ovs = DEFAULT_OVS;
-   rd->title = "";
-   //set_static_obj_tree(&rd_.obj);
-}
-
-
-/*struct rdata inline *get_rdata(void)
-{
-   return &rd_;
-}*/
 
 
 /*! Initializes data about paper (image) size.
@@ -1227,7 +1173,7 @@ int main(int argc, char *argv[])
       exit(EXIT_SUCCESS);
    }
 
-   print_rdata(rd);
+   rdata_log();
 
    if (init_exit)
       exit(EXIT_SUCCESS);

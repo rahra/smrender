@@ -509,7 +509,7 @@ int act_shape_ini(smrule_t *r)
 
 void shape_node(const struct act_shape *as, const osm_node_t *n)
 {
-   rdata_t *rd = get_rdata();
+   struct rdata *rd = get_rdata();
    osm_node_t *nd[as->pcount];
    double radius, angle, angle_step;
    osm_way_t *w;

@@ -38,7 +38,7 @@
 #define LAT_DEG 2
 #define LON_DEG 3
 
-typedef struct rdata rdata_t;
+//typedef struct rdata rdata_t;
 typedef struct smrule smrule_t;
 typedef struct action action_t;
 
@@ -63,7 +63,7 @@ void set_const_tag(struct otag*, char*, char*);
 int match_attr(const osm_obj_t*, const char *, const char *);
 char *get_param(const char*, double*, const action_t*);
 //void set_static_obj_tree(bx_node_t **);
-struct rdata *get_rdata(void);
+//struct rdata *get_rdata(void);
 bx_node_t **get_objtree(void);
 int coord_str(double , int , char *, int );
 

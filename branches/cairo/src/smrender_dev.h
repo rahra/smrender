@@ -82,11 +82,11 @@
 #define MAX_SHAPE_PCOUNT 2000
 
 // convert mm to pixels
-#define MM2PX(x) round((double) (x) * rd->dpi / 25.4)
+#define MM2PX(x) mm2pxi(x)
 // convert mm to points (pt)
 #define MM2PT(x) round((double) (x) * 72.72 / 25.4)
 // convert pixels to mm
-#define PX2MM(x) ((double) (x) * 25.4 / rd->dpi)
+#define PX2MM(x) px2mm(x)
 // convert mm to degrees
 #define MM2LAT(x) ((x) * (rd->bb.ru.lat - rd->bb.ll.lat) / PX2MM(rd->h))
 #define MM2LON(x) ((x) * (rd->bb.ru.lon - rd->bb.ll.lon) / PX2MM(rd->w))
@@ -177,6 +177,9 @@ struct actDraw
    int directional;
    int collect_open;
    struct wlist *wl;
+#ifdef HAVE_CAIRO
+   cairo_t *ctx;
+#endif
 };
 
 struct act_shape
