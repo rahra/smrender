@@ -83,8 +83,8 @@
 
 // convert mm to pixels
 #define MM2PX(x) mm2pxi(x)
-// convert mm to points (pt)
-#define MM2PT(x) round((double) (x) * 72.72 / 25.4)
+// convert mm to pdf points (pt)
+#define MM2PT(x) round((double) (x) * 72.0 / 25.4)
 // convert pixels to mm
 #define PX2MM(x) px2mm(x)
 // convert mm to degrees
@@ -188,6 +188,7 @@ struct actDraw
    int collect_open;
    struct wlist *wl;
 #ifdef HAVE_CAIRO
+   cairo_surface_t *sfc;
    cairo_t *ctx[4];
 #endif
 };

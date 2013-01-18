@@ -31,13 +31,24 @@
 #include <syslog.h>
 #include <errno.h>
 #include <ctype.h>
-//#ifdef WITH_THREADS
-//#include <pthread.h>
-//#endif
+#ifdef WITH_THREADS
+#include <pthread.h>
+#endif
 #include <cairo.h>
+
+#define MKPDF
+#ifdef MKPDF
+#include <cairo-pdf.h>
+#define mm2unit(x) mm2ptf(x)
+#define THINLINE rdata_px_unit(1, U_PT)
+#else
+#define mm2unit(x) mm2pxf(x)
+#define THINLINE 1
+#endif
 
 #include "smrender_dev.h"
 #include "smcoast.h"
+#include "rdata.h"
 //#include "memimg.h"
 
 #define COL_COMPD(x,y) ((double) (((x) >> (y)) & 0xff) / 255.0)
@@ -50,7 +61,18 @@
 static cairo_surface_t *sfc_;
 
 
-static void cairo_set_source_color(cairo_t *ctx, int col)
+static cairo_status_t cro_log_status(cairo_t *ctx)
+{
+   cairo_status_t e;
+
+   if ((e = cairo_status(ctx)) != CAIRO_STATUS_SUCCESS)
+      log_msg(LOG_ERR, "error in libcairo: %s", cairo_status_to_string(e));
+
+   return e;
+}
+
+
+static void cro_set_source_color(cairo_t *ctx, int col)
 {
    log_debug("cairo_set_source_rgba(r = %.2f, g = %.2f, b = %.2f, a = %.2f",
          REDD(col), GREEND(col), BLUED(col), ALPHAD(col));
@@ -58,23 +80,48 @@ static void cairo_set_source_color(cairo_t *ctx, int col)
 }
 
 
+static cairo_rectangle_t ext_;
+
+
+static cairo_surface_t *cro_surface(void)
+{
+   cairo_surface_t *sfc;
+   cairo_status_t e;
+
+#ifdef MKPDF
+   //sfc = cairo_pdf_surface_create(NULL, rdata_width(), rdata_height());
+   sfc = cairo_recording_surface_create(CAIRO_CONTENT_COLOR_ALPHA, &ext_);
+#else
+   sfc = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, rdata_width(U_PX), rdata_height(U_PX));
+#endif
+   if ((e = cairo_surface_status(sfc)) != CAIRO_STATUS_SUCCESS)
+   {
+      log_msg(LOG_ERR, "failed to create cairo surface: %s", cairo_status_to_string(e));
+      return NULL;
+   }
+   return sfc;
+}
+
+
 void init_main_image(struct rdata *rd, const char *bg)
 {
-   cairo_status_t stat;
    cairo_t *ctx;
 
-   sfc_ = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, rd->w, rd->h);
-   if ((stat = cairo_surface_status(sfc_)) != CAIRO_STATUS_SUCCESS)
-      log_msg(LOG_ERR, "failed to create cairo surface: %s", cairo_status_to_string(stat)),
-         exit(EXIT_FAILURE);
+#ifdef MKPDF
+   ext_.x = 0;
+   ext_.y = 0;
+   ext_.width = rdata_width(U_PT);
+   ext_.height = rdata_height(U_PT);
+#endif
+
+   if ((sfc_ = cro_surface()) == NULL)
+      exit(EXIT_FAILURE);
 
    if (bg != NULL)
       set_color("bgcolor", parse_color(bg));
 
    ctx = cairo_create(sfc_);
-   cairo_set_source_color(ctx, parse_color("bgcolor"));
-   //cairo_set_source_rgb(ctx, 1, 1, 1);
-   //cairo_set_source_rgba(ctx, 1, 1, 1, 1);
+   cro_set_source_color(ctx, parse_color("bgcolor"));
    cairo_paint(ctx);
    cairo_destroy(ctx);
 
@@ -93,8 +140,29 @@ void save_main_image(struct rdata *rd, FILE *f)
    cairo_status_t stat;
 
    log_msg(LOG_INFO, "saving image");
+#ifdef MKPDF
+
+   cairo_surface_t *sfc;
+   cairo_t *dst;
+
+   log_debug("width = %.2f pt, height = %.2f pt", rdata_width(U_PT), rdata_height(U_PT));
+
+   sfc = cairo_pdf_surface_create_for_stream(co_write_func, f, rdata_width(U_PT), rdata_height(U_PT));
+   cairo_pdf_surface_restrict_to_version(sfc, CAIRO_PDF_VERSION_1_4);
+   //sfc = cairo_svg_surface_create_for_stream(co_write_func, f, rdata_width(U_PT), rdata_height(U_PT));
+   dst = cairo_create(sfc);
+   cro_log_status(dst);
+   cairo_set_source_surface(dst, sfc_, 0, 0);
+   //cairo_scale(dst, 0.24, 0.24);
+   cairo_paint(dst);
+   cairo_show_page(dst);
+   cairo_destroy(dst);
+   cairo_surface_destroy(sfc);
+ 
+#else
    if ((stat = cairo_surface_write_to_png_stream(sfc_, co_write_func, f)) != CAIRO_STATUS_SUCCESS)
       log_msg(LOG_ERR, "failed to save image: %s", cairo_status_to_string(stat));
+#endif
 }
 
 
@@ -139,7 +207,6 @@ void reduce_resolution(struct rdata *rd)
 int act_draw_ini(smrule_t *r)
 {
    struct actDraw *d;
-   cairo_status_t e;
    double a;
    char *s;
    int i;
@@ -191,13 +258,19 @@ int act_draw_ini(smrule_t *r)
 
    d->wl = init_wlist();
 
-   //FIXME: not all errors are handled
+   if ((d->sfc = cro_surface()) == NULL)
+   {
+      free(d);
+      r->data = NULL;
+      return -1;
+   }
+
    for (i = 0; i < 4; i ++)
    {
-      d->ctx[i] = cairo_create(sfc_);
-      if ((e = cairo_status(d->ctx[i])) != CAIRO_STATUS_SUCCESS)
+      d->ctx[i] = cairo_create(d->sfc);
+      if (cro_log_status(d->ctx[i]) != CAIRO_STATUS_SUCCESS)
       {
-         log_msg(LOG_ERR, "failed to create cairo surface: %s", cairo_status_to_string(e));
+         cairo_surface_destroy(d->sfc);
          free(d);
          r->data = NULL;
          return -1;
@@ -208,32 +281,40 @@ int act_draw_ini(smrule_t *r)
    {
       if (d->fill.width)
       {
-         cairo_set_line_width(d->ctx[DCX_OPEN_FILL], mm2pxf(d->fill.width));
-         cairo_set_line_width(d->ctx[DCX_CLOSED_FILL], 0);
+         cairo_set_line_width(d->ctx[DCX_OPEN_FILL], mm2unit(d->fill.width));
+         cairo_set_line_width(d->ctx[DCX_CLOSED_FILL], THINLINE);
       }
       else
       {
-         cairo_set_line_width(d->ctx[DCX_OPEN_FILL], 1);
-         cairo_set_line_width(d->ctx[DCX_CLOSED_FILL], 0);
+         cairo_set_line_width(d->ctx[DCX_OPEN_FILL], THINLINE);
+         cairo_set_line_width(d->ctx[DCX_CLOSED_FILL], THINLINE);
       }
-      cairo_set_source_color(d->ctx[DCX_OPEN_FILL], d->fill.col);
-      cairo_set_source_color(d->ctx[DCX_CLOSED_FILL], d->fill.col);
+      cro_set_source_color(d->ctx[DCX_OPEN_FILL], d->fill.col);
+      cro_set_source_color(d->ctx[DCX_CLOSED_FILL], d->fill.col);
    }
 
    if (d->border.used)
    {
       if (d->border.width)
       {
-         cairo_set_line_width(d->ctx[DCX_OPEN_BORDER], mm2pxf(d->border.width * 2 + d->fill.used * d->fill.width));
-         cairo_set_line_width(d->ctx[DCX_CLOSED_BORDER], mm2pxf(d->border.width * 2));
+         if (d->fill.used)
+         {
+            cairo_set_line_width(d->ctx[DCX_OPEN_BORDER], mm2unit(d->border.width * 2 + d->fill.width));
+            cairo_set_line_width(d->ctx[DCX_CLOSED_BORDER], mm2unit(d->border.width * 2));
+         }
+         else
+         {
+            cairo_set_line_width(d->ctx[DCX_OPEN_BORDER], mm2unit(d->border.width));
+            cairo_set_line_width(d->ctx[DCX_CLOSED_BORDER], mm2unit(d->border.width));
+         }
       }
       else
       {
-         cairo_set_line_width(d->ctx[DCX_OPEN_BORDER], 1);
-         cairo_set_line_width(d->ctx[DCX_CLOSED_BORDER], 1);
+         cairo_set_line_width(d->ctx[DCX_OPEN_BORDER], THINLINE);
+         cairo_set_line_width(d->ctx[DCX_CLOSED_BORDER], THINLINE);
       }
-      cairo_set_source_color(d->ctx[DCX_OPEN_BORDER], d->border.col);
-      cairo_set_source_color(d->ctx[DCX_CLOSED_BORDER], d->border.col);
+      cro_set_source_color(d->ctx[DCX_OPEN_BORDER], d->border.col);
+      cro_set_source_color(d->ctx[DCX_CLOSED_BORDER], d->border.col);
 
    }
 
@@ -264,6 +345,10 @@ int poly_line(const osm_way_t *w, cairo_t *fgctx, cairo_t *bgctx)
       }
 
       geo2pxf(n->lon, n->lat, &x, &y);
+#ifdef MKPDF
+      x = rdata_px_unit(x, U_PT);
+      y = rdata_px_unit(y, U_PT);
+#endif
 
       if (!first)
       {
@@ -346,14 +431,73 @@ int act_draw_main(smrule_t *r, osm_obj_t *o)
 }
 
 
-int act_draw_fine(smrule_t *r)
+int act_draw_fini(smrule_t *r)
 {
    struct actDraw *d = r->data;
+   cairo_t *dst;
    int i;
 
-   for (i = 0; i < 4; i++)
-      cairo_destroy(d->ctx[i]);
+   if (d->directional)
+   {
+      log_debug("rendering directional polygons (ref_cnt = %d)", d->wl->ref_cnt);
+      for (i = 0; i < d->wl->ref_cnt; i++)
+      {
+         if (is_closed_poly(d->wl->ref[i].w))
+         {
+            poly_area(d->wl->ref[i].w, NULL, &d->wl->ref[i].area);
+            if (d->wl->ref[i].area < 0)
+            {
+               d->wl->ref[i].area = fabs(d->wl->ref[i].area);
+               d->wl->ref[i].cw = d->directional;
+            }
+         }
+      }
+      qsort(d->wl->ref, d->wl->ref_cnt, sizeof(struct poly), (int(*)(const void *, const void *)) compare_poly_area);
 
+      dst = cairo_create(d->sfc);
+      cro_log_status(dst);
+      //cairo_set_source_rgba(dst, 0, 0, 0, 0);
+      cro_set_source_color(dst, parse_color("bgcolor"));
+      for (i = 0; i < d->wl->ref_cnt; i++)
+      {
+         log_debug("cw = %d, area = %f", d->wl->ref[i].cw, d->wl->ref[i].area);
+         if (d->fill.used)
+         {
+            if (d->wl->ref[i].cw)
+            {
+               poly_line(d->wl->ref[i].w, dst, d->border.used ? d->ctx[DCX_CLOSED_BORDER] : NULL);
+               cairo_fill(dst);
+            }
+            else
+            {
+               poly_line(d->wl->ref[i].w, d->ctx[DCX_CLOSED_FILL], d->border.used ? d->ctx[DCX_CLOSED_BORDER] : NULL);
+               cairo_fill(d->ctx[DCX_CLOSED_FILL]);
+            }
+            cairo_stroke(d->ctx[DCX_CLOSED_BORDER]);
+         }
+         else
+         {
+            poly_line(d->wl->ref[i].w, NULL, d->border.used ? d->ctx[DCX_CLOSED_BORDER] : NULL);
+            cairo_stroke(d->ctx[DCX_CLOSED_BORDER]);
+         }
+
+      }
+      cairo_destroy(dst);
+      //save_image("temp.png", d->sfc, 0);
+   }
+
+   for (i = 0; i < 4; i++)
+   {
+      cairo_destroy(d->ctx[i]);
+   }
+
+   dst = cairo_create(sfc_);
+   cro_log_status(dst);
+   cairo_set_source_surface(dst, d->sfc, 0, 0);
+   cairo_paint(dst);
+
+   cairo_destroy(dst);
+   cairo_surface_destroy(d->sfc);
    free(d);
    r->data = NULL;
 

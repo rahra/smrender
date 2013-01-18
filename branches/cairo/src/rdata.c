@@ -44,6 +44,12 @@ struct rdata *rdata_get(void)
 }
 
 
+double mm2ptf(double x)
+{
+   return x * 72 / 25.4;
+}
+
+
 double mm2pxf(double x)
 {
    return x * rd_.dpi / 25.4;
@@ -108,15 +114,32 @@ void rdata_log(void)
 }
 
 
-int rdata_width(void)
+double rdata_px_unit(double x, unit_t type)
 {
-   return rd_.w;
+   switch (type)
+   {
+      case U_PX:
+         return x;
+      case U_MM:
+         return x * 25.4 / rd_.dpi;
+      case U_PT:
+         return x * 72 / rd_.dpi;
+      case U_IN:
+         return x / rd_.dpi;
+   }
+   return NAN;
 }
 
 
-int rdata_height(void)
+double rdata_width(unit_t type)
 {
-   return rd_.h;
+   return rdata_px_unit(rd_.fw, type);
+}
+
+
+double rdata_height(unit_t type)
+{
+   return rdata_px_unit(rd_.fh, type);
 }
 
 

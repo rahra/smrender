@@ -31,6 +31,12 @@
 #define MAX_ITER 8
 
 
+typedef enum
+{
+   U_MM, U_PX, U_PT, U_IN
+} unit_t;
+
+
 struct bbox
 {
    struct coord ll, ru;
@@ -83,6 +89,7 @@ struct rdata
 };
 
 
+double mm2ptf(double);
 double mm2pxf(double);
 int mm2pxi(double);
 double px2mm(double);
@@ -94,6 +101,9 @@ void geo2pxi(double, double, int*, int*);
 struct rdata *rdata_get(void);
 #define get_rdata rdata_get
 void rdata_log(void);
+double rdata_px_unit(double, unit_t);
+double rdata_width(unit_t);
+double rdata_height(unit_t);
 
 #endif
 

@@ -181,19 +181,23 @@ int act_out_fini(smrule_t *r)
 
 /*! Calculate the area and the centroid of a closed polygon.
  *  @param w Pointer to closed polygon.
- *  @param c Pointer to struct coord which will receive the coordinates of the
- *  centroid.
- *  @param ar Pointer to variable which will receive the area of the polygon.
- *  If ar is positive, the nodes of the polygon are order counterclockwise, if
- *  ar is negative they are ordered clockwise.
+ *  @param center Pointer to struct coord which will receive the coordinates of the
+ *  centroid. It may be NULL.
+ *  @param area Pointer to variable which will receive the area of the polygon.
+ *  If area is positive, the nodes of the polygon are order counterclockwise, if
+ *  area is negative they are ordered clockwise.
  *  The result is the area measured in nautical square miles.
  *  @return Returns 0 on success, -1 on error.
  */
-int poly_area(const osm_way_t *w, struct coord *c, double *ar)
+int poly_area(const osm_way_t *w, struct coord *center, double *area)
 {
-   double f, x[2];
+   struct coord c;
+   double f, x[2], ar;
    osm_node_t *n[2];
    int i;
+
+   if (center == NULL && area == NULL)
+      return 0;
 
    if (!is_closed_poly(w))
    {
@@ -207,9 +211,9 @@ int poly_area(const osm_way_t *w, struct coord *c, double *ar)
       return -1;
    }
 
-   *ar = 0;
-   c->lat = 0;
-   c->lon = 0;
+   ar = 0;
+   c.lat = 0;
+   c.lon = 0;
 
    for (i = 0; i < w->ref_cnt - 1; i++)
    {
@@ -223,15 +227,21 @@ int poly_area(const osm_way_t *w, struct coord *c, double *ar)
       x[0] = n[0]->lon * cos(DEG2RAD(n[0]->lat));
       x[1] = n[1]->lon * cos(DEG2RAD(n[1]->lat));
       f = x[0] * n[1]->lat - x[1] * n[0]->lat;
-      c->lon += (x[0] + x[1]) * f;
-      c->lat += (n[0]->lat + n[1]->lat) * f;
-      *ar += f;
+      c.lon += (x[0] + x[1]) * f;
+      c.lat += (n[0]->lat + n[1]->lat) * f;
+      ar += f;
       //log_debug("%d %f %f %f %f %f %f %f/%f %f/%f", i, f, sx, sy, cx, cy, ar, n[0]->nd.lon, n[0]->nd.lat, n[1]->nd.lon, n[1]->nd.lat);
    }
 
-   c->lat /= 3.0 * *ar;
-   c->lon /= 3.0 * *ar * cos(DEG2RAD(c->lat));
-   *ar = *ar * 1800.0;
+   c.lat /= 3.0 * ar;
+   c.lon /= 3.0 * ar * cos(DEG2RAD(c.lat));
+   ar = ar * 1800.0;
+
+   if (center != NULL)
+      *center = c;
+
+   if (area != NULL)
+      *area = ar;
 
    return 0;
 }
