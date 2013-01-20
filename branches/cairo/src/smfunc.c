@@ -1108,3 +1108,44 @@ int act_disable_rule_main(smrule_t *r, osm_obj_t *o)
    return act_disable_main(r, r->data);
 }
 
+
+static void bbox_min_max(const struct coord *cd, struct bbox *bb)
+{
+   if (cd->lon > bb->ru.lon)
+      bb->ru.lon = cd->lon;
+   if (cd->lon < bb->ll.lon)
+      bb->ll.lon = cd->lon;
+   if (cd->lat > bb->ru.lat)
+      bb->ru.lat = cd->lat;
+   if (cd->lat < bb->ll.lat)
+      bb->ll.lat = cd->lat;
+}
+
+
+void bbox_way(const osm_way_t *w, struct bbox *bb)
+{
+   struct coord cd;
+   osm_node_t *n;
+   int i;
+
+   if (w == NULL || bb == NULL)
+      return;
+
+   bb->ru.lon = -180;
+   bb->ll.lon = 180;
+   bb->ru.lat = -90;
+   bb->ll.lat = 90;
+
+   for (i = 0; i < w->ref_cnt; i++)
+   {
+      if ((n = get_object(OSM_NODE, w->ref[i])) == NULL)
+      {
+         log_msg(LOG_WARN, "node %ld in way %ld does not exist", (long) w->ref[i], (long) w->obj.id);
+         continue;
+      }
+      cd.lat = n->lat;
+      cd.lon = n->lon;
+      bbox_min_max(&cd, bb);
+   }
+}
+

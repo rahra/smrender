@@ -99,6 +99,7 @@ static cairo_surface_t *cro_surface(void)
       log_msg(LOG_ERR, "failed to create cairo surface: %s", cairo_status_to_string(e));
       return NULL;
    }
+   cairo_surface_set_fallback_resolution(sfc, rdata_dpi(), rdata_dpi());
    return sfc;
 }
 

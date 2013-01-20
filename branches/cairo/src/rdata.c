@@ -143,6 +143,12 @@ double rdata_height(unit_t type)
 }
 
 
+int rdata_dpi(void)
+{
+   return rd_.dpi;
+}
+
+
 static void __attribute__((constructor)) init_rdata(void)
 {
    //struct rdata *rd = get_rdata();

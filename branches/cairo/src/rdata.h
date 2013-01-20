@@ -104,6 +104,7 @@ void rdata_log(void);
 double rdata_px_unit(double, unit_t);
 double rdata_width(unit_t);
 double rdata_height(unit_t);
+int rdata_dpi(void);
 
 #endif
 
