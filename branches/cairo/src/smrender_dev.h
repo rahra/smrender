@@ -188,8 +188,7 @@ struct actDraw
    int collect_open;
    struct wlist *wl;
 #ifdef HAVE_CAIRO
-   cairo_surface_t *sfc;
-   cairo_t *ctx[4];
+   cairo_t *ctx;
 #endif
 };
 

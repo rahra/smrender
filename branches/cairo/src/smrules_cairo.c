@@ -74,8 +74,6 @@ static cairo_status_t cro_log_status(cairo_t *ctx)
 
 static void cro_set_source_color(cairo_t *ctx, int col)
 {
-   log_debug("cairo_set_source_rgba(r = %.2f, g = %.2f, b = %.2f, a = %.2f",
-         REDD(col), GREEND(col), BLUED(col), ALPHAD(col));
    cairo_set_source_rgba(ctx, REDD(col), GREEND(col), BLUED(col), ALPHAD(col));
 }
 
@@ -138,8 +136,6 @@ static cairo_status_t co_write_func(void *closure, const unsigned char *data, un
 
 void save_main_image(struct rdata *rd, FILE *f)
 {
-   cairo_status_t stat;
-
    log_msg(LOG_INFO, "saving image");
 #ifdef MKPDF
 
@@ -161,6 +157,8 @@ void save_main_image(struct rdata *rd, FILE *f)
    cairo_surface_destroy(sfc);
  
 #else
+   cairo_status_t stat;
+
    if ((stat = cairo_surface_write_to_png_stream(sfc_, co_write_func, f)) != CAIRO_STATUS_SUCCESS)
       log_msg(LOG_ERR, "failed to save image: %s", cairo_status_to_string(stat));
 #endif
@@ -210,7 +208,6 @@ int act_draw_ini(smrule_t *r)
    struct actDraw *d;
    double a;
    char *s;
-   int i;
 
    // just to be on the safe side
    if ((r->oo->type != OSM_WAY) && (r->oo->type != OSM_REL))
@@ -259,13 +256,16 @@ int act_draw_ini(smrule_t *r)
 
    d->wl = init_wlist();
 
-   if ((d->sfc = cro_surface()) == NULL)
+   d->ctx = cairo_create(sfc_);
+   if (cro_log_status(d->ctx) != CAIRO_STATUS_SUCCESS)
    {
       free(d);
       r->data = NULL;
       return -1;
    }
+   cairo_push_group(d->ctx);
 
+#if 0
    for (i = 0; i < 4; i ++)
    {
       d->ctx[i] = cairo_create(d->sfc);
@@ -318,6 +318,7 @@ int act_draw_ini(smrule_t *r)
       cro_set_source_color(d->ctx[DCX_CLOSED_BORDER], d->border.col);
 
    }
+#endif
 
    sm_threaded(r);
 
@@ -331,12 +332,15 @@ int act_draw_ini(smrule_t *r)
 }
 
 
-int poly_line(const osm_way_t *w, cairo_t *fgctx, cairo_t *bgctx)
+/*! Create a cairo path from a way.
+ */
+static void cro_poly_line(const osm_way_t *w, cairo_t *ctx)
 {
-   int i, first = 0;
    osm_node_t *n;
    double x, y;
+   int i;
 
+   cairo_new_path(ctx);
    for (i = 0; i < w->ref_cnt; i++)
    {
       if ((n = get_object(OSM_NODE, w->ref[i])) == NULL)
@@ -350,26 +354,49 @@ int poly_line(const osm_way_t *w, cairo_t *fgctx, cairo_t *bgctx)
       x = rdata_px_unit(x, U_PT);
       y = rdata_px_unit(y, U_PT);
 #endif
+      cairo_line_to(ctx, x, y);
+   }
+}
 
-      if (!first)
+
+/*! Render the way properly to the cairo context.
+ */
+static void render_poly_line(cairo_t *ctx, const struct actDraw *d, const osm_way_t *w, int cw)
+{
+   if (d->border.used)
+   {
+      cro_set_source_color(ctx, d->border.col);
+      cairo_set_line_width(ctx, THINLINE);  // FIXME: line width constant
+      cro_poly_line(w, ctx);
+      cairo_stroke(ctx);
+   }
+
+   if (d->fill.used)
+   {
+      cro_poly_line(w, ctx);
+      if (cw)  // this should only be allowed if it is a closed polygon
       {
-         if (fgctx != NULL)
-            cairo_move_to(fgctx, x, y);
-         if (bgctx != NULL)
-            cairo_move_to(bgctx, x, y);
-         first++;
+         //log_debug("cw: clearing");
+         cairo_save(ctx);
+         cairo_set_operator(ctx, CAIRO_OPERATOR_CLEAR);
+         cairo_fill(ctx);
+         cairo_restore(ctx);
       }
       else
       {
-         if (fgctx != NULL)
-            cairo_line_to(fgctx, x, y);
-         if (bgctx != NULL)
-            cairo_line_to(bgctx, x, y);
+         //log_debug("ccw: filling with #%08x", d->fill.col);
+         cro_set_source_color(ctx, d->fill.col);
+         if (is_closed_poly(w))
+            cairo_fill(ctx);
+         else
+         {
+            cairo_set_line_width(ctx, THINLINE);  // FIXME: line width constant
+            cairo_stroke(ctx);
+         }
       }
    }
-   return 0;
 }
-
+ 
 
 int act_draw_main(smrule_t *r, osm_obj_t *o)
 {
@@ -387,17 +414,13 @@ int act_draw_main(smrule_t *r, osm_obj_t *o)
          if (!d->collect_open)
             return 0;
 
-         poly_line((osm_way_t*) o, d->fill.used ? d->ctx[DCX_OPEN_FILL] : NULL, d->border.used ? d->ctx[DCX_OPEN_BORDER] : NULL);
-         cairo_stroke(d->ctx[DCX_OPEN_BORDER]);
-         cairo_stroke(d->ctx[DCX_OPEN_FILL]);
+         render_poly_line(d->ctx, d, (osm_way_t*) o, 0);
          return 0;
       }
 
       if (!d->directional)
       {
-         poly_line((osm_way_t*) o, d->fill.used ? d->ctx[DCX_CLOSED_FILL] : NULL, d->border.used ? d->ctx[DCX_CLOSED_BORDER] : NULL);
-         cairo_stroke(d->ctx[DCX_CLOSED_BORDER]);
-         cairo_fill(d->ctx[DCX_CLOSED_FILL]);
+         render_poly_line(d->ctx, d, (osm_way_t*) o, 0);
          return 0;
       }
 
@@ -435,8 +458,11 @@ int act_draw_main(smrule_t *r, osm_obj_t *o)
 int act_draw_fini(smrule_t *r)
 {
    struct actDraw *d = r->data;
-   cairo_t *dst;
+   //cairo_t *dst, *ctx;
    int i;
+
+   cairo_pop_group_to_source(d->ctx);
+   cairo_paint(d->ctx);
 
    if (d->directional)
    {
@@ -455,50 +481,18 @@ int act_draw_fini(smrule_t *r)
       }
       qsort(d->wl->ref, d->wl->ref_cnt, sizeof(struct poly), (int(*)(const void *, const void *)) compare_poly_area);
 
-      dst = cairo_create(d->sfc);
-      cro_log_status(dst);
-      //cairo_set_source_rgba(dst, 0, 0, 0, 0);
-      cro_set_source_color(dst, parse_color("bgcolor"));
+      cairo_push_group(d->ctx);
       for (i = 0; i < d->wl->ref_cnt; i++)
       {
          log_debug("cw = %d, area = %f", d->wl->ref[i].cw, d->wl->ref[i].area);
-         if (d->fill.used)
-         {
-            if (d->wl->ref[i].cw)
-            {
-               poly_line(d->wl->ref[i].w, dst, d->border.used ? d->ctx[DCX_CLOSED_BORDER] : NULL);
-               cairo_fill(dst);
-            }
-            else
-            {
-               poly_line(d->wl->ref[i].w, d->ctx[DCX_CLOSED_FILL], d->border.used ? d->ctx[DCX_CLOSED_BORDER] : NULL);
-               cairo_fill(d->ctx[DCX_CLOSED_FILL]);
-            }
-            cairo_stroke(d->ctx[DCX_CLOSED_BORDER]);
-         }
-         else
-         {
-            poly_line(d->wl->ref[i].w, NULL, d->border.used ? d->ctx[DCX_CLOSED_BORDER] : NULL);
-            cairo_stroke(d->ctx[DCX_CLOSED_BORDER]);
-         }
+         render_poly_line(d->ctx, d, d->wl->ref[i].w, d->wl->ref[i].cw);
 
       }
-      cairo_destroy(dst);
-      //save_image("temp.png", d->sfc, 0);
+      cairo_pop_group_to_source(d->ctx);
+      cairo_paint(d->ctx);
    }
 
-   for (i = 0; i < 4; i++)
-   {
-      cairo_destroy(d->ctx[i]);
-   }
-
-   dst = cairo_create(sfc_);
-   cro_log_status(dst);
-   cairo_set_source_surface(dst, d->sfc, 0, 0);
-   cairo_paint(dst);
-
-   cairo_destroy(dst);
-   cairo_surface_destroy(d->sfc);
+   cairo_destroy(d->ctx);
    free(d);
    r->data = NULL;
 
