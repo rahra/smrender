@@ -35,12 +35,15 @@
 #include <pthread.h>
 #endif
 #include <cairo.h>
-
+#ifdef CAIRO_HAS_FT_FONT
+#include <cairo-ft.h>
+#endif
 #define MKPDF
 #ifdef MKPDF
 #include <cairo-pdf.h>
 #define mm2unit(x) mm2ptf(x)
 #define THINLINE rdata_px_unit(1, U_PT)
+#define mm2wu(x) ((x) == 0.0 ? THINLINE : mm2unit(x))
 #else
 #define mm2unit(x) mm2pxf(x)
 #define THINLINE 1
@@ -265,61 +268,6 @@ int act_draw_ini(smrule_t *r)
    }
    cairo_push_group(d->ctx);
 
-#if 0
-   for (i = 0; i < 4; i ++)
-   {
-      d->ctx[i] = cairo_create(d->sfc);
-      if (cro_log_status(d->ctx[i]) != CAIRO_STATUS_SUCCESS)
-      {
-         cairo_surface_destroy(d->sfc);
-         free(d);
-         r->data = NULL;
-         return -1;
-      }
-   }
-
-   if (d->fill.used)
-   {
-      if (d->fill.width)
-      {
-         cairo_set_line_width(d->ctx[DCX_OPEN_FILL], mm2unit(d->fill.width));
-         cairo_set_line_width(d->ctx[DCX_CLOSED_FILL], THINLINE);
-      }
-      else
-      {
-         cairo_set_line_width(d->ctx[DCX_OPEN_FILL], THINLINE);
-         cairo_set_line_width(d->ctx[DCX_CLOSED_FILL], THINLINE);
-      }
-      cro_set_source_color(d->ctx[DCX_OPEN_FILL], d->fill.col);
-      cro_set_source_color(d->ctx[DCX_CLOSED_FILL], d->fill.col);
-   }
-
-   if (d->border.used)
-   {
-      if (d->border.width)
-      {
-         if (d->fill.used)
-         {
-            cairo_set_line_width(d->ctx[DCX_OPEN_BORDER], mm2unit(d->border.width * 2 + d->fill.width));
-            cairo_set_line_width(d->ctx[DCX_CLOSED_BORDER], mm2unit(d->border.width * 2));
-         }
-         else
-         {
-            cairo_set_line_width(d->ctx[DCX_OPEN_BORDER], mm2unit(d->border.width));
-            cairo_set_line_width(d->ctx[DCX_CLOSED_BORDER], mm2unit(d->border.width));
-         }
-      }
-      else
-      {
-         cairo_set_line_width(d->ctx[DCX_OPEN_BORDER], THINLINE);
-         cairo_set_line_width(d->ctx[DCX_CLOSED_BORDER], THINLINE);
-      }
-      cro_set_source_color(d->ctx[DCX_OPEN_BORDER], d->border.col);
-      cro_set_source_color(d->ctx[DCX_CLOSED_BORDER], d->border.col);
-
-   }
-#endif
-
    sm_threaded(r);
 
    //log_msg(LOG_DEBUG, "directional = %d, ignore_open = %d", d->directional, !d->collect_open);
@@ -359,6 +307,38 @@ static void cro_poly_line(const osm_way_t *w, cairo_t *ctx)
 }
 
 
+/*! Calculate the linewidth.
+ *  @param d Pointer to struct actDraw.
+ *  @param border 0 if fill width for open polygons needed or 1 for border width.
+ *  @param closed 0 if open polygon or 1 if closed.
+ *
+ * Possible combinations of fill widths
+ *                  | open fill  | open border | closed fill | closed border
+ *  b_used,  f_used | fw         | 2bw+fw      | -           | 2bw
+ *  b_used, !f_used | -          |  bw 1)      | -           |  bw
+ * !b_used,  f_used | fw         | -           | -           | -
+ * !b_used, !f_used | -          | -           | -           | -
+ *
+ * remark 1) this could also be 2bw.
+ */
+static double cro_border_width(const struct actDraw *d, int closed)
+{
+   if (!d->fill.used)
+      return mm2wu(d->border.width);
+
+   if (!closed)
+      return mm2wu(2 * d->border.width) + mm2wu(d->fill.width);
+
+   return mm2wu(2 * d->border.width);
+}
+
+
+static double cro_fill_width(const struct actDraw *d)
+{
+   return mm2wu(d->fill.width);
+}
+
+
 /*! Render the way properly to the cairo context.
  */
 static void render_poly_line(cairo_t *ctx, const struct actDraw *d, const osm_way_t *w, int cw)
@@ -366,7 +346,7 @@ static void render_poly_line(cairo_t *ctx, const struct actDraw *d, const osm_wa
    if (d->border.used)
    {
       cro_set_source_color(ctx, d->border.col);
-      cairo_set_line_width(ctx, THINLINE);  // FIXME: line width constant
+      cairo_set_line_width(ctx, cro_border_width(d, is_closed_poly(w)));
       cro_poly_line(w, ctx);
       cairo_stroke(ctx);
    }
@@ -390,7 +370,7 @@ static void render_poly_line(cairo_t *ctx, const struct actDraw *d, const osm_wa
             cairo_fill(ctx);
          else
          {
-            cairo_set_line_width(ctx, THINLINE);  // FIXME: line width constant
+            cairo_set_line_width(ctx, cro_fill_width(d));
             cairo_stroke(ctx);
          }
       }
@@ -500,5 +480,168 @@ int act_draw_fini(smrule_t *r)
 }
 
 
+int act_cap_ini(smrule_t *r)
+{
+   struct actCaption cap;
+   char *s;
+#ifdef CAIRO_HAS_FC_FONT
+   cairo_font_face_t *cfc;
+   FcPattern *pat;
+#endif
+
+   memset(&cap, 0, sizeof(cap));
+
+   if ((cap.font = get_param("font", NULL, r->act)) == NULL)
+   {
+      log_msg(LOG_WARN, "parameter 'font' missing");
+      return 1;
+   }
+   if (get_param("size", &cap.size, r->act) == NULL)
+   {
+      log_msg(LOG_WARN, "parameter 'size' missing");
+      return 1;
+   }
+   if ((cap.key = get_param("key", NULL, r->act)) == NULL)
+   {
+      log_msg(LOG_WARN, "parameter 'key' missing");
+      return 1;
+   }
+   if (*cap.key == '*')
+   {
+      cap.key++;
+      cap.pos |= POS_UC;
+   }
+   //rd = rd_;
+   if ((s = get_param("color", NULL, r->act)) != NULL)
+      cap.col = parse_color(s);
+   if ((s = get_param("angle", &cap.angle, r->act)) != NULL)
+   {
+      if (!strcmp(s, "auto"))
+      {
+         cap.angle = NAN;
+         cap.rot.autocol = parse_color("bgcolor");
+         if ((s = get_param("auto-color", NULL, r->act)) != NULL)
+         {
+            cap.rot.autocol = parse_color(s);
+         }
+         if ((s = get_param("weight", &cap.rot.weight, r->act)) == NULL)
+            cap.rot.weight = 1;
+         (void) get_param("phase", &cap.rot.phase, r->act);
+      }
+   }
+   if ((s = get_param("halign", NULL, r->act)) != NULL)
+   {
+      if (!strcmp(s, "east"))
+         cap.pos |= POS_E;
+      else if (!strcmp(s, "west"))
+         cap.pos |= POS_W;
+      else
+         log_msg(LOG_WARN, "unknown alignment '%s'", s);
+   }
+   if ((s = get_param("valign", NULL, r->act)) != NULL)
+   {
+      if (!strcmp(s, "north"))
+         cap.pos |= POS_N;
+      else if (!strcmp(s, "south"))
+         cap.pos |= POS_S;
+      else
+         log_msg(LOG_WARN, "unknown alignment '%s'", s);
+   }
+
+   cap.ctx = cairo_create(sfc_);
+   if (cro_log_status(cap.ctx) != CAIRO_STATUS_SUCCESS)
+      return -1;
+
+#ifdef CAIRO_HAS_FC_FONT
+   if ((pat = FcNameParse((FcChar8*) cap.font)) == NULL)
+   {
+      log_msg(LOG_ERR, "FcNameParse(\"%s\") failed", cap.font);
+      return -1;
+   }
+   cfc = cairo_ft_font_face_create_for_pattern(pat);
+   FcPatternDestroy(pat);
+   cairo_set_font_face(cap.ctx, cfc);
+   cairo_font_face_destroy(cfc); 
+#else
+   cairo_select_font_face (cap.ctx, cap.font, 0, 0);
+#endif
+
+   cro_set_source_color(cap.ctx, cap.col);
+   cairo_set_font_size(cap.ctx, mm2unit(cap.size));
+
+   cairo_push_group(cap.ctx);
+
+   if ((r->data = malloc(sizeof(cap))) == NULL)
+   {
+      log_msg(LOG_ERR, "cannot malloc: %s", strerror(errno));
+      return -1;
+   }
+
+   // activate multi-threading if angle is not "auto"
+   if (!isnan(cap.angle))
+      sm_threaded(r);
+
+   log_msg(LOG_DEBUG, "%04x, %08x, '%s', '%s', %.1f, %.1f, {%.1f, %08x, %.1f}",
+         cap.pos, cap.col, cap.font, cap.key, cap.size, cap.angle,
+         cap.rot.phase, cap.rot.autocol, cap.rot.weight);
+   memcpy(r->data, &cap, sizeof(cap));
+   return 0;
+}
+
+
+static int node_cap(const struct actCaption *cap, osm_node_t *n, const bstring_t *str)
+{
+   char buf[str->len + 1];
+   double x, y;
+
+   geo2pxf(n->lon, n->lat, &x, &y);
+#ifdef MKPDF
+   x = rdata_px_unit(x, U_PT);
+   y = rdata_px_unit(y, U_PT);
+#endif
+ 
+   memcpy(buf, str->buf, str->len);
+   buf[str->len] = '\0';
+
+   cairo_move_to(cap->ctx, x, y);
+   cairo_rotate(cap->ctx, isnan(cap->angle) ? 0.0 : DEG2RAD(360 - cap->angle));
+   cairo_show_text(cap->ctx, buf);
+
+   return 0;
+}
+
+
+int act_cap_main(smrule_t *r, osm_obj_t *o)
+{
+   int n;
+
+   if ((n = match_attr(o, ((struct actCaption*) r->data)->key, NULL)) == -1)
+   {
+      //log_debug("node %ld has no caption tag '%s'", nd->nd.id, rl->rule.cap.key);
+      return 0;
+   }
+
+   if (o->type != OSM_NODE)
+      return 1;
+
+   return node_cap(r->data, (osm_node_t*) o, &o->otag[n].v);
+}
+
+
+int act_cap_fini(smrule_t *r)
+{
+   struct actCaption *cap = r->data;
+
+   cairo_pop_group_to_source(cap->ctx);
+   cairo_paint(cap->ctx);
+   cairo_destroy(cap->ctx);
+
+   free(cap);
+   r->data = NULL;
+
+   return 0;
+}
+
+ 
 #endif
 
