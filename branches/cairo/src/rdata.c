@@ -149,6 +149,12 @@ int rdata_dpi(void)
 }
 
 
+double rdata_square_nm(void)
+{
+   return rd_.mean_lat_len * rd_.hc * 3600;
+}
+
+
 static void __attribute__((constructor)) init_rdata(void)
 {
    //struct rdata *rd = get_rdata();

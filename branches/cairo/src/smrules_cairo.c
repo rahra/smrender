@@ -511,7 +511,6 @@ int act_cap_ini(smrule_t *r)
       cap.key++;
       cap.pos |= POS_UC;
    }
-   //rd = rd_;
    if ((s = get_param("color", NULL, r->act)) != NULL)
       cap.col = parse_color(s);
    if ((s = get_param("angle", &cap.angle, r->act)) != NULL)
@@ -567,7 +566,7 @@ int act_cap_ini(smrule_t *r)
 #endif
 
    cro_set_source_color(cap.ctx, cap.col);
-   cairo_set_font_size(cap.ctx, mm2unit(cap.size));
+   //cairo_set_font_size(cap.ctx, mm2unit(cap.size));
 
    cairo_push_group(cap.ctx);
 
@@ -589,12 +588,12 @@ int act_cap_ini(smrule_t *r)
 }
 
 
-static int node_cap(const struct actCaption *cap, osm_node_t *n, const bstring_t *str)
+static int cap_coord(const struct actCaption *cap, const struct coord *c, const bstring_t *str)
 {
    char buf[str->len + 1];
    double x, y;
 
-   geo2pxf(n->lon, n->lat, &x, &y);
+   geo2pxf(c->lon, c->lat, &x, &y);
 #ifdef MKPDF
    x = rdata_px_unit(x, U_PT);
    y = rdata_px_unit(y, U_PT);
@@ -603,6 +602,7 @@ static int node_cap(const struct actCaption *cap, osm_node_t *n, const bstring_t
    memcpy(buf, str->buf, str->len);
    buf[str->len] = '\0';
 
+   cairo_set_font_size(cap->ctx, mm2unit(cap->size));
    cairo_move_to(cap->ctx, x, y);
    cairo_rotate(cap->ctx, isnan(cap->angle) ? 0.0 : DEG2RAD(360 - cap->angle));
    cairo_show_text(cap->ctx, buf);
@@ -611,8 +611,37 @@ static int node_cap(const struct actCaption *cap, osm_node_t *n, const bstring_t
 }
 
 
+static int cap_way(const struct actCaption *cap, osm_way_t *w, const bstring_t *str)
+{
+   struct actCaption tmp_cap;
+   struct coord c;
+   double ar;
+
+   // FIXME: captions on open polygons missing
+   if (!is_closed_poly(w))
+      return 0;
+
+   if (poly_area(w, &c, &ar))
+      return 0;
+
+   memcpy(&tmp_cap, cap, sizeof(tmp_cap));
+   if (tmp_cap.size == 0.0)
+   {
+      tmp_cap.size = 100 * sqrt(fabs(ar) / rdata_square_nm());
+#define MIN_AUTO_SIZE 0.7
+#define MAX_AUTO_SIZE 12.0
+      if (tmp_cap.size < MIN_AUTO_SIZE) tmp_cap.size = MIN_AUTO_SIZE;
+      if (tmp_cap.size > MAX_AUTO_SIZE) tmp_cap.size = MAX_AUTO_SIZE;
+      //log_debug("r->rule.cap.size = %f (%f 1/1000)", r->rule.cap.size, r->rule.cap.size / 100 * 1000);
+   }
+
+   return cap_coord(&tmp_cap, &c, str);
+}
+
+
 int act_cap_main(smrule_t *r, osm_obj_t *o)
 {
+   struct coord c;
    int n;
 
    if ((n = match_attr(o, ((struct actCaption*) r->data)->key, NULL)) == -1)
@@ -621,10 +650,18 @@ int act_cap_main(smrule_t *r, osm_obj_t *o)
       return 0;
    }
 
-   if (o->type != OSM_NODE)
-      return 1;
+   switch (o->type)
+   {
+      case OSM_NODE:
+         c.lon = ((osm_node_t*) o)->lon;
+         c.lat = ((osm_node_t*) o)->lat;
+         return cap_coord(r->data, &c, &o->otag[n].v);
 
-   return node_cap(r->data, (osm_node_t*) o, &o->otag[n].v);
+      case OSM_WAY:
+         return cap_way(r->data, (osm_way_t*) o, &o->otag[n].v);
+   }
+
+   return 1;
 }
 
 
