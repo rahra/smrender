@@ -60,7 +60,7 @@ struct tile_info
 {
    char *path;    // path to tiles
    int zlo, zhi;  // lowest and highest zoom level
-   int ftype;     // 0 ... png, 1 ... jpg
+   int ftype;     // 0 ... png, 1 ... jpg, 2 ... pdf
 };
 
 static volatile sig_atomic_t int_ = 0;
@@ -780,18 +780,19 @@ void usage(const char *s)
          "   -M .................. Input file is memory mapped (default).\n"
          "   -m .................. Input file is read into heap memory.\n"
          "   -r <rules file> ..... Rules file ('rules.osm' is default).\n"
-         "   -s <ovs> ............ Set oversampling factor (0-10) (default = %d).\n"
+         "   -s <ovs> ............ Deprecated, kept for backwards compatibility.\n"
          "   -t <title> .......... Set descriptional chart title.\n"
          "   -T <tile_info> ...... Create tiles.\n"
          "      <tile_info> := <zoom_lo> [ '-' <zoom_hi> ] ':' <tile_path> [ ':' <file_type> ]\n"
          "      <file_type> := 'png' | 'jpg'\n"
-         "   -o <image file> ..... Filename of output image (stdout is default).\n"
+         "   -o <image file> ..... Filename of output PNG image.\n"
+         "   -O <pdf file> ....... Filename of output PDF file.\n"
          "   -P <page format> .... Select output page format.\n"
          "   -u .................. Output URLs suitable for OSM data download and\n"
          "                         exit.\n"
          "   -V .................. Show chart parameters and exit.\n"
          "   -w <osm file> ....... Output OSM data to file.\n",
-         s, DEFAULT_OVS
+         s
          );
    printf("\nSee http://www.abenteuerland.at/smrender/ for more information.\n");
 }
@@ -900,9 +901,9 @@ int main(int argc, char *argv[])
    hpx_ctrl_t *ctl, *cfctl;
    int fd = 0, n, i;
    struct stat st;
-   FILE *f = stdout;
+   FILE *f;
    char *cf = "rules.osm", *img_file = NULL, *osm_ifile = NULL, *osm_ofile =
-      NULL, *osm_rfile = NULL, *kap_file = NULL, *kap_hfile = NULL;
+      NULL, *osm_rfile = NULL, *kap_file = NULL, *kap_hfile = NULL, *pdf_file = NULL;
    struct rdata *rd;
    struct timeval tv_start, tv_end;
    int landscape = 0, w_mmap = 1, load_filter = 0, init_exit = 0, gen_grid = AUTO_GRID, prt_url = 0;
@@ -921,7 +922,7 @@ int main(int argc, char *argv[])
    rd->cmdline = mk_cmd_line((const char**) argv);
    memset(&ti, 0, sizeof(ti));
 
-   while ((n = getopt(argc, argv, "b:d:fg:Ghi:k:K:lMmo:P:r:R:s:t:T:uVw:")) != -1)
+   while ((n = getopt(argc, argv, "b:d:fg:Ghi:k:K:lMmo:O:P:r:R:s:t:T:uVw:")) != -1)
       switch (n)
       {
          case 'b':
@@ -1004,6 +1005,10 @@ int main(int argc, char *argv[])
             img_file = optarg;
             break;
 
+         case 'O':
+            pdf_file = optarg;
+            break;
+
          case 'P':
             paper = optarg;
             break;
@@ -1013,11 +1018,7 @@ int main(int argc, char *argv[])
             break;
 
          case 's':
-            rd->ovs = atoi(optarg);
-            if (rd->ovs < 0)
-               rd->ovs = 0;
-            if (rd->ovs > 10)
-               rd->ovs = 10;
+            log_msg(LOG_NOTICE, "Option -s is deprecated with libcairo support!");
             break;
 
          case 'R':
@@ -1119,9 +1120,6 @@ int main(int argc, char *argv[])
    // install exit handlers
    osm_read_exit();
 
-   if (rd->ovs)
-      rd->dpi *= rd->ovs;
-
    init_rd_paper(rd, paper, landscape);
    if (rd->scale > 0)
    {
@@ -1154,16 +1152,8 @@ int main(int argc, char *argv[])
       }
    }
 
-   if (rd->ovs > 1)
-   {
-      rd->fw = rd->w / rd->ovs;
-      rd->fh = rd->h / rd->ovs;
-   }
-   else
-   {
-      rd->fw = rd->w;
-      rd->fh = rd->h;
-   }
+   rd->fw = rd->w;
+   rd->fh = rd->h;
 
    init_bbox_mll(rd);
 
@@ -1350,18 +1340,26 @@ int main(int argc, char *argv[])
       }
    }
 
-   if (rd->ovs > 1)
-      reduce_resolution(rd);
-
    if (img_file != NULL)
    {
-      if ((f = fopen(img_file, "w")) == NULL)
-         log_msg(LOG_ERR, "error opening file %s: %s", img_file, strerror(errno));
-      else
+      if ((f = fopen(img_file, "w")) != NULL)
       {
-         save_main_image(rd, f);
+         save_main_image(f, FTYPE_PNG);
          fclose(f);
       }
+      else
+         log_msg(LOG_ERR, "error opening file %s: %s", img_file, strerror(errno));
+   }
+
+   if (pdf_file != NULL)
+   {
+      if ((f = fopen(pdf_file, "w")) != NULL)
+      {
+         save_main_image(f, FTYPE_PDF);
+         fclose(f);
+      }
+      else
+         log_msg(LOG_ERR, "error opening file %s: %s", pdf_file, strerror(errno));
    }
 
    if (kap_file != NULL)

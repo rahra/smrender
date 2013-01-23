@@ -105,10 +105,9 @@
 
 #define JPG_QUALITY 80
 
-#define DCX_OPEN_FILL 0
-#define DCX_OPEN_BORDER 1
-#define DCX_CLOSED_FILL 2
-#define DCX_CLOSED_BORDER 3
+#define FTYPE_PNG 0
+#define FTYPE_JPG 1
+#define FTYPE_PDF 2
 
 
 typedef int (*tree_func_t)(osm_obj_t*, struct rdata*, void*);
@@ -266,7 +265,7 @@ void init_cat_poly(struct rdata*);
 
 /* smrules.c */
 void init_main_image(struct rdata*, const char*);
-void save_main_image(struct rdata*, FILE*);
+void save_main_image(FILE*, int);
 //int get_color(const struct rdata*, int, int, int, int);
 int get_pixel(struct rdata*, int , int );
 void reduce_resolution(struct rdata *);

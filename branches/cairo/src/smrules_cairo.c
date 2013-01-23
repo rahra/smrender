@@ -38,16 +38,10 @@
 #ifdef CAIRO_HAS_FT_FONT
 #include <cairo-ft.h>
 #endif
-#define MKPDF
-#ifdef MKPDF
 #include <cairo-pdf.h>
 #define mm2unit(x) mm2ptf(x)
 #define THINLINE rdata_px_unit(1, U_PT)
 #define mm2wu(x) ((x) == 0.0 ? THINLINE : mm2unit(x))
-#else
-#define mm2unit(x) mm2pxf(x)
-#define THINLINE 1
-#endif
 
 #include "smrender_dev.h"
 #include "smcoast.h"
@@ -89,12 +83,7 @@ static cairo_surface_t *cro_surface(void)
    cairo_surface_t *sfc;
    cairo_status_t e;
 
-#ifdef MKPDF
-   //sfc = cairo_pdf_surface_create(NULL, rdata_width(), rdata_height());
    sfc = cairo_recording_surface_create(CAIRO_CONTENT_COLOR_ALPHA, &ext_);
-#else
-   sfc = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, rdata_width(U_PX), rdata_height(U_PX));
-#endif
    if ((e = cairo_surface_status(sfc)) != CAIRO_STATUS_SUCCESS)
    {
       log_msg(LOG_ERR, "failed to create cairo surface: %s", cairo_status_to_string(e));
@@ -109,12 +98,10 @@ void init_main_image(struct rdata *rd, const char *bg)
 {
    cairo_t *ctx;
 
-#ifdef MKPDF
    ext_.x = 0;
    ext_.y = 0;
    ext_.width = rdata_width(U_PT);
    ext_.height = rdata_height(U_PT);
-#endif
 
    if ((sfc_ = cro_surface()) == NULL)
       exit(EXIT_FAILURE);
@@ -137,34 +124,44 @@ static cairo_status_t co_write_func(void *closure, const unsigned char *data, un
 }
 
 
-void save_main_image(struct rdata *rd, FILE *f)
+void save_main_image(FILE *f, int ftype)
 {
-   log_msg(LOG_INFO, "saving image");
-#ifdef MKPDF
-
    cairo_surface_t *sfc;
+   cairo_status_t e;
    cairo_t *dst;
 
-   log_debug("width = %.2f pt, height = %.2f pt", rdata_width(U_PT), rdata_height(U_PT));
+   log_msg(LOG_INFO, "saving image (ftype = %d)", ftype);
 
-   sfc = cairo_pdf_surface_create_for_stream(co_write_func, f, rdata_width(U_PT), rdata_height(U_PT));
-   cairo_pdf_surface_restrict_to_version(sfc, CAIRO_PDF_VERSION_1_4);
-   //sfc = cairo_svg_surface_create_for_stream(co_write_func, f, rdata_width(U_PT), rdata_height(U_PT));
-   dst = cairo_create(sfc);
-   cro_log_status(dst);
-   cairo_set_source_surface(dst, sfc_, 0, 0);
-   //cairo_scale(dst, 0.24, 0.24);
-   cairo_paint(dst);
-   cairo_show_page(dst);
-   cairo_destroy(dst);
-   cairo_surface_destroy(sfc);
+   switch (ftype)
+   {
+      case FTYPE_PNG:
+         sfc = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, rdata_width(U_PX), rdata_height(U_PX));
+         dst = cairo_create(sfc);
+         cro_log_status(dst);
+         cairo_scale(dst, (double) rdata_dpi() / 72, (double) rdata_dpi() / 72);
+         cairo_set_source_surface(dst, sfc_, 0, 0);
+         cairo_paint(dst);
+         cairo_destroy(dst);
+         if ((e = cairo_surface_write_to_png_stream(sfc, co_write_func, f)) != CAIRO_STATUS_SUCCESS)
+            log_msg(LOG_ERR, "failed to save png image: %s", cairo_status_to_string(e));
+         cairo_surface_destroy(sfc);
+         return;
+
+      case FTYPE_PDF:
+         log_debug("width = %.2f pt, height = %.2f pt", rdata_width(U_PT), rdata_height(U_PT));
+         sfc = cairo_pdf_surface_create_for_stream(co_write_func, f, rdata_width(U_PT), rdata_height(U_PT));
+         cairo_pdf_surface_restrict_to_version(sfc, CAIRO_PDF_VERSION_1_4);
+         dst = cairo_create(sfc);
+         cro_log_status(dst);
+         cairo_set_source_surface(dst, sfc_, 0, 0);
+         cairo_paint(dst);
+         cairo_show_page(dst);
+         cairo_destroy(dst);
+         cairo_surface_destroy(sfc);
+         return;
+   }
  
-#else
-   cairo_status_t stat;
-
-   if ((stat = cairo_surface_write_to_png_stream(sfc_, co_write_func, f)) != CAIRO_STATUS_SUCCESS)
-      log_msg(LOG_ERR, "failed to save image: %s", cairo_status_to_string(stat));
-#endif
+   log_msg(LOG_WARN, "cannot save image, file type %d not implemented yet", ftype);
 }
 
 
@@ -298,10 +295,8 @@ static void cro_poly_line(const osm_way_t *w, cairo_t *ctx)
       }
 
       geo2pxf(n->lon, n->lat, &x, &y);
-#ifdef MKPDF
       x = rdata_px_unit(x, U_PT);
       y = rdata_px_unit(y, U_PT);
-#endif
       cairo_line_to(ctx, x, y);
    }
 }
@@ -594,10 +589,8 @@ static int cap_coord(const struct actCaption *cap, const struct coord *c, const 
    double x, y;
 
    geo2pxf(c->lon, c->lat, &x, &y);
-#ifdef MKPDF
    x = rdata_px_unit(x, U_PT);
    y = rdata_px_unit(y, U_PT);
-#endif
  
    memcpy(buf, str->buf, str->len);
    buf[str->len] = '\0';
