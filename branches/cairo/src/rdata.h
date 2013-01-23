@@ -76,8 +76,6 @@ struct rdata
    int fw, fh;
    // pixel resolution
    int dpi;
-   // oversampling factor
-   int ovs;
    // scale
    double scale;
    // node/way stats

@@ -98,12 +98,12 @@ void rdata_log(void)
    log_msg(LOG_NOTICE, "   mean_lat = %.3f°, mean_lat_len = %.3f (%.1f nm)",
          rd_.mean_lat, rd_.mean_lat_len, rd_.mean_lat_len * 60);
    log_msg(LOG_NOTICE, "   lath = %f, lath_len = %f", rd_.lath, rd_.lath_len);
-   log_msg(LOG_NOTICE, "   page size = %.1f x %.1f mm, oversampling = %d",
-         PX2MM(rd_.w), PX2MM(rd_.h), rd_.ovs);
+   log_msg(LOG_NOTICE, "   page size = %.1f x %.1f mm",
+         PX2MM(rd_.w), PX2MM(rd_.h));
    log_msg(LOG_NOTICE, "   rendering: %dx%d px, dpi = %d",
          rd_.w, rd_.h, rd_.dpi);
    log_msg(LOG_NOTICE, "   final: %dx%d px, dpi = %d",
-         rd_.fw, rd_.fh, rd_.ovs ? rd_.dpi / rd_.ovs : rd_.dpi);
+         rd_.fw, rd_.fh, rd_.dpi);
    log_msg(LOG_NOTICE, "   1 px = %.3f mm, 1mm = %d px", PX2MM(1), (int) MM2PX(1));
    log_msg(LOG_NOTICE, "   scale 1:%.0f, %.1f x %.1f nm",
          rd_.scale, rd_.wc * 60 * cos(DEG2RAD(rd_.mean_lat)), rd_.hc * 60);
@@ -161,7 +161,6 @@ static void __attribute__((constructor)) init_rdata(void)
    log_debug("initializing struct rdata");
    memset(&rd_, 0, sizeof(rd_));
    rd_.dpi = 300;
-   rd_.ovs = DEFAULT_OVS;
    rd_.title = "";
    //set_static_obj_tree(&rd_.obj);
 }
