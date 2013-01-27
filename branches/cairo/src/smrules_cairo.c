@@ -118,7 +118,7 @@ void init_main_image(struct rdata *rd, const char *bg)
 }
 
 
-static cairo_status_t co_write_func(void *closure, const unsigned char *data, unsigned int length)
+static cairo_status_t cro_write_func(void *closure, const unsigned char *data, unsigned int length)
 {
    return fwrite(data, length, 1, closure) == 1 ? CAIRO_STATUS_SUCCESS : CAIRO_STATUS_WRITE_ERROR;
 }
@@ -142,14 +142,14 @@ void save_main_image(FILE *f, int ftype)
          cairo_set_source_surface(dst, sfc_, 0, 0);
          cairo_paint(dst);
          cairo_destroy(dst);
-         if ((e = cairo_surface_write_to_png_stream(sfc, co_write_func, f)) != CAIRO_STATUS_SUCCESS)
+         if ((e = cairo_surface_write_to_png_stream(sfc, cro_write_func, f)) != CAIRO_STATUS_SUCCESS)
             log_msg(LOG_ERR, "failed to save png image: %s", cairo_status_to_string(e));
          cairo_surface_destroy(sfc);
          return;
 
       case FTYPE_PDF:
          log_debug("width = %.2f pt, height = %.2f pt", rdata_width(U_PT), rdata_height(U_PT));
-         sfc = cairo_pdf_surface_create_for_stream(co_write_func, f, rdata_width(U_PT), rdata_height(U_PT));
+         sfc = cairo_pdf_surface_create_for_stream(cro_write_func, f, rdata_width(U_PT), rdata_height(U_PT));
          cairo_pdf_surface_restrict_to_version(sfc, CAIRO_PDF_VERSION_1_4);
          dst = cairo_create(sfc);
          cro_log_status(dst);
@@ -200,6 +200,27 @@ void cut_tile(const struct bbox *bb, void *img)
 
 void reduce_resolution(struct rdata *rd)
 {
+}
+
+
+int cro_pixel_pos(int x, int y, int s)
+{
+   return x * sizeof (uint32_t) + y * s;
+}
+
+
+int cro_get_pixel(cairo_surface_t *sfc, int x, int y)
+{
+   unsigned char *data;
+
+   /*if (x < 0 || y < 0 || x >= cairo_image_surface_get_width(sfc) || x >= cairo_image_surface_get_height(sfc))
+      return 0;*/
+
+   cairo_surface_flush(sfc);
+   if ((data = cairo_image_surface_get_data(sfc)) == NULL)
+      return 0;
+
+   return *(data + cro_pixel_pos(x, y, cairo_image_surface_get_stride(sfc)));
 }
 
 
@@ -583,22 +604,320 @@ int act_cap_ini(smrule_t *r)
 }
 
 
+#if 0
+static double find_angle(cairo_surface_t *src)
+{
+   // FIXME: this is not finished yet!
+   struct diff_vec *dv;
+   //gdImage *cap_img;
+   int x, y, rx, ry, ox, oy, off;
+   int n;
+
+   if ((m = match_attr((osm_obj_t*) n, cap->key, NULL)) == -1)
+   {
+      //log_debug("node %ld has no caption tag '%s'", nd->nd.id, rl->rule.cap.key);
+      return 0;
+   }
+
+   if ((v = malloc(n->obj.otag[m].v.len + 1)) == NULL)
+      log_msg(LOG_ERR, "failed to copy caption string: %s", strerror(errno)), exit(EXIT_FAILURE);
+   memcpy(v, n->obj.otag[m].v.buf, n->obj.otag[m].v.len);
+   v[n->obj.otag[m].v.len] = '\0';
+
+   if (cap->pos & POS_UC)
+      for (x = 0; x < n->obj.otag[m].v.len; x++)
+         v[x] = toupper((unsigned) v[x]);
+
+   geo2pxf(n->lon, n->lat, &x, &y);
+   x = rdata_px_unit(x, U_PT);
+   y = rdata_px_unit(y, U_PT);
+
+   if ((n = get_diff_vec(sfc_, src, x, y, MAX_OFFSET, 10, &dv)) == -1)
+      return -1;
+      
+   weight_diff_vec(dv, n * MAX_OFFSET, DEG2RAD(cap->rot.phase), cap->rot.weight);
+   index_diff_vec(dv, n * MAX_OFFSET);
+   qsort(dv, n * MAX_OFFSET, sizeof(*dv), (int(*)(const void*, const void*)) cmp_dv);
+
+   m = diff_vec_count_eq(dv, n * MAX_OFFSET);
+   if (m > 1)
+   {
+      //log_debug("m = %d", m);
+      ma = RAD2DEG((dv[0].dv_angle + dv[m - 1].dv_angle) / 2.0);
+      //ma = (dv[0].dv_angle + dv[m - 1].dv_angle) / 2.0;
+      off = (dv[0].dv_x + dv[m - 1].dv_x) / 2;
+   }
+   else
+   {
+      ma = RAD2DEG(dv->dv_angle);
+      //ma = dv->dv_angle;
+      off = dv->dv_x;
+   }
+
+   oy =(br[1] - br[5]) / DIVX;
+   if ((ma < 90) || (ma >= 270))
+   {
+      ox = off;
+   }
+   else
+   {
+      ma -= 180;
+      ox = br[0] - br[2] - off;
+   }
+   log_debug("ma = %.1f, off = %d, ox = %d, oy = %d", ma, off, ox, oy);
+}
+#endif
+
+
+static void strupper(char *s)
+{
+   if (s == NULL)
+      return;
+
+   for (; *s != '\0'; s++)
+      *s = toupper(/*(unsigned)*/ *s);
+}
+
+
+#define POS_OFFSET mm2ptf(1)
+static void pos_offset(const cairo_text_extents_t *tx, int pos, double *ox, double *oy)
+{
+   switch (pos & 0x3)
+   {
+      case POS_N:
+         *oy = 0 - POS_OFFSET;
+         break;
+
+      case POS_S:
+         *oy = tx->height + POS_OFFSET;
+         break;
+
+      default:
+         *oy = tx->height / 2;
+   }
+   switch (pos & 0xc)
+   {
+      case POS_E:
+         *ox = 0 + POS_OFFSET;
+         break;
+
+      case POS_W:
+         *ox = -tx->width - POS_OFFSET;
+         break;
+
+      default:
+         *ox = -tx->width / 2;
+   }
+}
+
+
+static cairo_surface_t *cro_cut_out(int x, int y, double r)
+{
+   cairo_surface_t *sfc;
+   cairo_t *ctx;
+
+   sfc = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, round(r), round(r));
+   if (cairo_surface_status(sfc) != CAIRO_STATUS_SUCCESS)
+   {
+      log_msg(LOG_ERR, "failed to create background surface: %s",
+            cairo_status_to_string(cairo_surface_status(sfc)));
+      return NULL;
+   }
+   ctx = cairo_create(sfc);
+   cairo_set_source_surface(ctx, sfc_, -x - r / 2, -y - r / 2);
+   cairo_paint(ctx);
+   cairo_destroy(ctx);
+
+   return sfc;
+}
+
+
+static cairo_surface_t *cro_plane(int w, int h, int x, int col)
+{
+   cairo_surface_t *sfc;
+   cairo_t *ctx;
+
+   sfc = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, w, h);
+   if (cairo_surface_status(sfc) != CAIRO_STATUS_SUCCESS)
+   {
+      log_msg(LOG_ERR, "failed to create surface: %s",
+            cairo_status_to_string(cairo_surface_status(sfc)));
+      return NULL;
+   }
+
+   ctx = cairo_create(sfc);
+   cro_set_source_color(ctx, col);
+   cairo_rectangle(ctx, x, 0, w - x, h);
+   cairo_fill(ctx);
+   cairo_destroy(ctx);
+
+   return sfc;
+}
+
+
+static inline double min(double a, double b)
+{
+   return a < b ? a : b;
+}
+
+
+static inline double max(double a, double b)
+{
+   return a > b ? a : b;
+}
+
+
+static double color_max(double r, double g, double b)
+{
+   return max(max(r, g), b);
+}
+
+
+static double color_min(double r, double g, double b)
+{
+   return min(min(r, g), b);
+}
+
+static double color_to_gray(double r, double g, double b)
+{
+   return (color_max(r, g, b) + color_min(r, g, b)) / 2;
+}
+
+
+static double pix_avg(cairo_surface_t *sfc)
+{
+   unsigned char *p;
+   uint32_t pixel;
+   double avg;
+   int x, y, mx, my;
+
+   p = cairo_image_surface_get_data(sfc);
+   mx = cairo_image_surface_get_width(sfc);
+   my = cairo_image_surface_get_height(sfc);
+   avg = 0;
+
+   for (y = 0; y < my; y++)
+   {
+      for (x = 0; x < mx; x++)
+      {
+         pixel = *(((uint32_t*) p) + x);
+         avg += (double) (pixel & 0xff) / 255;
+      }
+      p += cairo_image_surface_get_stride(sfc);
+   }
+
+   return avg / (mx * my);
+}
+
+
+/*! 
+ * @param mode If set to 0 it is rotated centered otherwise it is rotated
+ * around the center of the left edge.
+ */
+static double diff_coord(cairo_surface_t *bg, cairo_surface_t *fg, double a)
+{
+   cairo_surface_t *dst;
+   cairo_t *ctx;
+   double d, x, y;
+
+   x = cairo_image_surface_get_width(fg);
+   y = cairo_image_surface_get_height(fg);
+   dst = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, x, y);
+   ctx = cairo_create(dst);
+
+   // drehpunkt festlegen
+   cairo_save(ctx);
+   cairo_translate(ctx, x / 2, y / 2);
+   // winkel, ccw, ost = 0
+   cairo_rotate(ctx, a);
+   // ausschneiden
+   cairo_set_source_surface(ctx, bg, cairo_image_surface_get_width(bg) / -2, cairo_image_surface_get_height(bg) / -2);
+   cairo_paint(ctx);
+   cairo_restore(ctx);
+
+   // difference mit zielfarbe bilden
+   //cairo_set_source_rgb(ctx, 0, 1, 1);
+   cairo_set_source_surface(ctx, fg, 0, 0);
+   cairo_set_operator(ctx, CAIRO_OPERATOR_DIFFERENCE);
+   cairo_paint(ctx);
+   // oder was anderes darüber malen
+   //cairo_rectangle(ctx, PT2PX(2.5), PT2PX(2.5), PT2PX(15), PT2PX(5));
+   //cairo_fill(ctx);
+
+   // auf graustufen convertieren
+   cairo_set_source_rgb(ctx, 1, 1, 1);
+   cairo_set_operator(ctx, CAIRO_OPERATOR_HSL_COLOR);
+   cairo_paint(ctx);
+
+   cairo_destroy(ctx);
+
+   d = pix_avg(dst);
+
+   char buf[64];
+   snprintf(buf, sizeof(buf), "diff-%03d.png", (int) (a * 180 / M_PI));
+   cairo_surface_write_to_png(dst, buf);
+   // pixeldifferenz ausgeben
+   printf("avg = %f, angle = %s\n", d, buf);
+
+   cairo_surface_destroy(dst);
+   return d;
+}
+
+
 static int cap_coord(const struct actCaption *cap, const struct coord *c, const bstring_t *str)
 {
+   cairo_text_extents_t tx;
+   cairo_surface_t *sfc, *pat;
    char buf[str->len + 1];
-   double x, y;
+   double x, y, a, r;
 
+   cairo_save(cap->ctx);
    geo2pxf(c->lon, c->lat, &x, &y);
    x = rdata_px_unit(x, U_PT);
    y = rdata_px_unit(y, U_PT);
+   log_debug("translate to %.2f, %.2f", x, y);
+   cairo_translate(cap->ctx, x, y);
  
    memcpy(buf, str->buf, str->len);
    buf[str->len] = '\0';
+   if (cap->pos & POS_UC)
+      strupper(buf);
+   log_debug("text \"%s\"", buf);
 
    cairo_set_font_size(cap->ctx, mm2unit(cap->size));
+   cairo_text_extents(cap->ctx, buf, &tx);
+
+   if (isnan(cap->angle))
+   {
+      if (cap->pos & 0xf)
+      {
+         r = hypot(tx.width, tx.height) * 2;
+         if ((pat = cro_plane(tx.width * 2, tx.height, tx.width, cap->col)) == NULL)
+            return -1;
+      }
+      else
+      {
+         r = hypot(tx.width, tx.height);
+         if ((pat = cro_plane(tx.width, tx.height, 0, cap->col)) == NULL)
+            return -1;
+      }
+
+      if ((sfc = cro_cut_out(x, y, r)) == NULL)
+         return -1;
+
+      //find_angle_phase1(&tx, cap->pos);
+   }
+   else
+   {
+      a = DEG2RAD(360 - cap->angle);
+      pos_offset(&tx, cap->pos, &x, &y);
+   }
+
+   log_debug("move to %.2f, %.2f", x, y);
+   cairo_rotate(cap->ctx, a);
    cairo_move_to(cap->ctx, x, y);
-   cairo_rotate(cap->ctx, isnan(cap->angle) ? 0.0 : DEG2RAD(360 - cap->angle));
    cairo_show_text(cap->ctx, buf);
+   cairo_restore(cap->ctx);
 
    return 0;
 }

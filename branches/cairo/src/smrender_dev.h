@@ -274,6 +274,8 @@ void delete_tile(void *);
 void cut_tile(const struct bbox *, void *);
 int save_image(const char *, void *, int);
 
+int cro_pixel_pos(int, int, int);
+
 /* smlog.c */
 FILE *init_log(const char*, int);
 

@@ -64,7 +64,7 @@ struct mi_thread_param
 char *bar(double);
 
 
-int color_mix(int c1, int c2)
+static int color_mix(int c1, int c2)
 {
    int r, g, b, a, c;
 
@@ -136,6 +136,24 @@ mem_img_t *mi_from_gdimage(image_t *img)
    mem_img_t *mi;
    int i;
 
+#ifdef HAVE_CAIRO
+   unsigned char *d;
+   int x, y, w;
+
+   cairo_surface_flush(img);
+   if ((d = cairo_image_surface_get_data(img)) == NULL)
+      return NULL;
+
+   if ((mi = mi_create(cairo_image_surface_get_width(img), cairo_image_surface_get_height(img))) == NULL)
+      return NULL;
+
+   w = cairo_image_surface_get_stride(img);
+
+   for (y = 0, i = 0; y < cairo_image_surface_get_height(img); y++)
+      for (x = 0; x < cairo_image_surface_get_width(img); x++, i++)
+         mi->p[i] = *((uint32_t*) (d + x * sizeof(uint32_t) + y * w));
+#endif
+
 #ifdef HAVE_GD
    if ((mi = mi_create(gdImageSX(img), gdImageSY(img))) == NULL)
       return NULL;
@@ -151,9 +169,10 @@ mem_img_t *mi_from_gdimage(image_t *img)
 image_t *mi_to_gdimage(mem_img_t *mi)
 {
    image_t *img;
-   int i;
 
 #ifdef HAVE_GD
+   int i;
+
    if ((img = gdImageCreateTrueColor(mi->w, mi->h)) == NULL)
       return NULL;
 
@@ -247,7 +266,8 @@ mem_img_t *rectify_circle(image_t *img, int cx, int cy, int R)
 {
    mem_img_t *mi;
    double U, x0, y0, fi, l;
-   int x, y, yl, c, maxY;
+   int x, y, yl, c, maxY, w, h, s;
+   unsigned char * d;
 
    U = 2.0 * M_PI * R;
    maxY = round(U);
@@ -255,6 +275,17 @@ mem_img_t *rectify_circle(image_t *img, int cx, int cy, int R)
    mi_init_plane(mi, -1);
 
 #ifdef HAVE_GD
+   w = gdImageSX(img);
+   h = gdImageSY(img);
+#endif
+#ifdef HAVE_CAIRO
+   w = cairo_image_surface_get_width(img);
+   h = cairo_image_surface_get_height(img);
+   d = cairo_image_surface_get_data(img);
+   s = cairo_image_surface_get_stride(img);
+   cairo_surface_flush(img);
+#endif
+
    for (y = -R; y < R; y++)
    {
       for (x = -R; x < R; x++)
@@ -266,16 +297,20 @@ mem_img_t *rectify_circle(image_t *img, int cx, int cy, int R)
             if (fi < 0.0) fi += 2.0 * M_PI;
             y0 = fi * R;
             l = (x0 != 0.0 ? R / x0 : U) / 2.0;
-            if ((x + cx) < 0 || (x + cx) >= gdImageSX(img) || (cy - y) < 0 || (cy - y) >= gdImageSY(img))
+            if ((x + cx) < 0 || (x + cx) >= w || (cy - y) < 0 || (cy - y) >= h)
                c = 0x7f000000;
             else
+#ifdef HAVE_CAIRO
+               c = *((uint32_t*) (d + cro_pixel_pos(x + cx, cy - y, s)));
+#endif
+#ifdef HAVE_GD
                c = gdImageGetPixel(img, x + cx, cy - y);
+#endif
             for (yl = round(y0 - l); yl < round(y0 + l); yl++)
                mi_setpixel(mi, round(x0), maxY - yl - 1, c);
          }
       }
    }
-#endif
 
    mi_remove_blind(mi);
 
@@ -632,6 +667,9 @@ int get_diff_vec(image_t *dst, image_t *src, int x, int y, int xvar, int res, st
    // safety check
    if (xvar < 1) xvar = 1;
 
+#ifdef HAVE_CAIRO
+   mi[0] = rectify_circle(dst, x, y, cairo_image_surface_get_width(src) + xvar - 1);
+#endif
 #ifdef HAVE_GD
    mi[0] = rectify_circle(dst, x, y, gdImageSX(src) + xvar - 1);
 #endif

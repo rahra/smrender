@@ -8,6 +8,9 @@
 #include <gd.h>
 #endif
 
+#include <stdint.h>
+
+
 #define CVLI_COMP(x, y, z) (((x) >> (y)) & (z))
 #define CVL_COMP(x, y, z) ((double) CVLI_COMP(x, y, z) / (double) (z))
 #define COL_COMP(x, y) CVL_COMP(x, y, 255)
@@ -21,7 +24,7 @@
 
 
 typedef struct mem_img mem_img_t;
-typedef int pixel_t;
+typedef uint32_t pixel_t;
 
 struct mem_img
 {
