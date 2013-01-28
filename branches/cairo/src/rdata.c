@@ -44,6 +44,18 @@ struct rdata *rdata_get(void)
 }
 
 
+double mm2lat(double x)
+{
+   return x * (rd_.bb.ru.lat - rd_.bb.ll.lat) / rdata_px_unit(rd_.h, U_MM);
+}
+
+
+double mm2lon(double x)
+{
+   return x * (rd_.bb.ru.lon - rd_.bb.ll.lon) / rdata_px_unit(rd_.w, U_MM);
+}
+
+
 double mm2ptf(double x)
 {
    return x * 72 / 25.4;

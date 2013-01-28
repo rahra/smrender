@@ -94,6 +94,8 @@ double px2mm(double);
 void geo2pxf(double, double, double*, double*);
 void geo2pxi(double, double, int*, int*);
 #define mk_paper_coords(p0, p1, p2, p3, p4) geo2pxi(p1, p0, p3, p4)
+double mm2lat(double);
+double mm2lon(double);
 
 
 struct rdata *rdata_get(void);
