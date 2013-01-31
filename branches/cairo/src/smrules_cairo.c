@@ -708,7 +708,7 @@ static void strupper(char *s)
 
 #define POS_OFFSET mm2ptf(1)
 //#define POS_OFFSET 0
-static void pos_offset(const cairo_text_extents_t *tx, int pos, double *ox, double *oy)
+static void pos_offset(int pos, double width, double height, double *ox, double *oy)
 {
    switch (pos & 0x3)
    {
@@ -718,12 +718,12 @@ static void pos_offset(const cairo_text_extents_t *tx, int pos, double *ox, doub
 
       case POS_S:
          //*oy = tx->height + POS_OFFSET;
-         *oy = -tx->y_bearing + POS_OFFSET;
+         *oy = height + POS_OFFSET;
          break;
 
       default:
          //*oy = tx->height / 2;
-         *oy = -tx->y_bearing / 2;
+         *oy = height / 2;
    }
    
    switch (pos & 0xc)
@@ -733,13 +733,13 @@ static void pos_offset(const cairo_text_extents_t *tx, int pos, double *ox, doub
          break;
 
       case POS_W:
-         *ox = -tx->width - POS_OFFSET;
+         *ox = -width - POS_OFFSET;
          break;
 
       default:
-         *ox = -tx->width / 2;
+         *ox = -width / 2;
    }
-   log_debug("pos = %04x, ox = %.2f, oy = %.2f, width = %.2f, height = %.2f, y_bearing = %.2f", pos, *ox, *oy, tx->width, tx->height, tx->y_bearing);
+   log_debug("pos = %04x, ox = %.2f, oy = %.2f, width = %.2f, height = %.2f", pos, *ox, *oy, width, height);
 }
 
 
@@ -993,14 +993,25 @@ static void dv_mkarea(const struct coord *cnode, double r, const diffvec_t *dv, 
 
    w = malloc_way(1, cnt + 1);
    osm_way_default(w);
-   r = mm2lat(r);
+   //r = mm2lat(r);
    for (i = 0; i < cnt; i++)
    {
-      n = malloc_node(1);
+      n = malloc_node(2);
       osm_node_default(n);
       w->ref[dv[i].dv_index] = n->obj.id;
-      n->lat = cnode->lat + r * dv[i].dv_diff * sin(dv[i].dv_angle);
-      n->lon = cnode->lon + r * dv[i].dv_diff * cos(dv[i].dv_angle) / cos(n->lat);
+      //n->lat = cnode->lat + r * dv[i].dv_diff * sin(dv[i].dv_angle);
+      //n->lon = cnode->lon + r * dv[i].dv_diff * cos(dv[i].dv_angle) / cos(n->lat);
+
+      geo2pxf(cnode->lon, cnode->lat, &n->lon, &n->lat);
+      pxf2geo(n->lon + PT2PX(r) * dv[i].dv_diff * cos(dv[i].dv_angle),
+              n->lat + PT2PX(r) * dv[i].dv_diff * sin(dv[i].dv_angle),
+              &n->lon, &n->lat);
+      log_debug("PT2PX(%f) = %f, dv[%d].dv_diff = %f", r, PT2PX(r), i, dv[i].dv_diff);
+
+      char buf[32];
+      snprintf(buf, sizeof(buf), "%.1f;%.1f", RAD2DEG(dv[i].dv_angle), dv[i].dv_diff * 100);
+      set_const_tag(&n->obj.otag[1], "smrender:autorot:angle", strdup(buf));
+
       put_object((osm_obj_t*) n);
    }
    w->ref[i] = w->ref[0];
@@ -1083,7 +1094,7 @@ static double dv_mean(const diffvec_t *dv, int num_dv)
    {
       if (dv[i].dv_quant != dv[i + 1].dv_quant)
          break;
-      if (dv[i].dv_index + 1 != dv[i + 1].dv_index)
+      if (abs(dv[i].dv_index - dv[i + 1].dv_index) > 1)
          break;
    }
 
@@ -1095,6 +1106,7 @@ static double dv_mean(const diffvec_t *dv, int num_dv)
 static int cap_coord(const struct actCaption *cap, const struct coord *c, const bstring_t *str)
 {
    cairo_text_extents_t tx;
+   cairo_font_extents_t fe;
    cairo_surface_t *sfc, *pat;
    char buf[str->len + 1];
    double x, y, a, r;
@@ -1109,11 +1121,6 @@ static int cap_coord(const struct actCaption *cap, const struct coord *c, const 
    log_debug("translate to %.2f, %.2f", x, y);
    cairo_translate(cap->ctx, x, y);
 
-   cairo_save(cap->ctx);
-   cairo_rectangle(cap->ctx, -.5, -.5, 1, 1);
-   cairo_fill(cap->ctx);
-   cairo_restore(cap->ctx);
-
    memcpy(buf, str->buf, str->len);
    buf[str->len] = '\0';
    if (cap->pos & POS_UC)
@@ -1121,20 +1128,20 @@ static int cap_coord(const struct actCaption *cap, const struct coord *c, const 
    log_debug("text \"%s\"", buf);
 
    cairo_set_font_size(cap->ctx, mm2unit(cap->size));
+   cairo_font_extents(cap->ctx, &fe);
    cairo_text_extents(cap->ctx, buf, &tx);
 
    if (isnan(cap->angle))
    {
-   //cairo_save(cap->ctx);
       // FIXME: position check not finished yet
       if (cap->pos & 0xc)
          pos = (cap->pos & 0xfff0) | POS_E;
       else
          pos = cap->pos;
 
-      r = hypot(tx.width, tx.height);
-      width = PT2PX(tx.width);
-      height = PT2PX(tx.height);
+      r = hypot(tx.width + tx.x_bearing, fe.ascent);
+      width = tx.width + tx.x_bearing;
+      height = fe.ascent;
       if (cap->pos & 0xc)
       {
          r *= 2;
@@ -1150,17 +1157,17 @@ static int cap_coord(const struct actCaption *cap, const struct coord *c, const 
       if ((sfc = cro_cut_out(x, y, r)) == NULL)
          return -1;
 
-      //cairo_surface_write_to_png(sfc, "bg.png");
       dv_sample(c, sfc, pat, M_2PI, dv, NUM_ANGLE_STEPS);
       dv_weight(dv, NUM_ANGLE_STEPS, DEG2RAD(cap->rot.phase), cap->rot.weight);
-      dv_mkarea(c, r * 25.4 / 72.0, dv, NUM_ANGLE_STEPS);
+      dv_mkarea(c, r, dv, NUM_ANGLE_STEPS);
       dv_quantize(dv, NUM_ANGLE_STEPS);
       qsort(dv, NUM_ANGLE_STEPS, sizeof(diffvec_t), (int(*)(const void*, const void*)) cmp_dv);
-
+#if 1
       int i; for (i = 0; i < NUM_ANGLE_STEPS; i++)
          log_debug("dv[%d].dv_diff = %f, q = %.1f, a = %.1f, i = %d", dv[i].dv_index, dv[i].dv_diff, dv[i].dv_quant, RAD2DEG(dv[i].dv_angle), i);
 
-      //log_debug("selected dv[%d].dv_diff = %f, a = %.1f", 0, dv[0].dv_diff, RAD2DEG(dv[0].dv_angle));
+      log_debug("selected dv[%d].dv_diff = %f, a = %.1f", 0, dv[0].dv_diff, RAD2DEG(dv[0].dv_angle));
+#endif
       a = M_2PI - dv_mean(dv, NUM_ANGLE_STEPS);
 
       // flip text if necessary
@@ -1173,7 +1180,6 @@ static int cap_coord(const struct actCaption *cap, const struct coord *c, const 
             log_debug("flip east/west");
          }
       }
-   //cairo_restore(cap->ctx);
    }
    else
    {
@@ -1181,16 +1187,8 @@ static int cap_coord(const struct actCaption *cap, const struct coord *c, const 
       pos = cap->pos;
    }
 
-   pos_offset(&tx, pos, &x, &y);
-   log_debug("move to %.2f, %.2f", x, y);
    cairo_rotate(cap->ctx, a);
-/*
-   cairo_save(cap->ctx);
-   cairo_set_line_width(cap->ctx, .25);
-   cairo_rectangle(cap->ctx, 0, 0, tx.width, tx.height);
-   cairo_stroke(cap->ctx);
-   cairo_restore(cap->ctx);
-*/
+   pos_offset(pos, tx.width + tx.x_bearing, fe.ascent, &x, &y);
    cairo_move_to(cap->ctx, x, y);
    cairo_show_text(cap->ctx, buf);
    cairo_restore(cap->ctx);

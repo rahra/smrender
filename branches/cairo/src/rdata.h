@@ -91,6 +91,7 @@ double mm2ptf(double);
 double mm2pxf(double);
 int mm2pxi(double);
 double px2mm(double);
+void pxf2geo(double, double, double*, double*);
 void geo2pxf(double, double, double*, double*);
 void geo2pxi(double, double, int*, int*);
 #define mk_paper_coords(p0, p1, p2, p3, p4) geo2pxi(p1, p0, p3, p4)

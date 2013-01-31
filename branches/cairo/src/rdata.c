@@ -31,7 +31,7 @@
 
 //#include "bxtree.h"
 #include "rdata.h"
-//#include "smrender.h"
+#include "smrender.h"
 #include "smrender_dev.h"
 
 
@@ -77,6 +77,13 @@ int mm2pxi(double x)
 double px2mm(double x)
 {
    return x * 25.4 / rd_.dpi;
+}
+
+
+void pxf2geo(double x, double y, double *lon, double *lat)
+{
+   *lon = x * rd_.wc / rd_.w + rd_.bb.ll.lon;
+   *lat = RAD2DEG(atan(sinh(rd_.lath_len * (0.5 - y / rd_.h) + rd_.lath)));
 }
 
 

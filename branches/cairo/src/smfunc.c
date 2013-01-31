@@ -25,6 +25,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <signal.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 
@@ -1147,5 +1148,11 @@ void bbox_way(const osm_way_t *w, struct bbox *bb)
       cd.lon = n->lon;
       bbox_min_max(&cd, bb);
    }
+}
+
+
+int act_exit_main(smrule_t *r, osm_obj_t *o)
+{
+   return raise(SIGINT);
 }
 
