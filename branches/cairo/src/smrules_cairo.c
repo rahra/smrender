@@ -1003,8 +1003,8 @@ static void dv_mkarea(const struct coord *cnode, double r, const diffvec_t *dv, 
       //n->lon = cnode->lon + r * dv[i].dv_diff * cos(dv[i].dv_angle) / cos(n->lat);
 
       geo2pxf(cnode->lon, cnode->lat, &n->lon, &n->lat);
-      pxf2geo(n->lon + PT2PX(r) * dv[i].dv_diff * cos(dv[i].dv_angle),
-              n->lat + PT2PX(r) * dv[i].dv_diff * sin(dv[i].dv_angle),
+      pxf2geo(n->lon + PT2PX(r) * dv[i].dv_diff * cos(M_2PI - dv[i].dv_angle),
+              n->lat + PT2PX(r) * dv[i].dv_diff * sin(M_2PI - dv[i].dv_angle),
               &n->lon, &n->lat);
       log_debug("PT2PX(%f) = %f, dv[%d].dv_diff = %f", r, PT2PX(r), i, dv[i].dv_diff);
 
