@@ -527,14 +527,17 @@ int bs_safe_put_xml(FILE *f, const bstring_t *b)
    int i, c;
 
    for (i = 0, c = 0; i < b->len; i++)
-   {
-      if (b->buf[i] == '"')
+      switch (b->buf[i])
       {
-         c += fputs("&quot;", f);
-         continue;
+         case '"':
+            c += fputs("&quot;", f);
+            break;
+         case '<':
+            c += fputs("&lt;", f);
+            break;
+         default:
+            c += fputc(b->buf[i], f);
       }
-      c += fputc(b->buf[i], f);
-   }
    return c;
 }
 

@@ -767,6 +767,8 @@ static cairo_surface_t *cro_cut_out(double x, double y, double r)
    cairo_paint(ctx);
    cairo_destroy(ctx);
 
+   //cairo_surface_write_to_png(sfc, "bg.png");
+
    return sfc;
 }
 
@@ -776,7 +778,7 @@ static cairo_surface_t *cro_plane(int w, int h, int x, int col)
    cairo_surface_t *sfc;
    cairo_t *ctx;
 
-   sfc = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, w, h);
+   sfc = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, round(PT2PX(w)), round(PT2PX(h)));
    if (cairo_surface_status(sfc) != CAIRO_STATUS_SUCCESS)
    {
       log_msg(LOG_ERR, "failed to create surface: %s",
@@ -785,11 +787,14 @@ static cairo_surface_t *cro_plane(int w, int h, int x, int col)
    }
 
    ctx = cairo_create(sfc);
+   cairo_scale(ctx, PT2PX_SCALE, PT2PX_SCALE);
    //cro_set_source_color(ctx, col);
    //cro_set_source_color(ctx, 0xff0000);
    cairo_rectangle(ctx, x, 0, w - x, h);
    cairo_fill(ctx);
    cairo_destroy(ctx);
+
+   //cairo_surface_write_to_png(sfc, "fg.png");
 
    return sfc;
 }
@@ -1139,7 +1144,7 @@ static int cap_coord(const struct actCaption *cap, const struct coord *c, const 
       else
          pos = cap->pos;
 
-      r = hypot(tx.width + tx.x_bearing, fe.ascent);
+      r = hypot(tx.width + tx.x_bearing, fe.ascent / 2);
       width = tx.width + tx.x_bearing;
       height = fe.ascent;
       if (cap->pos & 0xc)
