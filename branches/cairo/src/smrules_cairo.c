@@ -58,6 +58,7 @@
 #define M_2PI (2.0 * M_PI)
 #define PT2PX_SCALE (rdata_dpi() / 72.0)
 #define PT2PX(x) ((x) * PT2PX_SCALE)
+#define PX2PT_SCALE (72.0 / rdata_dpi())
 
 
 typedef struct diffvec
@@ -67,6 +68,20 @@ typedef struct diffvec
    double dv_angle, dv_quant;
    int dv_index;
 } diffvec_t;
+
+
+typedef struct diffpeak
+{
+   double dp_start;
+   double dp_end;
+} diffpeak_t;
+
+
+typedef struct peaklist
+{
+   int pl_cnt;
+   diffpeak_t pl_peak[];
+} peaklist_t;
 
 
 static cairo_surface_t *sfc_;
@@ -250,6 +265,26 @@ int cro_get_pixel(cairo_surface_t *sfc, int x, int y)
 }
 
 
+static void parse_auto_rot(const action_t *act, double *angle, struct auto_rot *rot)
+{
+   char *val;
+
+   if ((val = get_param("angle", angle, act)) == NULL)
+      return;
+
+   if (strcmp("auto", val))
+      return;
+
+   *angle = NAN;
+   if (get_param("auto-color", NULL, act) != NULL)
+      log_msg(LOG_NOTICE, "parameter 'auto-color' deprecated");
+
+   if ((val = get_param("weight", &rot->weight, act)) == NULL)
+      rot->weight = 1;
+   (void) get_param("phase", &rot->phase, act);
+}
+
+ 
 int act_draw_ini(smrule_t *r)
 {
    struct actDraw *d;
@@ -555,6 +590,9 @@ int act_cap_ini(smrule_t *r)
    }
    if ((s = get_param("color", NULL, r->act)) != NULL)
       cap.col = parse_color(s);
+
+   parse_auto_rot(r->act, &cap.angle, &cap.rot);
+   /*
    if ((s = get_param("angle", &cap.angle, r->act)) != NULL)
    {
       if (!strcmp(s, "auto"))
@@ -570,7 +608,7 @@ int act_cap_ini(smrule_t *r)
             cap.rot.weight = 1;
          (void) get_param("phase", &cap.rot.phase, r->act);
       }
-   }
+   }*/
    if ((s = get_param("halign", NULL, r->act)) != NULL)
    {
       if (!strcmp(s, "east"))
@@ -757,7 +795,7 @@ static cairo_surface_t *cro_cut_out(double x, double y, double r)
    }
    ctx = cairo_create(sfc);
    cairo_scale(ctx, PT2PX_SCALE, PT2PX_SCALE);
-   log_debug("cutting at x = %.2f, y = %.2f, r = %.2f", x, y, r);
+   //log_debug("cutting at x = %.2f, y = %.2f, r = %.2f", x, y, r);
    x = -x + r / 2;
    y = -y + r / 2;
    //y = -y;
@@ -765,6 +803,12 @@ static cairo_surface_t *cro_cut_out(double x, double y, double r)
    //cairo_device_to_user(ctx, &x, &y);
    cairo_set_source_surface(ctx, sfc_, x, y);
    cairo_paint(ctx);
+
+   /*cairo_translate(ctx, r / 2, r / 2);
+   cro_set_source_color(ctx, 0xff0000);
+   cairo_rectangle(ctx, -.5, -.5, 1, 1);
+   cairo_fill(ctx);*/
+
    cairo_destroy(ctx);
 
    //cairo_surface_write_to_png(sfc, "bg.png");
@@ -943,10 +987,10 @@ static void cro_diff(cairo_surface_t *dst, cairo_t *ctx, cairo_surface_t *bg, ca
    cairo_paint(ctx);
    cairo_restore(ctx);
 
-   /*char buf[64];
-   snprintf(buf, sizeof(buf), "bg-%03d.png", (int) RAD2DEG(a));
-   cairo_surface_write_to_png(dst, buf);
-   cairo_surface_write_to_png(fg, "fg.png");*/
+   //char buf[64];
+   //snprintf(buf, sizeof(buf), "bg-%03d.png", (int) RAD2DEG(a));
+   //cairo_surface_write_to_png(dst, buf);
+   //cairo_surface_write_to_png(fg, "fg.png");
 
    return;
    cro_dist(dst, fg);
@@ -990,10 +1034,28 @@ static int cmp_dv(const diffvec_t *src, const diffvec_t *dst)
 }
 
 
+static int cmp_dp(const diffpeak_t *src, const diffpeak_t *dst)
+{
+   if (src->dp_end - src-> dp_start > dst->dp_end - dst->dp_start)
+      return -1;
+   if (src->dp_end - src-> dp_start < dst->dp_end - dst->dp_start)
+      return 1;
+   return 0;
+}
+
+
+static double fmod2(double a, double n)
+{
+   a = fmod(a, n);
+   return a < 0 ? a + n : a;
+}
+
+
 static void dv_mkarea(const struct coord *cnode, double r, const diffvec_t *dv, int cnt)
 {
    osm_node_t *n;
    osm_way_t *w;
+   char buf[32];
    int i;
 
    w = malloc_way(1, cnt + 1);
@@ -1011,17 +1073,15 @@ static void dv_mkarea(const struct coord *cnode, double r, const diffvec_t *dv, 
       pxf2geo(n->lon + PT2PX(r) * dv[i].dv_diff * cos(M_2PI - dv[i].dv_angle),
               n->lat + PT2PX(r) * dv[i].dv_diff * sin(M_2PI - dv[i].dv_angle),
               &n->lon, &n->lat);
-      log_debug("PT2PX(%f) = %f, dv[%d].dv_diff = %f", r, PT2PX(r), i, dv[i].dv_diff);
+      //log_debug("%.1f, dv[%d].dv_diff = %f", RAD2DEG(dv[i].dv_angle), i, dv[i].dv_diff);
 
-      char buf[32];
-      snprintf(buf, sizeof(buf), "%.1f;%.1f", RAD2DEG(dv[i].dv_angle), dv[i].dv_diff * 100);
+      snprintf(buf, sizeof(buf), "%.1f;%.1f", fmod2(RAD2DEG(M_PI_2 - dv[i].dv_angle), 360), dv[i].dv_diff * 100);
       set_const_tag(&n->obj.otag[1], "smrender:autorot:angle", strdup(buf));
-
       put_object((osm_obj_t*) n);
    }
    w->ref[i] = w->ref[0];
    put_object((osm_obj_t*) w);
-   log_debug("added way %ld", (long) w->obj.id);
+   //log_debug("added way %ld", (long) w->obj.id);
 }
 
 
@@ -1070,7 +1130,6 @@ static void dv_sample(const struct coord *n, cairo_surface_t *bg, cairo_surface_
 
 static void dv_quantize(diffvec_t *dv, int num_dv)
 {
-#define MAX_QUANT 10.0
    double min, max;
    int i;
 
@@ -1085,9 +1144,95 @@ static void dv_quantize(diffvec_t *dv, int num_dv)
    }
 
    for (i = 0; i < num_dv; i++)
+      dv[i].dv_quant = (dv[i].dv_diff - min) / (max - min);
+}
+
+
+static inline int mod(int a, int n)
+{
+   a %= n;
+   return a >= 0 ? a : a + n;
+}
+
+
+#define DP_LIMIT 0.95
+static int dp_count_pos_edges(const diffvec_t *dv, int num_dv)
+{
+   int i, peak, cnt = 0;
+
+   peak = dv[0].dv_quant >= DP_LIMIT ? 1 : 0;
+   for (i = 1; i <= num_dv; i++)
    {
-      dv[i].dv_quant = round((dv[i].dv_diff - min) * MAX_QUANT / (max - min));
+      if (peak && dv[i % num_dv].dv_quant < DP_LIMIT)
+      {
+         peak = 0;
+         continue;
+      }
+      if (!peak && dv[i % num_dv].dv_quant >= DP_LIMIT)
+      {
+         peak = 1;
+         cnt++;
+      }
    }
+   return cnt;
+}
+
+
+static int dp_get(const diffvec_t *dv, int num_dv, diffpeak_t **rp)
+{
+   int i, peak, cnt = 0, last;
+   diffpeak_t *dp = NULL;
+
+   // check if first element is below (peak = 0) or above the limit (peak = 1)
+   peak = dv[0].dv_quant >= DP_LIMIT ? 1 : 0;
+   // loop over all elements + 1 (modulo number of elements) to wrap around in
+   // case of the edge is exactly between 360 and 0 degrees.
+   for (i = 1, last = num_dv; i <= last; i++)
+   {
+      // check if it is a negative edge (value drops below limit)
+      if (peak && dv[i % num_dv].dv_quant < DP_LIMIT)
+      {
+         peak = 0;
+         // check if there was a positive edge before
+         if (cnt)
+         {
+            // set end angle of preceding peak
+            if (dv[i % num_dv].dv_angle > dv[(i - 1) % num_dv].dv_angle)
+               dp[cnt - 1].dp_end = (dv[i % num_dv].dv_angle + dv[(i - 1) % num_dv].dv_angle) / 2;
+            else
+               dp[cnt - 1].dp_end = (dv[i % num_dv].dv_angle + dv[(i - 1) % num_dv].dv_angle + M_2PI) / 2;
+
+            // wrap angle around 360 if necessary
+            if (dp[cnt - 1].dp_end < dp[cnt - 1].dp_start)
+               dp[cnt - 1].dp_end += M_2PI;
+         }
+         continue;
+      }
+      // check if it is a positive edge (value raises above limit)
+      if (!peak && dv[i % num_dv].dv_quant >= DP_LIMIT)
+      {
+         peak = 1;
+         // check if it is the first positive edge
+         if (!cnt)
+         {
+            last = i + num_dv - 1;
+         }
+         cnt++;
+         if ((*rp = realloc(dp, cnt * sizeof(*dp))) == NULL)
+         {
+            log_msg(LOG_ERR, "failed to realloc diffpeak_t: %s", strerror(errno));
+            free(dp);
+            return -1;
+         }
+         dp = *rp;
+         if (dv[i % num_dv].dv_angle > dv[(i - 1) % num_dv].dv_angle)
+            dp[cnt - 1].dp_start = (dv[i % num_dv].dv_angle + dv[(i - 1) % num_dv].dv_angle) / 2;
+         else
+            dp[cnt - 1].dp_start = (dv[i % num_dv].dv_angle + dv[(i - 1) % num_dv].dv_angle + M_2PI) / 2;
+      }
+   }
+   *rp = dp;
+   return cnt;
 }
 
 
@@ -1118,19 +1263,21 @@ static int cap_coord(const struct actCaption *cap, const struct coord *c, const 
    double width, height;
    diffvec_t dv[NUM_ANGLE_STEPS];
    short pos;
+   diffpeak_t *dp;
+   int n;
 
    cairo_save(cap->ctx);
    geo2pxf(c->lon, c->lat, &x, &y);
    x = rdata_px_unit(x, U_PT);
    y = rdata_px_unit(y, U_PT);
-   log_debug("translate to %.2f, %.2f", x, y);
+   //log_debug("translate to %.2f, %.2f", x, y);
    cairo_translate(cap->ctx, x, y);
 
    memcpy(buf, str->buf, str->len);
    buf[str->len] = '\0';
    if (cap->pos & POS_UC)
       strupper(buf);
-   log_debug("text \"%s\"", buf);
+   //log_debug("text \"%s\"", buf);
 
    cairo_set_font_size(cap->ctx, mm2unit(cap->size));
    cairo_font_extents(cap->ctx, &fe);
@@ -1144,8 +1291,8 @@ static int cap_coord(const struct actCaption *cap, const struct coord *c, const 
       else
          pos = cap->pos;
 
-      r = hypot(tx.width + tx.x_bearing, fe.ascent / 2);
-      width = tx.width + tx.x_bearing;
+      r = hypot(tx.width + tx.x_bearing, fe.ascent / 2) + POS_OFFSET;
+      width = tx.width + tx.x_bearing + POS_OFFSET;
       height = fe.ascent;
       if (cap->pos & 0xc)
       {
@@ -1166,14 +1313,31 @@ static int cap_coord(const struct actCaption *cap, const struct coord *c, const 
       dv_weight(dv, NUM_ANGLE_STEPS, DEG2RAD(cap->rot.phase), cap->rot.weight);
       dv_mkarea(c, r, dv, NUM_ANGLE_STEPS);
       dv_quantize(dv, NUM_ANGLE_STEPS);
+      if ((n = dp_get(dv, NUM_ANGLE_STEPS, &dp)) == -1)
+         return -1;
+
+/*
       qsort(dv, NUM_ANGLE_STEPS, sizeof(diffvec_t), (int(*)(const void*, const void*)) cmp_dv);
 #if 1
-      int i; for (i = 0; i < NUM_ANGLE_STEPS; i++)
-         log_debug("dv[%d].dv_diff = %f, q = %.1f, a = %.1f, i = %d", dv[i].dv_index, dv[i].dv_diff, dv[i].dv_quant, RAD2DEG(dv[i].dv_angle), i);
+      int i; 
+      
+      for (i = 0; i < n; i++)
+         log_debug("dp[%d].dp_start = %.1f, dp[%d].dp_end = %.1f, range = %.1f", i, RAD2DEG(dp[i].dp_start), i, RAD2DEG(dp[i].dp_end), RAD2DEG(dp[i].dp_end - dp[i].dp_start));
+      for (i = 0; i < NUM_ANGLE_STEPS; i++)
+         log_debug("dv[%d].dv_diff = %f, q = %.2f, a = %.1f, i = %d", dv[i].dv_index, dv[i].dv_diff, dv[i].dv_quant, RAD2DEG(dv[i].dv_angle), i);
 
       log_debug("selected dv[%d].dv_diff = %f, a = %.1f", 0, dv[0].dv_diff, RAD2DEG(dv[0].dv_angle));
 #endif
-      a = M_2PI - dv_mean(dv, NUM_ANGLE_STEPS);
+      a = M_2PI - dv_mean(dv, NUM_ANGLE_STEPS);*/
+
+      if (n)
+      {
+         qsort(dp, n, sizeof(diffpeak_t), (int(*)(const void*, const void*)) cmp_dp);
+         a = M_2PI - (dp->dp_end + dp->dp_start) / 2;
+         //log_debug("text bearing %.1f degrees", fmod2(RAD2DEG(a - 3 * M_PI_2), 360));
+      }
+      else
+         a = 0;
 
       // flip text if necessary
       if (a > M_PI_2 && a < 3 * M_PI_2)
@@ -1182,7 +1346,7 @@ static int cap_coord(const struct actCaption *cap, const struct coord *c, const 
          if (pos & POS_E)
          {
             pos = (cap->pos & 0xfff0) | POS_W;
-            log_debug("flip east/west");
+            //log_debug("flip east/west");
          }
       }
    }
@@ -1271,5 +1435,134 @@ int act_cap_fini(smrule_t *r)
 }
 
  
+int act_img_ini(smrule_t *r)
+{
+//   struct rdata *rd = rd_;
+   struct actImage img;
+   //gdImage *tmp_img;
+   char *name, *s;
+   //FILE *f;
+   int c, e;
+
+   if (r->oo->type != OSM_NODE)
+   {
+      log_msg(LOG_WARN, "img() only applicable to nodes");
+      return -1;
+   }
+
+   if ((name = get_param("file", NULL, r->act)) == NULL)
+   {
+      log_msg(LOG_WARN, "parameter 'file' missing");
+      return -1;
+   }
+
+   memset(&img, 0, sizeof(img));
+   img.img = cairo_image_surface_create_from_png(name);
+   if ((e = cairo_surface_status(img.img)) != CAIRO_STATUS_SUCCESS)
+   {
+      log_msg(LOG_ERR, "cannot open file %s: %s", name, cairo_status_to_string(e));
+      //cairo_surface_destroy(img.img);
+      return -1;
+   }
+
+   img.w = cairo_image_surface_get_width(img.img);
+   img.h = cairo_image_surface_get_height(img.img);
+
+   img.ctx = cairo_create(sfc_);
+   if ((e = cairo_status(img.ctx)) != CAIRO_STATUS_SUCCESS)
+   {
+      log_msg(LOG_ERR, "cannot create cairo context: %s", cairo_status_to_string(e));
+      cairo_surface_destroy(img.img);
+      return -1;
+   }
+   cairo_scale(img.ctx, PX2PT_SCALE, PX2PT_SCALE);
+
+   parse_auto_rot(r->act, &img.angle, &img.rot);
+   /*
+   if ((name = get_param("angle", &img.angle, r->act)) != NULL)
+   {
+      if (!strcmp(name, "auto"))
+      {
+         img.angle = NAN;
+         img.rot.autocol = parse_color("bgcolor");
+         if ((s = get_param("auto-color", NULL, r->act)) != NULL)
+         {
+            log_msg(LOG_NOTICE, "");
+            img.rot.autocol = parse_color(s);
+         }
+         if ((s = get_param("weight", &img.rot.weight, r->act)) == NULL)
+            img.rot.weight = 1;
+         (void) get_param("phase", &img.rot.phase, r->act);
+      }
+   }*/
+   
+   if ((r->data = malloc(sizeof(img))) == NULL)
+   {
+      log_msg(LOG_ERR, "cannot malloc: %s", strerror(errno));
+      return -1;
+   }
+
+//   if (!isnan(img.angle))
+//      sm_threaded(r);
+
+   memcpy(r->data, &img, sizeof(img));
+
+   return 0;
+}
+
+
+int act_img_main(smrule_t *r, osm_node_t *n)
+{
+   struct actImage *img = r->data;
+   //struct rdata *rd = rd_;
+   //int hx, hy, x, y;
+   double x, y, a;
+
+   cairo_save(img->ctx);
+   geo2pxf(n->lon, n->lat, &x, &y);
+   //x = rdata_px_unit(x, U_PT);
+   //y = rdata_px_unit(y, U_PT);
+   log_debug("translate to %.2f, %.2f", x, y);
+   cairo_translate(img->ctx, x, y);
+
+   if (isnan(img->angle))
+   {
+      // auto-rot code
+   }
+   else
+   {
+      a = DEG2RAD(360 - img->angle);
+   }
+
+   cairo_rotate(img->ctx, a);
+   cairo_set_source_surface(img->ctx, img->img, img->w / -2.0, img->h / -2.0);
+   cairo_paint(img->ctx);
+   cairo_restore(img->ctx);
+
+/*
+   mk_paper_coords(n->lat, n->lon, rd, &x, &y);
+   hx = gdImageSX(img->img) / 2;
+   hy = gdImageSY(img->img) / 2;
+   a = isnan(img->angle) ? color_frequency_w(rd, x, y, hx, hy, &img->rot) : img->angle;
+
+   gdImageCopyRotated(img_, img->img, x, y, 0, 0,
+         gdImageSX(img->img), gdImageSY(img->img), round(a));
+*/
+   return 0;
+}
+
+
+int act_img_fini(smrule_t *r)
+{
+   struct actImage *img = r->data;
+
+   cairo_destroy(img->ctx);
+   cairo_surface_destroy(img->img);
+   free(img);
+   r->data = NULL;
+   return 0;
+}
+
+
 #endif
 

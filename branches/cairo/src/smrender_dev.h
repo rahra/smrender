@@ -130,7 +130,12 @@ struct actImage
 {
    double angle;
    struct auto_rot rot;
-   image_t *img;
+   //image_t *img;
+#ifdef HAVE_CAIRO
+   cairo_surface_t *img;
+   double w, h;
+   cairo_t *ctx;
+#endif
 };
 
 struct cap_data
