@@ -301,7 +301,7 @@ mem_img_t *rectify_circle(image_t *img, int cx, int cy, int R)
                c = 0x7f000000;
             else
 #ifdef HAVE_CAIRO
-               c = *((uint32_t*) (d + cro_pixel_pos(x + cx, cy - y, s)));
+               c = *((uint32_t*) (d + cairo_smr_pixel_pos(x + cx, cy - y, s)));
 #endif
 #ifdef HAVE_GD
                c = gdImageGetPixel(img, x + cx, cy - y);
