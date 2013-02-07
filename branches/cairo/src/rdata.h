@@ -107,6 +107,7 @@ double rdata_width(unit_t);
 double rdata_height(unit_t);
 int rdata_dpi(void);
 double rdata_square_nm(void);
+int is_on_page(const struct coord *);
 
 #endif
 

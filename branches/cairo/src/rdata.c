@@ -184,3 +184,11 @@ static void __attribute__((constructor)) init_rdata(void)
    //set_static_obj_tree(&rd_.obj);
 }
 
+
+int is_on_page(const struct coord *c)
+{
+   if (c->lon < rd_.bb.ll.lon || c->lon > rd_.bb.ru.lon || c->lat < rd_.bb.ll.lat || c->lat > rd_.bb.ru.lat)
+      return 0;
+   return 1;
+}
+

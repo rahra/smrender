@@ -36,6 +36,12 @@
 
 #include "smrender_dev.h"
 
+#ifdef HAVE_CAIRO
+#define get_pixel(x, y) cairo_smr_get_bg_pixel(x, y)
+#else
+#define get_pixel(x, y)
+#endif
+
 
 struct hist_data
 {
@@ -177,7 +183,7 @@ static int gen_hist(struct rdata *rd, struct hist_data **hy)
       {
          for (i = 0; i < hcnt; i++)
          {
-            if (hist[i].col == (get_pixel(rd, x, y) & 0xffffff))
+            if (hist[i].col == (get_pixel(x, y) & 0xffffff))
             {
                hist[i].cnt++;
                break;
@@ -189,7 +195,7 @@ static int gen_hist(struct rdata *rd, struct hist_data **hy)
                log_msg(LOG_ERR, "cannot realloc in gen_hist(): %s", strerror(errno)),
                   exit(EXIT_FAILURE);
             hcnt++;
-            hist[i].col = get_pixel(rd, x, y) & 0xffffff;
+            hist[i].col = get_pixel(x, y) & 0xffffff;
             hist[i].cnt = 1;
             //log_debug("hist[%d].col = #%08x", i, hist[i].col);
          }
@@ -262,7 +268,7 @@ int save_kap(FILE *f, struct rdata *rd)
    {
       offp[y] = htonl(off);
       for (x = 0; x < rd->fw; x++)
-         buf_in[x] = col_index(hist, hcnt, get_pixel(rd, x, y) & 0xffffff);
+         buf_in[x] = col_index(hist, hcnt, get_pixel(x, y) & 0xffffff);
       i = bsb_compress_row(buf_in, buf_out, d, y, rd->fw, rd->fw);
       fwrite(buf_out, i, 1, f);
       off += i;

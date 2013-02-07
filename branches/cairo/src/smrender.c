@@ -64,6 +64,7 @@ struct tile_info
 };
 
 static volatile sig_atomic_t int_ = 0;
+static int render_all_nodes_ = 0;
 
 
 /*! This function parse a coordinate string of format "[-]dd.ddd[NESW]" or
@@ -182,6 +183,16 @@ void install_sigint(void)
 int apply_smrules0(osm_obj_t *o, struct rdata *rd, smrule_t *r)
 {
    int i;
+
+   // render only nodes which are on the page
+   if (!render_all_nodes_ && o->type == OSM_NODE)
+   {
+      struct coord c;
+      c.lon = ((osm_node_t*) o)->lon;
+      c.lat = ((osm_node_t*) o)->lat;
+      if (!is_on_page(&c))
+         return 0;
+   }
 
    for (i = 0; i < r->oo->tag_cnt; i++)
       if (bs_match_attr(o, &r->oo->otag[i], &r->act->stag[i]) == -1)
@@ -771,6 +782,8 @@ void usage(const char *s)
          "               <scale> Scale of chart.\n"
          "               <length> Length of mean latitude in either degrees ('d') or\n"
          "                        nautical miles ('m')\n"
+         "   -a .................. Render all nodes, otherwise only nodes which are\n"
+         "                         on the page are rendered.\n"
          "   -b <color> .......... Choose background color ('white' is default).\n"
          "   -d <density> ........ Set image density (300 is default).\n"
          "   -f .................. Use loading filter.\n"
@@ -925,9 +938,13 @@ int main(int argc, char *argv[])
    rd->cmdline = mk_cmd_line((const char**) argv);
    memset(&ti, 0, sizeof(ti));
 
-   while ((n = getopt(argc, argv, "b:d:fg:Ghi:k:K:lMmo:O:P:r:R:s:t:T:uVw:")) != -1)
+   while ((n = getopt(argc, argv, "ab:d:fg:Ghi:k:K:lMmo:O:P:r:R:s:t:T:uVw:")) != -1)
       switch (n)
       {
+         case 'a':
+            render_all_nodes_ = 1;
+            break;
+
          case 'b':
             bg = optarg;
             break;
@@ -1333,8 +1350,6 @@ int main(int argc, char *argv[])
    log_debug("freeing rules tree");
    bx_free_tree(rd->rules);
 
-   // FIXME: this is done before reduce_resolution() because mk_paper_coords()
-   // used in cut_tile() (smrules.c) referes to the rendering resolution.
    if (ti.path != NULL)
    {
       log_msg(LOG_INFO, "creating tiles in directory %s", ti.path);

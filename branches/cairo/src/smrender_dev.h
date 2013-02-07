@@ -22,9 +22,6 @@
 #include "config.h"
 #endif
 #include <stdint.h>
-#ifdef HAVE_GD
-#include <gd.h>
-#endif
 #ifdef HAVE_CAIRO
 #include <cairo.h>
 #endif
@@ -148,19 +145,6 @@ struct cap_data
    int offset;
 };
 
-struct font_metric
-{
-                  // Libgd does not directly provide access to font metrics.
-                  // Thus it is retrieved in a special way which was found at
-                  // http://search.cpan.org/~lds/GD-2.46/GD/Simple.pm and was
-                  // slightly adapted.
-  int xheight;    // the base height of the font from the bottom to the top of a lowercase 'm'
-  int ascent;     // the length of the upper stem of the lowercase 'd'
-  int descent;    // the length of the lower step of the lowercase 'g'
-  int lineheight; // the distance from the bottom of the 'g' to the top of the 'd'
-  int leading;    // the distance between two adjacent lines
-};
-
 struct actCaption
 {
    short pos;        // position, or'd POS_x macros
@@ -171,11 +155,6 @@ struct actCaption
    double angle;     // angle to rotate caption. 0 degress equals east,
                      // counterclockwise. NAN means auto-rotate
    struct auto_rot rot;
-#ifdef HAVE_GD
-   list_t *list;
-   image_t *img;
-   struct font_metric fm;
-#endif
 #ifdef HAVE_CAIRO
    cairo_t *ctx;
 #endif
@@ -270,16 +249,17 @@ void init_cat_poly(struct rdata*);
 
 /* smrules.c */
 void cairo_smr_init_main_image(const char*);
+int cairo_smr_get_bg_pixel(int, int);
 void save_main_image(FILE*, int);
 //int get_color(const struct rdata*, int, int, int, int);
-int get_pixel(struct rdata*, int , int );
-void reduce_resolution(struct rdata *);
+//int get_pixel(struct rdata*, int , int );
+//void reduce_resolution(struct rdata *);
 void *create_tile(void);
 void delete_tile(void *);
 void cut_tile(const struct bbox *, void *);
 int save_image(const char *, void *, int);
 
-int cro_pixel_pos(int, int, int);
+//int cro_pixel_pos(int, int, int);
 
 /* smlog.c */
 FILE *init_log(const char*, int);

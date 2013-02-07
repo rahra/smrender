@@ -38,7 +38,10 @@
 #ifdef CAIRO_HAS_FT_FONT
 #include <cairo-ft.h>
 #endif
+#ifdef CAIRO_HAS_PDF_SURFACE
 #include <cairo-pdf.h>
+#endif
+
 #define mm2unit(x) mm2ptf(x)
 #define THINLINE rdata_px_unit(1, U_PT)
 #define mm2wu(x) ((x) == 0.0 ? THINLINE : mm2unit(x))
@@ -53,6 +56,8 @@
 //#define COL_DIFF_BRGT
 // define this if color difference shall be calculated by the luminosity.
 #define COL_DIFF_LUM
+
+#define POS_OFFSET mm2ptf(1.4)
 
 #define COL_COMP(x, y) ((x) >> (y) & 0xff)
 #define COL_COMPD(x, y) ((double) COL_COMP(x, y) / 255.0)
@@ -86,14 +91,8 @@ typedef struct diffpeak
 } diffpeak_t;
 
 
-typedef struct peaklist
-{
-   int pl_cnt;
-   diffpeak_t pl_peak[];
-} peaklist_t;
-
-
 static cairo_surface_t *sfc_;
+static cairo_rectangle_t ext_;
 
 
 static cairo_status_t cairo_smr_log_surface_status(cairo_surface_t *sfc)
@@ -125,9 +124,6 @@ static void cairo_smr_set_source_color(cairo_t *ctx, int col)
 }
 
 
-static cairo_rectangle_t ext_;
-
-
 static cairo_surface_t *cairo_smr_surface(void)
 {
    cairo_surface_t *sfc;
@@ -144,7 +140,6 @@ static cairo_surface_t *cairo_smr_surface(void)
 }
 
 
-//void init_main_image(struct rdata *rd, const char *bg)
 void cairo_smr_init_main_image(const char *bg)
 {
    cairo_t *ctx;
@@ -199,6 +194,7 @@ void save_main_image(FILE *f, int ftype)
          return;
 
       case FTYPE_PDF:
+#ifdef CAIRO_HAS_PDF_SURFACE
          log_debug("width = %.2f pt, height = %.2f pt", rdata_width(U_PT), rdata_height(U_PT));
          sfc = cairo_pdf_surface_create_for_stream(cairo_smr_write_func, f, rdata_width(U_PT), rdata_height(U_PT));
          cairo_pdf_surface_restrict_to_version(sfc, CAIRO_PDF_VERSION_1_4);
@@ -209,6 +205,9 @@ void save_main_image(FILE *f, int ftype)
          cairo_show_page(dst);
          cairo_destroy(dst);
          cairo_surface_destroy(sfc);
+#else
+         log_msg(LOG_NOTICE, "cannot create PDF, cairo was compiled without PDF support");
+#endif
          return;
    }
  
@@ -227,13 +226,6 @@ int save_image(const char *s, void *img, int ftype)
 }
 
 
-// FIXME: this is used by smkap.c
-int get_pixel(struct rdata *rd, int x, int y)
-{
-   return 0;
-}
-
-
 void *create_tile(void)
 {
    return NULL;
@@ -249,11 +241,6 @@ void cut_tile(const struct bbox *bb, void *img)
 {
 }
 
-/*
-void reduce_resolution(struct rdata *rd)
-{
-}*/
-
 
 int cairo_smr_pixel_pos(int x, int y, int s)
 {
@@ -265,14 +252,18 @@ int cairo_smr_get_pixel(cairo_surface_t *sfc, int x, int y)
 {
    unsigned char *data;
 
-   /*if (x < 0 || y < 0 || x >= cairo_image_surface_get_width(sfc) || x >= cairo_image_surface_get_height(sfc))
-      return 0;*/
-
+   // FIXME: flush may be done outside get_pixel()
    cairo_surface_flush(sfc);
    if ((data = cairo_image_surface_get_data(sfc)) == NULL)
       return 0;
 
    return *(data + cairo_smr_pixel_pos(x, y, cairo_image_surface_get_stride(sfc)));
+}
+
+
+int cairo_smr_get_bg_pixel(int x, int y)
+{
+   return cairo_smr_get_pixel(sfc_, x, y);
 }
 
 
@@ -539,7 +530,6 @@ int act_draw_main(smrule_t *r, osm_obj_t *o)
 int act_draw_fini(smrule_t *r)
 {
    struct actDraw *d = r->data;
-   //cairo_t *dst, *ctx;
    int i;
 
    cairo_pop_group_to_source(d->ctx);
@@ -616,23 +606,7 @@ int act_cap_ini(smrule_t *r)
       cap.col = parse_color(s);
 
    parse_auto_rot(r->act, &cap.angle, &cap.rot);
-   /*
-   if ((s = get_param("angle", &cap.angle, r->act)) != NULL)
-   {
-      if (!strcmp(s, "auto"))
-      {
-         cap.angle = NAN;
-         cap.rot.autocol = parse_color("bgcolor");
-         if ((s = get_param("auto-color", NULL, r->act)) != NULL)
-         {
-            cap.rot.autocol = parse_color(s);
-            log_msg(LOG_NOTICE, "parameter 'auto-color' is deprecated");
-         }
-         if ((s = get_param("weight", &cap.rot.weight, r->act)) == NULL)
-            cap.rot.weight = 1;
-         (void) get_param("phase", &cap.rot.phase, r->act);
-      }
-   }*/
+
    if ((s = get_param("halign", NULL, r->act)) != NULL)
    {
       if (!strcmp(s, "east"))
@@ -671,8 +645,6 @@ int act_cap_ini(smrule_t *r)
 #endif
 
    cairo_smr_set_source_color(cap.ctx, cap.col);
-   //cairo_set_font_size(cap.ctx, mm2unit(cap.size));
-
    cairo_push_group(cap.ctx);
 
    if ((r->data = malloc(sizeof(cap))) == NULL)
@@ -703,8 +675,6 @@ static void strupper(char *s)
 }
 
 
-#define POS_OFFSET mm2ptf(1.4)
-//#define POS_OFFSET 0
 static void pos_offset(int pos, double width, double height, double *ox, double *oy)
 {
    switch (pos & 0x3)
@@ -714,12 +684,10 @@ static void pos_offset(int pos, double width, double height, double *ox, double 
          break;
 
       case POS_S:
-         //*oy = tx->height + POS_OFFSET;
          *oy = height + POS_OFFSET;
          break;
 
       default:
-         //*oy = tx->height / 2;
          *oy = height / 2;
    }
    
@@ -752,25 +720,14 @@ static cairo_surface_t *cairo_smr_cut_out(double x, double y, double r)
             cairo_status_to_string(cairo_surface_status(sfc)));
       return NULL;
    }
+
    ctx = cairo_create(sfc);
    cairo_scale(ctx, PT2PX_SCALE, PT2PX_SCALE);
-   //log_debug("cutting at x = %.2f, y = %.2f, r = %.2f", x, y, r);
    x = -x + r / 2;
    y = -y + r / 2;
-   //y = -y;
-   //cairo_user_to_device(ctx, &x, &y);
-   //cairo_device_to_user(ctx, &x, &y);
    cairo_set_source_surface(ctx, sfc_, x, y);
    cairo_paint(ctx);
-
-   /*cairo_translate(ctx, r / 2, r / 2);
-   cairo_smr_set_source_color(ctx, 0xff0000);
-   cairo_rectangle(ctx, -.5, -.5, 1, 1);
-   cairo_fill(ctx);*/
-
    cairo_destroy(ctx);
-
-   //cairo_surface_write_to_png(sfc, "bg.png");
 
    return sfc;
 }
@@ -792,12 +749,9 @@ static cairo_surface_t *cairo_smr_plane(int w, int h, int x, int col)
    ctx = cairo_create(sfc);
    cairo_scale(ctx, PT2PX_SCALE, PT2PX_SCALE);
    cairo_smr_set_source_color(ctx, col);
-   //cairo_smr_set_source_color(ctx, 0xff0000);
    cairo_rectangle(ctx, x, 0, w - x, h);
    cairo_fill(ctx);
    cairo_destroy(ctx);
-
-   //cairo_surface_write_to_png(sfc, "fg.png");
 
    return sfc;
 }
@@ -813,52 +767,6 @@ static inline double max(double a, double b)
 {
    return a > b ? a : b;
 }
-
-
-#if 0
-static double color_max(double r, double g, double b)
-{
-   return max(max(r, g), b);
-}
-
-
-static double color_min(double r, double g, double b)
-{
-   return min(min(r, g), b);
-}
-
-static double color_to_gray(double r, double g, double b)
-{
-   return (color_max(r, g, b) + color_min(r, g, b)) / 2;
-}
-#endif
-
-#if 0
-static double pix_avg(cairo_surface_t *sfc)
-{
-   unsigned char *p;
-   uint32_t pixel;
-   double avg;
-   int x, y, mx, my;
-
-   p = cairo_image_surface_get_data(sfc);
-   mx = cairo_image_surface_get_width(sfc);
-   my = cairo_image_surface_get_height(sfc);
-   avg = 0;
-
-   for (y = 0; y < my; y++)
-   {
-      for (x = 0; x < mx; x++)
-      {
-         pixel = *(((uint32_t*) p) + x);
-         avg += (double) (pixel & 0xff) / 255;
-      }
-      p += cairo_image_surface_get_stride(sfc);
-   }
-
-   return avg / (mx * my);
-}
-#endif
 
 
 static inline double sqr(double a)
@@ -962,7 +870,6 @@ static double cairo_smr_dist(cairo_surface_t *dst, cairo_surface_t *src)
 
          dst_pixel = cairo_smr_double_to_gray(dist);
          *(((uint32_t*) pdst) + x) = dst_pixel;
-         //log_debug("x = %d, y = %d, #%08x", x, y, dst_pixel);
          avg += dist;
          cnt++;
       }
@@ -972,12 +879,12 @@ static double cairo_smr_dist(cairo_surface_t *dst, cairo_surface_t *src)
    cairo_surface_mark_dirty(dst);
    if (cnt)
       avg /= cnt;
-   //log_debug("avg = %.2f, cnt = %d", avg, cnt);
    return avg;
 }
 
 
-static void cairo_smr_diff(cairo_surface_t *dst, cairo_t *ctx, cairo_surface_t *bg, cairo_surface_t *fg, int x, int y, double a)
+//static void cairo_smr_diff(cairo_surface_t *dst, cairo_t *ctx, cairo_surface_t *bg, cairo_surface_t *fg, int x, int y, double a)
+static void cairo_smr_diff(cairo_t *ctx, cairo_surface_t *bg, int x, int y, double a)
 {
    // drehpunkt festlegen
    cairo_save(ctx);
@@ -989,54 +896,8 @@ static void cairo_smr_diff(cairo_surface_t *dst, cairo_t *ctx, cairo_surface_t *
    cairo_set_source_surface(ctx, bg, cairo_image_surface_get_width(bg) / -2, cairo_image_surface_get_height(bg) / -2);
    cairo_paint(ctx);
    cairo_restore(ctx);
-
-   //char buf[64];
-   //snprintf(buf, sizeof(buf), "bg-%03d.png", (int) RAD2DEG(a));
-   //cairo_surface_write_to_png(dst, buf);
-   //cairo_surface_write_to_png(fg, "fg.png");
-
    return;
-   cairo_smr_dist(dst, fg);
-#if 0
-   // difference mit zielfarbe bilden
-   //cairo_set_source_rgb(ctx, 0, 1, 1);
-   cairo_set_source_surface(ctx, fg, 0, 0);
-   cairo_set_operator(ctx, CAIRO_OPERATOR_DIFFERENCE);
-   //cairo_set_operator(ctx, CAIRO_OPERATOR_COLOR_DODGE);
-   cairo_paint(ctx);
-   // oder was anderes darüber malen
-   //cairo_rectangle(ctx, PT2PX(2.5), PT2PX(2.5), PT2PX(15), PT2PX(5));
-   //cairo_fill(ctx);
-
-   // auf graustufen convertieren
-   cairo_set_source_rgb(ctx, 1, 1, 1);
-   cairo_set_operator(ctx, CAIRO_OPERATOR_HSL_COLOR);
-   cairo_paint(ctx);
-#endif
-
-   /*snprintf(buf, sizeof(buf), "diff-%03d.png", (int) RAD2DEG(a));
-   cairo_surface_write_to_png(dst, buf);*/
 }
-
-
-#if 0
-/*! Comparision function to compare to struct diff_vec structures.
- *  @return 1 if src->diff is less than dst->diff, -1 if src->diff is greater
- *  that dst->diff and 0 if both are equal.
- */
-static int cmp_dv(const diffvec_t *src, const diffvec_t *dst)
-{
-   if (src->dv_diff > dst->dv_diff)
-      return -1;
-   if (src->dv_diff < dst->dv_diff)
-      return 1;
-   if (src->dv_angle < dst->dv_angle)
-      return -1;
-   if (src->dv_angle > dst->dv_angle)
-      return 1;
-   return 0;
-}
-#endif
 
 
 static int cmp_dp(const diffpeak_t *src, const diffpeak_t *dst)
@@ -1065,32 +926,30 @@ static void dv_mkarea(const struct coord *cnode, double r, const diffvec_t *dv, 
 
    w = malloc_way(1, cnt + 1);
    osm_way_default(w);
-   //r = mm2lat(r);
    for (i = 0; i < cnt; i++)
    {
       n = malloc_node(2);
       osm_node_default(n);
       w->ref[dv[i].dv_index] = n->obj.id;
-      //n->lat = cnode->lat + r * dv[i].dv_diff * sin(dv[i].dv_angle);
-      //n->lon = cnode->lon + r * dv[i].dv_diff * cos(dv[i].dv_angle) / cos(n->lat);
 
       geo2pxf(cnode->lon, cnode->lat, &n->lon, &n->lat);
-      pxf2geo(n->lon + PT2PX(r) * dv[i].dv_diff * cos(M_2PI - dv[i].dv_angle),
-              n->lat + PT2PX(r) * dv[i].dv_diff * sin(M_2PI - dv[i].dv_angle),
+      // FIXME: there is something wrong with the radius. It is too small, but
+      // with PT2PX() it gets to large.
+      pxf2geo(n->lon + r * dv[i].dv_quant * cos(M_2PI - dv[i].dv_angle),
+              n->lat + r * dv[i].dv_quant * sin(M_2PI - dv[i].dv_angle),
               &n->lon, &n->lat);
-      //log_debug("%.1f, dv[%d].dv_diff = %f", RAD2DEG(dv[i].dv_angle), i, dv[i].dv_diff);
 
-      snprintf(buf, sizeof(buf), "%.1f;%.1f", fmod2(RAD2DEG(M_PI_2 - dv[i].dv_angle), 360), dv[i].dv_diff * 100);
+      //log_debug("i = %d, angle = %.1f, diff = %.2f, quant = %.2f", i, fmod2(RAD2DEG(M_PI_2 - dv[i].dv_angle), 360), dv[i].dv_diff, dv[i].dv_quant);
+      snprintf(buf, sizeof(buf), "%.1f;%.1f", fmod2(RAD2DEG(M_PI_2 - dv[i].dv_angle), 360), dv[i].dv_quant * 100);
       set_const_tag(&n->obj.otag[1], "smrender:autorot:angle", strdup(buf));
       put_object((osm_obj_t*) n);
    }
    w->ref[i] = w->ref[0];
    put_object((osm_obj_t*) w);
-   //log_debug("added way %ld", (long) w->obj.id);
 }
 
 
-void dv_weight(diffvec_t *dv, int len, double phase, double weight)
+static void dv_weight(diffvec_t *dv, int len, double phase, double weight)
 {
    for (; len; len--, dv++)
    {
@@ -1105,12 +964,10 @@ void dv_weight(diffvec_t *dv, int len, double phase, double weight)
  * @param max_angle Number of degrees to be rotated. It should be M_PI or
  * M_2PI.
  */
-//static void dv_sample(const struct coord *n, cairo_surface_t *bg, cairo_surface_t *fg, double max_angle, diffvec_t *dv, int num_dv)
 static void dv_sample(cairo_surface_t *bg, cairo_surface_t *fg, diffvec_t *dv, int num_dv)
 {
    cairo_surface_t *dst;
    cairo_t *ctx;
-   //diffvec_t dv[NUM_ANGLE_STEPS];
    double x, y, a;
    int i;
 
@@ -1123,14 +980,12 @@ static void dv_sample(cairo_surface_t *bg, cairo_surface_t *fg, diffvec_t *dv, i
 
    for (a = 0, i = 0; i < num_dv; a += M_2PI / num_dv, i++)
    {
-      cairo_smr_diff(dst, ctx, bg, fg, x, y, a);
-      //dv[i].dv_diff = pix_avg(dst);
+      cairo_smr_diff(ctx, bg, x, y, a);
       dv[i].dv_diff = cairo_smr_dist(dst, fg);
       dv[i].dv_angle = a;
       dv[i].dv_x = 0;
       dv[i].dv_y = 0;
       dv[i].dv_index = i;
-      //log_debug("dv[%d].dv_diff = %f, a = %.1f", i, dv[i].dv_diff, RAD2DEG(a));
    }
 
    cairo_destroy(ctx);
@@ -1154,7 +1009,12 @@ static void dv_quantize(diffvec_t *dv, int num_dv)
    }
 
    for (i = 0; i < num_dv; i++)
+   {
+      // FIXME: DIV0
       dv[i].dv_quant = (dv[i].dv_diff - min) / (max - min);
+      if (isnan(dv[i].dv_quant))
+         dv[i].dv_quant = 1.0;
+   }
 }
 
 
@@ -1163,30 +1023,6 @@ static inline int mod(int a, int n)
    a %= n;
    return a >= 0 ? a : a + n;
 }
-
-
-#if 0
-static int dp_count_pos_edges(const diffvec_t *dv, int num_dv)
-{
-   int i, peak, cnt = 0;
-
-   peak = dv[0].dv_quant >= DP_LIMIT ? 1 : 0;
-   for (i = 1; i <= num_dv; i++)
-   {
-      if (peak && dv[i % num_dv].dv_quant < DP_LIMIT)
-      {
-         peak = 0;
-         continue;
-      }
-      if (!peak && dv[i % num_dv].dv_quant >= DP_LIMIT)
-      {
-         peak = 1;
-         cnt++;
-      }
-   }
-   return cnt;
-}
-#endif
 
 
 static int dp_get(const diffvec_t *dv, int num_dv, diffpeak_t **rp)
@@ -1246,60 +1082,10 @@ static int dp_get(const diffvec_t *dv, int num_dv, diffpeak_t **rp)
    return cnt;
 }
 
-#if 0
-static double dv_mean(const diffvec_t *dv, int num_dv)
-{
-   int i;
-
-   for (i = 0; i < num_dv - 1; i++)
-   {
-      if (dv[i].dv_quant != dv[i + 1].dv_quant)
-         break;
-      if (abs(dv[i].dv_index - dv[i + 1].dv_index) > 1)
-         break;
-   }
-
-   log_debug("mean angle = %.1f, [0 - %d]", RAD2DEG((dv[0].dv_angle + dv[i].dv_angle) / 2), i);
-   return (dv[0].dv_angle + dv[i].dv_angle) / 2;
-}
-#endif
-
-
-#if 0
-static double dp_select(const struct coord *c, const struct auto_rot *rot, cairo_surface_t *fg, cairo_surface_t *sfc)
-{
-   diffvec_t dv[NUM_ANGLE_STEPS];
-   diffpeak_t *dp;
-   double a;
-
-   dv_sample(sfc, fg, dv, NUM_ANGLE_STEPS);
-   dv_weight(dv, NUM_ANGLE_STEPS, DEG2RAD(rot->phase), rot->weight);
-   dv_mkarea(c, r, dv, NUM_ANGLE_STEPS);
-   dv_quantize(dv, NUM_ANGLE_STEPS);
-   if ((i = dp_get(dv, NUM_ANGLE_STEPS, &dp)) == -1)
-   {
-      log_msg(LOG_ERR, "something went wrong in dp_get()");
-      return 0;
-   }
-
-   if (i)
-   {
-      qsort(dp, i, sizeof(diffpeak_t), (int(*)(const void*, const void*)) cmp_dp);
-      a = M_2PI - (dp->dp_end + dp->dp_start) / 2;
-      //log_debug("text bearing %.1f degrees", fmod2(RAD2DEG(a - 3 * M_PI_2), 360));
-   }
-   else
-      a = 0;
-
-   free(dp);
-   return a;
-}
-#endif
-
 
 static double find_angle(const struct coord *c, const struct auto_rot *rot, cairo_surface_t *fg)
 {
-   diffvec_t *dv; //[NUM_ANGLE_STEPS];
+   diffvec_t *dv;
    cairo_surface_t *sfc;
    diffpeak_t *dp;
    double x, y, a, r;
@@ -1327,17 +1113,12 @@ static double find_angle(const struct coord *c, const struct auto_rot *rot, cair
       return 0;
    }
 
-   char buf[256];
-   cairo_surface_write_to_png(fg, "fg.png");
-   snprintf(buf, sizeof(buf), "bg-%.1f-%.1f.png", x, y);
-   cairo_surface_write_to_png(sfc, buf);
-
    dv_sample(sfc, fg, dv, num_steps);
    cairo_surface_destroy(sfc);
 
    dv_weight(dv, num_steps, DEG2RAD(rot->phase), rot->weight);
-   dv_mkarea(c, r, dv, num_steps);
    dv_quantize(dv, num_steps);
+   dv_mkarea(c, r, dv, num_steps);
    if ((i = dp_get(dv, num_steps, &dp)) == -1)
    {
       log_msg(LOG_ERR, "something went wrong in dp_get()");
@@ -1348,7 +1129,6 @@ static double find_angle(const struct coord *c, const struct auto_rot *rot, cair
    {
       qsort(dp, i, sizeof(diffpeak_t), (int(*)(const void*, const void*)) cmp_dp);
       a = M_2PI - (dp->dp_end + dp->dp_start) / 2;
-      //log_debug("text bearing %.1f degrees", fmod2(RAD2DEG(a - 3 * M_PI_2), 360));
    }
    else
       a = 0;
@@ -1374,14 +1154,12 @@ static int cap_coord(const struct actCaption *cap, const struct coord *c, const 
    geo2pxf(c->lon, c->lat, &x, &y);
    x = rdata_px_unit(x, U_PT);
    y = rdata_px_unit(y, U_PT);
-   //log_debug("translate to %.2f, %.2f", x, y);
    cairo_translate(cap->ctx, x, y);
 
    memcpy(buf, str->buf, str->len);
    buf[str->len] = '\0';
    if (cap->pos & POS_UC)
       strupper(buf);
-   //log_debug("text \"%s\"", buf);
 
    cairo_set_font_size(cap->ctx, mm2unit(cap->size));
    cairo_font_extents(cap->ctx, &fe);
@@ -1410,47 +1188,7 @@ static int cap_coord(const struct actCaption *cap, const struct coord *c, const 
             return -1;
       }
 
-#define FIND_ANGLE
-#ifdef FIND_ANGLE
-
       a = find_angle(c, &cap->rot, pat);
-
-#else
-      if ((sfc = cairo_smr_cut_out(x, y, r)) == NULL)
-         return -1;
-
-      dv_sample(sfc, pat, dv, NUM_ANGLE_STEPS);
-      dv_weight(dv, NUM_ANGLE_STEPS, DEG2RAD(cap->rot.phase), cap->rot.weight);
-      dv_mkarea(c, r, dv, NUM_ANGLE_STEPS);
-      dv_quantize(dv, NUM_ANGLE_STEPS);
-      if ((n = dp_get(dv, NUM_ANGLE_STEPS, &dp)) == -1)
-         return -1;
-
-/*
-      qsort(dv, NUM_ANGLE_STEPS, sizeof(diffvec_t), (int(*)(const void*, const void*)) cmp_dv);
-#if 1
-      int i; 
-      
-      for (i = 0; i < n; i++)
-         log_debug("dp[%d].dp_start = %.1f, dp[%d].dp_end = %.1f, range = %.1f", i, RAD2DEG(dp[i].dp_start), i, RAD2DEG(dp[i].dp_end), RAD2DEG(dp[i].dp_end - dp[i].dp_start));
-      for (i = 0; i < NUM_ANGLE_STEPS; i++)
-         log_debug("dv[%d].dv_diff = %f, q = %.2f, a = %.1f, i = %d", dv[i].dv_index, dv[i].dv_diff, dv[i].dv_quant, RAD2DEG(dv[i].dv_angle), i);
-
-      log_debug("selected dv[%d].dv_diff = %f, a = %.1f", 0, dv[0].dv_diff, RAD2DEG(dv[0].dv_angle));
-#endif
-      a = M_2PI - dv_mean(dv, NUM_ANGLE_STEPS);*/
-
-      if (n)
-      {
-         qsort(dp, n, sizeof(diffpeak_t), (int(*)(const void*, const void*)) cmp_dp);
-         a = M_2PI - (dp->dp_end + dp->dp_start) / 2;
-         //log_debug("text bearing %.1f degrees", fmod2(RAD2DEG(a - 3 * M_PI_2), 360));
-      }
-      else
-         a = 0;
-
-      free(dp);
-#endif
 
       // flip text if necessary
       if (a > M_PI_2 && a < 3 * M_PI_2)
@@ -1613,10 +1351,6 @@ int act_img_main(smrule_t *r, osm_node_t *n)
 
    cairo_save(img->ctx);
    geo2pxf(n->lon, n->lat, &x, &y);
-   //x = rdata_px_unit(x, U_PT);
-   //y = rdata_px_unit(y, U_PT);
-   //
-   log_debug("translate to %.2f, %.2f", x, y);
    cairo_translate(img->ctx, x, y);
 
    if (isnan(img->angle))
@@ -1628,11 +1362,8 @@ int act_img_main(smrule_t *r, osm_node_t *n)
       x = cairo_image_surface_get_width(img->img);
       y = cairo_image_surface_get_height(img->img);
       cairo_device_to_user(img->ctx, &x, &y);
-      /*log_debug("device_to_user(%.1f, %.1f) = (%.1f, %.1f)",
-            (double) cairo_image_surface_get_width(img->img), (double) cairo_image_surface_get_height(img->img), x, y);*/
 
       a = find_angle(&c, &img->rot, img->img);
-      log_debug("placing image at %.1f degrees", RAD2DEG(a));
    }
    else
    {
