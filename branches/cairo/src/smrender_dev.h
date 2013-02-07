@@ -269,7 +269,7 @@ int is_closed_poly(const osm_way_t*);
 void init_cat_poly(struct rdata*);
 
 /* smrules.c */
-void init_main_image(struct rdata*, const char*);
+void cairo_smr_init_main_image(const char*);
 void save_main_image(FILE*, int);
 //int get_color(const struct rdata*, int, int, int, int);
 int get_pixel(struct rdata*, int , int );

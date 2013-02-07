@@ -1172,7 +1172,9 @@ int main(int argc, char *argv[])
       exit(EXIT_SUCCESS);
 
    // preparing image
-   init_main_image(rd, bg);
+#ifdef HAVE_CAIRO
+   cairo_smr_init_main_image(bg);
+#endif
 
    if ((cfctl = open_osm_source(cf, 0)) == NULL)
       exit(EXIT_FAILURE);

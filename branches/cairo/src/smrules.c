@@ -34,7 +34,7 @@
 
 #include "smrender_dev.h"
 #include "smcoast.h"
-#include "memimg.h"
+//#include "memimg.h"
 
 
 // FIXME: this function should be moved somewhere else (smfunc.c? smutil.c?

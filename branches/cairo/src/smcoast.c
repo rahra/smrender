@@ -58,6 +58,10 @@ struct refine
    int iteration;
 };
 
+
+static void node_brg(struct pcoord*, struct coord*, int64_t);
+
+
 static struct corner_point co_pt_[4];
 static struct coord center_;
 
