@@ -26,7 +26,7 @@ AC_ARG_WITH([cairo], [AS_HELP_STRING([--without-cairo], [disable support for lib
 
 AS_IF([test "x$with_cairo" != xno], [
 PKG_CHECK_MODULES([CAIRO], [cairo],
-                  AC_DEFINE([HAVE_CAIRO], [], [compile with support for libcairo.])
+                  AC_DEFINE([HAVE_CAIRO], [1], [compile with support for libcairo.])
                   )
 # this should be done just for the src directory
 #AC_SUBST([CAIRO_CFLAGS])

@@ -1,5 +1,10 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <osm version='0.6'>
+   <!-- <node version="-10">
+      <tag k='seamark:light:range' v='[2.5]'/>
+      <tag k='_action_' v='disable'/>
+   </node>-->
+
    <node version="-10">
       <tag k='seamark:type' v=''/>
       <tag k='_action_' v='vsector@libsmfilter.so'/>
@@ -13,10 +18,10 @@
       <tag k='seamark:type' v=''/>
       <tag k='_action_' v='pchar@libsmfilter.so'/>
    </node>
-   <node>
+   <node version="5">
       <tag k='/^seamark:light:.*/' v=''/>
-      <tag k='~/buoy/~' v=''/>
-      <tag k='_action_' v='img:angle=auto;file=icons/Light_Magenta_90.png'/>
+      <!--<tag k='~/buoy/~' v=''/>-->
+      <tag k='_action_' v='img:angle=auto;weight=1;file=icons/Light_Magenta_90.png'/>
    </node>
    <node>
       <tag k='seamark:type' v='light_minor'/>
@@ -26,30 +31,17 @@
       <tag k='seamark:type' v='light_major'/>
       <tag k='_action_' v='img:file=icons/Light_Major.png'/>
    </node>
+
    <node>
       <tag k='seamark:type' v='beacon_safe_water'/>
       <tag k='_action_' v='img:file=icons/Safe_Water_Beacon.png'/>
-   </node>
-   <node>
-      <tag k='seamark:type' v='buoy_safe_water'/>
-      <tag k='seamark:buoy_safe_water:shape' v='pillar'/>
-      <tag k='_action_' v='img:file=icons/Safe_Water_Pillar.png'/>
-   </node>
-   <node>
-      <tag k='seamark:type' v='buoy_safe_water'/>
-      <tag k='~seamark:buoy_safe_water:shape~' v=''/>
-      <tag k='_action_' v='img:file=icons/Safe_Water_Spar.png'/>
-   </node>
-   <node>
-      <tag k='seamark:type' v='buoy_safe_water'/>
-      <tag k='seamark:topmark:shape' v='sphere'/>
-      <tag k='_action_' v='img:file=icons/Top_Sphere_Red_Buoy.png'/>
    </node>
    <node>
       <tag k='seamark:type' v='beacon_safe_water'/>
       <tag k='seamark:topmark:shape' v='sphere'/>
       <tag k='_action_' v='img:file=icons/Top_Sphere_Red_Beacon.png'/>
    </node>
+
    <node>
       <tag k='seamark:type' v='beacon_isolated_danger'/>
       <tag k='seamark:beacon_isolated_danger:shape' v='tower'/>
@@ -60,6 +52,7 @@
       <tag k='~seamark:beacon_isolated_danger:shape~' v=''/>
       <tag k='_action_' v='img:file=icons/Cardinal_Beacon_Single.png'/>
    </node>
+
    <node>
       <tag k='_action_' v='img:file=icons/Cardinal_Beacon_West.png'/>
       <tag k='seamark:beacon_cardinal:category' v='west' />
@@ -75,31 +68,54 @@
       <tag k='seamark:beacon_cardinal:category' v='south' />
       <tag k='seamark:type' v='beacon_cardinal' />
    </node>
-    <node>
+   <node>
       <tag k='_action_' v='img:file=icons/Cardinal_Beacon_North.png'/>
       <tag k='seamark:beacon_cardinal:category' v='north' />
       <tag k='seamark:type' v='beacon_cardinal' />
    </node>
- 
+
+   <node>
+      <tag k='seamark:type' v='light_float' />
+      <tag k='seamark:light_float:colour' v='black;yellow' />
+      <tag k='_action_' v='img:file=icons/Cardinal_Float_North.png'/>
+   </node>
+   <node>
+      <tag k='seamark:type' v='light_float' />
+      <tag k='seamark:light_float:colour' v='yellow;black;yellow' />
+      <tag k='_action_' v='img:file=icons/Cardinal_Float_East.png'/>
+   </node>
+   <node>
+      <tag k='seamark:type' v='light_float' />
+      <tag k='seamark:light_float:colour' v='yellow;black' />
+      <tag k='_action_' v='img:file=icons/Cardinal_Float_South.png'/>
+   </node>
+   <node>
+      <tag k='seamark:type' v='light_float' />
+      <tag k='seamark:light_float:colour' v='black;yellow;black' />
+      <tag k='_action_' v='img:file=icons/Cardinal_Float_West.png'/>
+   </node>
+
+   <node>
+      <tag k='seamark:type' v='light_float' />
+      <tag k='seamark:light_float:colour' v='red' />
+      <tag k='_action_' v='img:file=icons/Float_Red.png'/>
+   </node>
+   <node>
+      <tag k='seamark:type' v='light_float' />
+      <tag k='seamark:light_float:colour' v='green' />
+      <tag k='_action_' v='img:file=icons/Float_Green.png'/>
+   </node>
+   <node>
+      <tag k='seamark:type' v='light_float' />
+      <tag k='~seamark:light_float:colour~' v='' />
+      <tag k='_action_' v='img:file=icons/Float.png'/>
+   </node>
+
    <node>
       <tag k='_action_' v='img:file=icons/Light_House.png'/>
       <tag k='/^seamark:light.*/' v=''/>
       <tag k='seamark:type' v='landmark' />
    </node>
-   <!--
-   <node>
-      <tag k='seamark:buoy_lateral:colour' v='~green~'/>
-      <tag k='seamark:buoy_lateral:shape' v='pillar'/>
-      <tag k='seamark:type' v='buoy_lateral'/>
-      <tag k='_action_' v='img:file=icons/Pillar.png'/>
-   </node>
-   <node>
-      <tag k='seamark:buoy_lateral:colour' v='green'/>
-      <tag k='seamark:buoy_lateral:shape' v='pillar'/>
-      <tag k='seamark:type' v='buoy_lateral'/>
-      <tag k='_action_' v='img:file=icons/Pillar_Black.png'/>
-   </node>
-   -->
    <node>
       <tag k='seamark:beacon_lateral:colour' v='~green~'/>
       <tag k='seamark:type' v='beacon_lateral'/>
@@ -110,12 +126,30 @@
       <tag k='seamark:type' v='beacon_lateral'/>
       <tag k='_action_' v='img:file=icons/Beacon_Black.png'/>
    </node>
+
+   <node>
+      <tag k='seamark:type' v='beacon_special_purpose'/>
+      <tag k='_action_' v='img:file=icons/Beacon.png'/>
+   </node>
+
+   <node>
+      <tag k='seamark:topmark:shape' v='x-shape'/>
+      <tag k='seamark:type' v='/beacon/'/>
+      <tag k='_action_' v='img:file=icons/Top_X_Beacon.png'/>
+   </node>
+
+   <node>
+      <tag k='/fog_signal/' v=''/>
+      <tag k='seamark:type' v=''/>
+      <tag k='_action_' v='img:file=icons/Fog_Signal.png'/>
+   </node>
+   
    <node>
       <tag k='seamark:type' v='light_major'/>
       <tag k='_action_' v='cap:font=sans-serif;size=1.4;key=seamark:name'/>
    </node>
-   <node>
-      <tag k='_action_' v='cap:font=sans-serif;size=1.4;key=seamark:light_character;angle=auto;auto-color=white;weight=0.7'/>
+   <node version="5">
+      <tag k='_action_' v='cap:font=sans-serif;size=1.4;halign=east;key=seamark:light_character;angle=auto;weight=0.7'/>
       <tag k='seamark:light_character' v=''/>
    </node>
    <node version='1'>

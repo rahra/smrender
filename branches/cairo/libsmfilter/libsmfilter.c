@@ -32,7 +32,7 @@ struct vsec_data
 static char *smstrdup(const char *);
 static int get_sectors(const osm_obj_t*, struct sector *sec, int nmax);
 static void node_calc(const struct osm_node *nd, double r, double a, double *lat, double *lon);
-static int sector_calc3(const osm_node_t*, const struct sector *, bstring_t, const struct vsec_data*);
+static int sector_calc3(const osm_node_t*, const struct sector *, const struct vsec_data*);
 static void init_sector(struct sector *sec);
 static int proc_sfrac(struct sector *sec, struct vsec_data*);
 #ifdef COPY_TO_HEAP
@@ -302,7 +302,6 @@ int act_vsector_main(smrule_t *r, osm_obj_t *o)
    struct vsec_data *vd = r->data;
    int i, j, n, k;
    struct sector sec[MAX_SEC];
-   bstring_t b = {0, ""};
 
    for (i = 0; i < MAX_SEC; i++)
       init_sector(&sec[i]);
@@ -402,7 +401,7 @@ int act_vsector_main(smrule_t *r, osm_obj_t *o)
          }
          //printf("   <!-- [%d]: start = %.2f, end = %.2f, col = %d, r = %.2f, nr = %d -->\n",
          //   i, sec[i].start, sec[i].end, sec[i].col, sec[i].r, sec[i].nr);
-         if (sector_calc3((osm_node_t*) o, &sec[i], b, vd))
+         if (sector_calc3((osm_node_t*) o, &sec[i], vd))
             log_msg(LOG_ERR, "sector_calc3 failed: %s", strerror(errno));
 
          if (sec[i].col[1] != -1)
@@ -413,7 +412,7 @@ int act_vsector_main(smrule_t *r, osm_obj_t *o)
                for (k = 0; k < sec[i].fused; k++)
                   sec[i].sf[k].r -= altr_[j];
                sec[i].al++;
-               if (sector_calc3((osm_node_t*) o, &sec[i], b, vd))
+               if (sector_calc3((osm_node_t*) o, &sec[i], vd))
                   log_msg(LOG_ERR, "sector_calc3 failed: %s", strerror(errno));
             }
          }
@@ -807,7 +806,7 @@ static void node_calc(const osm_node_t *n, double r, double a, double *lat, doub
 }
 
 
-static int sector_calc3(const osm_node_t *n, const struct sector *sec, bstring_t st, const struct vsec_data *vd)
+static int sector_calc3(const osm_node_t *n, const struct sector *sec, const struct vsec_data *vd)
 {
    double lat[3], lon[3], d, s, e, w, la, lo;
    int64_t id[5], sn;
@@ -1167,7 +1166,7 @@ static int proc_sfrac(struct sector *sec, struct vsec_data *vd)
 }
 
 
-int act_sounding_main(smrule_t *rl, osm_obj_t *o)
+int act_sounding_main(smrule_t * UNUSED(rl), osm_obj_t *o)
 {
    osm_node_t *n;
    osm_way_t *w;

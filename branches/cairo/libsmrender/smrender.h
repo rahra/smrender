@@ -38,7 +38,16 @@
 #define LAT_DEG 2
 #define LON_DEG 3
 
-//typedef struct rdata rdata_t;
+#ifdef UNUSED 
+#elif defined(__GNUC__) 
+# define UNUSED(x) UNUSED_ ## x __attribute__((unused)) 
+#elif defined(__LCLINT__) 
+# define UNUSED(x) /*@unused@*/ x 
+#else 
+# define UNUSED(x) x 
+#endif
+
+
 typedef struct smrule smrule_t;
 typedef struct action action_t;
 

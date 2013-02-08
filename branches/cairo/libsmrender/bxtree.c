@@ -88,7 +88,7 @@ bx_node_t *bx_add_node1(bx_node_t **node, bx_hash_t h, bx_hash_t d)
       *node = bx_malloc();
 
    // node found at end of depth (break recursion)
-   if (d >= ((sizeof(bx_hash_t) * 8) / BX_RES))
+   if (d >= (((int) sizeof(bx_hash_t) * 8) / BX_RES))
       return *node;
 
    // otherwise recurse
@@ -114,7 +114,7 @@ bx_node_t *bx_add_node0(bx_node_t **node, bx_hash_t h, bx_hash_t d)
 bx_node_t *bx_get_node1(bx_node_t *node, bx_hash_t h, bx_hash_t d)
 {
    // break recursion at end of depth
-   if (d >= ((sizeof(bx_hash_t) * 8) / BX_RES))
+   if (d >= (((int) sizeof(bx_hash_t) * 8) / BX_RES))
       return node;
 
    // test for null pointer and recurse if applicable
@@ -144,7 +144,7 @@ void bx_free_tree0(bx_node_t *node, bx_hash_t d)
    if (node == NULL)
       return;
 
-   if (d < ((sizeof(bx_hash_t) * 8) / BX_RES))
+   if (d < (((int) sizeof(bx_hash_t) * 8) / BX_RES))
       for (i = 0; i < 1 << BX_RES; i++)
          bx_free_tree0(node->next[i], d + 1);
 
