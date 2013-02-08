@@ -57,8 +57,6 @@ struct dstats
 
 struct rdata
 {
-   // root node of objects (nodes and ways)
-//   bx_node_t *obj;
    // root nodes of node rules and way rules
    bx_node_t *rules;
    // bounding box (left lower and right upper coordinates)

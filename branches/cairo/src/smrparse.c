@@ -241,7 +241,7 @@ char *skipb(char *s)
 }
 
 
-int init_rules(osm_obj_t *o, struct rdata *rd, void * UNUSED(p))
+int init_rules(osm_obj_t *o, struct rdata *rd, void *p)
 {
    char *s, *t, *func, buf[1024];
    smrule_t *rl;
@@ -250,7 +250,7 @@ int init_rules(osm_obj_t *o, struct rdata *rd, void * UNUSED(p))
 
    log_debug("initializing rule 0x%016lx", o->id);
 
-   rl = alloc_rule(rd, o);
+   rl = alloc_rule(p, o);
    rl->oo = o;
    rl->data = NULL;
    memset(rl->act, 0, sizeof(*rl->act));

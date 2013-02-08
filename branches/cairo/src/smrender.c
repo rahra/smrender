@@ -317,7 +317,7 @@ int apply_smrules(smrule_t *r, struct rdata *rd, osm_obj_t *o)
          e = traverse_queue(*get_objtree(), r->oo->type - 1, (tree_func_t) apply_smrules0, r);
       else
 #endif
-         e = traverse(*get_objtree(), 0, r->oo->type - 1, (tree_func_t) apply_smrules0, rd, r);
+         e = traverse(*get_objtree(), 0, r->oo->type - 1, (tree_func_t) apply_smrules0, NULL, r);
    }
    else
       log_debug("   -> no main function");
@@ -335,7 +335,7 @@ int apply_smrules(smrule_t *r, struct rdata *rd, osm_obj_t *o)
 }
 
 
-int norm_rule_node(osm_obj_t *o, struct rdata *rd, void *p)
+int norm_rule_node(osm_obj_t *o, struct rdata *rd, void * UNUSED(p))
 {
 #define RULE_LON_DIFF 1.0/600.0
 #define RULE_LAT_DIFF RULE_LON_DIFF
@@ -351,8 +351,9 @@ int norm_rule_node(osm_obj_t *o, struct rdata *rd, void *p)
 }
 
 
-int norm_rule_way(osm_obj_t *o, struct rdata *rd, void *p)
+int norm_rule_way(osm_obj_t *o, struct rdata *_rd, void *p)
 {
+   struct rdata *rd = get_rdata();
    static double lat;
    osm_node_t *n;
 
@@ -392,7 +393,7 @@ int print_tree(osm_obj_t *o, struct rdata *rd, void *p)
 }
 
 
-int strip_ways(osm_way_t *w, struct rdata *rd, void *p)
+int strip_ways(osm_way_t *w, struct rdata *rd, void * UNUSED(p))
 {
    struct onode *n;
    int i;
@@ -639,7 +640,7 @@ int print_onode(FILE *f, const osm_obj_t *o)
 }
 
 
-int free_rules(smrule_t *r, struct rdata *rd, void *p)
+int free_rules(smrule_t *r, struct rdata *rd, void * UNUSED(p))
 {
    free_obj(r->oo);
    free_fparam(r->act->fp);
@@ -649,7 +650,7 @@ int free_rules(smrule_t *r, struct rdata *rd, void *p)
 }
 
 
-int free_objects(osm_obj_t *o, struct rdata *rd, void *p)
+int free_objects(osm_obj_t *o, struct rdata *rd, void * UNUSED(p))
 {
    free_obj(o);
    return 0;
@@ -1212,22 +1213,22 @@ int main(int argc, char *argv[])
 
    if (osm_rfile != NULL)
    {
-      traverse(rd->rules, 0, IDX_NODE, norm_rule_node, rd, NULL);
-      traverse(rd->rules, 0, IDX_WAY, norm_rule_way, rd, &rstats);
+      traverse(rd->rules, 0, IDX_NODE, norm_rule_node, NULL, NULL);
+      traverse(rd->rules, 0, IDX_WAY, norm_rule_way, NULL, &rstats);
       // FIXME: saving relation rules missing
       save_osm(osm_rfile, rd->rules, NULL, NULL);
    }
 
    log_msg(LOG_INFO, "preparing node rules");
-   if (traverse(rd->rules, 0, IDX_NODE, (tree_func_t) init_rules, rd, NULL) < 0)
+   if (traverse(rd->rules, 0, IDX_NODE, (tree_func_t) init_rules, NULL, rd) < 0)
       log_msg(LOG_ERR, "rule parser failed"),
          exit(EXIT_FAILURE);
    log_msg(LOG_INFO, "preparing way rules");
-   if (traverse(rd->rules, 0, IDX_WAY, (tree_func_t) init_rules, rd, NULL) < 0)
+   if (traverse(rd->rules, 0, IDX_WAY, (tree_func_t) init_rules, NULL, rd) < 0)
       log_msg(LOG_ERR, "rule parser failed"),
          exit(EXIT_FAILURE);
    log_msg(LOG_INFO, "preparing relation rules");
-   if (traverse(rd->rules, 0, IDX_REL, (tree_func_t) init_rules, rd, NULL) < 0)
+   if (traverse(rd->rules, 0, IDX_REL, (tree_func_t) init_rules, NULL, rd) < 0)
       log_msg(LOG_ERR, "rule parser failed"),
          exit(EXIT_FAILURE);
 
@@ -1282,7 +1283,7 @@ int main(int argc, char *argv[])
    log_debug("onode memory used: %ld kb", (long) onode_mem() / 1024);
 
    log_msg(LOG_INFO, "stripping filtered way nodes");
-   traverse(*get_objtree(), 0, IDX_WAY, (tree_func_t) strip_ways, rd, NULL);
+   traverse(*get_objtree(), 0, IDX_WAY, (tree_func_t) strip_ways, NULL, NULL);
 
    switch (gen_grid)
    {
@@ -1309,19 +1310,19 @@ int main(int argc, char *argv[])
 
       // FIXME: order rel -> way -> node?
       log_msg(LOG_INFO, " relations...");
-      traverse(rd->rules, 0, IDX_REL, (tree_func_t) apply_smrules, rd, &o);
+      traverse(rd->rules, 0, IDX_REL, (tree_func_t) apply_smrules, NULL, &o);
 #ifdef WITH_THREADS
       sm_wait_threads();
       dequeue_fini();
 #endif
       log_msg(LOG_INFO, " ways...");
-      traverse(rd->rules, 0, IDX_WAY, (tree_func_t) apply_smrules, rd, &o);
+      traverse(rd->rules, 0, IDX_WAY, (tree_func_t) apply_smrules, NULL, &o);
 #ifdef WITH_THREADS
       sm_wait_threads();
       dequeue_fini();
 #endif
       log_msg(LOG_INFO, " nodes...");
-      traverse(rd->rules, 0, IDX_NODE, (tree_func_t) apply_smrules, rd, &o);
+      traverse(rd->rules, 0, IDX_NODE, (tree_func_t) apply_smrules, NULL, &o);
 #ifdef WITH_THREADS
       sm_wait_threads();
       dequeue_fini();
@@ -1336,14 +1337,14 @@ int main(int argc, char *argv[])
    hpx_free(cfctl);
 
    log_debug("freeing main objects");
-   traverse(*get_objtree(), 0, IDX_REL, free_objects, rd, NULL);
-   traverse(*get_objtree(), 0, IDX_WAY, free_objects, rd, NULL);
-   traverse(*get_objtree(), 0, IDX_NODE, free_objects, rd, NULL);
+   traverse(*get_objtree(), 0, IDX_REL, free_objects, NULL, NULL);
+   traverse(*get_objtree(), 0, IDX_WAY, free_objects, NULL, NULL);
+   traverse(*get_objtree(), 0, IDX_NODE, free_objects, NULL, NULL);
 
    log_debug("freeing rule objects");
-   traverse(rd->rules, 0, IDX_REL, (tree_func_t) free_rules, rd, NULL);
-   traverse(rd->rules, 0, IDX_WAY, (tree_func_t) free_rules, rd, NULL);
-   traverse(rd->rules, 0, IDX_NODE, (tree_func_t) free_rules, rd, NULL);
+   traverse(rd->rules, 0, IDX_REL, (tree_func_t) free_rules, NULL, NULL);
+   traverse(rd->rules, 0, IDX_WAY, (tree_func_t) free_rules, NULL, NULL);
+   traverse(rd->rules, 0, IDX_NODE, (tree_func_t) free_rules, NULL, NULL);
 
    log_debug("freeing main object tree");
    bx_free_tree(*get_objtree());
