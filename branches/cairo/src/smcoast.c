@@ -847,78 +847,10 @@ int compare_poly_area(const struct poly *p1, const struct poly *p2)
 }
 
 
-static void add_blind_node(const struct coord *c)
-{
-   osm_node_t *n = malloc_node(0);
-
-   n->obj.id = unique_node_id();
-   n->lat = c->lat;
-   n->lon = c->lon;
-   put_object((osm_obj_t*) n);
-}
-
-
 #define SQR(a) ((a) * (a))
 #define MAX_DEVIATION 50
 #define MAX_ITERATION 3
 #define MAX_CFAC 2.0
-
-
-#if 0
-osm_node_t *split_line(osm_node_t **s)
-{
-   osm_node_t *n = malloc_node(0);
-   n->obj.id = unique_node_id();
-   n->lat = (s[0]->lat + s[1]->lat) / 2;
-   n->lon = (s[0]->lon + s[1]->lon) / 2;
-   return n;
-}
-
-// FIXME: this does not work yet
-int norm_adj_line_len(osm_way_t *w)
-{
-   osm_node_t *n[3];
-   osm_node_t *m;
-   int64_t *ref;
-   double l[2];
-   int i, j;
-
-   log_msg(LOG_WARN, "norm_adj_line_len broken");
-   return 0;
-
-   for (i = 0; i < w->ref_cnt - 2; i++)
-   {
-      for (j = 0; j < 3; j++)
-         if ((n[j] = get_object(OSM_NODE, w->ref[i + j])) == NULL)
-            return -1;
-
-      l[0] = HYPOT(n[0]->lon - n[1]->lon, n[0]->lat - n[1]->lat);
-      l[1] = HYPOT(n[1]->lon - n[2]->lon, n[1]->lat - n[2]->lat);
-
-      if (l[0] > MAX_CFAC * l[1])
-         j = 0;
-      else if (l[1] > MAX_CFAC * l[0])
-         j = 1;
-      else
-         continue;
-      
-      m = split_line(&n[j]);
-      if ((ref = realloc(w->ref, sizeof(int64_t) * (w->ref_cnt + 1))) == NULL)
-      {
-         log_msg(LOG_ERR, "could not enlarge reflist of way %ld: %s", (long) w->obj.id, strerror(errno));
-         return -1;
-      }
-      memmove(&ref[i + j + 1], &ref[i + j], sizeof(int64_t) * (w->ref_cnt - i - j));
-      ref[i + j] = m->obj.id;
-      put_object((osm_obj_t*) m);
-      w->ref = ref;
-      w->ref_cnt++;
-
-      //if (j) i--;
-   }
-   return 0;
-}
-#endif
 
 
 /*! 

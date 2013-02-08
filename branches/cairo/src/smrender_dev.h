@@ -250,16 +250,19 @@ void init_cat_poly(struct rdata*);
 /* smrules.c */
 void cairo_smr_init_main_image(const char*);
 int cairo_smr_get_bg_pixel(int, int);
+#ifdef HAVE_CAIRO
 void save_main_image(FILE*, int);
-//int get_color(const struct rdata*, int, int, int, int);
-//int get_pixel(struct rdata*, int , int );
-//void reduce_resolution(struct rdata *);
 void *create_tile(void);
 void delete_tile(void *);
 void cut_tile(const struct bbox *, void *);
 int save_image(const char *, void *, int);
-
-//int cro_pixel_pos(int, int, int);
+#else
+#define save_main_image(a, b)
+#define create_tile() NULL
+#define delete_tile(a)
+#define cut_tile(a, b)
+#define save_image(a, b, x) 0
+#endif
 
 /* smlog.c */
 FILE *init_log(const char*, int);
@@ -299,5 +302,4 @@ int sm_is_threaded(const smrule_t *);
 int create_tiles(const char *, const struct rdata *, int , int );
 
 #endif
-
 

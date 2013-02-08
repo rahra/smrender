@@ -206,7 +206,7 @@ void osm_read_exit(void)
 }
 
 
-static void usr1_handler(int sig)
+static void usr1_handler(int UNUSED(sig))
 {
    usr1_++;
 }
@@ -251,21 +251,6 @@ static void assign_o(osm_obj_t *dst, const osm_obj_t *src)
 static void clear_ostor(osm_storage_t *o)
 {
    memset(o, 0, sizeof(*o));
-}
-
-
-static uint64_t get_osm_id(const osm_obj_t *o)
-{
-   switch (o->type)
-   {
-      case OSM_NODE:
-         return unique_node_id();
-      case OSM_WAY:
-         return unique_way_id();
-      case OSM_REL:
-         return 0; //FIXME: unique_rel_id();
-   }
-   return 0;
 }
 
 

@@ -255,7 +255,7 @@ int act_poly_area_ini(smrule_t *r)
 }
 
 
-int act_poly_area_main(smrule_t *r, osm_way_t *w)
+int act_poly_area_main(smrule_t * UNUSED(r), osm_way_t *w)
 {
    double ar;
    struct otag *ot;
@@ -292,7 +292,7 @@ int act_poly_centroid_ini(smrule_t *r)
 }
 
 
-int act_poly_centroid_main(smrule_t *r, osm_way_t *w)
+int act_poly_centroid_main(smrule_t * UNUSED(r), osm_way_t *w)
 {
    struct coord c;
    double ar;
@@ -328,7 +328,7 @@ int act_poly_centroid_main(smrule_t *r, osm_way_t *w)
 }
 
 
-int act_reverse_way_main(smrule_t *r, osm_way_t *w)
+int act_reverse_way_main(smrule_t * UNUSED(r), osm_way_t *w)
 {
    int i;
    int64_t ref;
@@ -364,13 +364,13 @@ int set_way_direction(osm_way_t *w, int dir)
 }
 
 
-int act_set_ccw_main(smrule_t *r, osm_way_t *w)
+int act_set_ccw_main(smrule_t * UNUSED(r), osm_way_t *w)
 {
    return set_way_direction(w, DIR_CCW);
 }
 
 
-int act_set_cw_main(smrule_t *r, osm_way_t *w)
+int act_set_cw_main(smrule_t * UNUSED(r), osm_way_t *w)
 {
    return set_way_direction(w, DIR_CW);
 }
@@ -810,7 +810,7 @@ int dist_median(const osm_way_t *w, double *median)
 }
 
 
-int act_dist_median_main(smrule_t *r, osm_way_t *w)
+int act_dist_median_main(smrule_t * UNUSED(r), osm_way_t *w)
 {
    struct otag *ot;
    char buf[32];
@@ -1007,7 +1007,7 @@ int poly_len(const osm_way_t *w, double *dist)
 }
 
 
-int act_poly_len_main(smrule_t *r, osm_way_t *w)
+int act_poly_len_main(smrule_t * UNUSED(r), osm_way_t *w)
 {
    struct otag *ot;
    char buf[32];
@@ -1039,7 +1039,7 @@ int act_poly_len_main(smrule_t *r, osm_way_t *w)
  * running). With this one can force previous _main functions to have finished
  * before the next action is executed.
  */
-int act_sync_threads_ini(smrule_t *r)
+int act_sync_threads_ini(smrule_t * UNUSED(r))
 {
    return 0;
 }
@@ -1070,7 +1070,7 @@ static int parse_id(smrule_t *r)
 
 /*! Disable object, i.e. set visibility to 0.
  */
-int act_disable_main(smrule_t *r, osm_obj_t *o)
+int act_disable_main(smrule_t * UNUSED(r), osm_obj_t *o)
 {
    o->vis = 0;
    return 0;
@@ -1079,7 +1079,7 @@ int act_disable_main(smrule_t *r, osm_obj_t *o)
 
 /*! Enable object, i.e. set visibility to 1.
  */
-int act_enable_main(smrule_t *r, osm_obj_t *o)
+int act_enable_main(smrule_t * UNUSED(r), osm_obj_t *o)
 {
    o->vis = 1;
    return 0;
@@ -1092,7 +1092,7 @@ int act_enable_rule_ini(smrule_t *r)
 }
 
 
-int act_enable_rule_main(smrule_t *r, osm_obj_t *o)
+int act_enable_rule_main(smrule_t *r, osm_obj_t * UNUSED(o))
 {
    return act_enable_main(r, r->data);
 }
@@ -1104,7 +1104,7 @@ int act_disable_rule_ini(smrule_t *r)
 }
 
 
-int act_disable_rule_main(smrule_t *r, osm_obj_t *o)
+int act_disable_rule_main(smrule_t *r, osm_obj_t * UNUSED(o))
 {
    return act_disable_main(r, r->data);
 }
@@ -1151,7 +1151,7 @@ void bbox_way(const osm_way_t *w, struct bbox *bb)
 }
 
 
-int act_exit_main(smrule_t *r, osm_obj_t *o)
+int act_exit_main(smrule_t * UNUSED(r), osm_obj_t * UNUSED(o))
 {
    return raise(SIGINT);
 }

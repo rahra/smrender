@@ -94,6 +94,13 @@ void geo2pxf(double lon, double lat, double *x, double *y)
 }
 
 
+void geo2pt(double lon, double lat, double *x, double *y)
+{
+   *x = (lon - rd_.bb.ll.lon) * rd_.w * 72 / (rd_.wc * rd_.dpi);
+   *y = rd_.h * (0.5 - (asinh(tan(DEG2RAD(lat))) - rd_.lath) / rd_.lath_len) * 72 / rd_.dpi;
+}
+
+
 void geo2pxi(double lon, double lat, int *x, int *y)
 {
    double xf, yf;

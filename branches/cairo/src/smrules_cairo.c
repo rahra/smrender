@@ -66,13 +66,12 @@
 #define BLUED(x) COL_COMPD(x, 0)
 #define ALPHAD(x) (1.0 - COL_COMPD(x & 0x7f000000, 23))
 
-#define NUM_ANGLE_STEPS 64
 #define M_2PI (2.0 * M_PI)
 #define PT2PX_SCALE (rdata_dpi() / 72.0)
 #define PT2PX(x) ((x) * PT2PX_SCALE)
 #define PX2PT_SCALE (72.0 / rdata_dpi())
-
 #define DP_LIMIT 0.95
+#define TILE_SIZE 256
 
 
 typedef struct diffvec
@@ -217,8 +216,11 @@ void save_main_image(FILE *f, int ftype)
 
 int save_image(const char *s, void *img, int ftype)
 {
-   if (!ftype)
-      return cairo_surface_write_to_png(img, s) == CAIRO_STATUS_SUCCESS ? 0 : -1;
+   switch (ftype)
+   {
+      case FTYPE_PNG:
+         return cairo_surface_write_to_png(img, s) == CAIRO_STATUS_SUCCESS ? 0 : -1;
+   }
 
    // FIXME
    log_msg(LOG_ERR, "other file types than png not implemented yet");
@@ -228,17 +230,39 @@ int save_image(const char *s, void *img, int ftype)
 
 void *create_tile(void)
 {
-   return NULL;
+   cairo_surface_t *sfc;
+
+   sfc = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, TILE_SIZE, TILE_SIZE);
+   if (cairo_surface_status(sfc) != CAIRO_STATUS_SUCCESS)
+   {
+      log_msg(LOG_ERR, "failed to create tile surface: %s",
+            cairo_status_to_string(cairo_surface_status(sfc)));
+      return NULL;
+   }
+   return sfc;
 }
 
 
 void delete_tile(void *img)
 {
+   cairo_surface_destroy(img);
 }
 
 
 void cut_tile(const struct bbox *bb, void *img)
 {
+   double x, y, w, h;
+   cairo_t *ctx;
+
+   geo2pt(bb->ll.lon, bb->ru.lat, &x, &y);
+   geo2pt(bb->ru.lon, bb->ll.lat, &w, &h);
+
+   ctx = cairo_create(img);
+   log_debug("cutting %.1f/%.1f - %.1f/%.1f", x, y, w, h);
+   cairo_scale(ctx, TILE_SIZE / (w - x), TILE_SIZE / (h - y));
+   cairo_set_source_surface(ctx, sfc_, -x, -y);
+   cairo_paint(ctx);
+   cairo_destroy(ctx);
 }
 
 
@@ -391,9 +415,7 @@ static void cairo_smr_poly_line(const osm_way_t *w, cairo_t *ctx)
          continue;
       }
 
-      geo2pxf(n->lon, n->lat, &x, &y);
-      x = rdata_px_unit(x, U_PT);
-      y = rdata_px_unit(y, U_PT);
+      geo2pt(n->lon, n->lat, &x, &y);
       cairo_line_to(ctx, x, y);
    }
 }
@@ -1091,9 +1113,7 @@ static double find_angle(const struct coord *c, const struct auto_rot *rot, cair
    double x, y, a, r;
    int i, num_steps;
 
-   geo2pxf(c->lon, c->lat, &x, &y);
-   x = rdata_px_unit(x, U_PT);
-   y = rdata_px_unit(y, U_PT);
+   geo2pt(c->lon, c->lat, &x, &y);
    r = rdata_px_unit(hypot(cairo_image_surface_get_width(fg), cairo_image_surface_get_height(fg)), U_PT);
 
    // make a step every 0.5mm of the circumference
@@ -1151,9 +1171,7 @@ static int cap_coord(const struct actCaption *cap, const struct coord *c, const 
    short pos;
 
    cairo_save(cap->ctx);
-   geo2pxf(c->lon, c->lat, &x, &y);
-   x = rdata_px_unit(x, U_PT);
-   y = rdata_px_unit(y, U_PT);
+   geo2pt(c->lon, c->lat, &x, &y);
    cairo_translate(cap->ctx, x, y);
 
    memcpy(buf, str->buf, str->len);
@@ -1233,7 +1251,7 @@ static int cap_way(const struct actCaption *cap, osm_way_t *w, const bstring_t *
    memcpy(&tmp_cap, cap, sizeof(tmp_cap));
    if (tmp_cap.size == 0.0)
    {
-      tmp_cap.size = 100 * sqrt(fabs(ar) / rdata_square_nm());
+      tmp_cap.size = 80 * sqrt(fabs(ar) / rdata_square_nm());
 #define MIN_AUTO_SIZE 0.7
 #define MAX_AUTO_SIZE 12.0
       if (tmp_cap.size < MIN_AUTO_SIZE) tmp_cap.size = MIN_AUTO_SIZE;
@@ -1392,7 +1410,6 @@ int act_img_fini(smrule_t *r)
    r->data = NULL;
    return 0;
 }
-
 
 #endif
 

@@ -154,7 +154,7 @@ int parse_coord(const char *s, double *a)
 }
 
 
-void int_handler(int sig)
+void int_handler(int UNUSED(sig))
 {
    int_++;
 }

@@ -39,7 +39,7 @@
 #ifdef HAVE_CAIRO
 #define get_pixel(x, y) cairo_smr_get_bg_pixel(x, y)
 #else
-#define get_pixel(x, y)
+#define get_pixel(x, y) 0
 #endif
 
 
