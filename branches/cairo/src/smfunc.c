@@ -917,7 +917,7 @@ int act_diff_ini(smrule_t *r)
 }
 
 
-int obj_exists(osm_obj_t *o, struct rdata *rd, struct out_handle *oh)
+int obj_exists(osm_obj_t *o, struct out_handle *oh)
 {
    if (get_object(o->type, o->id) == NULL)
       out0(oh, o);
@@ -935,11 +935,11 @@ int act_diff_fini(smrule_t *r)
       return -1;
 
    log_debug("traversing nodes");
-   traverse(ioh->itree, 0, IDX_NODE, (tree_func_t) obj_exists, NULL, ioh->oh);
+   traverse(ioh->itree, 0, IDX_NODE, (tree_func_t) obj_exists, ioh->oh);
    log_debug("traversing ways");
-   traverse(ioh->itree, 0, IDX_WAY, (tree_func_t) obj_exists, NULL, ioh->oh);
+   traverse(ioh->itree, 0, IDX_WAY, (tree_func_t) obj_exists, ioh->oh);
    log_debug("traversing relations");
-   traverse(ioh->itree, 0, IDX_REL, (tree_func_t) obj_exists, NULL, ioh->oh);
+   traverse(ioh->itree, 0, IDX_REL, (tree_func_t) obj_exists, ioh->oh);
 
    r->data = ioh->oh;
    if ((e = act_out_fini(r)))

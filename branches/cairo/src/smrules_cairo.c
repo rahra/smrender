@@ -1117,7 +1117,7 @@ static double find_angle(const struct coord *c, const struct auto_rot *rot, cair
    r = rdata_px_unit(hypot(cairo_image_surface_get_width(fg), cairo_image_surface_get_height(fg)), U_PT);
 
    // make a step every 0.5mm of the circumference
-   num_steps = round(r * M_PI * 2.0 * 25.4 / 72.0);
+   num_steps = round(r * M_PI * 1.0 * 25.4 / 72.0);
    log_debug("diameter = %.2f pt, num_steps = %d", r * M_PI, num_steps);
    if ((dv = malloc(num_steps * sizeof(*dv))) == NULL)
    {

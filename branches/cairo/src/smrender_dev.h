@@ -107,7 +107,7 @@
 #define FTYPE_PDF 2
 
 
-typedef int (*tree_func_t)(osm_obj_t*, struct rdata*, void*);
+typedef int (*tree_func_t)(osm_obj_t*, void*);
 
 // indexes to object tree
 enum {IDX_NODE, IDX_WAY, IDX_REL};
@@ -215,7 +215,7 @@ struct file
 
 
 /* smrender.c */
-int traverse(const bx_node_t*, int, int, tree_func_t, struct rdata*, void*);
+int traverse(const bx_node_t*, int, int, tree_func_t, void*);
 int print_onode(FILE *, const osm_obj_t*);
 int col_freq(struct rdata *, int, int, int, int, double, int);
 int cf_dist(struct rdata *, int, int, int, int, double, int, int);
@@ -273,7 +273,7 @@ int get_color(int);
 int parse_color(const char *);
 int parse_style(const char *s);
 int parse_matchtype(bstring_t*, struct specialTag*);
-int init_rules(osm_obj_t*, struct rdata*, void*);
+int init_rules(osm_obj_t*, void*);
 fparam_t **parse_fparam(char*);
 void free_fparam(fparam_t **);
 

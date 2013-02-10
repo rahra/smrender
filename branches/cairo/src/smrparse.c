@@ -241,7 +241,7 @@ char *skipb(char *s)
 }
 
 
-int init_rules(osm_obj_t *o, struct rdata *rd, void *p)
+int init_rules(osm_obj_t *o, void *p)
 {
    char *s, *t, *func, buf[1024];
    smrule_t *rl;
