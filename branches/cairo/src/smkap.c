@@ -37,9 +37,13 @@
 #include "smrender_dev.h"
 
 #ifdef HAVE_CAIRO
-#define get_pixel(x, y) cairo_smr_get_bg_pixel(x, y)
+#define get_pixel(x, y, z) cairo_smr_get_pixel(x, y, z)
+#define get_image() cairo_smr_image_surface_from_bg()
+#define destroy_image(x) cairo_surface_destroy(x)
 #else
-#define get_pixel(x, y) 0
+#define get_pixel(x, y, z) 0
+#define get_image() NULL
+#define destroy_image(x) 0
 #endif
 
 
@@ -114,12 +118,6 @@ static int bsb_compress_row(const uint8_t *buf_in, uint8_t *buf_out, uint16_t bi
 }
 
 
-double px2lat(struct rdata *rd, int y)
-{
-   return RAD2DEG(atan(sinh(rd->lath - rd->lath_len * ((double) y / (double) rd->h - 0.5))));
-}
-
-
 static void strreplc(char *s)
 {
    for (; *s != '\0'; s++)
@@ -128,13 +126,29 @@ static void strreplc(char *s)
 }
 
 
+static int kap_fprint_ref(FILE *f, int ref, double x, double y)
+{
+   double lat, lon;
+
+   pxf2geo(x, y, &lon, &lat);
+   return fprintf(f, "REF/%d,%.0f,%.0f,%.8f,%.8f\r\n", ref, x, y, lat, lon);
+}
+
+
+static int kap_fprint_ply(FILE *f, int ref, double x, double y)
+{
+   double lat, lon;
+
+   pxf2geo(x, y, &lon, &lat);
+   return fprintf(f, "PLY/%d,%.8f,%.8f\r\n", ref, lat, lon);
+}
+
+
 int gen_kap_header(FILE *f, struct rdata *rd)
 {
-   double mppx, lat1, lat2;
+   double mppx;
    int off = 0;
 
-   lat1 = px2lat(rd, 0);
-   lat2 = px2lat(rd, rd->h);
    mppx = rd->mean_lat_len / rd->fw * 1852.0 * 60.0;
    strreplc(rd->title);
 
@@ -145,16 +159,16 @@ int gen_kap_header(FILE *f, struct rdata *rd)
          (int) round(rd->scale), rd->mean_lat);
    off += fprintf(f, "    UN=METRES,SD=MLWS,DX=%.2f,DY=%.2f\r\n",
          mppx, mppx);
-   off += fprintf(f, "REF/1,%d,%d,%.8f,%.8f\r\nREF/2,%d,%d,%.8f,%.8f\r\nREF/3,%d,%d,%.8f,%.8f\r\nREF/4,%d,%d,%.8f,%.8f\r\n",
-         0, 0, lat1, rd->bb.ll.lon,
-         rd->fw, 0, lat1, rd->bb.ru.lon,
-         rd->fw, rd->fh, lat2, rd->bb.ru.lon,
-         0, rd->fh, lat2, rd->bb.ll.lon);
-   off += fprintf(f, "PLY/1,%.8f,%.8f\r\nPLY/2,%.8f,%.8f\r\nPLY/3,%.8f,%.8f\r\nPLY/4,%.8f,%.8f\r\n",
-         rd->bb.ru.lat, rd->bb.ll.lon,
-         rd->bb.ru.lat, rd->bb.ru.lon,
-         rd->bb.ll.lat, rd->bb.ru.lon,
-         rd->bb.ll.lat, rd->bb.ll.lon);
+   off += kap_fprint_ref(f, 1, 0, 0);
+   off += kap_fprint_ref(f, 2, rd->fw, 0);
+   off += kap_fprint_ref(f, 3, rd->fw, rd->fh);
+   off += kap_fprint_ref(f, 4, 0, rd->fh);
+   off += kap_fprint_ref(f, 5, (double) rd->fw / 3.0, (double) rd->fh / 2.0);
+   off += kap_fprint_ref(f, 6, (double) rd->fw  * 2.0 / 3.0, (double) rd->fh / 2.0);
+   off += kap_fprint_ply(f, 1, 0, 0);
+   off += kap_fprint_ply(f, 2, rd->fw, 0);
+   off += kap_fprint_ply(f, 3, rd->fw, rd->fh);
+   off += kap_fprint_ply(f, 4, 0, rd->fh);
    off += fprintf(f, "DTM/0.0,0.0\r\nCPH/0.0\r\n");
    return off;
 }
@@ -171,7 +185,7 @@ static int cmp_hist(const void *h1, const void *h2)
 }
 
 
-static int gen_hist(struct rdata *rd, struct hist_data **hy)
+static int gen_hist(struct rdata *rd, void *img, struct hist_data **hy)
 {
    struct hist_data *hist = NULL;
    int hcnt = 0, i, x, y;
@@ -183,7 +197,7 @@ static int gen_hist(struct rdata *rd, struct hist_data **hy)
       {
          for (i = 0; i < hcnt; i++)
          {
-            if (hist[i].col == (get_pixel(x, y) & 0xffffff))
+            if (hist[i].col == (get_pixel(img, x, y) & 0xffffff))
             {
                hist[i].cnt++;
                break;
@@ -195,7 +209,7 @@ static int gen_hist(struct rdata *rd, struct hist_data **hy)
                log_msg(LOG_ERR, "cannot realloc in gen_hist(): %s", strerror(errno)),
                   exit(EXIT_FAILURE);
             hcnt++;
-            hist[i].col = get_pixel(x, y) & 0xffffff;
+            hist[i].col = get_pixel(img, x, y) & 0xffffff;
             hist[i].cnt = 1;
             //log_debug("hist[%d].col = #%08x", i, hist[i].col);
          }
@@ -249,11 +263,14 @@ int save_kap(FILE *f, struct rdata *rd)
    uint8_t buf_out[w + 4], buf_in[w];
    int32_t offp[rd->fh + 1];
    struct hist_data *hist;
+   void *img;
 
    log_debug("writing KAP header");
    off = gen_kap_header(f, rd);
 
-   hcnt = gen_hist(rd, &hist);
+   img = get_image();
+   cairo_surface_write_to_png(img, "test.png");
+   hcnt = gen_hist(rd, img, &hist);
    d = get_depth(hcnt);
    log_debug("KAP color depth %d", d);
    off += fprintf(f, "OST/1\r\nIFM/%d\r\n", d);
@@ -268,7 +285,7 @@ int save_kap(FILE *f, struct rdata *rd)
    {
       offp[y] = htonl(off);
       for (x = 0; x < rd->fw; x++)
-         buf_in[x] = col_index(hist, hcnt, get_pixel(x, y) & 0xffffff);
+         buf_in[x] = col_index(hist, hcnt, get_pixel(img, x, y) & 0xffffff);
       i = bsb_compress_row(buf_in, buf_out, d, y, rd->fw, rd->fw);
       fwrite(buf_out, i, 1, f);
       off += i;
@@ -277,6 +294,7 @@ int save_kap(FILE *f, struct rdata *rd)
    fwrite(offp, sizeof(int32_t), rd->fh + 1, f);
    
    free(hist);
+   destroy_image(img);
 
    return 0;
 }

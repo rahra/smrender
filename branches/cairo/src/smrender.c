@@ -1073,8 +1073,9 @@ int main(int argc, char *argv[])
 
    if (argv[optind] == NULL)
    {
-      log_msg(LOG_WARN, "window parameter missing, setting defaults 0:0:100000");
+      log_msg(LOG_WARN, "window parameter missing, setting defaults 0:0:100000 and activating option -a");
       rd->scale = 100000;
+      render_all_nodes_ = 1;
    }
    else
    {

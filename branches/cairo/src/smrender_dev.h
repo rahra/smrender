@@ -249,13 +249,14 @@ void init_cat_poly(struct rdata*);
 
 /* smrules.c */
 void cairo_smr_init_main_image(const char*);
-int cairo_smr_get_bg_pixel(int, int);
+int cairo_smr_get_pixel(cairo_surface_t*, int, int);
 #ifdef HAVE_CAIRO
 void save_main_image(FILE*, int);
 void *create_tile(void);
 void delete_tile(void *);
 void cut_tile(const struct bbox *, void *);
 int save_image(const char *, void *, int);
+void *cairo_smr_image_surface_from_bg(void);
 #else
 #define save_main_image(a, b)
 #define create_tile() NULL

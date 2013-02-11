@@ -169,6 +169,22 @@ static cairo_status_t cairo_smr_write_func(void *closure, const unsigned char *d
 }
 
 
+void *cairo_smr_image_surface_from_bg(void)
+{
+   cairo_surface_t *sfc;
+   cairo_t *dst;
+
+   sfc = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, rdata_width(U_PX), rdata_height(U_PX));
+   dst = cairo_create(sfc);
+   cairo_smr_log_status(dst);
+   cairo_scale(dst, (double) rdata_dpi() / 72, (double) rdata_dpi() / 72);
+   cairo_set_source_surface(dst, sfc_, 0, 0);
+   cairo_paint(dst);
+   cairo_destroy(dst);
+   return sfc;
+}
+
+
 void save_main_image(FILE *f, int ftype)
 {
    cairo_surface_t *sfc;
@@ -180,13 +196,7 @@ void save_main_image(FILE *f, int ftype)
    switch (ftype)
    {
       case FTYPE_PNG:
-         sfc = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, rdata_width(U_PX), rdata_height(U_PX));
-         dst = cairo_create(sfc);
-         cairo_smr_log_status(dst);
-         cairo_scale(dst, (double) rdata_dpi() / 72, (double) rdata_dpi() / 72);
-         cairo_set_source_surface(dst, sfc_, 0, 0);
-         cairo_paint(dst);
-         cairo_destroy(dst);
+         sfc = cairo_smr_image_surface_from_bg();
          if ((e = cairo_surface_write_to_png_stream(sfc, cairo_smr_write_func, f)) != CAIRO_STATUS_SUCCESS)
             log_msg(LOG_ERR, "failed to save png image: %s", cairo_status_to_string(e));
          cairo_surface_destroy(sfc);
@@ -266,7 +276,7 @@ void cut_tile(const struct bbox *bb, void *img)
 }
 
 
-int cairo_smr_pixel_pos(int x, int y, int s)
+static inline int cairo_smr_pixel_pos(int x, int y, int s)
 {
    return x * sizeof (uint32_t) + y * s;
 }
@@ -281,14 +291,14 @@ int cairo_smr_get_pixel(cairo_surface_t *sfc, int x, int y)
    if ((data = cairo_image_surface_get_data(sfc)) == NULL)
       return 0;
 
-   return *(data + cairo_smr_pixel_pos(x, y, cairo_image_surface_get_stride(sfc)));
+   return *((uint32_t*) ((data + cairo_smr_pixel_pos(x, y, cairo_image_surface_get_stride(sfc)))));
 }
 
 
-int cairo_smr_get_bg_pixel(int x, int y)
+/*int cairo_smr_get_bg_pixel(int x, int y)
 {
    return cairo_smr_get_pixel(sfc_, x, y);
-}
+}*/
 
 
 static void parse_auto_rot(const action_t *act, double *angle, struct auto_rot *rot)
