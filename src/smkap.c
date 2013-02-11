@@ -269,7 +269,6 @@ int save_kap(FILE *f, struct rdata *rd)
    off = gen_kap_header(f, rd);
 
    img = get_image();
-   cairo_surface_write_to_png(img, "test.png");
    hcnt = gen_hist(rd, img, &hist);
    d = get_depth(hcnt);
    log_debug("KAP color depth %d", d);
