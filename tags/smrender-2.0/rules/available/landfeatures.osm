@@ -46,7 +46,7 @@
    </way>
    <way>
       <tag k='natural' v='cliff'/>
-      <tag k='_action_' v='draw:color=#black;width=0.2'/>
+      <tag k='_action_' v='draw:color=black;width=0.2'/>
    </way>
    <node version="-10">
       <tag k='natural' v='cliff'/>

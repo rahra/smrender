@@ -4,6 +4,25 @@
       <tag k='_action_' v='cap:font=sans-serif:italic;size=1.4;angle=auto;auto-color=white;key=name'/>
       <tag k='natural' v='bay'/>
    </node>
+
+   <!-- the following rules try to detect if on land or sea -->
+   <way version="-100" id="100">
+      <tag k='natural' v='coastline'/>
+      <tag k='_action_' v='disable_rule:id=110'/>
+   </way>
+   <way version="-100" id="110">
+      <tag k='/natural|building/' v=''/>
+      <tag k='_action_' v='enable_rule:id=120'/>
+   </way>
+   <way version="-100" id="115">
+      <tag k='natural' v='coastline'/>
+   </way>
+   <way version="-100" id="120" visible="false">
+      <tag k='border' v='page'/>
+      <tag k='generator' v='smrender'/>
+      <tag k='_action_' v='set_tags:id=115'/>
+   </way>
+ 
    <way>
       <tag k='natural' v='coastline'/>
       <tag k='_action_' v='refine_poly'/>
@@ -20,11 +39,15 @@
    <way>
       <tag k='seamark:type' v='depthcont'/>
       <tag k='seamark:depthcont' v='10'/>
-      <tag k='_action_' v='draw:color=blue;ignore_open=1;directional=1'/>
+      <tag k='_action_' v='draw:color=skyblue;ignore_open=1;directional=1'/>
    </way>
    <way>
       <tag k='seamark:type' v='depthcont'/>
       <tag k='_action_' v='draw:bcolor=black'/>
+   </way>
+   <way>
+      <tag k='tidal' v='yes'/>
+      <tag k='_action_' v='draw:color=darkseagreen'/>
    </way>
    <way>
       <tag k='natural' v='coastline'/>
@@ -39,8 +62,11 @@
       <tag k='_action_' v='poly_centroid'/>
    </way>
    <way>
+      <tag k='_action_' v='sync_threads'/>
+   </way>
+   <way>
       <tag k='natural' v='coastline'/>
-      <tag k='_action_' v='draw:color=yellow;bcolor=black'/>
+      <tag k='_action_' v='draw:color=navajowhite;bcolor=black'/>
    </way>
    <way version='1'>
       <tag k='seamark:sounding:quality' v='/report/'/>
@@ -50,7 +76,7 @@
    <way version='1'>
       <tag k='seamark:sounding:quality' v='/report/'/>
       <tag k='seamark:sounding' v='[10.01]'/>
-      <tag k='_action_' v='draw:color=blue;bcolor=black;bstyle=dotted'/>
+      <tag k='_action_' v='draw:color=skyblue;bcolor=black;bstyle=dotted'/>
    </way>
    <way version='1'>
       <tag k='seamark:sounding:quality' v='approx'/>
@@ -58,11 +84,16 @@
    </way>
    <way>
       <tag k='natural' v='water'/>
-      <tag k='_action_' v='draw:color=blue;bcolor=#000080'/>
+      <!--<tag k='water' v='/river|lake|canal/'/>-->
+      <tag k='_action_' v='draw:color=skyblue;bcolor=#000080'/>
+   </way>
+   <way>
+      <tag k='natural' v='water'/>
+      <tag k='_action_' v='poly_area'/>
    </way>
    <way>
       <tag k='waterway' v=''/>
-      <tag k='_action_' v='draw:color=blue;bcolor=blue'/>
+      <tag k='_action_' v='draw:color=skyblue;bcolor=skyblue'/>
    </way>
    <way>
       <tag k='_action_' v='cap:font=sans-serif:bold;size=auto;key=*name'/>
@@ -70,6 +101,7 @@
    </way>
    <way>
       <tag k='_action_' v='cap:font=sans-serif:bold;color=#000080;size=2.0;key=name'/>
+      <tag k='smrender:area' v=']0.004['/>
       <tag k='natural' v='water'/>
    </way>
    <relation>

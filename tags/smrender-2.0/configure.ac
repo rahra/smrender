@@ -21,10 +21,13 @@ AC_DEFINE([READ_FILTER], [], [Add code for read filter.])
 
 AC_ARG_ENABLE([threads], AS_HELP_STRING([--enable-threads],[compile with pthreads support]),
    AC_DEFINE([WITH_THREADS], [], [enable multi-threading]))
+AC_ARG_ENABLE([mithreads], AS_HELP_STRING([--enable-mithreads],[compile memory image functions with pthreads support]),
+   AC_DEFINE([MI_THREADS], [4], [enable memimg multi-threading]))
+
 
 AX_CHECK_GD
 
-if test "${enable_threads+set}" = set; then :
+if test "${enable_threads+set}" = set -o "${enable_mithreads+set}" = set ; then :
 AX_PTHREAD([
    LIBS="$PTHREAD_LIBS $LIBS"
    CFLAGS="$CFLAGS $PTHREAD_CFLAGS"
@@ -45,6 +48,6 @@ fi
 
 AC_SUBST([SMFILTER_NAME], [["libsmfilter$shrext_cmds"]])
 
-AC_CONFIG_FILES([Makefile src/Makefile libsmfilter/Makefile libskel/Makefile tools/smfilter2])
+AC_CONFIG_FILES([Makefile libsmrender/Makefile src/Makefile libsmfilter/Makefile libskel/Makefile tools/smfilter2])
 AC_OUTPUT
 

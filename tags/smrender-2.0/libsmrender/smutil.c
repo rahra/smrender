@@ -23,13 +23,17 @@
  *  @author Bernhard R. Fischer
  */
 
-#include "smrender_dev.h"
-
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
+#include <stdio.h>
+#include <stdlib.h>
 #include <stdint.h>
 #include <limits.h>
 #include <string.h>
 #include <syslog.h>
 #include <errno.h>
+#include <math.h>
 #ifdef WITH_THREADS
 #include <pthread.h>
 #endif
@@ -38,13 +42,17 @@
 #include <dlfcn.h>
 #endif
 
+#include "smrender.h"
+#include "bxtree.h"
+#include "smaction.h"
 
-static struct rdata *rd;
+
+static bx_node_t *obj_tree_ = NULL;
 
 
-void set_util_rd(struct rdata *r)
+bx_node_t **get_objtree(void)
 {
-   rd = r;
+   return &obj_tree_;
 }
 
 
@@ -57,38 +65,37 @@ void set_const_tag(struct otag *tag, char *k, char *v)
 }
 
 
-//int64_t unique_node_id(struct rdata *rd)
+#define UNIQUE_ID_START -100000000000L
 int64_t unique_node_id(void)
 {
+   static int64_t uid = UNIQUE_ID_START;
 #ifdef WITH_THREADS
    static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
    int64_t id;
 
    pthread_mutex_lock(&mutex);
-   id = rd->ds.min_nid = rd->ds.min_nid < 0 ? rd->ds.min_nid - 1 : -1;
+   id = uid--;
    pthread_mutex_unlock(&mutex);
    return id;
 #else
-   rd->ds.min_nid = rd->ds.min_nid < 0 ? rd->ds.min_nid - 1 : -1;
-   return rd->ds.min_nid;
+   return uid--;
 #endif
 }
 
 
-//int64_t unique_way_id(struct rdata *rd)
 int64_t unique_way_id(void)
 {
+   static int64_t uid = UNIQUE_ID_START;
 #ifdef WITH_THREADS
    static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
    int64_t id;
 
    pthread_mutex_lock(&mutex);
-   id = rd->ds.min_wid = rd->ds.min_wid < 0 ? rd->ds.min_wid - 1 : -1;
+   id = uid--;
    pthread_mutex_unlock(&mutex);
    return id;
 #else
-   rd->ds.min_wid = rd->ds.min_wid < 0 ? rd->ds.min_wid - 1 : -1;
-   return rd->ds.min_wid;
+   return uid--;
 #endif
 }
 
@@ -121,7 +128,13 @@ int put_object0(bx_node_t **tree, int64_t id, void *p, int idx)
 
 int put_object(osm_obj_t *o)
 {
-   return put_object0(&rd->obj, o->id, o, o->type - 1);
+   /*if (obj_tree_ == NULL)
+   {
+      log_msg(LOG_EMERG, "static object tree unset in libsmrender. Call set_static_obj_tree()!");
+      return -1;
+   }*/
+ 
+   return put_object0(&obj_tree_, o->id, o, o->type - 1);
 }
 
 
@@ -152,7 +165,12 @@ void *get_object0(bx_node_t *tree, int64_t id, int idx)
 
 void *get_object(int type, int64_t id)
 {
-   return get_object0(rd->obj, id, type - 1);
+   /*if (obj_tree_ == NULL)
+   {
+      log_msg(LOG_EMERG, "static object tree unset in libsmrender. Call set_static_obj_tree()!");
+      return NULL;
+   }*/
+   return get_object0(obj_tree_, id, type - 1);
 }
 
 
@@ -267,16 +285,35 @@ int match_attr(const osm_obj_t *o, const char *k, const char *v)
 }
 
 
-/*! Convert coordinate c to string.
- *  @param lat_lon 0 for latitude, other values for longitude.
+/*! Convert coordinate d to string.
+ *  @param c Coordinate.
+ *  @param lat_lon Format parameter.
+ *  @param buf Output buffer.
+ *  @param len Length of output buffer.
+ *  @return returns the length of the new string or -1 in case of error.
  */
 int coord_str(double c, int lat_lon, char *buf, int len)
 {
-   if (!lat_lon)
-      return snprintf(buf, len, "%02d %c %.1f'", (int) c, c < 0 ? 'S' : 'N', (double) ((int) round(c * T_RESCALE) % T_RESCALE) / TM_RESCALE);
-   else
-      return snprintf(buf, len, "%03d %c %.1f'", (int) c, c < 0 ? 'W' : 'E', (double) ((int) round(c * T_RESCALE) % T_RESCALE) / TM_RESCALE);
+   // safety check
+   if (buf == NULL)
+      return -1;
 
+   switch (lat_lon)
+   {
+      case LAT_CHAR:
+         return snprintf(buf, len, "%02d %c %.1f'", abs(c), c < 0 ? 'S' : 'N', (double) ((int) round(fabs(c) * T_RESCALE) % T_RESCALE) / TM_RESCALE);
+
+      case LON_CHAR:
+         return snprintf(buf, len, "%03d %c %.1f'", abs(c), c < 0 ? 'W' : 'E', (double) ((int) round(fabs(c) * T_RESCALE) % T_RESCALE) / TM_RESCALE);
+
+      case LAT_DEG:
+         return snprintf(buf, len, "%02d° %.1f'", abs(c), (double) ((int) round(fabs(c) * T_RESCALE) % T_RESCALE) / TM_RESCALE);
+
+      case LON_DEG:
+         return snprintf(buf, len, "%03d° %.1f'", abs(c), (double) ((int) round(fabs(c) * T_RESCALE) % T_RESCALE) / TM_RESCALE);
+   }
+
+   return -1;
 }
 
 
@@ -319,4 +356,79 @@ int strcnt(const char *s, int c)
 
    return n;
 }
+
+
+char *get_param(const char *attr, double *dval, const action_t *act)
+{
+   fparam_t **fp;
+
+   if ((act == NULL) || (act->fp == NULL) || (attr == NULL))
+      return NULL;
+
+   for (fp = act->fp; *fp != NULL; fp++)
+   {
+      if (!strcmp(attr, (*fp)->attr))
+      {
+         if (dval != NULL)
+            *dval = (*fp)->dval;
+         return (*fp)->val;
+      }
+   }
+   return NULL;
+}
+
+
+int sm_is_threaded(const smrule_t *r)
+{
+   return (r->act->flags & ACTION_THREADED) != 0;
+}
+
+
+void sm_threaded(smrule_t *r)
+{
+   log_debug("activating multi-threading for rule 0x%016lx", r->oo->id);
+   r->act->flags |= ACTION_THREADED;
+}
+
+#ifdef WITH_THREADS
+
+#define MAX_THREAD_HANDLE 32
+
+int sm_thread_id(void)
+{
+   static pthread_t thandle[MAX_THREAD_HANDLE];
+   static int tcnt = 0;
+   pthread_t this;
+   int i;
+
+   this = pthread_self();
+
+   // check if thread handle already exists
+   for (i = 0; i < tcnt; i++)
+      if (this == thandle[i])
+         return i;
+
+   // check if list of thread handles is already full
+   if (tcnt >= MAX_THREAD_HANDLE)
+      return -1;
+
+   thandle[tcnt] = this;
+   return tcnt++;
+}
+
+
+/*void __attribute__((constructor(101))) init_sm_thread_id(void)
+{
+   (void) sm_thread_id();
+}*/
+
+
+#else
+
+int sm_thread_id(void)
+{
+   return 0;
+}
+
+#endif
 

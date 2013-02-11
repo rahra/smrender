@@ -30,6 +30,7 @@
 #include <math.h>
 #include <gd.h>
 #include <pthread.h>
+#include <signal.h>
 
 #include "memimg.h"
 #include "smrender.h"
@@ -454,6 +455,13 @@ void mi_stretch_diff_vec(struct diff_vec *dv, int len, double min, double max)
 #ifdef MI_THREADS
 void *mi_diff_vector_vert_thread(struct mi_thread_param *tp)
 {
+   sigset_t sset;
+   int e;
+
+   sigemptyset(&sset);
+   if ((e = pthread_sigmask(SIG_BLOCK, &sset, NULL)))
+      log_msg(LOG_ERR, "pthread_sigmask() failed: %s", strerror(e));
+
    for (;;)
    {
       pthread_mutex_lock(tp->mutex);
@@ -626,27 +634,7 @@ int get_diff_vec(gdImage *dst, gdImage *src, int x, int y, int xvar, int res, st
    mi[1] = mi_from_gdimage(src);
 
 #ifdef MI_THREADS
-#if 0
-   pthread_cond_t cn_boss = PTHREAD_COND_INITIALIZER;
-   pthread_mutex_t mx = PTHREAD_MUTEX_INITIALIZER;
-   struct mi_thread_param mt[MI_THREADS];
-   int e;
- 
-   log_debug("creating %d worker threads", MI_THREADS);
-   for (i = 0; i < MI_THREADS; i++)
-   {
-      mt[i].boss = &cn_boss;
-      pthread_cond_init(&mt[i].worker, NULL);
-      mt[i].mutex = &mx;
-      mt[i].dst = mi[0];
-      mt[i].src = mi[1];
-      mt[i].res = res;
-      mt[i].status = 0;
-      if ((e = pthread_create(&mt[i].th, NULL, (void*(*)(void*)) mi_diff_vector_vert_thread, &mt[i])))
-         log_msg(LOG_ERR, "pthread_create() failed: %s", strerror(e));
-   }
-#endif 
-   for (i = 0; i < xvar; i += res)
+  for (i = 0; i < xvar; i += res)
    {
       pthread_mutex_lock(&mx);
       for (;;)
@@ -674,21 +662,6 @@ int get_diff_vec(gdImage *dst, gdImage *src, int x, int y, int xvar, int res, st
       pthread_mutex_unlock(&mx);
    }
 
-   // wait for all threads to finish and destroy them
-   /*log_debug("joining and destroying workers");
-   for (i = 0; i < MI_THREADS; i++)
-   {
-      pthread_mutex_lock(&mx);
-      while (mt[i].status == 1)
-         pthread_cond_wait(&cn_boss, &mx);
-      mt[i].status = -1;
-      pthread_cond_signal(&mt[i].worker);
-      pthread_mutex_unlock(&mx);
-      pthread_join(mt[i].th, NULL);
-      pthread_cond_destroy(&mt[i].worker);
-   }
-   pthread_cond_destroy(&cn_boss);
-   pthread_mutex_destroy(&mx);*/
    mi_wait_threads();
 
 #else

@@ -22,7 +22,6 @@
 #include <time.h>
 
 #include "bstring.h"
-#include "libhpxml.h"
 
 
 #define JAN2004 1072915200
@@ -30,6 +29,7 @@
 #define get_v(x,y) get_value("v",x,y)
 
 enum {OSM_NA, OSM_NODE, OSM_WAY, OSM_REL};
+enum {ROLE_NA, ROLE_EMPTY, ROLE_INNER, ROLE_OUTER};
 
 
 #define SIZEOF_OSM_OBJ(x) ((x)->type == OSM_NODE ? sizeof(osm_node_t) : \
@@ -90,8 +90,6 @@ typedef union osm_storage
 
 
 time_t parse_time(bstring_t);
-int proc_osm_node(const hpx_tag_t*, osm_obj_t*);
-int get_value(const char *k, hpx_tag_t *tag, bstring_t *b);
 void free_obj(osm_obj_t*);
 osm_node_t *malloc_node(short );
 osm_way_t *malloc_way(short , int );
@@ -101,6 +99,7 @@ size_t onode_freed(void);
 void osm_obj_default(osm_obj_t *);
 void osm_way_default(osm_way_t *);
 void osm_node_default(osm_node_t *);
+const char *role_str(int );
 
 
 #endif
