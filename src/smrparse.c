@@ -28,6 +28,9 @@
 #include "smrender_dev.h"
 
 
+#include "colors.c"
+
+
 int parse_matchtype(bstring_t *b, struct specialTag *t)
 {
    t->type = 0;
@@ -114,10 +117,37 @@ short ppos(const char *s)
 }
 
 
-int parse_color(const struct rdata *rd, const char *s)
+int get_color(int n)
+{
+   if (n < 0 || n >= MAXCOLOR)
+      return -1;
+   return color_def_[n].col;
+}
+
+
+int set_color(const char *s, int col)
+{
+   int i, c = -1;
+
+   for (i = 0; color_def_[i].name != NULL; i++)
+      if (!strcasecmp(s, color_def_[i].name))
+      {
+         c = color_def_[i].col;
+         color_def_[i].col = col;
+         break;
+      }
+   return c;
+}
+
+
+int parse_color(const char *s)
 {
    long c;
-   int l;
+   int i, l;
+
+   // safety check
+   if (s == NULL)
+      return -1;
 
    if (*s == '#')
    {
@@ -126,7 +156,7 @@ int parse_color(const struct rdata *rd, const char *s)
       if ((l != 6) && (l != 8))
       {
          log_msg(LOG_WARN, "format error in HTML color '#%s'", s);
-         return rd->col[BLACK];
+         return 0;
       }
 
       errno = 0;
@@ -134,28 +164,18 @@ int parse_color(const struct rdata *rd, const char *s)
       if (errno)
       {
          log_msg(LOG_WARN, "cannot convert HTML color '#%s': %s", s, strerror(errno));
-         return rd->col[BLACK];
+         return 0;
       }
 
-      return get_color(rd, (c >> 16) & 0xff, (c >> 8) & 0xff, c & 0xff, (c >> 24) & 0x7f);
+      return c;
    }
-   if (!strcmp(s, "white"))
-      return rd->col[WHITE];
-   if (!strcmp(s, "yellow"))
-      return rd->col[YELLOW];
-   if (!strcmp(s, "black"))
-      return rd->col[BLACK];
-   if (!strcmp(s, "blue"))
-      return rd->col[BLUE];
-   if (!strcmp(s, "magenta"))
-      return rd->col[MAGENTA];
-   if (!strcmp(s, "brown"))
-      return rd->col[BROWN];
-   if (!strcmp(s, "transparent"))
-      return rd->col[TRANSPARENT];
+
+   for (i = 0; color_def_[i].name != NULL; i++)
+      if (!strcmp(s, color_def_[i].name))
+         return color_def_[i].col;
 
    log_msg(LOG_WARN, "unknown color %s, defaulting to black", s);
-   return rd->col[BLACK];
+   return 0;
 }
 
 
@@ -400,25 +420,5 @@ fparam_t **parse_fparam(char *parm)
    }
 
    return fp;
-}
-
-
-char *get_param(const char *attr, double *dval, const action_t *act)
-{
-   fparam_t **fp;
-
-   if ((act == NULL) || (act->fp == NULL) || (attr == NULL))
-      return NULL;
-
-   for (fp = act->fp; *fp != NULL; fp++)
-   {
-      if (!strcmp(attr, (*fp)->attr))
-      {
-         if (dval != NULL)
-            *dval = (*fp)->dval;
-         return (*fp)->val;
-      }
-   }
-   return NULL;
 }
 

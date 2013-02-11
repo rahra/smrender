@@ -30,7 +30,7 @@
 
 #define hpx_init_simple() hpx_init(0, 10*1024*1024)
 
-#define MMAP_PAGES (1 << 15)
+#define MMAP_PAGES (1L << 15)
 
 
 typedef struct hpx_ctrl

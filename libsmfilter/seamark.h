@@ -19,7 +19,7 @@
 #define SEAMARK_H
 
 #include "bstring.h"
-#include "libhpxml.h"
+//#include "libhpxml.h"
 #include "smrender.h"
 
 #define ARC_DIV 6.0

@@ -20,10 +20,17 @@
  *
  *  @author Bernhard R. Fischer
  */
+
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
 #include <string.h>
 #include <syslog.h>
 #include <errno.h>
 #include <ctype.h>
+#ifdef WITH_THREADS
+#include <pthread.h>
+#endif
 
 #include "smrender_dev.h"
 #include "smcoast.h"
@@ -64,6 +71,10 @@ int log_tags(int level, osm_obj_t *o)
 
 #ifdef HAVE_GD
 
+static struct rdata *rd_;
+static gdImage *img_;
+
+
 int get_char_height(const char *ch, int fg, const char *font, double ptsize, const gdFTStringExtra *fte, int *height)
 {
    char *error;
@@ -102,18 +113,23 @@ int get_font_metric(int fg, const char *font, double ptsize, int dpi, struct fon
 
 void init_main_image(struct rdata *rd, const char *bg)
 {
+   rd_ = rd;
    // preparing image
-   if ((rd->img = gdImageCreateTrueColor(rd->w, rd->h)) == NULL)
+   if ((img_ = gdImageCreateTrueColor(rd->w, rd->h)) == NULL)
       log_msg(LOG_ERR, "could not create image"), exit(EXIT_FAILURE);
-   rd->col[WHITE] = gdImageColorAllocate(rd->img, 255, 255, 254);
-   rd->col[BLACK] = gdImageColorAllocate(rd->img, 0, 0, 0);
-   rd->col[YELLOW] = gdImageColorAllocate(rd->img, 231,209,74);
-   rd->col[BLUE] = gdImageColorAllocate(rd->img, 137, 199, 178);
-   rd->col[MAGENTA] = gdImageColorAllocate(rd->img, 120, 8, 44);
-   rd->col[BROWN] = gdImageColorAllocate(rd->img, 154, 42, 2);
-   rd->col[BGCOLOR] = bg == NULL ? 0x00ffffff : parse_color(rd, bg);
-   log_msg(LOG_DEBUG, "background color is set to 0x%08x", rd->col[BGCOLOR]);
-   gdImageFill(rd->img, 0, 0, rd->col[BGCOLOR]);
+   /*
+   rd->col[WHITE] = gdImageColorAllocate(img_, 255, 255, 254);
+   rd->col[BLACK] = gdImageColorAllocate(img_, 0, 0, 0);
+   rd->col[YELLOW] = gdImageColorAllocate(img_, 231,209,74);
+   rd->col[BLUE] = gdImageColorAllocate(img_, 137, 199, 178);
+   rd->col[MAGENTA] = gdImageColorAllocate(img_, 120, 8, 44);
+   rd->col[BROWN] = gdImageColorAllocate(img_, 154, 42, 2);
+   rd->col[BGCOLOR] = bg == NULL ? 0x00ffffff : parse_color(bg);*/
+   gdImageSaveAlpha(img_, 1);
+   if (bg != NULL)
+      set_color("bgcolor", parse_color(bg));
+   log_msg(LOG_DEBUG, "background color is set to 0x%08x", parse_color("bgcolor"));
+   gdImageFill(img_, 0, 0, parse_color("bgcolor"));
 
    if (!gdFTUseFontConfig(1))
       log_msg(LOG_NOTICE, "fontconfig library not available");
@@ -128,30 +144,45 @@ void reduce_resolution(struct rdata *rd)
 
    log_msg(LOG_INFO, "resampling rendered image");
    img = gdImageCreateTrueColor(rd->fw, rd->fh);
-   gdImageCopyResampled(img, rd->img, 0, 0, 0, 0, gdImageSX(img), gdImageSY(img), gdImageSX(rd->img), gdImageSY(rd->img));
-   gdImageDestroy(rd->img);
-   rd->img = img;
+   gdImageCopyResampled(img, img_, 0, 0, 0, 0, gdImageSX(img), gdImageSY(img), gdImageSX((gdImage*) img_), gdImageSY((gdImage*) img_));
+   gdImageDestroy(img_);
+   img_ = img;
 }
 
 
-int save_gdimage(const char *s, gdImage *img)
+int save_gdimage(const char *s, gdImage *img, int ftype)
 {  
    FILE *f;
 
    if ((f = fopen(s, "w")) == NULL)
       return -1;
 
-   gdImagePng(img, f);
+   if (!ftype)
+      gdImagePng(img, f);
+   else if (ftype == 1)
+      gdImageJpeg(img, f, JPG_QUALITY);
+   else
+   {
+      fclose(f);
+      return -1;
+   }
+
    fclose(f);
    return 0;
+}
+
+
+int save_image(const char *s, void *img, int ftype)
+{
+   return save_gdimage(s, img, ftype);
 }
 
 
 void save_main_image(struct rdata *rd, FILE *f)
 {
    log_msg(LOG_INFO, "saving image");
-   gdImagePngEx(rd->img, f, 9);
-   //gdImageDestroy(rd->img);
+   gdImagePngEx(img_, f, 9);
+   //gdImageDestroy(img_);
 }
 
 
@@ -165,7 +196,7 @@ void mk_paper_coords(double lat, double lon, struct rdata *rd, int *x, int *y)
 }
 
 
-void rot_rect(const struct rdata *rd, int x, int y, double a, int br[])
+static void rot_rect(const struct rdata *rd, int x, int y, double a, int br[])
 {
    gdPoint p[5];
    int i;
@@ -183,7 +214,7 @@ void rot_rect(const struct rdata *rd, int x, int y, double a, int br[])
 
    p[4] = p[0];
 
-   gdImagePolygon(rd->img, p, 5, rd->col[BLACK]);
+   gdImagePolygon(img_, p, 5, parse_color("black"));
 }
 
 
@@ -249,18 +280,18 @@ int act_cap_ini(smrule_t *r)
       cap.key++;
       cap.pos |= POS_UC;
    }
-   rd = get_rdata();
+   rd = rd_;
    if ((s = get_param("color", NULL, r->act)) != NULL)
-      cap.col = parse_color(rd, s);
+      cap.col = parse_color(s);
    if ((s = get_param("angle", &cap.angle, r->act)) != NULL)
    {
       if (!strcmp(s, "auto"))
       {
          cap.angle = NAN;
-         cap.rot.autocol = rd->col[BGCOLOR];
+         cap.rot.autocol = parse_color("bgcolor");
          if ((s = get_param("auto-color", NULL, r->act)) != NULL)
          {
-            cap.rot.autocol = parse_color(rd, s);
+            cap.rot.autocol = parse_color(s);
          }
          if ((s = get_param("weight", &cap.rot.weight, r->act)) == NULL)
             cap.rot.weight = 1;
@@ -336,7 +367,7 @@ int act_cap_node_ini(smrule_t *r)
 int act_cap_node_main(smrule_t *r, osm_node_t *n)
 {
    struct actCaption *cap = r->data;
-   struct rdata *rd = get_rdata();
+   struct rdata *rd = rd_;
    int br[8], m, c;
    char *s, *v;
    gdFTStringExtra fte;
@@ -391,7 +422,7 @@ int act_cap_node_main(smrule_t *r, osm_node_t *n)
       //      cap->fm.lineheight / 12, gdImageSY(cap_img) - cap->fm.descent - cap->fm.descent / 2, v, &fte);
       gdImageFill(cap_img, 0, 0, c);
 
-      if ((n = get_diff_vec(rd->img, cap_img, x, y, MAX_OFFSET, 10, &dv)) == -1)
+      if ((n = get_diff_vec(img_, cap_img, x, y, MAX_OFFSET, 10, &dv)) == -1)
          return -1;
       
       //for (m = 0; m < n; m += 10) log_debug("m = %d, angle = %.1f, diff = %f", m, RAD2DEG(dv[m].dv_angle), dv[m].dv_diff);
@@ -428,8 +459,8 @@ int act_cap_node_main(smrule_t *r, osm_node_t *n)
       rot_pos(ox, -oy, ma, &rx, &ry);
       log_debug("x = %d, y = %d, ma = %.1f, off = %d, ox = %d, oy = %d, rx = %d, ry = %d", x, y, RAD2DEG(ma), off, ox, oy, rx, ry);
 
-      //gdImageCopyRotated(rd->img, cap_img, x + rx, y - ry, 0, 0, gdImageSX(cap_img), gdImageSY(cap_img), round(RAD2DEG(ma)));
-      if ((s = gdImageStringFTEx(rd->img, NULL, c, cap->font, MM2PT(cap->size), ma, x + rx, y - ry, v, &fte)) != NULL)
+      //gdImageCopyRotated(img_, cap_img, x + rx, y - ry, 0, 0, gdImageSX(cap_img), gdImageSY(cap_img), round(RAD2DEG(ma)));
+      if ((s = gdImageStringFTEx(img_, NULL, c, cap->font, MM2PT(cap->size), ma, x + rx, y - ry, v, &fte)) != NULL)
          log_msg(LOG_ERR, "error rendering caption: %s", s);
 #endif
 
@@ -454,7 +485,7 @@ int act_cap_node_main(smrule_t *r, osm_node_t *n)
 #else
       ma = color_frequency_w(rd, x, y, br[4] - br[0] + MAX_OFFSET, br[1] - br[5], &cap->rot);
       //FIXME: WHITE?
-      off = cf_dist(rd, x, y, br[4] - br[0], br[1] - br[5], DEG2RAD(ma), rd->col[WHITE], MAX_OFFSET);
+      off = cf_dist(rd, x, y, br[4] - br[0], br[1] - br[5], DEG2RAD(ma), get_color(WHITE), MAX_OFFSET);
 #endif
 
       oy =(br[1] - br[5]) / DIVX;
@@ -506,7 +537,7 @@ int act_cap_node_main(smrule_t *r, osm_node_t *n)
 
    rot_pos(ox, oy, DEG2RAD(ma), &rx, &ry);
 
-   if ((s = gdImageStringFTEx(rd->img, br, c, cap->font, MM2PT(cap->size), DEG2RAD(ma), x + rx, y - ry, v, &fte)) != NULL)
+   if ((s = gdImageStringFTEx(img_, br, c, cap->font, MM2PT(cap->size), DEG2RAD(ma), x + rx, y - ry, v, &fte)) != NULL)
       log_msg(LOG_ERR, "error rendering caption: %s", s);
 
    free(v);
@@ -517,7 +548,7 @@ int act_cap_node_main(smrule_t *r, osm_node_t *n)
 int act_cap_way_main(smrule_t *r, osm_way_t *w)
 {
    struct actCaption *cap = r->data;
-   struct rdata *rd = get_rdata();
+   struct rdata *rd = rd_;
    struct coord c;
    double ar, size;
    osm_node_t *n;
@@ -612,7 +643,7 @@ int set_style(gdImage *img, int style, int col)
 #define MAX_STYLE_BUF 300
 #define STYLE_SHORT_LEN 0.4
 #define STYLE_LONG_LEN 1.2
-   struct rdata *rd = get_rdata();
+   struct rdata *rd = rd_;
    int sdef[MAX_STYLE_BUF];
    int len, i;
 
@@ -653,11 +684,11 @@ int set_style(gdImage *img, int style, int col)
 }
 
 
-int get_color(const struct rdata *rd, int r, int g, int b, int a)
+/*int get_color(const struct rdata *rd, int r, int g, int b, int a)
 {
    log_msg(LOG_DEBUG, "get_color(..., %d, %d, %d, %d)", r, g, b, a);
-   return gdImageColorResolveAlpha(rd->img, r, g, b, a);
-}
+   return gdImageColorResolveAlpha(img_, r, g, b, a);
+}*/
 
 
 int gdImageGetThickness(const gdImage *img)
@@ -668,7 +699,7 @@ int gdImageGetThickness(const gdImage *img)
 
 int act_img_ini(smrule_t *r)
 {
-   struct rdata *rd = get_rdata();
+   struct rdata *rd = rd_;
    struct actImage img;
    gdImage *tmp_img;
    char *name, *s;
@@ -726,10 +757,10 @@ int act_img_ini(smrule_t *r)
       if (!strcmp(name, "auto"))
       {
          img.angle = NAN;
-         img.rot.autocol = rd->col[BGCOLOR];
+         img.rot.autocol = parse_color("bgcolor");
          if ((s = get_param("auto-color", NULL, r->act)) != NULL)
          {
-            img.rot.autocol = parse_color(rd, s);
+            img.rot.autocol = parse_color(s);
          }
          if ((s = get_param("weight", &img.rot.weight, r->act)) == NULL)
             img.rot.weight = 1;
@@ -755,7 +786,7 @@ int act_img_ini(smrule_t *r)
 int act_img_main(smrule_t *r, osm_node_t *n)
 {
    struct actImage *img = r->data;
-   struct rdata *rd = get_rdata();
+   struct rdata *rd = rd_;
    int hx, hy, x, y;
    double a;
 
@@ -764,7 +795,7 @@ int act_img_main(smrule_t *r, osm_node_t *n)
    hy = gdImageSY(img->img) / 2;
    a = isnan(img->angle) ? color_frequency_w(rd, x, y, hx, hy, &img->rot) : img->angle;
 
-   gdImageCopyRotated(rd->img, img->img, x, y, 0, 0,
+   gdImageCopyRotated(img_, img->img, x, y, 0, 0,
          gdImageSX(img->img), gdImageSY(img->img), round(a));
 
    return 0;
@@ -840,7 +871,7 @@ int img_print(const struct rdata *rd, int x, int y, int pos, int col, double fts
          ox = (br[0] - br[4]) / 2;
    }
 
-   err = gdImageStringFTEx(rd->img, br, col, (char*) ft, MM2PT(ftsize), 0, x + ox, y + oy, (char*) s, &fte);
+   err = gdImageStringFTEx(img_, br, col, (char*) ft, MM2PT(ftsize), 0, x + ox, y + oy, (char*) s, &fte);
    if (err != NULL)
    {
       log_warn("gdImageStringFTEx error: '%s'", err);
@@ -894,7 +925,7 @@ int col_freq(struct rdata *rd, int x, int y, int w, int h, double a, int col)
       for (x1 = 0; x1 < w; x1++)
       {
          rot_pos(x1, y1, a, &rx, &ry);
-         c += (col == (gdImageGetPixel(rd->img, x + rx, y - ry) & COL_MASK));
+         c += (col == (gdImageGetPixel(img_, x + rx, y - ry) & COL_MASK));
       }
 
    return c;
@@ -903,7 +934,7 @@ int col_freq(struct rdata *rd, int x, int y, int w, int h, double a, int col)
 
 int act_draw_ini(smrule_t *r)
 {
-   struct rdata *rd = get_rdata();
+   //struct rdata *rd = rd_;
    struct actDraw *d;
    double a;
    char *s;
@@ -927,7 +958,7 @@ int act_draw_ini(smrule_t *r)
    // parse fill settings
    if ((s = get_param("color", NULL, r->act)) != NULL)
    {
-      d->fill.col = parse_color(rd, s);
+      d->fill.col = parse_color(s);
       d->fill.used = 1;
    }
    if (get_param("width", &d->fill.width, r->act) == NULL)
@@ -937,7 +968,7 @@ int act_draw_ini(smrule_t *r)
    // parse border settings
    if ((s = get_param("bcolor", NULL, r->act)) != NULL)
    {
-      d->border.col = parse_color(rd, s);
+      d->border.col = parse_color(s);
       d->border.used = 1;
    }
    if (get_param("bwidth", &d->border.width, r->act) == NULL)
@@ -955,6 +986,8 @@ int act_draw_ini(smrule_t *r)
 
    d->wl = init_wlist();
 
+   sm_threaded(r);
+
    //log_msg(LOG_DEBUG, "directional = %d, ignore_open = %d", d->directional, !d->collect_open);
    log_msg(LOG_DEBUG, "{%08x, %.1f, %d, %d}, {%08x, %.1f, %d, %d}, %d, %d, %p",
         d->fill.col, d->fill.width, d->fill.style, d->fill.used,
@@ -967,6 +1000,9 @@ int act_draw_ini(smrule_t *r)
 
 int act_draw_main(smrule_t *r, osm_obj_t *o)
 {
+#ifdef WITH_THREADS
+   static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
+#endif
    struct actDraw *d = r->data;
    osm_way_t *w;
    int i;
@@ -976,7 +1012,14 @@ int act_draw_main(smrule_t *r, osm_obj_t *o)
       if (!d->collect_open && !is_closed_poly((osm_way_t*) o))
          return 0;
 
-      return gather_poly0((osm_way_t*) o, &d->wl);
+#ifdef WITH_THREADS
+      pthread_mutex_lock(&mutex);
+#endif
+      (void) gather_poly0((osm_way_t*) o, &d->wl);
+#ifdef WITH_THREADS
+      pthread_mutex_unlock(&mutex);
+#endif
+      return 0;
    }
    else if (o->type == OSM_REL)
    {
@@ -988,7 +1031,13 @@ int act_draw_main(smrule_t *r, osm_obj_t *o)
             //FIXME: error message may be output here
             continue;
 
-         (void) gather_poly0(w, &d->wl);
+#ifdef WITH_THREADS
+         pthread_mutex_lock(&mutex);
+#endif
+         (void) gather_poly0((osm_way_t*) o, &d->wl);
+#ifdef WITH_THREADS
+         pthread_mutex_unlock(&mutex);
+#endif
       }
       return 0;
    }
@@ -1094,13 +1143,13 @@ int act_draw_fini(smrule_t *r)
       qsort(d->wl->ref, d->wl->ref_cnt, sizeof(struct poly), (int(*)(const void *, const void *)) compare_poly_area);
    }
 
-   rd = get_rdata();
-   bg = rd->col[BGCOLOR];
-   img = gdImageCreateTrueColor(gdImageSX(rd->img), gdImageSY(rd->img));
-   bg = gdImageColorAllocate(img,
-         gdImageRed(rd->img, rd->col[BGCOLOR]),
-         gdImageGreen(rd->img, rd->col[BGCOLOR]),
-         gdImageBlue(rd->img, rd->col[BGCOLOR]));
+   rd = rd_;
+   bg = parse_color("bgcolor");
+   img = gdImageCreateTrueColor(gdImageSX((gdImage*) img_), gdImageSY((gdImage*) img_));
+   /*bg = gdImageColorAllocate(img,
+         gdImageRed((gdImage*) img_, parse_color(BGCOLOR)),
+         gdImageGreen((gdImage*) img_, parse_color(BGCOLOR)),
+         gdImageBlue((gdImage*) img_, get_color(BGCOLOR)));*/
    gdImageColorTransparent(img, bg);
 
    if (d->fill.used)
@@ -1111,7 +1160,7 @@ int act_draw_fini(smrule_t *r)
       for (i = 0; i < d->wl->ref_cnt; i++)
          poly_fill(rd, img, d->wl->ref[i].w, fg, bg, d->wl->ref[i].cw, d->fill.width > 0 ? MM2PX(d->fill.width) : (rd->ovs ? rd->ovs : 1), d->fill.style);
 
-      gdImageCopy(rd->img, img, 0, 0, 0, 0, gdImageSX(img), gdImageSY(img));
+      gdImageCopy(img_, img, 0, 0, 0, 0, gdImageSX(img), gdImageSY(img));
    }
 
    if (d->border.used)
@@ -1128,7 +1177,7 @@ int act_draw_fini(smrule_t *r)
       for (i = 0; i < d->wl->ref_cnt; i++)
          poly_border(rd, img, d->wl->ref[i].w, fg, closed_thick, open_thick, d->border.style);
 
-      gdImageCopy(rd->img, img, 0, 0, 0, 0, gdImageSX(img), gdImageSY(img));
+      gdImageCopy(img_, img, 0, 0, 0, 0, gdImageSX(img), gdImageSY(img));
    }
 
    gdImageDestroy(img);
@@ -1140,8 +1189,48 @@ int act_draw_fini(smrule_t *r)
 
 int get_pixel(struct rdata *rd, int x, int y)
 {
-   return gdImageGetPixel(rd->img, x, y);
+   return gdImageGetPixel(img_, x, y);
 }
+
+
+#define TILE_SIZE 256
+void *create_tile(void)
+{
+   gdImage *img;
+
+   if ((img = gdImageCreateTrueColor(TILE_SIZE, TILE_SIZE)) == NULL)
+   {
+      log_msg(LOG_ERR, "failed to create empty tile");
+      return NULL;
+   }
+   return img;
+}
+
+
+void delete_tile(void *img)
+{
+   gdImageDestroy(img);
+}
+
+
+void cut_tile(const struct bbox *bb, void *img)
+{
+   struct rdata *rd = get_rdata();
+   int x, y, w, h;
+
+   mk_paper_coords(bb->ru.lat, bb->ll.lon, rd, &x, &y);
+   mk_paper_coords(bb->ll.lat, bb->ru.lon, rd, &w, &h);
+
+   if (x < 0) x = 0;
+   if (y < 0) y = 0;
+
+   w -= x;
+   h -= y;
+
+   log_debug("cut tile x/y/w/h %d/%d/%d/%d", x, y, w, h);
+   gdImageCopyResampled(img, img_, 0, 0, x, y, TILE_SIZE, TILE_SIZE, w, h);
+}
+
 
 #else
 
@@ -1160,10 +1249,10 @@ void save_main_image(struct rdata *rd, FILE *f)
 }
 
 
-int get_color(const struct rdata *rd, int r, int g, int b, int a)
+/*int get_color(const struct rdata *rd, int r, int g, int b, int a)
 {
    return 0;
-}
+}*/
 
 
 int get_pixel(struct rdata *rd, int x, int y)

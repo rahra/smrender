@@ -24,6 +24,7 @@
 
 #include <string.h>
 #include <pthread.h>
+#include <signal.h>
 
 
 #ifdef WITH_THREADS
@@ -102,7 +103,7 @@ void __attribute__((destructor)) delete_threads(void)
 }
 
 
-int sm_thread_id(void)
+/*int sm_thread_id(void)
 {
    int i;
 
@@ -110,11 +111,18 @@ int sm_thread_id(void)
       if (pthread_self() == smth_[i].rule_thread)
          return i + 1;
    return 0;
-}
+}*/
 
 
 void *sm_traverse_thread(struct sm_thread *smth)
 {
+   sigset_t sset;
+   int e;
+
+   sigemptyset(&sset);
+   if ((e = pthread_sigmask(SIG_BLOCK, &sset, NULL)))
+      log_msg(LOG_ERR, "pthread_sigmask() failed: %s", strerror(e));
+
    for (;;)
    {
       pthread_mutex_lock(smth->mutex);
@@ -198,24 +206,11 @@ int traverse_queue(const bx_node_t *tree, int idx, tree_func_t dhandler, void *p
 #else
 
 
-int sm_thread_id(void)
+/*int sm_thread_id(void)
 {
    return 0;
-}
+}*/
 
 
 #endif
-
-
-int sm_is_threaded(const smrule_t *r)
-{
-   return (r->act->flags & ACTION_THREADED) != 0;
-}
-
-
-void sm_threaded(smrule_t *r)
-{
-   log_debug("activating multi-threading for rule 0x%016lx", r->oo->id);
-   r->act->flags |= ACTION_THREADED;
-}
 

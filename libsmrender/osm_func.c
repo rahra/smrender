@@ -25,11 +25,11 @@
 #include <time.h>
 #include <string.h>
 #include <errno.h>
+#include <stdlib.h>
 
 #include "smrender.h"
 #include "osm_inplace.h"
 #include "bstring.h"
-#include "libhpxml.h"
 
 
 #define TLEN 20
@@ -83,65 +83,6 @@ time_t parse_time(bstring_t b)
 }
 
 
-int proc_osm_node(const hpx_tag_t *tag, osm_obj_t *o)
-{
-   int i;
-
-   if (!bs_cmp(tag->tag, "node"))
-      o->type = OSM_NODE;
-   else if (!bs_cmp(tag->tag, "way"))
-      o->type = OSM_WAY;
-   else if (!bs_cmp(tag->tag, "relation"))
-      o->type = OSM_REL;
-   else 
-      return -1;
-
-   for (i = 0; i < tag->nattr; i++)
-   {
-      if (o->type == OSM_NODE)
-      {
-         if (!bs_cmp(tag->attr[i].name, "lat"))
-            ((osm_node_t*) o)->lat = bs_tod(tag->attr[i].value);
-         else if (!bs_cmp(tag->attr[i].name, "lon"))
-            ((osm_node_t*) o)->lon = bs_tod(tag->attr[i].value);
-      }
-
-      if (!bs_cmp(tag->attr[i].name, "id"))
-         o->id = bs_tol(tag->attr[i].value);
-      else if (!bs_cmp(tag->attr[i].name, "version"))
-         o->ver = bs_tol(tag->attr[i].value);
-      else if (!bs_cmp(tag->attr[i].name, "changeset"))
-         o->cs = bs_tol(tag->attr[i].value);
-      else if (!bs_cmp(tag->attr[i].name, "uid"))
-         o->uid = bs_tol(tag->attr[i].value);
-      else if (!bs_cmp(tag->attr[i].name, "timestamp"))
-         o->tim = parse_time(tag->attr[i].value);
-   }
-
-   if (!o->ver)
-      o->ver = 1;
-   if (!o->tim)
-      o->tim = time(NULL);
-
-   return tag->type;
-}
-
-
-int get_value(const char *k, hpx_tag_t *tag, bstring_t *b)
-{
-   int i;
-
-   for (i = 0; i < tag->nattr; i++)
-      if (!bs_cmp(tag->attr[i].name, k))
-      {
-         *b = tag->attr[i].value;
-         return 0;
-      }
-
-   return -1;
-}
-
-
 void free_obj(osm_obj_t *o)
 {
    free(o->otag);
@@ -190,6 +131,7 @@ osm_node_t *malloc_node(short tag_cnt)
       log_msg(LOG_ERR, "could not malloc_node(): %s", strerror(errno)),
       exit(EXIT_FAILURE);
    n->obj.type = OSM_NODE;
+   n->obj.vis = 2;
    n->obj.otag = malloc_mem(sizeof(struct otag), tag_cnt);
    n->obj.tag_cnt = tag_cnt;
    mem_usage_ += sizeof(osm_node_t);
@@ -205,6 +147,7 @@ osm_way_t *malloc_way(short tag_cnt, int ref_cnt)
       log_msg(LOG_ERR, "could not malloc_way(): %s", strerror(errno)),
       exit(EXIT_FAILURE);
    w->obj.type = OSM_WAY;
+   w->obj.vis = 2;
    w->obj.otag = malloc_mem(sizeof(struct otag), tag_cnt);
    w->obj.tag_cnt = tag_cnt;
    w->ref = malloc_mem(sizeof(int64_t), ref_cnt);
@@ -222,6 +165,7 @@ osm_rel_t *malloc_rel(short tag_cnt, short mem_cnt)
       log_msg(LOG_ERR, "could not malloc_rel(): %s", strerror(errno)),
          exit(EXIT_FAILURE);
    r->obj.type = OSM_REL;
+   r->obj.vis = 2;
    r->obj.otag = malloc_mem(sizeof(struct otag), tag_cnt);
    r->obj.tag_cnt = tag_cnt;
    r->mem = malloc_mem(sizeof(struct rmember), mem_cnt);
@@ -235,6 +179,8 @@ void osm_obj_default(osm_obj_t *o)
 {
    o->tim = time(NULL);
    o->ver = 1;
+   o->vis = 1;
+   // FIXME: this does not check if tag 0 exists and if tag_cnt > 0
    set_const_tag(&o->otag[0], "generator", "smrender");
 }
 
@@ -250,5 +196,21 @@ void osm_node_default(osm_node_t *n)
 {
    n->obj.id = unique_node_id();
    osm_obj_default((osm_obj_t*) n);
+}
+
+const char *role_str(int role)
+{
+   switch (role)
+   {
+      case ROLE_EMPTY:
+         return "";
+      case ROLE_INNER:
+         return "inner";
+      case ROLE_OUTER:
+         return "outer";
+      case ROLE_NA:
+      default:
+         return "n/a";
+   }
 }
 

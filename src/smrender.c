@@ -55,7 +55,21 @@
 #define ISLON(x) (ISEAST(x) || ISWEST(x))
 
 
+struct tile_info
+{
+   char *path;    // path to tiles
+   int zlo, zhi;  // lowest and highest zoom level
+   int ftype;     // 0 ... png, 1 ... jpg
+};
+
 static volatile sig_atomic_t int_ = 0;
+static struct rdata rd_;
+
+
+struct rdata *get_rdata(void)
+{
+   return &rd_;
+}
 
 
 /*! This function parse a coordinate string of format "[-]dd.ddd[NESW]" or
@@ -73,19 +87,19 @@ int parse_coord(const char *s, double *a)
    double e, f, n = 1.0;
    int r;
 
-   for (; isspace(*s); s++);
+   for (; isspace((int) *s); s++);
    if (*s == '-')
    {
       s++;
       n = -1.0;
    }
-   for (*a = 0.0; isdigit(*s); s++)
+   for (*a = 0.0; isdigit((int) *s); s++)
    {
       *a *= 10.0;
       *a += *s - '0';
    }
 
-   for (; isspace(*s); s++);
+   for (; isspace((int) *s); s++);
    if (*s == '\0')
    {
       *a *= n;
@@ -105,7 +119,7 @@ int parse_coord(const char *s, double *a)
    else if (*s == '.')
    {
       s++;
-      for (e = 1.0, f = 0.0; isdigit(*s); e *= 10.0, s++)
+      for (e = 1.0, f = 0.0; isdigit((int) *s); e *= 10.0, s++)
       {
          f *= 10.0;
          f += *s - '0';
@@ -113,7 +127,7 @@ int parse_coord(const char *s, double *a)
       *a += f / e;
       *a *= n;
 
-      for (; isspace(*s); s++);
+      for (; isspace((int) *s); s++);
       if (*s == '\0') return -1;
 
       if (ISLAT(*s))
@@ -136,7 +150,7 @@ int parse_coord(const char *s, double *a)
    }
 
    s++;
-   for (; isspace(*s); s++);
+   for (; isspace((int) *s); s++);
    f = atof(s);
    *a += f / 60.0;
    *a *= n;
@@ -166,10 +180,10 @@ void install_sigint(void)
 }
 
 
-/*! Match and apply ruleset to node.
- *  @param nd Node which should be rendered.
+/*! Match and apply ruleset to object if it is visible.
+ *  @param o Object which should be rendered.
  *  @param rd Pointer to general rendering parameters.
- *  @param mnd Ruleset.
+ *  @param r Rule object.
  */
 int apply_smrules0(osm_obj_t *o, struct rdata *rd, smrule_t *r)
 {
@@ -179,7 +193,10 @@ int apply_smrules0(osm_obj_t *o, struct rdata *rd, smrule_t *r)
       if (bs_match_attr(o, &r->oo->otag[i], &r->act->stag[i]) == -1)
          return 0;
 
-   return r->act->main.func(r, o);
+   if (o->vis)
+      return r->act->main.func(r, o);
+
+   return 0;
 }
 
 
@@ -259,12 +276,21 @@ int apply_smrules(smrule_t *r, struct rdata *rd, osm_obj_t *o)
       return 1;
    }
 
+   if (!r->oo->vis)
+   {
+      log_msg(LOG_INFO, "ignoring invisible rule %016lx", (long) r->oo->id);
+      return 0;
+   }
+
    if (o != NULL && r->oo->ver != o->ver)
       return 0;
 
    // FIXME: wtf is this?
    if (r->act->func_name == NULL)
+   {
+      log_debug("function has no name");
       return 0;
+   }
 
 #ifdef WITH_THREADS
    // if rule is not threaded
@@ -283,10 +309,10 @@ int apply_smrules(smrule_t *r, struct rdata *rd, osm_obj_t *o)
    {
 #ifdef WITH_THREADS
       if (sm_is_threaded(r))
-         e = traverse_queue(rd->obj, r->oo->type - 1, (tree_func_t) apply_smrules0, r);
+         e = traverse_queue(*get_objtree(), r->oo->type - 1, (tree_func_t) apply_smrules0, r);
       else
 #endif
-         e = traverse(rd->obj, 0, r->oo->type - 1, (tree_func_t) apply_smrules0, rd, r);
+         e = traverse(*get_objtree(), 0, r->oo->type - 1, (tree_func_t) apply_smrules0, rd, r);
    }
    else
       log_debug("   -> no main function");
@@ -546,12 +572,23 @@ int bs_safe_put_xml(FILE *f, const bstring_t *b)
 }
 
 
-int print_onode(FILE *f, const osm_obj_t *o)
+static int fprint_defattr(FILE *f, const osm_obj_t *o, const char *ostr)
 {
-   int i;
 #define TBUFLEN 24
    char ts[TBUFLEN] = "0000-00-00T00:00:00Z";
    struct tm *tm;
+
+   if ((tm = gmtime(&o->tim)) != NULL)
+      strftime(ts, sizeof(ts), "%Y-%m-%dT%H:%M:%SZ", tm);
+
+   return fprintf(f, "<%s id=\"%ld\" version=\"%d\" timestamp=\"%s\" uid=\"%d\" visible=\"%s\"",
+         ostr, (long) o->id, o->ver, ts, o->uid, o->vis ? "true" : "false");
+}
+
+
+int print_onode(FILE *f, const osm_obj_t *o)
+{
+   int i;
 
    if (o == NULL)
    {
@@ -559,25 +596,24 @@ int print_onode(FILE *f, const osm_obj_t *o)
       return -1;
    }
 
-   if ((tm = gmtime(&o->tim)) != NULL)
-      strftime(ts, sizeof(ts), "%Y-%m-%dT%H:%M:%SZ", tm);
-
-   // FIXME: 'visible' missing?
    switch (o->type)
    {
       case OSM_NODE:
-         fprintf(f, "<node id=\"%ld\" version=\"%d\" lat=\"%.7f\" lon=\"%.7f\" timestamp=\"%s\" uid=\"%d\">\n",
-               (long) o->id, o->ver, ((osm_node_t*) o)->lat, ((osm_node_t*) o)->lon, ts, o->uid);
+         fprint_defattr(f, o, "node");
+         if (o->tag_cnt)
+            fprintf(f, " lat=\"%.7f\" lon=\"%.7f\">\n", ((osm_node_t*) o)->lat, ((osm_node_t*) o)->lon);
+         else
+            fprintf(f, " lat=\"%.7f\" lon=\"%.7f\"/>\n", ((osm_node_t*) o)->lat, ((osm_node_t*) o)->lon);
          break;
 
       case OSM_WAY:
-         fprintf(f, "<way id=\"%ld\" version=\"%d\" timestamp=\"%s\" uid=\"%d\">\n",
-               (long) o->id, o->ver, ts, o->uid);
+         fprint_defattr(f, o, "way");
+         fprintf(f, ">\n");
          break;
 
       case OSM_REL:
-         fprintf(f, "<relation id=\"%ld\" version=\"%d\" timestamp=\"%s\" uid=\"%d\">\n",
-               (long) o->id, o->ver, ts, o->uid);
+         fprint_defattr(f, o, "relation");
+         fprintf(f, ">\n");
          break;
 
       default:
@@ -599,7 +635,8 @@ int print_onode(FILE *f, const osm_obj_t *o)
   switch (o->type)
    {
       case OSM_NODE:
-         fprintf(f, "</node>\n");
+         if (o->tag_cnt)
+            fprintf(f, "</node>\n");
          break;
 
       case OSM_WAY:
@@ -610,8 +647,9 @@ int print_onode(FILE *f, const osm_obj_t *o)
 
       case OSM_REL:
          for (i = 0; i < ((osm_rel_t*) o)->mem_cnt; i++)
-            fprintf(f, "<member type=\"%s\" ref=\"%ld\" role=\"\"/>\n",
-                  ((osm_rel_t*) o)->mem[i].type == OSM_NODE ? "node" : "way", (long) ((osm_rel_t*) o)->mem[i].id);
+            fprintf(f, "<member type=\"%s\" ref=\"%ld\" role=\"%s\"/>\n",
+                  ((osm_rel_t*) o)->mem[i].type == OSM_NODE ? "node" : "way", (long) ((osm_rel_t*) o)->mem[i].id,
+                  role_str(((osm_rel_t*) o)->mem[i].role));
          fprintf(f, "</relation>\n");
          break;
    }
@@ -674,24 +712,25 @@ int save_osm(const char *s, bx_node_t *tree, const struct bbox *bb, const char *
 }
 
 
-static struct rdata rd_;
+//static struct rdata rd_;
 
 
 static void __attribute__((constructor)) init_rdata(void)
 {
+   struct rdata *rd = get_rdata();
    log_debug("initializing struct rdata");
-   memset(&rd_, 0, sizeof(rd_));
-   rd_.dpi = 300;
-   rd_.ovs = DEFAULT_OVS;
-   rd_.title = "";
-   set_util_rd(&rd_);
+   memset(rd, 0, sizeof(*rd));
+   rd->dpi = 300;
+   rd->ovs = DEFAULT_OVS;
+   rd->title = "";
+   //set_static_obj_tree(&rd_.obj);
 }
 
 
-struct rdata inline *get_rdata(void)
+/*struct rdata inline *get_rdata(void)
 {
    return &rd_;
-}
+}*/
 
 
 /*! Initializes data about paper (image) size.
@@ -717,8 +756,12 @@ void init_rd_paper(struct rdata *rd, const char *paper, int landscape)
             exit(EXIT_FAILURE);
       rd->h = MM2PX(atof(s));
       
-      if ((rd->w <= 0) || (rd->h <= 0))
+      if ((rd->w < 0) || (rd->h < 0))
          log_msg(LOG_ERR, "page width and height must be a decimal value greater than 0"),
+            exit(EXIT_FAILURE);
+
+      if (!rd->w && !rd->h)
+         log_msg(LOG_ERR, "width and height cannot both be 0"),
             exit(EXIT_FAILURE);
 
       return;
@@ -793,6 +836,9 @@ void usage(const char *s)
          "   -r <rules file> ..... Rules file ('rules.osm' is default).\n"
          "   -s <ovs> ............ Set oversampling factor (0-10) (default = %d).\n"
          "   -t <title> .......... Set descriptional chart title.\n"
+         "   -T <tile_info> ...... Create tiles.\n"
+         "      <tile_info> := <zoom_lo> [ '-' <zoom_hi> ] ':' <tile_path> [ ':' <file_type> ]\n"
+         "      <file_type> := 'png' | 'jpg'\n"
          "   -o <image file> ..... Filename of output image (stdout is default).\n"
          "   -P <page format> .... Select output page format.\n"
          "   -u .................. Output URLs suitable for OSM data download and\n"
@@ -862,10 +908,51 @@ char *mk_cmd_line(const char **argv)
 }
 
 
+int parse_tile_info(char *tstr, struct tile_info *ti)
+{
+   char *s, *p;
+
+   if (tstr == NULL)
+      return -1;
+
+   memset(ti, 0, sizeof(*ti));
+
+   s = strtok(tstr, ":");
+   ti->zlo = atoi(s);
+   if ((p = strchr(tstr, '-')) != NULL)
+      ti->zhi = atoi(p + 1);
+   else
+      ti->zhi = ti->zlo;
+
+   if (ti->zlo < 0)
+      ti->zlo = 0;
+
+   if (ti->zhi < ti->zlo)
+   {
+      log_msg(LOG_ERR, "error in tile_info string '%s'", tstr);
+      return -1;
+   }
+
+   if ((ti->path = strtok(NULL, ":")) == NULL)
+   {
+      ti->path = ".";
+      return 0;
+   }
+
+   if ((s = strtok(NULL, ":")) == NULL)
+      return 0;
+
+   if (!strcasecmp("jpg", s))
+      ti->ftype = 1;
+
+   return 0;
+}
+
+
 int main(int argc, char *argv[])
 {
    hpx_ctrl_t *ctl, *cfctl;
-   int fd = 0, n;
+   int fd = 0, n, i;
    struct stat st;
    FILE *f = stdout;
    char *cf = "rules.osm", *img_file = NULL, *osm_ifile = NULL, *osm_ofile =
@@ -879,14 +966,16 @@ int main(int argc, char *argv[])
    struct grid grd;
    osm_obj_t o;
    char *s;
+   struct tile_info ti;
 
    (void) gettimeofday(&tv_start, NULL);
    init_log("stderr", LOG_DEBUG);
    rd = get_rdata();
    init_grid(&grd);
    rd->cmdline = mk_cmd_line((const char**) argv);
+   memset(&ti, 0, sizeof(ti));
 
-   while ((n = getopt(argc, argv, "b:d:fg:Ghi:k:K:lMmo:P:r:R:s:t:uVw:")) != -1)
+   while ((n = getopt(argc, argv, "b:d:fg:Ghi:k:K:lMmo:P:r:R:s:t:T:uVw:")) != -1)
       switch (n)
       {
          case 'b':
@@ -993,6 +1082,14 @@ int main(int argc, char *argv[])
             rd->title = optarg;
             break;
 
+         case 'T':
+            if (parse_tile_info(optarg, &ti))
+            {
+               log_msg(LOG_ERR, "failed to parse tile info '%s'", optarg);
+               exit(EXIT_FAILURE);
+            }
+            break;
+
          case 'u':
             prt_url = 1;
             break;
@@ -1075,12 +1172,42 @@ int main(int argc, char *argv[])
 
    // install exit handlers
    osm_read_exit();
-   bx_exit();
 
    if (rd->ovs)
       rd->dpi *= rd->ovs;
 
    init_rd_paper(rd, paper, landscape);
+   if (rd->scale > 0)
+   {
+      if (!rd->w || !rd->h)
+         log_msg(LOG_ERR, "zero height or width only possible with bounding box window"),
+            exit(EXIT_FAILURE);
+      rd->mean_lat_len = rd->scale * ((double) rd->w / (double) rd->dpi) * 2.54 / (60.0 * 1852 * 100);
+   }
+   else if (rd->wc > 0)
+   {
+      if (!rd->w || !rd->h)
+         log_msg(LOG_ERR, "zero height or width only possible with bounding box window"),
+            exit(EXIT_FAILURE);
+      rd->mean_lat_len  = rd->wc * cos(rd->mean_lat * M_PI / 180);
+   }
+   else if (rd->mean_lat_len == 0)
+   {
+      rd->mean_lat_len = (rd->bb.ru.lon - rd->bb.ll.lon) * cos(DEG2RAD(rd->mean_lat));
+
+      // autofit page
+      if (!rd->w)
+         rd->w = round((double) rd->h * rd->mean_lat_len / (rd->bb.ru.lat - rd->bb.ll.lat));
+      else if (!rd->h)
+         rd->h = round((double) rd->w * (rd->bb.ru.lat - rd->bb.ll.lat) / rd->mean_lat_len);
+
+      if (rd->mean_lat_len * rd->h / rd->w < rd->bb.ru.lat - rd->bb.ll.lat)
+      {
+         rd->mean_lat_len = (rd->bb.ru.lat - rd->bb.ll.lat) * rd->w / rd->h;
+         //log_msg(LOG_INFO, "bbox widened from %.2f to %.2f nm", (rd->bb.ru.lon - rd->bb.ll.lon) * cos(DEG2RAD(rd->mean_lat)) * 60, rd->mean_lat_len * 60);
+      }
+   }
+
    if (rd->ovs > 1)
    {
       rd->fw = rd->w / rd->ovs;
@@ -1092,20 +1219,6 @@ int main(int argc, char *argv[])
       rd->fh = rd->h;
    }
 
-   if (rd->scale > 0)
-      rd->mean_lat_len = rd->scale * ((double) rd->w / (double) rd->dpi) * 2.54 / (60.0 * 1852 * 100);
-   else if (rd->wc > 0)
-      rd->mean_lat_len  = rd->wc * cos(rd->mean_lat * M_PI / 180);
-   else if (rd->mean_lat_len == 0)
-   {
-      rd->mean_lat_len = (rd->bb.ru.lon - rd->bb.ll.lon) * cos(DEG2RAD(rd->mean_lat));
-      if (rd->mean_lat_len * rd->h / rd->w < rd->bb.ru.lat - rd->bb.ll.lat)
-      {
-         rd->mean_lat_len = (rd->bb.ru.lat - rd->bb.ll.lat) * rd->w / rd->h;
-         //log_msg(LOG_INFO, "bbox widened from %.2f to %.2f nm", (rd->bb.ru.lon - rd->bb.ll.lon) * cos(DEG2RAD(rd->mean_lat)) * 60, rd->mean_lat_len * 60);
-      }
-   }
- 
    init_bbox_mll(rd);
 
    if (prt_url)
@@ -1194,11 +1307,11 @@ int main(int argc, char *argv[])
       fi.use_bbox = 1;
       log_msg(LOG_INFO, "using input bounding box %.3f/%.3f - %.3f/%.3f",
             fi.c1.lat, fi.c1.lon, fi.c2.lat, fi.c2.lon);
-      (void) read_osm_file(ctl, &rd->obj, &fi, &rd->ds);
+      (void) read_osm_file(ctl, get_objtree(), &fi, &rd->ds);
    }
    else
    {
-      (void) read_osm_file(ctl, &rd->obj, NULL, &rd->ds);
+      (void) read_osm_file(ctl, get_objtree(), NULL, &rd->ds);
    }
 
    if (!rd->ds.ncnt)
@@ -1211,7 +1324,7 @@ int main(int argc, char *argv[])
    log_debug("onode memory used: %ld kb", (long) onode_mem() / 1024);
 
    log_msg(LOG_INFO, "stripping filtered way nodes");
-   traverse(rd->obj, 0, IDX_WAY, (tree_func_t) strip_ways, rd, NULL);
+   traverse(*get_objtree(), 0, IDX_WAY, (tree_func_t) strip_ways, rd, NULL);
 
    switch (gen_grid)
    {
@@ -1259,15 +1372,15 @@ int main(int argc, char *argv[])
 
    int_ = 0;
 
-   save_osm(osm_ofile, rd->obj, &rd->bb, rd->cmdline);
+   save_osm(osm_ofile, *get_objtree(), &rd->bb, rd->cmdline);
    (void) close(ctl->fd);
    hpx_free(ctl);
    hpx_free(cfctl);
 
    log_debug("freeing main objects");
-   traverse(rd->obj, 0, IDX_REL, free_objects, rd, NULL);
-   traverse(rd->obj, 0, IDX_WAY, free_objects, rd, NULL);
-   traverse(rd->obj, 0, IDX_NODE, free_objects, rd, NULL);
+   traverse(*get_objtree(), 0, IDX_REL, free_objects, rd, NULL);
+   traverse(*get_objtree(), 0, IDX_WAY, free_objects, rd, NULL);
+   traverse(*get_objtree(), 0, IDX_NODE, free_objects, rd, NULL);
 
    log_debug("freeing rule objects");
    traverse(rd->rules, 0, IDX_REL, (tree_func_t) free_rules, rd, NULL);
@@ -1275,9 +1388,21 @@ int main(int argc, char *argv[])
    traverse(rd->rules, 0, IDX_NODE, (tree_func_t) free_rules, rd, NULL);
 
    log_debug("freeing main object tree");
-   bx_free_tree(rd->obj);
+   bx_free_tree(*get_objtree());
    log_debug("freeing rules tree");
    bx_free_tree(rd->rules);
+
+   // FIXME: this is done before reduce_resolution() because mk_paper_coords()
+   // used in cut_tile() (smrules.c) referes to the rendering resolution.
+   if (ti.path != NULL)
+   {
+      log_msg(LOG_INFO, "creating tiles in directory %s", ti.path);
+      for (i = ti.zlo; i <= ti.zhi; i++)
+      {
+         log_msg(LOG_INFO, "zoom level %d", i);
+         (void) create_tiles(ti.path, rd, i, ti.ftype);
+      }
+   }
 
    if (rd->ovs > 1)
       reduce_resolution(rd);

@@ -28,18 +28,22 @@
 #include <regex.h>
 
 #include "smrender.h"
+#include "smaction.h"
+#include "rdata.h"
 
 #include "osm_inplace.h"
 #include "bstring.h"
 #include "bxtree.h"
 #include "smath.h"
 #include "lists.h"
+#include "libhpxml.h"
 
-#ifdef HAVE_GD
+
+/*#ifdef HAVE_GD
 typedef gdImage image_t;
 #else
 typedef void image_t;
-#endif
+#endif*/
 
 #define EXIT_NORULES 128
 #define EXIT_NODATA 129
@@ -47,16 +51,6 @@ typedef void image_t;
 #define USER_GRID 2
 #define AUTO_GRID 1
 #define NO_GRID 0
-
-#define SPECIAL_DIRECT 0x0000
-#define SPECIAL_REGEX 0x0001
-#define SPECIAL_GT 0x0002
-#define SPECIAL_LT 0x0003
-#define SPECIAL_INVERT 0x8000
-#define SPECIAL_NOT 0x4000
-#define SPECIAL_MASK 0x00ff
-
-#define ACTION_THREADED 1
 
 #define POS_M 0
 #define POS_N 1
@@ -99,56 +93,24 @@ typedef void image_t;
 // convert mm to degrees
 #define MM2LAT(x) ((x) * (rd->bb.ru.lat - rd->bb.ll.lat) / PX2MM(rd->h))
 #define MM2LON(x) ((x) * (rd->bb.ru.lon - rd->bb.ll.lon) / PX2MM(rd->w))
-// maximum number if different rule versions (processing iterations)
-#define MAX_ITER 8
 // default oversampling factor
 #define DEFAULT_OVS 2
 
 #define MIN_ID 0xffffff0000000000LL
 #define MAX_ID INT64_MAX
 
-#define TM_RESCALE 100
-#define T_RESCALE (60 * TM_RESCALE)
-#define MIN10(x) round((x) * T_RESCALE)
-
-#define RED(x) ((((x) >> 16) & 0xff))
-#define GREEN(x) ((((x) >> 8) & 0xff))
-#define BLUE(x) (((x) & 0xff))
-#define SQRL(x) ((long) (x) * (long) (x))
-
 // scaling factor for bbox of URL output (-u)
 #define BB_SCALE 0.01
+
+#define JPG_QUALITY 80
 
 typedef int (*tree_func_t)(osm_obj_t*, struct rdata*, void*);
 
 // indexes to object tree
 enum {IDX_NODE, IDX_WAY, IDX_REL};
-enum {WHITE, YELLOW, BLACK, BLUE, MAGENTA, BROWN, TRANSPARENT, BGCOLOR, MAX_COLOR};
+//enum {WHITE, YELLOW, BLACK, BLUE, MAGENTA, BROWN, TRANSPARENT, BGCOLOR, MAXCOLOR};
 enum {LAT, LON};
 enum {DRAW_SOLID, DRAW_DASHED, DRAW_DOTTED, DRAW_TRANSPARENT};
-
-typedef struct fparam
-{
-   char *attr;
-   char *val;
-   double dval;
-} fparam_t;
-
-struct specialTag
-{
-   short type;
-   union
-   {
-      regex_t re;
-      double val;
-   };
-};
-
-struct stag
-{
-   struct specialTag stk;
-   struct specialTag stv;
-};
 
 struct auto_rot
 {
@@ -162,7 +124,7 @@ struct actImage
 {
    double angle;
    struct auto_rot rot;
-   image_t *img;
+   gdImage *img;
 };
 
 struct cap_data
@@ -203,12 +165,6 @@ struct actCaption
    struct font_metric fm;
 };
 
-struct actParam
-{
-   char *buf;
-   fparam_t **fp;
-};
-
 struct drawStyle
 {
    int col;
@@ -234,98 +190,12 @@ struct act_shape
    char *key;
 };
 
-struct action
-{
-   union             // initialization function _ini()
-   {
-      int (*func)(smrule_t*);
-      void *sym;
-   } ini;
-   union             // rule function
-   {
-      int (*func)(smrule_t*, osm_obj_t*);
-      void *sym;
-   } main;
-   union             // finalization function _fini()
-   {
-      int (*func)(smrule_t*);
-      void *sym;
-   } fini;
-   void *libhandle;  // pointer to lib base
-   char *func_name;  // pointer to function name
-   char *parm;       // function argument string
-   fparam_t **fp;    // pointer to parsed parameter list
-   short flags;      // execution control flags.
-   short tag_cnt;
-   short finished;   // set to 1 after _fini was called, otherwise 0
-   struct stag stag[];
-};
-
 struct grid
 {
    double lat_ticks, lon_ticks;
    double lat_sticks, lon_sticks;
    double lat_g, lon_g;
    double g_margin, g_tw, g_stw;
-};
-
-struct bbox
-{
-   struct coord ll, ru;
-};
-
-struct dstats
-{
-   //struct coord lu;  // left upper
-   //struct coord rb;  // right bottom
-   struct bbox bb;
-   long ncnt, wcnt, rcnt;
-   int64_t min_nid;
-   int64_t max_nid;
-   int64_t min_wid;
-   int64_t max_wid;
-   const void *lo_addr, *hi_addr;   // lowest and highest memory address
-   int ver_cnt;
-   int ver[MAX_ITER];
-};
-
-struct rdata
-{
-   // root node of objects (nodes and ways)
-   bx_node_t *obj;
-   // root nodes of node rules and way rules
-   bx_node_t *rules;
-   // bounding box (left lower and right upper coordinates)
-   struct bbox bb;
-   // coordinate with/height (wc=bb.ru.lon-bb.ll.lon, hc=bb.ru.lat-bb.ll.lat)
-   double wc, hc;
-   // mean latitude and its length in degrees corresponding to the real nautical miles
-   double mean_lat, mean_lat_len;
-   double mean_lon;
-   // hyperbolic values for transversial Mercator (latitude stretching)
-   double lath, lath_len;
-   // (pixel) image width and height of rendered image
-   int w, h;
-   // (pixel) image width and height of final image
-   int fw, fh;
-   // pixel resolution
-   int dpi;
-   // oversampling factor
-   int ovs;
-   // scale
-   double scale;
-   // node/way stats
-   struct dstats ds;
-   // pointer to cmd line string
-   char *cmdline;
-   // chart title
-   char *title;
-
-   // ***** this is libgd2 specific ***** 
-   // pointer to image data
-   image_t *img;
-   // image colors
-   int col[MAX_COLOR];
 };
 
 struct filter
@@ -337,7 +207,6 @@ struct filter
    // pointer to rules tree (or NULL if it should be ignored)
    bx_node_t *rules;
 };
-
 
 struct file
 {
@@ -383,15 +252,21 @@ void init_cat_poly(struct rdata*);
 /* smrules.c */
 void init_main_image(struct rdata*, const char*);
 void save_main_image(struct rdata*, FILE*);
-int get_color(const struct rdata*, int, int, int, int);
+//int get_color(const struct rdata*, int, int, int, int);
 int get_pixel(struct rdata*, int , int );
 void reduce_resolution(struct rdata *);
+void *create_tile(void);
+void delete_tile(void *);
+void cut_tile(const struct bbox *, void *);
+int save_image(const char *, void *, int);
 
 /* smlog.c */
 FILE *init_log(const char*, int);
 
 /* smrparse.c */
-int parse_color(const struct rdata *, const char *);
+int set_color(const char *, int);
+int get_color(int);
+int parse_color(const char *);
 int parse_style(const char *s);
 int parse_matchtype(bstring_t*, struct specialTag*);
 int init_rules(osm_obj_t*, struct rdata*, void*);
@@ -419,6 +294,8 @@ void sm_wait_threads(void);
 int traverse_queue(const bx_node_t *, int , tree_func_t , void *);
 int sm_is_threaded(const smrule_t *);
 
+/* smtile.c */
+int create_tiles(const char *, const struct rdata *, int , int );
 
 #endif
 
