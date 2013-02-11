@@ -72,8 +72,8 @@ struct pdef
 };
 
 
-static void node_brg(struct pcoord*, struct coord*, int64_t);
-static void init_corner_brg(const struct rdata*, const struct coord*, struct corner_point*);
+//static void node_brg(struct pcoord*, struct coord*, int64_t);
+//static void init_corner_brg(const struct rdata*, const struct coord*, struct corner_point*);
 int compare_poly_area(const struct poly*, const struct poly*);
 //int cat_poly_ini(smrule_t*);
 int gather_poly0(osm_way_t *, struct wlist **);

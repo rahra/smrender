@@ -41,6 +41,7 @@
 #include <signal.h>
 
 #include "smrender_dev.h"
+#include "rdata.h"
 #include "lists.h"
 
 
@@ -59,17 +60,11 @@ struct tile_info
 {
    char *path;    // path to tiles
    int zlo, zhi;  // lowest and highest zoom level
-   int ftype;     // 0 ... png, 1 ... jpg
+   int ftype;     // 0 ... png, 1 ... jpg, 2 ... pdf
 };
 
 static volatile sig_atomic_t int_ = 0;
-static struct rdata rd_;
-
-
-struct rdata *get_rdata(void)
-{
-   return &rd_;
-}
+static int render_all_nodes_ = 0;
 
 
 /*! This function parse a coordinate string of format "[-]dd.ddd[NESW]" or
@@ -159,7 +154,7 @@ int parse_coord(const char *s, double *a)
 }
 
 
-void int_handler(int sig)
+void int_handler(int UNUSED(sig))
 {
    int_++;
 }
@@ -185,9 +180,19 @@ void install_sigint(void)
  *  @param rd Pointer to general rendering parameters.
  *  @param r Rule object.
  */
-int apply_smrules0(osm_obj_t *o, struct rdata *rd, smrule_t *r)
+int apply_smrules0(osm_obj_t *o, smrule_t *r)
 {
    int i;
+
+   // render only nodes which are on the page
+   if (!render_all_nodes_ && o->type == OSM_NODE)
+   {
+      struct coord c;
+      c.lon = ((osm_node_t*) o)->lon;
+      c.lat = ((osm_node_t*) o)->lat;
+      if (!is_on_page(&c))
+         return 0;
+   }
 
    for (i = 0; i < r->oo->tag_cnt; i++)
       if (bs_match_attr(o, &r->oo->otag[i], &r->act->stag[i]) == -1)
@@ -266,7 +271,7 @@ int dequeue_fini(void)
 #endif
 
 
-int apply_smrules(smrule_t *r, struct rdata *rd, osm_obj_t *o)
+int apply_smrules(smrule_t *r, osm_obj_t *o)
 {
    int e = 0;
 
@@ -312,7 +317,7 @@ int apply_smrules(smrule_t *r, struct rdata *rd, osm_obj_t *o)
          e = traverse_queue(*get_objtree(), r->oo->type - 1, (tree_func_t) apply_smrules0, r);
       else
 #endif
-         e = traverse(*get_objtree(), 0, r->oo->type - 1, (tree_func_t) apply_smrules0, rd, r);
+         e = traverse(*get_objtree(), 0, r->oo->type - 1, (tree_func_t) apply_smrules0, r);
    }
    else
       log_debug("   -> no main function");
@@ -330,7 +335,7 @@ int apply_smrules(smrule_t *r, struct rdata *rd, osm_obj_t *o)
 }
 
 
-int norm_rule_node(osm_obj_t *o, struct rdata *rd, void *p)
+int norm_rule_node(osm_obj_t *o, void * UNUSED(p))
 {
 #define RULE_LON_DIFF 1.0/600.0
 #define RULE_LAT_DIFF RULE_LON_DIFF
@@ -346,8 +351,9 @@ int norm_rule_node(osm_obj_t *o, struct rdata *rd, void *p)
 }
 
 
-int norm_rule_way(osm_obj_t *o, struct rdata *rd, void *p)
+int norm_rule_way(osm_obj_t *o, void *p)
 {
+   struct rdata *rd = get_rdata();
    static double lat;
    osm_node_t *n;
 
@@ -380,14 +386,14 @@ int norm_rule_way(osm_obj_t *o, struct rdata *rd, void *p)
 }
 
 
-int print_tree(osm_obj_t *o, struct rdata *rd, void *p)
+int print_tree(osm_obj_t *o, void *p)
 {
    print_onode(p, o);
    return 0;
 }
 
 
-int strip_ways(osm_way_t *w, struct rdata *rd, void *p)
+int strip_ways(osm_way_t *w, void * UNUSED(p))
 {
    struct onode *n;
    int i;
@@ -411,7 +417,7 @@ int strip_ways(osm_way_t *w, struct rdata *rd, void *p)
 }
 
 
-int traverse(const bx_node_t *nt, int d, int idx, tree_func_t dhandler, struct rdata *rd, void *p)
+int traverse(const bx_node_t *nt, int d, int idx, tree_func_t dhandler, void *p)
 {
    int i, e, sidx, eidx;
    static int sig_msg = 0;
@@ -456,7 +462,7 @@ int traverse(const bx_node_t *nt, int d, int idx, tree_func_t dhandler, struct r
       {
          if (nt->next[i] != NULL)
          {
-            if ((e = dhandler(nt->next[i], rd, p)))
+            if ((e = dhandler(nt->next[i], p)))
             {
                (void) func_name(buf, sizeof(buf), dhandler);
                log_msg(LOG_WARNING, "dhandler(), sym = '%s', addr = '%p' returned %d", buf, dhandler, e);
@@ -474,7 +480,7 @@ int traverse(const bx_node_t *nt, int d, int idx, tree_func_t dhandler, struct r
    for (i = 0; i < 1 << BX_RES; i++)
       if (nt->next[i])
       {
-         if ((e = traverse(nt->next[i], d + 1, idx, dhandler, rd, p)) < 0)
+         if ((e = traverse(nt->next[i], d + 1, idx, dhandler, p)) < 0)
             return e;
          /*
          if (e < 0)
@@ -514,33 +520,6 @@ void print_url(struct bbox bb)
 }
 
 
-void print_rdata(const struct rdata *rd)
-{
-   log_msg(LOG_NOTICE, "*** chart parameters for rendering ****");
-   log_msg(LOG_NOTICE, "   %.3f %.3f -- %.3f %.3f",
-         rd->bb.ru.lat, rd->bb.ll.lon, rd->bb.ru.lat, rd->bb.ru.lon);
-   log_msg(LOG_NOTICE, "   %.3f %.3f -- %.3f %.3f",
-         rd->bb.ll.lat, rd->bb.ll.lon, rd->bb.ll.lat, rd->bb.ru.lon);
-   log_msg(LOG_NOTICE, "   wc = %.3f°, hc = %.3f°", rd->wc, rd->hc);
-   log_msg(LOG_NOTICE, "   mean_lat = %.3f°, mean_lat_len = %.3f (%.1f nm)",
-         rd->mean_lat, rd->mean_lat_len, rd->mean_lat_len * 60);
-   log_msg(LOG_NOTICE, "   lath = %f, lath_len = %f", rd->lath, rd->lath_len);
-   log_msg(LOG_NOTICE, "   page size = %.1f x %.1f mm, oversampling = %d",
-         PX2MM(rd->w), PX2MM(rd->h), rd->ovs);
-   log_msg(LOG_NOTICE, "   rendering: %dx%d px, dpi = %d",
-         rd->w, rd->h, rd->dpi);
-   log_msg(LOG_NOTICE, "   final: %dx%d px, dpi = %d",
-         rd->fw, rd->fh, rd->ovs ? rd->dpi / rd->ovs : rd->dpi);
-   log_msg(LOG_NOTICE, "   1 px = %.3f mm, 1mm = %d px", PX2MM(1), (int) MM2PX(1));
-   log_msg(LOG_NOTICE, "   scale 1:%.0f, %.1f x %.1f nm",
-         rd->scale, rd->wc * 60 * cos(DEG2RAD(rd->mean_lat)), rd->hc * 60);
-
-   log_debug("   G_GRID %.3f, G_TICKS %.3f, G_STICKS %.3f, G_MARGIN %.2f, G_TW %.2f, G_STW %.2f, G_BW %.2f",
-         G_GRID, G_TICKS, G_STICKS, G_MARGIN, G_TW, G_STW, G_BW);
-   log_msg(LOG_NOTICE, "***");
-}
-
-
 void init_bbox_mll(struct rdata *rd)
 {
    rd->wc = rd->mean_lat_len / cos(rd->mean_lat * M_PI / 180);
@@ -560,14 +539,17 @@ int bs_safe_put_xml(FILE *f, const bstring_t *b)
    int i, c;
 
    for (i = 0, c = 0; i < b->len; i++)
-   {
-      if (b->buf[i] == '"')
+      switch (b->buf[i])
       {
-         c += fputs("&quot;", f);
-         continue;
+         case '"':
+            c += fputs("&quot;", f);
+            break;
+         case '<':
+            c += fputs("&lt;", f);
+            break;
+         default:
+            c += fputc(b->buf[i], f);
       }
-      c += fputc(b->buf[i], f);
-   }
    return c;
 }
 
@@ -658,7 +640,7 @@ int print_onode(FILE *f, const osm_obj_t *o)
 }
 
 
-int free_rules(smrule_t *r, struct rdata *rd, void *p)
+int free_rules(smrule_t *r, void * UNUSED(p))
 {
    free_obj(r->oo);
    free_fparam(r->act->fp);
@@ -668,7 +650,7 @@ int free_rules(smrule_t *r, struct rdata *rd, void *p)
 }
 
 
-int free_objects(osm_obj_t *o, struct rdata *rd, void *p)
+int free_objects(osm_obj_t *o, void * UNUSED(p))
 {
    free_obj(o);
    return 0;
@@ -699,9 +681,9 @@ int save_osm(const char *s, bx_node_t *tree, const struct bbox *bb, const char *
       if (bb != NULL)
          fprintf(f, "<bounds minlat='%f' minlon='%f' maxlat='%f' maxlon='%f'/>\n",
                bb->ll.lat, bb->ll.lon, bb->ru.lat, bb->ru.lon);
-      traverse(tree, 0, IDX_NODE, print_tree, NULL, f);
-      traverse(tree, 0, IDX_WAY, print_tree, NULL, f);
-      traverse(tree, 0, IDX_REL, print_tree, NULL, f);
+      traverse(tree, 0, IDX_NODE, print_tree, f);
+      traverse(tree, 0, IDX_WAY, print_tree, f);
+      traverse(tree, 0, IDX_REL, print_tree, f);
       fprintf(f, "</osm>\n");
       fclose(f);
    }
@@ -710,27 +692,6 @@ int save_osm(const char *s, bx_node_t *tree, const struct bbox *bb, const char *
 
    return 0;
 }
-
-
-//static struct rdata rd_;
-
-
-static void __attribute__((constructor)) init_rdata(void)
-{
-   struct rdata *rd = get_rdata();
-   log_debug("initializing struct rdata");
-   memset(rd, 0, sizeof(*rd));
-   rd->dpi = 300;
-   rd->ovs = DEFAULT_OVS;
-   rd->title = "";
-   //set_static_obj_tree(&rd_.obj);
-}
-
-
-/*struct rdata inline *get_rdata(void)
-{
-   return &rd_;
-}*/
 
 
 /*! Initializes data about paper (image) size.
@@ -822,6 +783,8 @@ void usage(const char *s)
          "               <scale> Scale of chart.\n"
          "               <length> Length of mean latitude in either degrees ('d') or\n"
          "                        nautical miles ('m')\n"
+         "   -a .................. Render all nodes, otherwise only nodes which are\n"
+         "                         on the page are rendered.\n"
          "   -b <color> .......... Choose background color ('white' is default).\n"
          "   -d <density> ........ Set image density (300 is default).\n"
          "   -f .................. Use loading filter.\n"
@@ -834,18 +797,19 @@ void usage(const char *s)
          "   -M .................. Input file is memory mapped (default).\n"
          "   -m .................. Input file is read into heap memory.\n"
          "   -r <rules file> ..... Rules file ('rules.osm' is default).\n"
-         "   -s <ovs> ............ Set oversampling factor (0-10) (default = %d).\n"
+         "   -s <ovs> ............ Deprecated, kept for backwards compatibility.\n"
          "   -t <title> .......... Set descriptional chart title.\n"
          "   -T <tile_info> ...... Create tiles.\n"
          "      <tile_info> := <zoom_lo> [ '-' <zoom_hi> ] ':' <tile_path> [ ':' <file_type> ]\n"
          "      <file_type> := 'png' | 'jpg'\n"
-         "   -o <image file> ..... Filename of output image (stdout is default).\n"
+         "   -o <image file> ..... Filename of output PNG image.\n"
+         "   -O <pdf file> ....... Filename of output PDF file.\n"
          "   -P <page format> .... Select output page format.\n"
          "   -u .................. Output URLs suitable for OSM data download and\n"
          "                         exit.\n"
          "   -V .................. Show chart parameters and exit.\n"
          "   -w <osm file> ....... Output OSM data to file.\n",
-         s, DEFAULT_OVS
+         s
          );
    printf("\nSee http://www.abenteuerland.at/smrender/ for more information.\n");
 }
@@ -954,9 +918,9 @@ int main(int argc, char *argv[])
    hpx_ctrl_t *ctl, *cfctl;
    int fd = 0, n, i;
    struct stat st;
-   FILE *f = stdout;
+   FILE *f;
    char *cf = "rules.osm", *img_file = NULL, *osm_ifile = NULL, *osm_ofile =
-      NULL, *osm_rfile = NULL, *kap_file = NULL, *kap_hfile = NULL;
+      NULL, *osm_rfile = NULL, *kap_file = NULL, *kap_hfile = NULL, *pdf_file = NULL;
    struct rdata *rd;
    struct timeval tv_start, tv_end;
    int landscape = 0, w_mmap = 1, load_filter = 0, init_exit = 0, gen_grid = AUTO_GRID, prt_url = 0;
@@ -975,9 +939,13 @@ int main(int argc, char *argv[])
    rd->cmdline = mk_cmd_line((const char**) argv);
    memset(&ti, 0, sizeof(ti));
 
-   while ((n = getopt(argc, argv, "b:d:fg:Ghi:k:K:lMmo:P:r:R:s:t:T:uVw:")) != -1)
+   while ((n = getopt(argc, argv, "ab:d:fg:Ghi:k:K:lMmo:O:P:r:R:s:t:T:uVw:")) != -1)
       switch (n)
       {
+         case 'a':
+            render_all_nodes_ = 1;
+            break;
+
          case 'b':
             bg = optarg;
             break;
@@ -1058,6 +1026,10 @@ int main(int argc, char *argv[])
             img_file = optarg;
             break;
 
+         case 'O':
+            pdf_file = optarg;
+            break;
+
          case 'P':
             paper = optarg;
             break;
@@ -1067,11 +1039,7 @@ int main(int argc, char *argv[])
             break;
 
          case 's':
-            rd->ovs = atoi(optarg);
-            if (rd->ovs < 0)
-               rd->ovs = 0;
-            if (rd->ovs > 10)
-               rd->ovs = 10;
+            log_msg(LOG_NOTICE, "Option -s is deprecated with libcairo support!");
             break;
 
          case 'R':
@@ -1105,8 +1073,9 @@ int main(int argc, char *argv[])
 
    if (argv[optind] == NULL)
    {
-      log_msg(LOG_WARN, "window parameter missing, setting defaults 0:0:100000");
+      log_msg(LOG_WARN, "window parameter missing, setting defaults 0:0:100000 and activating option -a");
       rd->scale = 100000;
+      render_all_nodes_ = 1;
    }
    else
    {
@@ -1173,9 +1142,6 @@ int main(int argc, char *argv[])
    // install exit handlers
    osm_read_exit();
 
-   if (rd->ovs)
-      rd->dpi *= rd->ovs;
-
    init_rd_paper(rd, paper, landscape);
    if (rd->scale > 0)
    {
@@ -1208,16 +1174,8 @@ int main(int argc, char *argv[])
       }
    }
 
-   if (rd->ovs > 1)
-   {
-      rd->fw = rd->w / rd->ovs;
-      rd->fh = rd->h / rd->ovs;
-   }
-   else
-   {
-      rd->fw = rd->w;
-      rd->fh = rd->h;
-   }
+   rd->fw = rd->w;
+   rd->fh = rd->h;
 
    init_bbox_mll(rd);
 
@@ -1227,13 +1185,15 @@ int main(int argc, char *argv[])
       exit(EXIT_SUCCESS);
    }
 
-   print_rdata(rd);
+   rdata_log();
 
    if (init_exit)
       exit(EXIT_SUCCESS);
 
    // preparing image
-   init_main_image(rd, bg);
+#ifdef HAVE_CAIRO
+   cairo_smr_init_main_image(bg);
+#endif
 
    if ((cfctl = open_osm_source(cf, 0)) == NULL)
       exit(EXIT_FAILURE);
@@ -1254,22 +1214,22 @@ int main(int argc, char *argv[])
 
    if (osm_rfile != NULL)
    {
-      traverse(rd->rules, 0, IDX_NODE, norm_rule_node, rd, NULL);
-      traverse(rd->rules, 0, IDX_WAY, norm_rule_way, rd, &rstats);
+      traverse(rd->rules, 0, IDX_NODE, norm_rule_node, NULL);
+      traverse(rd->rules, 0, IDX_WAY, norm_rule_way, &rstats);
       // FIXME: saving relation rules missing
       save_osm(osm_rfile, rd->rules, NULL, NULL);
    }
 
    log_msg(LOG_INFO, "preparing node rules");
-   if (traverse(rd->rules, 0, IDX_NODE, (tree_func_t) init_rules, rd, NULL) < 0)
+   if (traverse(rd->rules, 0, IDX_NODE, (tree_func_t) init_rules, rd) < 0)
       log_msg(LOG_ERR, "rule parser failed"),
          exit(EXIT_FAILURE);
    log_msg(LOG_INFO, "preparing way rules");
-   if (traverse(rd->rules, 0, IDX_WAY, (tree_func_t) init_rules, rd, NULL) < 0)
+   if (traverse(rd->rules, 0, IDX_WAY, (tree_func_t) init_rules, rd) < 0)
       log_msg(LOG_ERR, "rule parser failed"),
          exit(EXIT_FAILURE);
    log_msg(LOG_INFO, "preparing relation rules");
-   if (traverse(rd->rules, 0, IDX_REL, (tree_func_t) init_rules, rd, NULL) < 0)
+   if (traverse(rd->rules, 0, IDX_REL, (tree_func_t) init_rules, rd) < 0)
       log_msg(LOG_ERR, "rule parser failed"),
          exit(EXIT_FAILURE);
 
@@ -1324,7 +1284,7 @@ int main(int argc, char *argv[])
    log_debug("onode memory used: %ld kb", (long) onode_mem() / 1024);
 
    log_msg(LOG_INFO, "stripping filtered way nodes");
-   traverse(*get_objtree(), 0, IDX_WAY, (tree_func_t) strip_ways, rd, NULL);
+   traverse(*get_objtree(), 0, IDX_WAY, (tree_func_t) strip_ways, NULL);
 
    switch (gen_grid)
    {
@@ -1351,19 +1311,19 @@ int main(int argc, char *argv[])
 
       // FIXME: order rel -> way -> node?
       log_msg(LOG_INFO, " relations...");
-      traverse(rd->rules, 0, IDX_REL, (tree_func_t) apply_smrules, rd, &o);
+      traverse(rd->rules, 0, IDX_REL, (tree_func_t) apply_smrules, &o);
 #ifdef WITH_THREADS
       sm_wait_threads();
       dequeue_fini();
 #endif
       log_msg(LOG_INFO, " ways...");
-      traverse(rd->rules, 0, IDX_WAY, (tree_func_t) apply_smrules, rd, &o);
+      traverse(rd->rules, 0, IDX_WAY, (tree_func_t) apply_smrules, &o);
 #ifdef WITH_THREADS
       sm_wait_threads();
       dequeue_fini();
 #endif
       log_msg(LOG_INFO, " nodes...");
-      traverse(rd->rules, 0, IDX_NODE, (tree_func_t) apply_smrules, rd, &o);
+      traverse(rd->rules, 0, IDX_NODE, (tree_func_t) apply_smrules, &o);
 #ifdef WITH_THREADS
       sm_wait_threads();
       dequeue_fini();
@@ -1378,22 +1338,20 @@ int main(int argc, char *argv[])
    hpx_free(cfctl);
 
    log_debug("freeing main objects");
-   traverse(*get_objtree(), 0, IDX_REL, free_objects, rd, NULL);
-   traverse(*get_objtree(), 0, IDX_WAY, free_objects, rd, NULL);
-   traverse(*get_objtree(), 0, IDX_NODE, free_objects, rd, NULL);
+   traverse(*get_objtree(), 0, IDX_REL, free_objects, NULL);
+   traverse(*get_objtree(), 0, IDX_WAY, free_objects, NULL);
+   traverse(*get_objtree(), 0, IDX_NODE, free_objects, NULL);
 
    log_debug("freeing rule objects");
-   traverse(rd->rules, 0, IDX_REL, (tree_func_t) free_rules, rd, NULL);
-   traverse(rd->rules, 0, IDX_WAY, (tree_func_t) free_rules, rd, NULL);
-   traverse(rd->rules, 0, IDX_NODE, (tree_func_t) free_rules, rd, NULL);
+   traverse(rd->rules, 0, IDX_REL, (tree_func_t) free_rules, NULL);
+   traverse(rd->rules, 0, IDX_WAY, (tree_func_t) free_rules, NULL);
+   traverse(rd->rules, 0, IDX_NODE, (tree_func_t) free_rules, NULL);
 
    log_debug("freeing main object tree");
    bx_free_tree(*get_objtree());
    log_debug("freeing rules tree");
    bx_free_tree(rd->rules);
 
-   // FIXME: this is done before reduce_resolution() because mk_paper_coords()
-   // used in cut_tile() (smrules.c) referes to the rendering resolution.
    if (ti.path != NULL)
    {
       log_msg(LOG_INFO, "creating tiles in directory %s", ti.path);
@@ -1404,18 +1362,26 @@ int main(int argc, char *argv[])
       }
    }
 
-   if (rd->ovs > 1)
-      reduce_resolution(rd);
-
    if (img_file != NULL)
    {
-      if ((f = fopen(img_file, "w")) == NULL)
-         log_msg(LOG_ERR, "error opening file %s: %s", img_file, strerror(errno));
-      else
+      if ((f = fopen(img_file, "w")) != NULL)
       {
-         save_main_image(rd, f);
+         save_main_image(f, FTYPE_PNG);
          fclose(f);
       }
+      else
+         log_msg(LOG_ERR, "error opening file %s: %s", img_file, strerror(errno));
+   }
+
+   if (pdf_file != NULL)
+   {
+      if ((f = fopen(pdf_file, "w")) != NULL)
+      {
+         save_main_image(f, FTYPE_PDF);
+         fclose(f);
+      }
+      else
+         log_msg(LOG_ERR, "error opening file %s: %s", pdf_file, strerror(errno));
    }
 
    if (kap_file != NULL)

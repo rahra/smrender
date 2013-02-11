@@ -62,7 +62,7 @@ int bs_advance2(bstring_t *b)
  */
 int bs_ncmp(bstring_t b, const char *s, int n)
 {
-   if ((b.len < n) || (strlen(s) < n))
+   if ((b.len < n) || ((int) strlen(s) < n))
       return -2;
    return strncmp(b.buf, s, n);
 }

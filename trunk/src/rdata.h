@@ -23,19 +23,19 @@
 #endif
 #include <stdint.h>
 
+#include "smrender.h"
+#include "bxtree.h"
+
+
 // maximum number if different rule versions (processing iterations)
 #define MAX_ITER 8
-//#define MAX_COLOR 32
 
 
-/*#ifdef HAVE_GD
-typedef gdImage image_t;
-#else
-typedef void image_t;
-#endif*/
-#ifndef image_t
-#define image_t void
-#endif
+typedef enum
+{
+   U_MM, U_PX, U_PT, U_IN
+} unit_t;
+
 
 struct bbox
 {
@@ -44,8 +44,6 @@ struct bbox
 
 struct dstats
 {
-   //struct coord lu;  // left upper
-   //struct coord rb;  // right bottom
    struct bbox bb;
    long ncnt, wcnt, rcnt;
    int64_t min_nid;
@@ -59,8 +57,6 @@ struct dstats
 
 struct rdata
 {
-   // root node of objects (nodes and ways)
-//   bx_node_t *obj;
    // root nodes of node rules and way rules
    bx_node_t *rules;
    // bounding box (left lower and right upper coordinates)
@@ -78,8 +74,6 @@ struct rdata
    int fw, fh;
    // pixel resolution
    int dpi;
-   // oversampling factor
-   int ovs;
    // scale
    double scale;
    // node/way stats
@@ -88,14 +82,31 @@ struct rdata
    char *cmdline;
    // chart title
    char *title;
-
-   // ***** this is libgd2 specific ***** 
-   // pointer to image data
-   //image_t *img;
-   // image colors
-   //int col[MAX_COLOR];
 };
 
+
+double mm2ptf(double);
+double mm2pxf(double);
+int mm2pxi(double);
+double px2mm(double);
+void pxf2geo(double, double, double*, double*);
+void geo2pt(double, double, double*, double*);
+void geo2pxf(double, double, double*, double*);
+void geo2pxi(double, double, int*, int*);
+#define mk_paper_coords(p0, p1, p2, p3, p4) geo2pxi(p1, p0, p3, p4)
+double mm2lat(double);
+double mm2lon(double);
+
+
+struct rdata *rdata_get(void);
+#define get_rdata rdata_get
+void rdata_log(void);
+double rdata_px_unit(double, unit_t);
+double rdata_width(unit_t);
+double rdata_height(unit_t);
+int rdata_dpi(void);
+double rdata_square_nm(void);
+int is_on_page(const struct coord *);
 
 #endif
 
