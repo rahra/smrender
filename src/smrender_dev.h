@@ -22,8 +22,8 @@
 #include "config.h"
 #endif
 #include <stdint.h>
-#ifdef HAVE_GD
-#include <gd.h>
+#ifdef HAVE_CAIRO
+#include <cairo.h>
 #endif
 #include <regex.h>
 
@@ -38,12 +38,6 @@
 #include "lists.h"
 #include "libhpxml.h"
 
-
-/*#ifdef HAVE_GD
-typedef gdImage image_t;
-#else
-typedef void image_t;
-#endif*/
 
 #define EXIT_NORULES 128
 #define EXIT_NODATA 129
@@ -85,16 +79,20 @@ typedef void image_t;
 #define MAX_SHAPE_PCOUNT 2000
 
 // convert mm to pixels
-#define MM2PX(x) round((double) (x) * rd->dpi / 25.4)
-// convert mm to points (pt)
-#define MM2PT(x) round((double) (x) * 72.72 / 25.4)
+#define MM2PX(x) mm2pxi(x)
+// convert mm to pdf points (pt)
+#define MM2PT(x) round((double) (x) * 72.0 / 25.4)
 // convert pixels to mm
-#define PX2MM(x) ((double) (x) * 25.4 / rd->dpi)
+#define PX2MM(x) px2mm(x)
 // convert mm to degrees
 #define MM2LAT(x) ((x) * (rd->bb.ru.lat - rd->bb.ll.lat) / PX2MM(rd->h))
 #define MM2LON(x) ((x) * (rd->bb.ru.lon - rd->bb.ll.lon) / PX2MM(rd->w))
 // default oversampling factor
+#ifdef HAVE_CAIRO
+#define DEFAULT_OVS 1
+#else
 #define DEFAULT_OVS 2
+#endif
 
 #define MIN_ID 0xffffff0000000000LL
 #define MAX_ID INT64_MAX
@@ -104,7 +102,12 @@ typedef void image_t;
 
 #define JPG_QUALITY 80
 
-typedef int (*tree_func_t)(osm_obj_t*, struct rdata*, void*);
+#define FTYPE_PNG 0
+#define FTYPE_JPG 1
+#define FTYPE_PDF 2
+
+
+typedef int (*tree_func_t)(osm_obj_t*, void*);
 
 // indexes to object tree
 enum {IDX_NODE, IDX_WAY, IDX_REL};
@@ -124,7 +127,12 @@ struct actImage
 {
    double angle;
    struct auto_rot rot;
-   gdImage *img;
+   //image_t *img;
+#ifdef HAVE_CAIRO
+   cairo_surface_t *img;
+   double w, h;
+   cairo_t *ctx;
+#endif
 };
 
 struct cap_data
@@ -137,19 +145,6 @@ struct cap_data
    int offset;
 };
 
-struct font_metric
-{
-                  // Libgd does not directly provide access to font metrics.
-                  // Thus it is retrieved in a special way which was found at
-                  // http://search.cpan.org/~lds/GD-2.46/GD/Simple.pm and was
-                  // slightly adapted.
-  int xheight;    // the base height of the font from the bottom to the top of a lowercase 'm'
-  int ascent;     // the length of the upper stem of the lowercase 'd'
-  int descent;    // the length of the lower step of the lowercase 'g'
-  int lineheight; // the distance from the bottom of the 'g' to the top of the 'd'
-  int leading;    // the distance between two adjacent lines
-};
-
 struct actCaption
 {
    short pos;        // position, or'd POS_x macros
@@ -160,9 +155,9 @@ struct actCaption
    double angle;     // angle to rotate caption. 0 degress equals east,
                      // counterclockwise. NAN means auto-rotate
    struct auto_rot rot;
-   list_t *list;
-   image_t *img;
-   struct font_metric fm;
+#ifdef HAVE_CAIRO
+   cairo_t *ctx;
+#endif
 };
 
 struct drawStyle
@@ -180,6 +175,9 @@ struct actDraw
    int directional;
    int collect_open;
    struct wlist *wl;
+#ifdef HAVE_CAIRO
+   cairo_t *ctx;
+#endif
 };
 
 struct act_shape
@@ -217,7 +215,7 @@ struct file
 
 
 /* smrender.c */
-int traverse(const bx_node_t*, int, int, tree_func_t, struct rdata*, void*);
+int traverse(const bx_node_t*, int, int, tree_func_t, void*);
 int print_onode(FILE *, const osm_obj_t*);
 int col_freq(struct rdata *, int, int, int, int, double, int);
 int cf_dist(struct rdata *, int, int, int, int, double, int, int);
@@ -236,7 +234,7 @@ void set_util_rd(struct rdata*);
 int put_object0(bx_node_t**, int64_t, void*, int);
 void *get_object0(bx_node_t*, int64_t, int);
 int coord_str(double, int, char*, int);
-long inline col_cmp(int, int);
+inline long col_cmp(int, int);
 int func_name(char*, int, void*);
 int strcnt(const char*, int);
 
@@ -250,15 +248,22 @@ int is_closed_poly(const osm_way_t*);
 void init_cat_poly(struct rdata*);
 
 /* smrules.c */
-void init_main_image(struct rdata*, const char*);
-void save_main_image(struct rdata*, FILE*);
-//int get_color(const struct rdata*, int, int, int, int);
-int get_pixel(struct rdata*, int , int );
-void reduce_resolution(struct rdata *);
+void cairo_smr_init_main_image(const char*);
+int cairo_smr_get_pixel(cairo_surface_t*, int, int);
+#ifdef HAVE_CAIRO
+void save_main_image(FILE*, int);
 void *create_tile(void);
 void delete_tile(void *);
 void cut_tile(const struct bbox *, void *);
 int save_image(const char *, void *, int);
+void *cairo_smr_image_surface_from_bg(void);
+#else
+#define save_main_image(a, b)
+#define create_tile() NULL
+#define delete_tile(a)
+#define cut_tile(a, b)
+#define save_image(a, b, x) 0
+#endif
 
 /* smlog.c */
 FILE *init_log(const char*, int);
@@ -269,7 +274,7 @@ int get_color(int);
 int parse_color(const char *);
 int parse_style(const char *s);
 int parse_matchtype(bstring_t*, struct specialTag*);
-int init_rules(osm_obj_t*, struct rdata*, void*);
+int init_rules(osm_obj_t*, void*);
 fparam_t **parse_fparam(char*);
 void free_fparam(fparam_t **);
 
@@ -298,5 +303,4 @@ int sm_is_threaded(const smrule_t *);
 int create_tiles(const char *, const struct rdata *, int , int );
 
 #endif
-
 

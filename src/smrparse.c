@@ -109,7 +109,7 @@ short ppos(const char *s)
    int i;
    short pos = 0;
 
-   for (i = 0; i < strlen(c); i++)
+   for (i = 0; i < (int) strlen(c); i++)
       if (strchr(s, c[i]) != NULL)
          pos |= p[i];
 
@@ -241,7 +241,7 @@ char *skipb(char *s)
 }
 
 
-int init_rules(osm_obj_t *o, struct rdata *rd, void *p)
+int init_rules(osm_obj_t *o, void *p)
 {
    char *s, *t, *func, buf[1024];
    smrule_t *rl;
@@ -250,7 +250,7 @@ int init_rules(osm_obj_t *o, struct rdata *rd, void *p)
 
    log_debug("initializing rule 0x%016lx", o->id);
 
-   rl = alloc_rule(rd, o);
+   rl = alloc_rule(p, o);
    rl->oo = o;
    rl->data = NULL;
    memset(rl->act, 0, sizeof(*rl->act));

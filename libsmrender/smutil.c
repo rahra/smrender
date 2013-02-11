@@ -317,7 +317,7 @@ int coord_str(double c, int lat_lon, char *buf, int len)
 }
 
 
-long inline col_cmp(int c1, int c2)
+inline long col_cmp(int c1, int c2)
 {
    return SQRL(RED(c1) - RED(c2)) + SQRL(GREEN(c1) - GREEN(c2)) + SQRL(BLUE(c1) - BLUE(c2));
 }
@@ -333,7 +333,7 @@ int func_name(char *buf, int size, void *sym_addr)
 
    if (dli.dli_sname == NULL && size)
       *buf = '\0';
-   else if (strlen(dli.dli_sname) >= size)
+   else if ((int) strlen(dli.dli_sname) >= size)
       strncpy(buf, dli.dli_sname, size - 1), 
          buf[size - 1] = '\0';
    else

@@ -25,6 +25,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <signal.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 
@@ -181,19 +182,23 @@ int act_out_fini(smrule_t *r)
 
 /*! Calculate the area and the centroid of a closed polygon.
  *  @param w Pointer to closed polygon.
- *  @param c Pointer to struct coord which will receive the coordinates of the
- *  centroid.
- *  @param ar Pointer to variable which will receive the area of the polygon.
- *  If ar is positive, the nodes of the polygon are order counterclockwise, if
- *  ar is negative they are ordered clockwise.
+ *  @param center Pointer to struct coord which will receive the coordinates of the
+ *  centroid. It may be NULL.
+ *  @param area Pointer to variable which will receive the area of the polygon.
+ *  If area is positive, the nodes of the polygon are order counterclockwise, if
+ *  area is negative they are ordered clockwise.
  *  The result is the area measured in nautical square miles.
  *  @return Returns 0 on success, -1 on error.
  */
-int poly_area(const osm_way_t *w, struct coord *c, double *ar)
+int poly_area(const osm_way_t *w, struct coord *center, double *area)
 {
-   double f, x[2];
+   struct coord c;
+   double f, x[2], ar;
    osm_node_t *n[2];
    int i;
+
+   if (center == NULL && area == NULL)
+      return 0;
 
    if (!is_closed_poly(w))
    {
@@ -207,9 +212,9 @@ int poly_area(const osm_way_t *w, struct coord *c, double *ar)
       return -1;
    }
 
-   *ar = 0;
-   c->lat = 0;
-   c->lon = 0;
+   ar = 0;
+   c.lat = 0;
+   c.lon = 0;
 
    for (i = 0; i < w->ref_cnt - 1; i++)
    {
@@ -223,15 +228,21 @@ int poly_area(const osm_way_t *w, struct coord *c, double *ar)
       x[0] = n[0]->lon * cos(DEG2RAD(n[0]->lat));
       x[1] = n[1]->lon * cos(DEG2RAD(n[1]->lat));
       f = x[0] * n[1]->lat - x[1] * n[0]->lat;
-      c->lon += (x[0] + x[1]) * f;
-      c->lat += (n[0]->lat + n[1]->lat) * f;
-      *ar += f;
+      c.lon += (x[0] + x[1]) * f;
+      c.lat += (n[0]->lat + n[1]->lat) * f;
+      ar += f;
       //log_debug("%d %f %f %f %f %f %f %f/%f %f/%f", i, f, sx, sy, cx, cy, ar, n[0]->nd.lon, n[0]->nd.lat, n[1]->nd.lon, n[1]->nd.lat);
    }
 
-   c->lat /= 3.0 * *ar;
-   c->lon /= 3.0 * *ar * cos(DEG2RAD(c->lat));
-   *ar = *ar * 1800.0;
+   c.lat /= 3.0 * ar;
+   c.lon /= 3.0 * ar * cos(DEG2RAD(c.lat));
+   ar = ar * 1800.0;
+
+   if (center != NULL)
+      *center = c;
+
+   if (area != NULL)
+      *area = ar;
 
    return 0;
 }
@@ -244,7 +255,7 @@ int act_poly_area_ini(smrule_t *r)
 }
 
 
-int act_poly_area_main(smrule_t *r, osm_way_t *w)
+int act_poly_area_main(smrule_t * UNUSED(r), osm_way_t *w)
 {
    double ar;
    struct otag *ot;
@@ -281,7 +292,7 @@ int act_poly_centroid_ini(smrule_t *r)
 }
 
 
-int act_poly_centroid_main(smrule_t *r, osm_way_t *w)
+int act_poly_centroid_main(smrule_t * UNUSED(r), osm_way_t *w)
 {
    struct coord c;
    double ar;
@@ -317,7 +328,7 @@ int act_poly_centroid_main(smrule_t *r, osm_way_t *w)
 }
 
 
-int act_reverse_way_main(smrule_t *r, osm_way_t *w)
+int act_reverse_way_main(smrule_t * UNUSED(r), osm_way_t *w)
 {
    int i;
    int64_t ref;
@@ -353,13 +364,13 @@ int set_way_direction(osm_way_t *w, int dir)
 }
 
 
-int act_set_ccw_main(smrule_t *r, osm_way_t *w)
+int act_set_ccw_main(smrule_t * UNUSED(r), osm_way_t *w)
 {
    return set_way_direction(w, DIR_CCW);
 }
 
 
-int act_set_cw_main(smrule_t *r, osm_way_t *w)
+int act_set_cw_main(smrule_t * UNUSED(r), osm_way_t *w)
 {
    return set_way_direction(w, DIR_CW);
 }
@@ -428,7 +439,6 @@ int act_set_tags_main(smrule_t *r, osm_obj_t *o)
 
 int act_shape_ini(smrule_t *r)
 {
-   struct rdata *rd = get_rdata();
    struct act_shape *as;
    double pcount = 0.0;
    char *s = "";
@@ -509,7 +519,7 @@ int act_shape_ini(smrule_t *r)
 
 void shape_node(const struct act_shape *as, const osm_node_t *n)
 {
-   rdata_t *rd = get_rdata();
+   struct rdata *rd = get_rdata();
    osm_node_t *nd[as->pcount];
    double radius, angle, angle_step;
    osm_way_t *w;
@@ -800,7 +810,7 @@ int dist_median(const osm_way_t *w, double *median)
 }
 
 
-int act_dist_median_main(smrule_t *r, osm_way_t *w)
+int act_dist_median_main(smrule_t * UNUSED(r), osm_way_t *w)
 {
    struct otag *ot;
    char buf[32];
@@ -907,7 +917,7 @@ int act_diff_ini(smrule_t *r)
 }
 
 
-int obj_exists(osm_obj_t *o, struct rdata *rd, struct out_handle *oh)
+int obj_exists(osm_obj_t *o, struct out_handle *oh)
 {
    if (get_object(o->type, o->id) == NULL)
       out0(oh, o);
@@ -925,11 +935,11 @@ int act_diff_fini(smrule_t *r)
       return -1;
 
    log_debug("traversing nodes");
-   traverse(ioh->itree, 0, IDX_NODE, (tree_func_t) obj_exists, NULL, ioh->oh);
+   traverse(ioh->itree, 0, IDX_NODE, (tree_func_t) obj_exists, ioh->oh);
    log_debug("traversing ways");
-   traverse(ioh->itree, 0, IDX_WAY, (tree_func_t) obj_exists, NULL, ioh->oh);
+   traverse(ioh->itree, 0, IDX_WAY, (tree_func_t) obj_exists, ioh->oh);
    log_debug("traversing relations");
-   traverse(ioh->itree, 0, IDX_REL, (tree_func_t) obj_exists, NULL, ioh->oh);
+   traverse(ioh->itree, 0, IDX_REL, (tree_func_t) obj_exists, ioh->oh);
 
    r->data = ioh->oh;
    if ((e = act_out_fini(r)))
@@ -997,7 +1007,7 @@ int poly_len(const osm_way_t *w, double *dist)
 }
 
 
-int act_poly_len_main(smrule_t *r, osm_way_t *w)
+int act_poly_len_main(smrule_t * UNUSED(r), osm_way_t *w)
 {
    struct otag *ot;
    char buf[32];
@@ -1029,7 +1039,7 @@ int act_poly_len_main(smrule_t *r, osm_way_t *w)
  * running). With this one can force previous _main functions to have finished
  * before the next action is executed.
  */
-int act_sync_threads_ini(smrule_t *r)
+int act_sync_threads_ini(smrule_t * UNUSED(r))
 {
    return 0;
 }
@@ -1060,7 +1070,7 @@ static int parse_id(smrule_t *r)
 
 /*! Disable object, i.e. set visibility to 0.
  */
-int act_disable_main(smrule_t *r, osm_obj_t *o)
+int act_disable_main(smrule_t * UNUSED(r), osm_obj_t *o)
 {
    o->vis = 0;
    return 0;
@@ -1069,7 +1079,7 @@ int act_disable_main(smrule_t *r, osm_obj_t *o)
 
 /*! Enable object, i.e. set visibility to 1.
  */
-int act_enable_main(smrule_t *r, osm_obj_t *o)
+int act_enable_main(smrule_t * UNUSED(r), osm_obj_t *o)
 {
    o->vis = 1;
    return 0;
@@ -1082,7 +1092,7 @@ int act_enable_rule_ini(smrule_t *r)
 }
 
 
-int act_enable_rule_main(smrule_t *r, osm_obj_t *o)
+int act_enable_rule_main(smrule_t *r, osm_obj_t * UNUSED(o))
 {
    return act_enable_main(r, r->data);
 }
@@ -1094,8 +1104,55 @@ int act_disable_rule_ini(smrule_t *r)
 }
 
 
-int act_disable_rule_main(smrule_t *r, osm_obj_t *o)
+int act_disable_rule_main(smrule_t *r, osm_obj_t * UNUSED(o))
 {
    return act_disable_main(r, r->data);
+}
+
+
+static void bbox_min_max(const struct coord *cd, struct bbox *bb)
+{
+   if (cd->lon > bb->ru.lon)
+      bb->ru.lon = cd->lon;
+   if (cd->lon < bb->ll.lon)
+      bb->ll.lon = cd->lon;
+   if (cd->lat > bb->ru.lat)
+      bb->ru.lat = cd->lat;
+   if (cd->lat < bb->ll.lat)
+      bb->ll.lat = cd->lat;
+}
+
+
+void bbox_way(const osm_way_t *w, struct bbox *bb)
+{
+   struct coord cd;
+   osm_node_t *n;
+   int i;
+
+   if (w == NULL || bb == NULL)
+      return;
+
+   bb->ru.lon = -180;
+   bb->ll.lon = 180;
+   bb->ru.lat = -90;
+   bb->ll.lat = 90;
+
+   for (i = 0; i < w->ref_cnt; i++)
+   {
+      if ((n = get_object(OSM_NODE, w->ref[i])) == NULL)
+      {
+         log_msg(LOG_WARN, "node %ld in way %ld does not exist", (long) w->ref[i], (long) w->obj.id);
+         continue;
+      }
+      cd.lat = n->lat;
+      cd.lon = n->lon;
+      bbox_min_max(&cd, bb);
+   }
+}
+
+
+int act_exit_main(smrule_t * UNUSED(r), osm_obj_t * UNUSED(o))
+{
+   return raise(SIGINT);
 }
 

@@ -222,7 +222,7 @@ int create_tiles(const char *tile_path, const struct rdata *rd, int zoom, int ft
 #define NTILES "neighbor_tiles"
 
 
-int act_neighbortile_ini(smrule_t *r)
+int act_neighbortile_ini(smrule_t * UNUSED(r))
 {
    if (check_dir_i(NTILES, -1))
       return -1;
@@ -285,7 +285,7 @@ static int write_tile_conf(int x, int y)
 }
 
 
-int act_neighbortile_main(smrule_t *r, osm_way_t *w)
+int act_neighbortile_main(smrule_t * UNUSED(r), osm_way_t *w)
 {
    int x, y;
 

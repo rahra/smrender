@@ -172,7 +172,7 @@ static struct color_def color_def_[] =
 };
 
 
-#define MAXCOLOR (sizeof(color_def_) / sizeof(struct color_def) - 1)
+#define MAXCOLOR ((int) (sizeof(color_def_) / sizeof(struct color_def) - 1))
 
 #endif
 
