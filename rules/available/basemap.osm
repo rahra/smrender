@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <osm version='0.6'>
    <node>
-      <tag k='_action_' v='cap:font=sans-serif:italic;size=1.4;angle=auto;auto-color=white;key=name'/>
+      <tag k='_action_' v='cap:font=sans-serif:italic;size=1.4;angle=auto;halign=east;key=name'/>
       <tag k='natural' v='bay'/>
    </node>
 
