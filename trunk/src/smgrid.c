@@ -296,8 +296,10 @@ void geo_legend(struct rdata *rd, const struct grid *grd)
    s = strdup(buf);
    geo_description(rd->bb.ru.lat - MM2LAT(grd->g_margin), rd->bb.ll.lon + rd->wc / 2, s, "top");
    geo_description(rd->bb.ru.lat - MM2LAT(grd->g_margin), rd->bb.ll.lon + MM2LON(grd->g_margin), rd->title, "title");
-   geo_description(rd->bb.ll.lat + MM2LAT(grd->g_margin + grd->g_tw + grd->g_stw), rd->bb.ll.lon + rd->wc / 2, "Generated with " PACKAGE_STRING ", author Bernhard R. Fischer, 2048R/5C5FFD47 <bf@abenteuerland.at>, data source: OSM.", "copyright");
-   geo_description(rd->bb.ll.lat + MM2LAT(grd->g_margin - grd->g_tw), rd->bb.ll.lon + rd->wc / 2, rd->cmdline, "copyright");
+   if (grd->copyright)
+      geo_description(rd->bb.ll.lat + MM2LAT(grd->g_margin + grd->g_tw + grd->g_stw), rd->bb.ll.lon + rd->wc / 2, "Generated with " PACKAGE_STRING ", author Bernhard R. Fischer, 2048R/5C5FFD47 <bf@abenteuerland.at>, data source: OSM.", "copyright");
+   if (grd->cmdline)
+      geo_description(rd->bb.ll.lat + MM2LAT(grd->g_margin - grd->g_tw), rd->bb.ll.lon + rd->wc / 2, rd->cmdline, "copyright");
 }
 
 /*! ...
@@ -334,6 +336,8 @@ void init_grid(struct grid *grd)
    grd->g_margin = G_MARGIN;
    grd->g_tw = G_TW;
    grd->g_stw = G_STW;
+   grd->copyright = 1;
+   grd->cmdline = 1;
 }
 
 
@@ -386,6 +390,9 @@ int act_grid_ini(smrule_t *r)
    (void) get_param("subticks", &sticks, r->act);
    if (sticks > 0.0)
       grd.lat_sticks = grd.lon_sticks = MIN2DEG(sticks);
+
+   (void) get_parami("copyright", &grd.copyright, r->act);
+   (void) get_parami("cmdline", &grd.cmdline, r->act);
 
    grid(rd, &grd);
 

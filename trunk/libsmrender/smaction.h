@@ -33,6 +33,8 @@
 #define SPECIAL_MASK 0x00ff
 
 #define ACTION_THREADED 1
+#define ACTION_OPEN_WAY -1
+#define ACTION_CLOSED_WAY 1
 
 #define TM_RESCALE 100
 #define T_RESCALE (60 * TM_RESCALE)
@@ -95,8 +97,9 @@ struct action
    char *parm;       // function argument string
    fparam_t **fp;    // pointer to parsed parameter list
    short flags;      // execution control flags.
-   short tag_cnt;
    short finished;   // set to 1 after _fini was called, otherwise 0
+   short way_type;   // -1 if open, 0 in any case, 1 of closed
+   short tag_cnt;
    struct stag stag[];
 };
 

@@ -194,6 +194,7 @@ struct grid
    double lat_sticks, lon_sticks;
    double lat_g, lon_g;
    double g_margin, g_tw, g_stw;
+   int copyright, cmdline;
 };
 
 struct filter
@@ -249,8 +250,8 @@ void init_cat_poly(struct rdata*);
 
 /* smrules.c */
 void cairo_smr_init_main_image(const char*);
-int cairo_smr_get_pixel(cairo_surface_t*, int, int);
 #ifdef HAVE_CAIRO
+int cairo_smr_get_pixel(cairo_surface_t*, int, int);
 void save_main_image(FILE*, int);
 void *create_tile(void);
 void delete_tile(void *);

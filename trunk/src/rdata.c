@@ -175,9 +175,21 @@ int rdata_dpi(void)
 }
 
 
+double rdata_square_mm(void)
+{
+   return px2mm(rd_.w) * px2mm(rd_.h);
+}
+
+
 double rdata_square_nm(void)
 {
    return rd_.mean_lat_len * rd_.hc * 3600;
+}
+
+
+double rdata_scale(void)
+{
+   return rd_.scale;
 }
 
 

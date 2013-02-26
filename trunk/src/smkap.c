@@ -47,6 +47,17 @@
 #endif
 
 
+
+typedef struct color
+{
+   int r, g, b;
+} color_t;
+
+typedef struct cbox
+{
+   color_t min, max;
+} cbox_t;
+
 struct hist_data
 {
    int col;
@@ -170,6 +181,54 @@ int gen_kap_header(FILE *f, struct rdata *rd)
    return off;
 }
 
+
+static int kap_cmp_color(const color_t *c1, const color_t *c2)
+{
+   if (c1->r < c2->r && c1->g < c2->g && c1->b < c2->b)
+      return -1;
+   if (c1->r > c2->r && c1->g > c2->g && c1->b > c2->b)
+      return 1;
+   return 0;
+}
+
+
+static void kap_set_color(color_t *ct, int col)
+{
+   ct->r = (col >> 16) & 0xff;
+   ct->g = (col >> 8) & 0xff;
+   ct->b = col & 0xff;
+}
+
+
+static void find_cbox(void *img, cbox_t *cb)
+{
+   color_t ct;
+   int x, y, c;
+
+   kap_set_color(&cb->min, 0xffffff);
+   kap_set_color(&cb->max, 0);
+#if 0
+   for (x = 0; x < cairo_width(img); x++)
+      for (y = 0; y < cairo_height(img); y++)
+      {
+         kap_set_color(&ct, get_pixel(img, x, y));
+         if (kap_cmp_color(&ct, &cb->min) < 0)
+            cb->min = ct;
+         if (kap_cmp_color(&ct, &cb->max) > 0)
+            cb->max = ct;
+      }
+#endif
+}
+
+
+static int color_reduce(void *img)
+{
+#define KAP_COLORS 127
+   cbox_t cb[KAP_COLORS];
+
+   find_cbox(img, &cb[0]);
+
+}
 
 
 static int cmp_hist(const void *h1, const void *h2)

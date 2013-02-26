@@ -56,6 +56,14 @@ int bs_advance2(bstring_t *b)
 }
 
 
+int bs_nadvance(bstring_t *b, int n)
+{
+   b->buf += n;
+   b->len -= n;
+   return b->len;
+}
+
+
 /*! bs_ncmp compares exactly n bytes of b and s. If they are equal, 0 is
  * returned. If they are not equal, the return value of strncmp(3) is returned.
  * If the string length of either is less then n, -2 is returned.
