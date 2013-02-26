@@ -1261,11 +1261,18 @@ static int cap_way(const struct actCaption *cap, osm_way_t *w, const bstring_t *
    memcpy(&tmp_cap, cap, sizeof(tmp_cap));
    if (tmp_cap.size == 0.0)
    {
-      tmp_cap.size = 80 * sqrt(fabs(ar) / rdata_square_nm());
+      log_debug("nm2 = %f, mm2 = %f, ar = %f, str = \"%.*s\"", rdata_square_nm(), rdata_square_mm(), fabs(ar), str->len, str->buf);
+      /* Papiergröße [mm2] = nm2 / (scale^2) * (1852000^2) -> seitenlänge = wurzel aus papiergröße
+       * 1 [nm2/ar] ..... 
+      fabs(ar) / pow(rdata_scale() * 2) * 3.429904E12;
+      */
+      //double pgborder = sqrt(rdata_square_mm());
+      double pgborder = 80;
+      tmp_cap.size = pgborder * sqrt(fabs(ar) / rdata_square_nm());
 #define MIN_AUTO_SIZE 0.7
 #define MAX_AUTO_SIZE 12.0
       if (tmp_cap.size < MIN_AUTO_SIZE) tmp_cap.size = MIN_AUTO_SIZE;
-      if (tmp_cap.size > MAX_AUTO_SIZE) tmp_cap.size = MAX_AUTO_SIZE;
+      if (tmp_cap.size > MAX_AUTO_SIZE) tmp_cap.size = pgborder * 0.10;
       //log_debug("r->rule.cap.size = %f (%f 1/1000)", r->rule.cap.size, r->rule.cap.size / 100 * 1000);
    }
 

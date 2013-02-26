@@ -241,6 +241,20 @@ char *skipb(char *s)
 }
 
 
+void check_way_type(smrule_t *r)
+{
+   if (r->oo->type != OSM_WAY)
+      return;
+   if (!((osm_way_t*) r->oo)->ref_cnt)
+      return;
+   if (((osm_way_t*) r->oo)->ref[0] == ((osm_way_t*) r->oo)->ref[((osm_way_t*) r->oo)->ref_cnt - 1])
+      r->act->way_type = ACTION_CLOSED_WAY;
+   else
+      r->act->way_type = ACTION_OPEN_WAY;
+   log_debug("way_type = %s", r->act->way_type == ACTION_CLOSED_WAY ? "ACTION_CLOSED_WAY" : "ACTION_OPEN_WAY");
+}
+
+
 int init_rules(osm_obj_t *o, void *p)
 {
    char *s, *t, *func, buf[1024];
@@ -254,6 +268,7 @@ int init_rules(osm_obj_t *o, void *p)
    rl->oo = o;
    rl->data = NULL;
    memset(rl->act, 0, sizeof(*rl->act));
+   check_way_type(rl);
 
    rl->act->tag_cnt = o->tag_cnt;
    for (i = 0; i < o->tag_cnt; i++)

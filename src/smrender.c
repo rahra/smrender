@@ -194,6 +194,23 @@ int apply_smrules0(osm_obj_t *o, smrule_t *r)
          return 0;
    }
 
+   // check if way rule applies to either areas (closed ways) or lines (open
+   // ways)
+   if (r->oo->type == OSM_WAY)
+      switch (r->act->way_type)
+      {
+         // test if it applies to areas only but way is open
+         case ACTION_CLOSED_WAY:
+            if (((osm_way_t*) o)->ref_cnt && ((osm_way_t*) o)->ref[0] != ((osm_way_t*) o)->ref[((osm_way_t*) o)->ref_cnt - 1])
+               return 0;
+            break;
+         // test if it applies to lines only but way is closed
+         case ACTION_OPEN_WAY:
+            if (((osm_way_t*) o)->ref_cnt && ((osm_way_t*) o)->ref[0] == ((osm_way_t*) o)->ref[((osm_way_t*) o)->ref_cnt - 1])
+               return 0;
+            break;
+      }
+
    for (i = 0; i < r->oo->tag_cnt; i++)
       if (bs_match_attr(o, &r->oo->otag[i], &r->act->stag[i]) == -1)
          return 0;

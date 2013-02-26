@@ -106,11 +106,17 @@
       <tag k='_action_' v='img:file=icons/Float_Green.png'/>
    </node>
    <node>
-      <tag k='seamark:type' v='light_float' />
-      <tag k='~seamark:light_float:colour~' v='' />
+      <tag k='seamark:type' v='light_float'/>
+      <tag k='~seamark:light_float:colour~' v=''/>
       <tag k='_action_' v='img:file=icons/Float.png'/>
    </node>
-
+   <node>
+      <tag k='seamark:type' v='light_float'/>
+      <tag k='seamark:light_float:colour' v='red;white'/>
+      <tag k='seamark:light_float:colour_pattern' v='vertical'/>
+      <tag k='_action_' v='img:file=icons/Safe_Water_Float.png'/>
+   </node>
+ 
    <node>
       <tag k='_action_' v='img:file=icons/Light_House.png'/>
       <tag k='/^seamark:light.*/' v=''/>
@@ -137,6 +143,16 @@
       <tag k='seamark:type' v='/beacon/'/>
       <tag k='_action_' v='img:file=icons/Top_X_Beacon.png'/>
    </node>
+   <node>
+      <tag k='seamark:topmark:shape' v='sphere'/>
+      <tag k='seamark:type' v='/float/'/>
+      <tag k='_action_' v='img:file=icons/Top_Sphere_Float.png'/>
+   </node>
+   <node>
+      <tag k='seamark:topmark:shape' v='sphere'/>
+      <tag k='seamark:type' v='/beacon/'/>
+      <tag k='_action_' v='img:file=icons/Top_Sphere_Beacon.png'/>
+   </node>
 
    <node>
       <tag k='/fog_signal/' v=''/>
@@ -156,6 +172,16 @@
       <tag k='seamark:type' v='sounding'/>
       <tag k='_action_' v='cap:font=sans-serif;size=1.6;key=seamark:sounding'/>
    </node>
+
+   <way>
+      <tag k='man_made' v='pier'/>
+      <tag k='_action_' v='draw:color=navajowhite;ignore_open=1'/>
+   </way>
+   <way>
+      <tag k='man_made' v='pier'/>
+      <tag k='_action_' v='draw:bcolor=black'/>
+   </way>
+
    <way>
       <tag k='man_made' v='breakwater'/>
       <tag k='_action_' v='draw:color=black'/>

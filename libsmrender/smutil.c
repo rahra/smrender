@@ -378,6 +378,21 @@ char *get_param(const char *attr, double *dval, const action_t *act)
 }
 
 
+char *get_parami(const char *attr, int *ival, const action_t *act)
+{
+   double f;
+   char *r;
+
+   if ((r = get_param(attr, &f, act)) == NULL)
+      return NULL;
+
+   if (ival != NULL)
+      *ival = f;
+
+   return r;
+}
+
+
 int sm_is_threaded(const smrule_t *r)
 {
    return (r->act->flags & ACTION_THREADED) != 0;
