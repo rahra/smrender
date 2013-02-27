@@ -14,12 +14,78 @@
 #define NEXT_TOKEN(x) if (!next_token(x)) return 0
 
 
+typedef struct mcss_tag
+{
+   bstring_t k;
+   bstring_t v;
+   int cmp;
+} mcss_tag_t;
+
+typedef struct mcss_obj
+{
+   int type;
+   int subtype;
+   int tag_cnt;
+   int zs, ze;
+   mcss_tag_t *tag;
+} mcss_obj_t;
+
+
 enum {CMP_NE, CMP_GE, CMP_LE, CMP_REGEX, CMP_EQ, CMP_GT, CMP_LT};
 enum {MCSS_CANVAS = OSM_REL + 1, MCSS_AREA, MCSS_LINE, MCSS_ANY};
 
 
 static const char *EMPTY_ = "";
 static const char *CMP_[] = {"!=", ">=", "<=", "=~", "=", ">", "<", NULL};
+static mcss_obj_t *stack_ = NULL;
+static int cnt_ = 0;
+
+
+static int mcss_obj_add_tag(mcss_obj_t *obj, const mcss_tag_t *tag)
+{
+   if (obj == NULL)
+      return -1;
+   if (tag == NULL)
+      return obj->tag_cnt;
+   if ((obj->tag = realloc(obj->tag, sizeof(*obj->tag) * (obj->tag_cnt + 1))) == NULL)
+      perror("realloc"), exit(EXIT_FAILURE);
+   obj->tag[obj->tag_cnt] = *tag;
+   return ++obj->tag_cnt;
+}
+
+
+static int mcss_push(const mcss_obj_t *obj)
+{
+   if (obj == NULL)
+      return cnt_;
+
+   if ((stack_ = realloc(stack_, sizeof(*stack_) * (cnt_ + 1))) == NULL)
+      perror("realloc"), exit(EXIT_FAILURE);
+
+   stack_[cnt_] = *obj;
+   return ++cnt_;
+}
+
+
+static int mcss_pop(mcss_obj_t *obj)
+{
+   if (obj == NULL)
+      return cnt_;
+
+   if (cnt_ <= 0)
+      return -1;
+
+   cnt_--;
+   *obj = stack_[cnt_];
+   return cnt_;
+}
+
+
+static void mcss_free(void)
+{
+   free(stack_);
+   stack_ = NULL;
+}
 
 
 static int line_count(char c)
@@ -88,7 +154,10 @@ static int skip_comment(bstring_t *b)
 static int skip_to_char(bstring_t *b, char c)
 {
    for (; b->len && *b->buf != c; bs_advance(b))
+   {
+      line_count(*b->buf);
       skip_comment(b);
+   }
    return b->len;
 }
 
@@ -113,7 +182,14 @@ static int next_token(bstring_t *b)
 
 static int isword(int c)
 {
-   return isalpha(c) || isdigit(c) || c == '\\' || c == '*' || c == '-' || c == '_' || c == '#';
+   return isalpha(c) || isdigit(c) || c == '\\' || c == '*' || c == '-' || c == '_' || c == '#' || c == '.' || c == '/';
+}
+
+
+static int read_number(bstring_t *src, bstring_t *dst)
+{
+   for (dst->buf = src->buf, dst->len = 0; src->len && isdigit(*src->buf); bs_advance(src), dst->len++);
+   return src->len;
 }
 
 
@@ -132,6 +208,7 @@ static int read_word(bstring_t *src, bstring_t *dst)
       default:
          delim = 0;
    }
+   // FIXME: src->len does not decrease?
    for (dst->buf = src->buf, dst->len = 0; *src->buf && isword(*src->buf) && *src->buf != delim; src->buf++, dst->len++)
    {
       // check for escape character ('\\')
@@ -172,7 +249,6 @@ static int read_cmp(bstring_t *src)
 }
 
 
-// FIXME: return value questionable
 static int read_css(bstring_t *src, bstring_t *k, bstring_t *v)
 {
    //NEXT_TOKEN(src);
@@ -184,87 +260,99 @@ static int read_css(bstring_t *src, bstring_t *k, bstring_t *v)
    NEXT_TOKEN(src);
    read_word(src, v);
    NEXT_TOKEN(src);
-   return k->len + v->len;
+   return src->len;
 }
 
 
-// FIXME: return value questionable
-static int read_tag(bstring_t *src, bstring_t *k, bstring_t *v)
+static int read_tag(bstring_t *src, mcss_tag_t *tag)
 {
-   int cmp;
-
    if (*src->buf != '[')
       return -1;
    bs_advance(src);
    NEXT_TOKEN(src);
-   read_word(src, k);
+   read_word(src, &tag->k);
    NEXT_TOKEN(src);
    if (*src->buf == ']')
    {
-      v->buf = (char*) EMPTY_;
-      v->len = 0;
+      tag->v.buf = (char*) EMPTY_;
+      tag->v.len = 0;
+      tag->cmp = CMP_EQ;
       bs_advance(src);
-      return k->len;
+      return tag->cmp;
    }
-   if ((cmp = read_cmp(src)) == -1)
+   if ((tag->cmp = read_cmp(src)) == -1)
       return -1;
    NEXT_TOKEN(src);
-   read_word(src, v);
+   read_word(src, &tag->v);
    NEXT_TOKEN(src);
    if (*src->buf != ']')
       return -1;
    bs_advance(src);
 
-   return k->len + v->len;
+   return tag->cmp;
+}
+
+
+static int osm_xml_tag(int type, int open)
+{
+   char *s = open ? (char*) EMPTY_ : "/";
+
+   switch (type)
+   {
+      case OSM_NODE:
+         return printf("<%snode>\n", s);
+      case OSM_WAY:
+         return printf("<%sway>\n", s);
+      case OSM_REL:
+         return printf("<%srelation>\n", s);
+      default:
+         return printf("<!-- no OSM/XML tag for type %d -->\n", type);
+   }
 }
 
 
 static int close_osm_node(int type)
 {
-   switch (type)
-   {
-      case OSM_NODE:
-         return printf("</node>\n");
-      case OSM_WAY:
-         return printf("</way>\n");
-      case OSM_REL:
-         return printf("</relation>\n");
-      default:
-         return printf("<!-- no closing tag for type %d -->\n", type);
-   }
+   return osm_xml_tag(type, 0);
 }
 
 
-static int open_osm_node(bstring_t b)
+static int open_osm_node(int type)
+{
+   return osm_xml_tag(type, 1);
+}
+
+
+static int parse_osm_node(bstring_t b)
 {
    if (!bs_cmp(b, "way"))
    {
-      printf("<way>\n");
+      //printf("<way>\n");
       return OSM_WAY;
    }
    if (!bs_cmp(b, "node"))
    {
-      printf("<node>\n");
+      //printf("<node>\n");
       return OSM_NODE;
    }
    if (!bs_cmp(b, "canvas"))
    {
-      printf("<!-- canvas -->\n");
+      //printf("<!-- canvas -->\n");
       return MCSS_CANVAS;
    }
    if (!bs_cmp(b, "line"))
    {
-      printf("<!-- line -->\n");
+      //printf("<!-- line -->\n");
       return MCSS_LINE;
    }
    if (!bs_cmp(b, "area"))
    {
-      printf("<!-- area -->\n");
+      //printf("<!-- area -->\n");
       return MCSS_AREA;
    }
    if (!bs_cmp(b, "*"))
    {
-      printf("<!-- * -->\n");
+      //printf("<!-- * -->\n");
       return MCSS_ANY;
    }
    return -1;
@@ -293,43 +381,166 @@ static int bs_safe_put_xml(FILE *f, const bstring_t *b)
 }
 
 
-static int print_osm_tag(const bstring_t *k, const bstring_t *v)
+//static int print_osm_tag(const bstring_t *k, const bstring_t *v, int cmp)
+static int print_osm_tag(const mcss_tag_t *tag)
 {
+   char *sc, *ec;
    int l;
 
-   l = printf("<tag k=\"");
-   l += bs_safe_put_xml(stdout, k);
-   l += printf("\" v=\"");
-   l += bs_safe_put_xml(stdout, v);
-   l += printf("\"/>\n");
+   switch (tag->cmp)
+   {
+      case CMP_REGEX:
+         sc = ec = "/";
+         break;
+      case CMP_LT:
+      case CMP_LE:
+         sc = "[";
+         ec = "]";
+         break;
+      case CMP_GT:
+      case CMP_GE:
+         sc = "]";
+         ec = "[";
+         break;
+      case CMP_NE:
+         sc = ec = "~";
+         break;
+      default:
+         sc = ec = (char*) EMPTY_;
+   }
+
+
+   l = printf("   <tag k=\"");
+   l += bs_safe_put_xml(stdout, &tag->k);
+   l += printf("\" v=\"%s", sc);
+   l += bs_safe_put_xml(stdout, &tag->v);
+   l += printf("%s\"/>\n", ec);
    return l;
 }
 
 
-static int read_mcss_elem(bstring_t *src)
+static int print_action(mcss_tag_t *tag, int cnt)
 {
-   bstring_t b, k, v;
-   int e, t;
+   int l = 0;
 
+   l += printf("   <tag k=\"_action_\" v=\"mapcss:");
+   for (; cnt; tag++, cnt--)
+   {
+      l += printf("%.*s=%.*s;", tag->k.len, tag->k.buf, tag->v.len, tag->v.buf);
+#if 0
+      if (!bs_cmp(tag->k, "fill-color"))
+      {
+         l += printf("   <tag k=\"_action_\" v=\"draw:color=%.*s\"/>\n", tag->v.len, tag->v.buf);
+      }
+      else
+         l += printf("   <!-- %.*s: %.*s -->\n", tag->k.len, tag->k.buf, tag->v.len, tag->v.buf);
+#endif
+   }
+   l += printf("\"/>\n");
+
+   return l;
+}
+
+
+static int print_zoom(int zs, int ze)
+{
+   return printf("   <tag k=\"zoom:start\" v=\"%d\"/>\n   <tag k=\"zoom:end\" v=\"%d\"/>\n", zs, ze);
+}
+
+
+static int read_mcss_obj(bstring_t *src)
+{
+   mcss_obj_t obj;
+   mcss_tag_t tag;
+   bstring_t b;
+   int e;
+
+   memset(&obj, 0, sizeof(obj));
    NEXT_TOKEN(src);
-
    if ((e = read_word(src, &b)) <= 0)
       return e;
 
-   if ((t = open_osm_node(b)) == -1)
+   if ((obj.type = parse_osm_node(b)) == -1)
       return -1;
+
+   // ignore zoom levels
+   if (*src->buf == '|')
+   {
+      bs_advance(src);
+      NEXT_TOKEN(src);
+      if (*src->buf != 'z')
+         return -1;
+      bs_advance(src);
+      if (*src->buf != '-')
+      {
+         if (read_number(src, &b) <= 0)
+            return -1;
+         obj.zs = bs_tol(b);
+         NEXT_TOKEN(src);
+      }
+      if (*src->buf != '-')
+      {
+         obj.ze = obj.zs;
+      }
+      else
+      {
+         bs_advance(src);
+         NEXT_TOKEN(src);
+         if (read_number(src, &b) <= 0)
+            return -1;
+         obj.ze = bs_tol(b);
+         NEXT_TOKEN(src);
+      }
+   }
 
    NEXT_TOKEN(src);
 
-   if (t != MCSS_CANVAS)
+   if (obj.type != MCSS_CANVAS)
    {
       for (; *src->buf == '[';)
       {
-         if ((e = read_tag(src, &k, &v)) <= 0)
-            return e;
-         print_osm_tag(&k, &v);
+         if (read_tag(src, &tag) <= 0)
+            return tag.cmp;
+         //print_osm_tag(&k, &v, e);
+         mcss_obj_add_tag(&obj, &tag);
          NEXT_TOKEN(src);
       }
+   }
+
+   // ignore area
+   if (*src->buf == ':')
+   {
+      bs_advance(src);
+      NEXT_TOKEN(src);
+      if (bs_ncmp(*src, "area", 4))
+      {
+         fprintf(stderr, "*** unknown token \"%.*s\" in line %d\n", 4, src->buf, line_count(0));
+         return -1;
+      }
+      obj.subtype = MCSS_AREA;
+      bs_nadvance(src, 4);
+      NEXT_TOKEN(src);
+   }
+
+   mcss_push(&obj);
+   return src->len;
+}
+
+ 
+static int read_mcss_elem(bstring_t *src)
+{
+   mcss_obj_t obj, css;
+   mcss_tag_t tag;
+   int e, i;
+
+   if ((e = read_mcss_obj(src)) <= 0)
+      return e;
+
+   while (*src->buf == ',')
+   {
+      bs_advance(src);
+      if ((e = read_mcss_obj(src)) <= 0)
+         return e;
    }
 
    if (*src->buf != '{')
@@ -337,19 +548,14 @@ static int read_mcss_elem(bstring_t *src)
    bs_advance(src);
 
    NEXT_TOKEN(src);
+   memset(&css, 0, sizeof(css));
 
    for (;*src->buf != '}';)
    {
-      if ((e = read_css(src, &k, &v)) <= 0)
+      if ((e = read_css(src, &tag.k, &tag.v)) <= 0)
          return e;
 
-      if (!bs_cmp(k, "fill-color"))
-      {
-         printf("<tag k=\"_action_\" v=\"draw:color=%.*s\"/>\n", v.len, v.buf);
-      }
-      else
-         printf("<!-- %.*s: %.*s -->\n", k.len, k.buf, v.len, v.buf);
-
+      mcss_obj_add_tag(&css, &tag);
       if (*src->buf == ';')
       {
          bs_advance(src);
@@ -363,7 +569,18 @@ static int read_mcss_elem(bstring_t *src)
       NEXT_TOKEN(src);
    }
 
-   close_osm_node(t);
+   while (mcss_pop(&obj) >= 0)
+   {
+      open_osm_node(obj.type);
+      for (i = 0; i < obj.tag_cnt; i++)
+         print_osm_tag(&obj.tag[i]);
+      print_zoom(obj.zs, obj.ze);
+      print_action(css.tag, css.tag_cnt);
+      close_osm_node(obj.type);
+      free(obj.tag);
+   }
+   free(css.tag);
+   mcss_free();
 
    return src->len;
 }
@@ -406,6 +623,9 @@ int main(int argc, char **argv)
       perror("init_read_buf"), exit(EXIT_FAILURE);
 
    parse_mcss_buf(buf);
+
+   if (munmap(buf.buf, buf.len) == -1)
+      perror("munmap"), exit(EXIT_FAILURE);
 
    return 0;
 }
