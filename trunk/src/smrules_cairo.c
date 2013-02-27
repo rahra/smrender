@@ -1327,9 +1327,9 @@ int act_img_ini(smrule_t *r)
    char *name;
    int e;
 
-   if (r->oo->type != OSM_NODE)
+   if (r->oo->type != OSM_NODE && r->oo->type != OSM_WAY)
    {
-      log_msg(LOG_WARN, "img() only applicable to nodes");
+      log_msg(LOG_WARN, "img() only applicable to nodes and ways");
       return -1;
    }
 
@@ -1358,9 +1358,27 @@ int act_img_ini(smrule_t *r)
       cairo_surface_destroy(img.img);
       return -1;
    }
-   cairo_scale(img.ctx, PX2PT_SCALE, PX2PT_SCALE);
-   cairo_push_group(img.ctx);
 
+   if (r->oo->type == OSM_NODE)
+   {
+      cairo_scale(img.ctx, PX2PT_SCALE, PX2PT_SCALE);
+   }
+   else if (r->oo->type == OSM_WAY)
+   {
+      img.pat = cairo_pattern_create_for_surface(img.img);
+      if (cairo_pattern_status(img.pat) != CAIRO_STATUS_SUCCESS)
+      {
+         log_msg(LOG_ERR, "failed to create pattern");
+         return -1;
+      }
+      cairo_matrix_t m;
+      cairo_matrix_init_scale(&m, 1/PX2PT_SCALE, 1/PX2PT_SCALE);
+      cairo_pattern_set_matrix(img.pat, &m);
+      cairo_pattern_set_extend(img.pat, CAIRO_EXTEND_REPEAT);
+      cairo_set_source(img.ctx, img.pat);
+   }
+
+   cairo_push_group(img.ctx);
    parse_auto_rot(r->act, &img.angle, &img.rot);
   
    if ((r->data = malloc(sizeof(img))) == NULL)
@@ -1378,9 +1396,19 @@ int act_img_ini(smrule_t *r)
 }
 
 
-int act_img_main(smrule_t *r, osm_node_t *n)
+int img_fill(struct actImage *img, osm_way_t *w)
 {
-   struct actImage *img = r->data;
+   if (!is_closed_poly(w))
+      return 0;
+
+   cairo_smr_poly_line(w, img->ctx);
+   cairo_fill(img->ctx);
+   return 0;
+}
+
+
+int img_place(struct actImage *img, osm_node_t *n)
+{
    double x, y, a;
    struct coord c;
 
@@ -1414,12 +1442,27 @@ int act_img_main(smrule_t *r, osm_node_t *n)
 }
 
 
+int act_img_main(smrule_t *r, osm_obj_t *o)
+{
+   if (o->type == OSM_NODE)
+      return img_place(r->data, (osm_node_t*) o);
+   if (o->type == OSM_WAY)
+      return img_fill(r->data, (osm_way_t*) o);
+
+   log_msg(LOG_WARN, "img() not applicable to object type %d", o->type);
+   return 1;
+}
+
+
 int act_img_fini(smrule_t *r)
 {
    struct actImage *img = r->data;
 
    cairo_pop_group_to_source(img->ctx);
    cairo_paint(img->ctx);
+
+   if (img->pat)
+      cairo_pattern_destroy(img->pat);
 
    cairo_destroy(img->ctx);
    cairo_surface_destroy(img->img);

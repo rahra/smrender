@@ -130,6 +130,7 @@ struct actImage
    //image_t *img;
 #ifdef HAVE_CAIRO
    cairo_surface_t *img;
+   cairo_pattern_t *pat;
    double w, h;
    cairo_t *ctx;
 #endif
