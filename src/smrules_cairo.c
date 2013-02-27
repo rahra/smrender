@@ -1377,12 +1377,19 @@ int act_img_ini(smrule_t *r)
       return -1;
    }
 
+   parse_auto_rot(r->act, &img.angle, &img.rot);
+
    if (r->oo->type == OSM_NODE)
    {
       cairo_scale(img.ctx, PX2PT_SCALE, PX2PT_SCALE);
    }
    else if (r->oo->type == OSM_WAY)
    {
+      if (isnan(img.angle))
+      {
+         log_msg(LOG_NOTICE, "ignoring angle=auto");
+         img.angle = 0;
+      }
       img.pat = cairo_pattern_create_for_surface(img.img);
       if (cairo_pattern_status(img.pat) != CAIRO_STATUS_SUCCESS)
       {
@@ -1391,13 +1398,13 @@ int act_img_ini(smrule_t *r)
       }
       cairo_matrix_t m;
       cairo_matrix_init_scale(&m, 1/PX2PT_SCALE, 1/PX2PT_SCALE);
+      cairo_matrix_rotate(&m, DEG2RAD(img.angle));
       cairo_pattern_set_matrix(img.pat, &m);
       cairo_pattern_set_extend(img.pat, CAIRO_EXTEND_REPEAT);
       cairo_set_source(img.ctx, img.pat);
    }
 
    cairo_push_group(img.ctx);
-   parse_auto_rot(r->act, &img.angle, &img.rot);
   
    if ((r->data = malloc(sizeof(img))) == NULL)
    {
