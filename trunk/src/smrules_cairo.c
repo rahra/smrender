@@ -1323,6 +1323,8 @@ int act_cap_fini(smrule_t *r)
  
 int act_img_ini(smrule_t *r)
 {
+   cairo_surface_t *sfc;
+   cairo_t *ctx;
    struct actImage img;
    char *name;
    int e;
@@ -1340,16 +1342,32 @@ int act_img_ini(smrule_t *r)
    }
 
    memset(&img, 0, sizeof(img));
-   img.img = cairo_image_surface_create_from_png(name);
+
+   if (get_param("scale", &img.scale, r->act) == NULL)
+      img.scale = 1;
+
+   sfc = cairo_image_surface_create_from_png(name);
+   if ((e = cairo_surface_status(sfc)) != CAIRO_STATUS_SUCCESS)
+   {
+      log_msg(LOG_ERR, "cannot open file %s: %s", name, cairo_status_to_string(e));
+      return -1;
+   }
+
+   img.w = cairo_image_surface_get_width(sfc) * img.scale;
+   img.h = cairo_image_surface_get_height(sfc) * img.scale;
+   img.img = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, img.w, img.h);
    if ((e = cairo_surface_status(img.img)) != CAIRO_STATUS_SUCCESS)
    {
       log_msg(LOG_ERR, "cannot open file %s: %s", name, cairo_status_to_string(e));
       //cairo_surface_destroy(img.img);
       return -1;
    }
-
-   img.w = cairo_image_surface_get_width(img.img);
-   img.h = cairo_image_surface_get_height(img.img);
+   ctx = cairo_create(img.img);
+   cairo_scale(ctx, img.scale, img.scale);
+   cairo_set_source_surface(ctx, sfc, 0, 0);
+   cairo_paint(ctx);
+   cairo_destroy(ctx);
+   cairo_surface_destroy(sfc);
 
    img.ctx = cairo_create(sfc_);
    if ((e = cairo_status(img.ctx)) != CAIRO_STATUS_SUCCESS)
