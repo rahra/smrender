@@ -222,12 +222,15 @@ int create_tiles(const char *tile_path, const struct rdata *rd, int zoom, int ft
 #define NTILES "neighbor_tiles"
 
 
-int act_neighbortile_ini(smrule_t * UNUSED(r))
+int act_neighbortile_ini(smrule_t *r)
 {
    if (check_dir_i(NTILES, -1))
       return -1;
  
    if (check_dir_i(NTILES, ZOOM_LEVEL))
+      return -1;
+
+   if ((r->data = li_new()) == NULL)
       return -1;
 
    return 0;
@@ -285,9 +288,40 @@ static int write_tile_conf(int x, int y)
 }
 
 
-int act_neighbortile_main(smrule_t * UNUSED(r), osm_way_t *w)
+static void tile_ptr_xy(const void *p, int *x, int *y)
 {
-   int x, y;
+   *x = ((long) p >> 32) & 0xffffffff;
+   *y = (long) p  & 0xffffffff;
+}
+
+
+static inline void *mk_tile_ptr(int x, int y)
+{
+   return (void*) (((long) x << 32) | y);
+}
+
+
+static int reg_tile(list_t *first, int x, int y)
+{
+   list_t *elem;
+   void *tp;
+
+   tp = mk_tile_ptr(x, y);
+   for (elem = li_first(first); elem != li_head(first); elem = elem->next)
+      if (tp == elem->data)
+         return 0;
+   if (li_add(first, tp) == NULL)
+   {
+      log_msg(LOG_ERR, "failed to add tile pointer to list: %s", strerror(errno));
+      return -1;
+   }
+   return 0;
+}
+
+
+int act_neighbortile_main(smrule_t *r, osm_way_t *w)
+{
+   int i, x, y;
 
    if (w->obj.type != OSM_WAY)
    {
@@ -295,6 +329,17 @@ int act_neighbortile_main(smrule_t * UNUSED(r), osm_way_t *w)
       return -1;
    }
 
+   for (i = 0; i < w->ref_cnt; i++)
+   {
+      if (node2tile(w->ref[i], &x, &y) == -1)
+      {
+         log_msg(LOG_ERR, "log2tile(%ld) failed", (long) w->ref[i]);
+         continue;
+      }
+      (void) reg_tile(r->data, x, y);
+   }
+
+   /*
    if (is_closed_poly(w))
       return 0;
 
@@ -305,15 +350,27 @@ int act_neighbortile_main(smrule_t * UNUSED(r), osm_way_t *w)
    if (node2tile(w->ref[w->ref_cnt - 1], &x, &y) == -1)
       return 1;
    write_tile_conf(x, y);
+   */
 
    return 0;
 }
 
 
-/*int act_neighbortile_fini(smrule_t *r)
+int act_neighbortile_fini(smrule_t *r)
 {
+   list_t *elem, *first = r->data;
+   int x, y;
+
+   for (elem = li_first(first); elem != li_head(first); elem = elem->next)
+   {
+      tile_ptr_xy(elem->data, &x, &y);
+      write_tile_conf(x, y);
+   }
+   li_destroy(first, NULL);
+   r->data = NULL;
+
    return 0;
-}*/
+}
 
 
 #ifdef TEST_SMTILE
