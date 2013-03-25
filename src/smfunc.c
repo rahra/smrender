@@ -53,6 +53,13 @@ struct io_handle
 };
 
 
+struct fmt_info
+{
+   const char *fmt;
+   const char *addtag;
+};
+
+
 static struct out_handle *oh_ = NULL;
 
 
@@ -60,13 +67,13 @@ int act_out_ini(smrule_t *r)
 {
    struct out_handle **oh;
    char *s;
-
+ 
    if ((s = get_param("file", NULL, r->act)) == NULL)
    {
       log_msg(LOG_WARN, "parameter 'file' missing");
       return 1;
    }
-
+ 
    for (oh = &oh_; *oh != NULL; oh = &(*oh)->next)
    {
       // check if filename exists
@@ -78,7 +85,7 @@ int act_out_ini(smrule_t *r)
          return 0;
       }
    }
-
+ 
    if ((*oh = calloc(1, sizeof(struct out_handle))) == NULL)
    {
       log_msg(LOG_ERR, "calloc() failed: %s", strerror(errno));
@@ -90,7 +97,7 @@ int act_out_ini(smrule_t *r)
       log_msg(LOG_ERR, "strdup() failed: %s", strerror(errno));
       return -1;
    }
-   
+
    (*oh)->cnt++;
    r->data = *oh;
 
@@ -1154,5 +1161,173 @@ void bbox_way(const osm_way_t *w, struct bbox *bb)
 int act_exit_main(smrule_t * UNUSED(r), osm_obj_t * UNUSED(o))
 {
    return raise(SIGINT);
+}
+
+
+#define EFMT_FMT -1
+#define EFMT_LESSPARM -2
+
+
+static int mk_fmt_str(char *buf, int len, const char *fmt, fparam_t **fp, const osm_obj_t *o)
+{
+   int cnt, n;
+   char *key;
+   double v;
+
+   for (len--, cnt = 0; *fmt != 0 && len > 0; fmt++)
+   {
+      if (*fmt == '%')
+      {
+         fmt++;
+         // special case if '%' is at the end of the format string
+         if (*fmt == 0)
+         {
+            *buf = '%';
+            len--;
+            buf++;
+            cnt++;
+            break;
+         }
+         else if (*fmt == '%')
+         {
+            *buf = '%';
+            len--;
+            buf++;
+            cnt++;
+            continue;
+         }
+         else if (*fmt == 'v')
+         {
+            *buf = ';';
+            len--;
+            buf++;
+            cnt++;
+            continue;
+         }
+
+         // find next tag in taglist
+         for (key = NULL; fp != NULL; fp++)
+            if (!strcasecmp((*fp)->attr, "key"))
+            {
+               key = (*fp)->val;
+               fp++;
+               break;
+            }
+
+         // return if no tag exists
+         if (key == NULL)
+         {
+            log_msg(LOG_ERR, "format string expects more keys");
+            return EFMT_LESSPARM;
+         }
+
+         if ((n = match_attr(o, key, NULL)) == -1)
+            return 0;
+
+         switch (*fmt)
+         {
+            case 's':
+               n = snprintf(buf, len, "%.*s", o->otag[n].v.len, o->otag[n].v.buf);
+               break;
+
+            case 'd':
+               v = bs_tod(o->otag[n].v);
+               n = snprintf(buf, len, "%ld", (long) v);
+               break;
+
+            case 'f':
+               v = bs_tod(o->otag[n].v);
+               n = snprintf(buf, len, "%f", v);
+               break;
+
+            default:
+               log_msg(LOG_ERR, "error in format string");
+               return EFMT_FMT;
+         }
+      }
+      else
+      {
+         *buf = *fmt;
+         n = 1;
+      }
+
+      cnt += n;
+      buf += n;
+      len -= n;
+   }
+   *buf = '\0';
+
+   return cnt;
+}
+
+
+int act_strfmt_ini(smrule_t *r)
+{
+   struct fmt_info fi;
+
+   if ((fi.addtag = get_param("addtag", NULL, r->act)) == NULL)
+   {
+      log_msg(LOG_WARN, "parameter 'addtag' missing");
+      return 1;
+   }
+
+   if ((fi.addtag = strdup(fi.addtag)) == NULL)
+   {
+      log_msg(LOG_ERR, "strdup() failed in strfmt_ini(): %s", strerror(errno));
+      return -1;
+   }
+
+   if ((fi.fmt = get_param("format", NULL, r->act)) == NULL)
+   {
+      log_msg(LOG_WARN, "parameter 'format' missing");
+      return 1;
+   }
+
+   if ((r->data = malloc(sizeof(fi))) == NULL)
+   {
+      log_msg(LOG_ERR, "malloc failed in act_strfmt_ini(): %s", strerror(errno));
+      return -1;
+   }
+
+   memcpy(r->data, &fi, sizeof(fi));
+   return 0;
+}
+
+
+int act_strfmt_main(smrule_t *r, osm_obj_t *o)
+{
+   struct otag *ot;
+   char buf[2048];
+   int len;
+
+   if ((len = mk_fmt_str(buf, sizeof(buf), ((struct fmt_info*) r->data)->fmt, r->act->fp, o)) <= 0)
+      return len;
+
+   if ((ot = realloc(o->otag, sizeof(*o->otag) * (o->tag_cnt + 1))) == NULL)
+   {
+      log_msg(LOG_ERR, "realloc() failed in strfmt(): %s", strerror(errno));
+      return -1;
+   }
+   o->otag = ot;
+
+   o->otag[o->tag_cnt].k.buf = (char*) ((struct fmt_info*) r->data)->addtag;
+   o->otag[o->tag_cnt].k.len = strlen(o->otag[o->tag_cnt].k.buf);
+   if ((o->otag[o->tag_cnt].v.buf = strdup(buf)) == NULL)
+   {
+      log_msg(LOG_ERR, "strdup() failed in strfmt(): %s", strerror(errno));
+      return -1;
+   }
+   o->otag[o->tag_cnt].v.len = len;
+   o->tag_cnt++;
+
+   return 0;
+}
+
+
+int act_strfmt_fini(smrule_t *r)
+{
+   free(r->data);
+   r->data = NULL;
+   return 0;
 }
 
