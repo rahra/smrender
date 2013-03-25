@@ -393,45 +393,133 @@ void free_fparam(fparam_t **fp)
 }
 
 
-/*! This function parses a string of the format "key1=val1,key2=val2,..." into a fparam_t* list.
- *  @param parm A pointer to the original string. Please not that the string is
- *  tokenized using strtok_r(), thus '\0' characters are inserted. If the
- *  original string is needed for something else it should be strdup()'ed
- *  before.
- *  @return A pointer to a fparam_t* list or NULL in case of error.
+static void strtrunc(char *first, char *last)
+{
+   for (; first < last && isspace(*last); last--)
+      *last = '\0';
+}
+
+
+/*! Parse a string. The string may either be delimited by '\'' or '"' or by any
+ * character in the string delim. It returns a pointer to the tokenized string
+ * and the character which actually delimited it. If the string is not enclosed
+ * in one of "'\"" leading and trailing spaces are removed.
+ * @param src Pointer to a string pointer. This string will be parsed and the
+ * pointer thereby is increased. After the call to this function it points to
+ * the first parsable character of the next token.
+ * @param delim This string may contain additional delimiter characters. It may
+ * be set to NULL if unused.
+ * @param nextchar This pointer whill receive the character that actually
+ * delimited the string.
+ * @return The function returns a pointer to the tokenized string or NULL if
+ * there are no more tokens.
+ */
+static char *parse_string(char **src, const char *delim, char *nextchar)
+{
+   char *sep, *s;
+
+   // safety check.
+   if (delim == NULL)
+      delim = "";
+
+   // skip leading spaces and return if string is empty
+   if ((*src = skipb(*src)) == NULL)
+      return NULL;
+
+   // check if string starts with separator
+   if ((sep = strchr("'\"", **src)) == NULL)
+      sep = "";
+   else
+      (*src)++;
+
+   for (s = *src; **src && strchr(delim, **src) == NULL && *sep != **src; (*src)++)
+      // unescape characters if necessary
+      if (**src == '\\')
+      {
+         memmove(*src, *src + 1, strlen(*src));
+         switch (**src)
+         {
+            case 'n':
+               **src = '\n';
+               break;
+         }
+      }
+
+   if (!**src)
+   {
+      strtrunc(s, *src - 1);
+      *nextchar = '\0';
+   }
+   else if (strchr(delim, **src) != NULL)
+   {
+      *nextchar = **src;
+      **src = 0;
+      strtrunc(s, *src - 1);
+      (*src)++;
+   }
+   else if (*sep == **src)
+   {
+      *nextchar = **src;
+      **src = 0;
+      (*src)++;
+   }
+   else
+   {
+      log_msg(LOG_EMERG, "fatal error in parse_string(), this should never happen");
+      return NULL;
+   }
+
+   return s;
+}
+
+
+/*! This function parses a string of the format "key1=val1;key2=val2;..." into
+ *  a fparam_t* list. The string within the list (keyX, valX) may be
+ *  additionally delimited by '\'' or '"'. Special characters such as one of
+ *  those both delimiters may be escaped with a backslash.
+ *  @param parm A pointer to the original string. Please note that the string
+ *  is tokenized similar to strtok_r(), thus '\0' characters are inserted. If
+ *  the original string is needed for something else it should be strdup()'ed
+ *  before.  @return A pointer to a fparam_t* list or NULL in case of error.
+ *  The
+ *  fparam_t* list always contains one additional element which points to NULL.
  */
 fparam_t **parse_fparam(char *parm)
 {
-   fparam_t **fp, **fp0;
-   char *s, *sp0, *sp1;
-   int cnt;
+   fparam_t **fp;
+   char *s, c;
+   int n;
 
-   if ((fp = malloc(sizeof(fparam_t*))) == NULL)
+   for (fp = NULL, n = 0; (s = parse_string(&parm, "=;", &c)) != NULL; n++)
    {
-      log_msg(LOG_ERR, "malloc failed: %s", strerror(errno));
-      return NULL;
-   }
-   *fp = NULL;
-
-   for (s = strtok_r(parm, ";", &sp0), cnt = 0; s != NULL; s = strtok_r(NULL, ";", &sp0), cnt++)
-   {
-      if ((fp0 = realloc(fp, sizeof(fparam_t*) * (cnt + 2))) == NULL)
+      if ((fp = realloc(fp, sizeof(*fp) * (n + 2))) == NULL)
       {
-         log_msg(LOG_ERR, "realloc in parse_fparam failed: %s", strerror(errno));
-         break;
+         log_msg(LOG_ERR, "realloc() failed in parse_fparam(): %s", strerror(errno));
+         return NULL;
       }
-      fp = fp0;
-      if ((fp[cnt] = malloc(sizeof(fparam_t))) == NULL)
+      if ((fp[n] = malloc(sizeof(**fp))) == NULL)
       {
-         log_msg(LOG_ERR, "malloc in parse_fparam failed: %s", strerror(errno));
-         break;
+         log_msg(LOG_ERR, "malloc() failed in parse_fparam(): %s", strerror(errno));
+         return NULL;
       }
-      memset(fp[cnt], 0, sizeof(fparam_t));
 
-      fp[cnt]->attr = strtok_r(s, "=", &sp1);
-      if ((fp[cnt]->val = strtok_r(NULL, "=", &sp1)) != NULL)
-         fp[cnt]->dval = atof(fp[cnt]->val);
-      fp[cnt + 1] = NULL;
+      fp[n + 1] = NULL;
+      fp[n]->attr = s;
+
+      switch (c)
+      {
+         case ';':
+            fp[n]->val = NULL;
+            fp[n]->dval = 0;
+            break;
+
+         case '=':
+            if ((fp[n]->val = parse_string(&parm, ";", &c)) != NULL)
+               fp[n]->dval = atof(fp[n]->val);
+            else
+               fp[n]->dval = 0;
+            break;
+      }
    }
 
    return fp;
