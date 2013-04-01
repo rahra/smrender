@@ -31,7 +31,7 @@
  * 5) Set prev/next pointers in points of pdef list at neighboring points, i.e. if one start point has the same node id as the neighboring end point.
  * 6) loop over all ways (loop_detect() returns number of open ways)
  * 6.1) count nodes of "connected" (pointered) ways and detect if there is a loop (count_poly_ref() = 1 if loop, 0 if unclosed)
- * 6.2) create new way with the according number of nodes (node count = sum of all connected ways) (create_new_coastline())
+ * 6.2) create new way with the according number of nodes (node count = sum of all connected ways)
  * 6.3) copy node ids of all connected ways to newly created way (join_open_poly()). Mark ways which have been processed as deleteable (from list). Mark those which are still open (i.e. not already looped) as open.
  * 6.4) put new way to way pool.
  * 7) Free list of pdef
@@ -399,23 +399,40 @@ static int count_poly_refs(struct poly *pl, int *cnt)
 }
 
 
-static osm_way_t *create_new_coastline(const osm_obj_t *o, int ref_cnt)
+static int collect_tags(const osm_obj_t *cp, const osm_obj_t *src, osm_obj_t *dst)
 {
-   osm_way_t *w;
+   struct otag ot, *tags;
+   struct stag st;
+   int i, n, cnt;
 
-   if (o == NULL)
+   memset(&st, 0, sizeof(st));
+   memset(&ot, 0, sizeof(ot));
+
+   for (i = 0, cnt = 0; i < cp->tag_cnt; i++)
    {
-      w = malloc_way(1, ref_cnt);
-   }
-   else
-   {
-      w = malloc_way(o->tag_cnt + 1, ref_cnt);
-      memcpy(&w->obj.otag[1], &o->otag[0], sizeof(struct otag) * o->tag_cnt);
-   }
+      ot.k = cp->otag[i].k;
+      if ((n = bs_match_attr(src, &ot, &st)) < 0)
+         continue;
 
-   osm_way_default(w);
+      if (bs_match_attr(dst, &ot, &st) >= 0)
+      {
+         if (bs_match_attr(dst, &src->otag[n], &st) < 0)
+            log_msg(LOG_WARN, "value missmatch of key %.*s between ways %ld and %ld",
+                  ot.k.len, ot.k.buf, (long) dst->id, (long) src->id);
+         continue;
+      }
 
-   return w;
+      if ((tags = realloc(dst->otag, sizeof(*dst->otag) * (dst->tag_cnt + 1))) == NULL)
+      {
+         log_msg(LOG_ERR, "realloc() failed in collect_tags(): %s", strerror(errno));
+         return -1;
+      }
+      dst->otag = tags;
+      memcpy(dst->otag + dst->tag_cnt, src->otag + n, sizeof(*dst->otag));
+      dst->tag_cnt++;
+      cnt++;
+   }
+   return cnt;
 }
 
 
@@ -432,7 +449,7 @@ static int join_open_poly(struct poly *pl, osm_way_t *w)
       pos += list->w->ref_cnt - 1;
 
       if (list->del)
-         log_debug("%p is already past from other way!", list);
+         log_debug("%p is already part from other way!", list);
 
       list->del = 1;
 
@@ -444,6 +461,21 @@ static int join_open_poly(struct poly *pl, osm_way_t *w)
    }
 
    return wcnt;
+}
+
+
+static int join_tags(const struct poly *pl, const osm_obj_t *o, osm_way_t *w)
+{
+   const struct poly *list;
+
+   for (list = pl; list != NULL; list = list->next)
+   {
+      // copy all non-existing tags to new way
+      if (collect_tags(o, (osm_obj_t*) list->w, (osm_obj_t*) w) == -1)
+         return -1;
+   }
+
+   return 0;
 }
 
 
@@ -471,7 +503,9 @@ static int loop_detect(const osm_obj_t *o, struct wlist *wl)
       }
 
       log_debug("waylist: wl_index %d (start = %p, cnt = %d, loop = %d)", i, &wl->ref[i], cnt, ret);
-      w = create_new_coastline(o, cnt);
+      w = malloc_way(1, cnt);
+      osm_way_default(w);
+      join_tags(&wl->ref[i], o, w);
       cnt = join_open_poly(&wl->ref[i], w);
       put_object((osm_obj_t*) w);
       log_debug("%d ways joined", cnt);
@@ -686,11 +720,39 @@ struct wlist *init_wlist(void)
 }
 
 
+static int cat_poly_ini_copy(fparam_t * const *fp, osm_obj_t *obj)
+{
+   struct otag *ot;
+   int i;
+
+   if (fp == NULL)
+      return 0;
+
+   for (i = 0; fp[i] != NULL; i++)
+   {
+      if (strcasecmp(fp[i]->attr, "copy"))
+         continue;
+      if ((ot = realloc(obj->otag, sizeof(*ot) * (obj->tag_cnt + 1))) == NULL)
+      {
+         log_msg(LOG_ERR, "realloc() failed in cat_poly_ini(): %s", strerror(errno));
+         free(obj->otag);
+         return -1;
+      }
+      obj->otag = ot;
+      obj->otag[obj->tag_cnt].k.buf = fp[i]->val;
+      obj->otag[obj->tag_cnt].k.len = strlen(fp[i]->val);
+      obj->tag_cnt++;
+   }
+   return obj->tag_cnt;
+}
+ 
+
 static int cat_poly_ini(smrule_t *r)
 {
+   struct catpoly *cp;
    double d;
 
-   if ((r->data = calloc(1, sizeof(struct catpoly))) == NULL)
+   if ((cp = calloc(1, sizeof(*cp))) == NULL)
    {
       log_msg(LOG_ERR, "calloc failed in act_cat_poly_ini(): %s", strerror(errno));
       return -1;
@@ -698,15 +760,29 @@ static int cat_poly_ini(smrule_t *r)
 
    if (get_param("ign_incomplete", &d, r->act) != NULL)
       if (d != 0)
-         ((struct catpoly*) r->data)->ign_incomplete = 1;
+         cp->ign_incomplete = 1;
    if (get_param("no_corner", &d, r->act) != NULL)
       if (d != 0)
-         ((struct catpoly*) r->data)->no_corner = 1;
+         cp->no_corner = 1;
 
-   log_msg(LOG_DEBUG, "ign_incomplete = %d, no_corner = %d", 
-         ((struct catpoly*) r->data)->ign_incomplete,
-         ((struct catpoly*) r->data)->no_corner);
+   if ((cp->obj.otag = malloc(sizeof(*cp->obj.otag) * r->oo->tag_cnt)) == NULL)
+   {
+      log_msg(LOG_ERR, "malloc() failed in cat_poly_ini(): %s", strerror(errno));
+      free(cp);
+      return -1;
+   }
+   memcpy(cp->obj.otag, r->oo->otag, sizeof(*cp->obj.otag) * r->oo->tag_cnt);
+   cp->obj.tag_cnt = r->oo->tag_cnt;
 
+   // read 'copy' parameters
+   if (cat_poly_ini_copy(r->act->fp, &cp->obj) == -1)
+   {
+      free(cp);
+      return -1;
+   }
+
+   log_msg(LOG_DEBUG, "ign_incomplete = %d, no_corner = %d", cp->ign_incomplete, cp->no_corner);
+   r->data = cp;
    return 0;
 }
 
@@ -754,7 +830,7 @@ static int cat_poly_fini(smrule_t *r)
    pd = poly_get_node_ids(wl);
    qsort(pd, wl->ref_cnt * 2, sizeof(struct pdef), (int(*)(const void *, const void *)) compare_pdef_nid);
    poly_find_adj2(wl, pd);
-   ocnt = loop_detect(r->oo, wl);
+   ocnt = loop_detect(&cp->obj, wl);
    free(pd);
 
    log_debug("trimming ways");
@@ -833,6 +909,7 @@ int act_cat_poly_fini(smrule_t *r)
 {
    if (r->oo->type == OSM_WAY)
       cat_poly_fini(r);
+   free(((struct catpoly*) r->data)->obj.otag);
    free(r->data);
    r->data = NULL;
    return 0;
