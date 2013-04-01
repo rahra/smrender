@@ -58,6 +58,7 @@ struct catpoly
    short ign_incomplete;      // 1 if incomplete "closed" polys should be ignored
    short no_corner;           // 1 if no cornerpoints should be inserted
    struct wlist *wl;          // pointer to wlist
+   osm_obj_t obj;             // list of tags to copy
 };
 
 struct pdef
