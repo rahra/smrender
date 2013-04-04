@@ -462,6 +462,11 @@ int act_shape_ini(smrule_t *r)
       return -1;
    }
 
+   if (get_param("weight", &as->weight, r->act) == NULL)
+      as->weight = 1.0;
+   (void) get_param("phase", &as->phase, r->act);
+   as->phase *= M_PI / 180.0;
+
    if (pcount == 0.0)
    {
       if (!strcmp(s, "triangle"))
@@ -528,11 +533,11 @@ void shape_node(const struct act_shape *as, const osm_node_t *n)
 {
    struct rdata *rd = get_rdata();
    osm_node_t *nd[as->pcount];
-   double radius, angle, angle_step;
+   double radius, angle, angle_step, a, b;
    osm_way_t *w;
    int i;
 
-   angle = 0.0;
+   angle = M_PI_2;
    if (as->key != NULL)
    {
       if ((i = match_attr((osm_obj_t*) n, as->key, NULL)) >= 0)
@@ -556,12 +561,14 @@ void shape_node(const struct act_shape *as, const osm_node_t *n)
 
    log_debug("generating shape way %ld with %d nodes", (long) w->obj.id, as->pcount);
 
+   a = radius;
+   b = radius * as->weight;
    for (i = 0; i < as->pcount; i++)
    {
          nd[i] = malloc_node(1);
          osm_node_default(nd[i]);
-         nd[i]->lat = n->lat + radius * cos(angle + angle_step * i);
-         nd[i]->lon = n->lon - radius * sin(angle + angle_step * i) / cos(DEG2RAD(n->lat)); 
+         nd[i]->lat = n->lat + a * cos(angle_step * i - as->phase) * cos(-angle) - b * sin(angle_step * i - as->phase) * sin(-angle);
+         nd[i]->lon = n->lon + (a * cos(angle_step * i - as->phase) * sin(-angle) + b * sin(angle_step * i - as->phase) * cos(-angle)) / cos(DEG2RAD(n->lat));
          w->ref[i] = nd[i]->obj.id;
          put_object((osm_obj_t*) nd[i]);
    }
