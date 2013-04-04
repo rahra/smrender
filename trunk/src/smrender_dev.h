@@ -186,6 +186,8 @@ struct act_shape
    short pcount;
    double size;
    double angle;
+   double weight;
+   double phase;
    char *key;
 };
 
