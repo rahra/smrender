@@ -389,7 +389,6 @@ static int count_poly_refs(struct poly *pl, int *cnt)
    for (list = pl, *cnt = 0; list != NULL; list = list->next)
    {
       *cnt += list->w->ref_cnt - 1;
-      //log_debug("%p %ld", list, list->w->nd.id);
       if (list->next == pl)
          break;
    }
@@ -408,6 +407,7 @@ static int collect_tags(const osm_obj_t *cp, const osm_obj_t *src, osm_obj_t *ds
    memset(&st, 0, sizeof(st));
    memset(&ot, 0, sizeof(ot));
 
+   log_debug("collect_tags(src = %ld)", (long) src->id);
    for (i = 0, cnt = 0; i < cp->tag_cnt; i++)
    {
       ot.k = cp->otag[i].k;
@@ -468,11 +468,15 @@ static int join_tags(const struct poly *pl, const osm_obj_t *o, osm_way_t *w)
 {
    const struct poly *list;
 
+   log_debug("joining tags from way %ld to %ld", (long) pl->w->obj.id, w->obj.id);
    for (list = pl; list != NULL; list = list->next)
    {
       // copy all non-existing tags to new way
       if (collect_tags(o, (osm_obj_t*) list->w, (osm_obj_t*) w) == -1)
          return -1;
+
+      if (list->next == pl)
+         break;
    }
 
    return 0;

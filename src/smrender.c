@@ -810,7 +810,7 @@ void usage(const char *s)
          "   -i <osm input> ...... OSM input data (default is stdin).\n"
          "   -k <filename> ....... Generate KAP file.\n"
          "   -K <filename> ....... Generate KAP header file.\n"
-         "   -l .................. Select landscape output.\n"
+         "   -l .................. Select landscape output. Only useful with option -P.\n"
          "   -M .................. Input file is memory mapped (default).\n"
          "   -m .................. Input file is read into heap memory.\n"
          "   -r <rules file> ..... Rules file ('rules.osm' is default).\n"
@@ -955,6 +955,9 @@ int main(int argc, char *argv[])
    init_grid(&grd);
    rd->cmdline = mk_cmd_line((const char**) argv);
    memset(&ti, 0, sizeof(ti));
+   log_msg(LOG_INFO, "args: %s", rd->cmdline);
+   if (sizeof(long) > 8)
+      log_msg(LOG_WARN, "system seems to have %d bits only. This may lead to errors.", (int) sizeof(long) * 8);
 
    while ((n = getopt(argc, argv, "ab:d:fg:Ghi:k:K:lMmo:O:P:r:R:s:t:T:uVw:")) != -1)
       switch (n)

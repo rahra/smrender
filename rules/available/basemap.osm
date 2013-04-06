@@ -68,6 +68,18 @@
       <tag k='natural' v='coastline'/>
       <tag k='_action_' v='draw:color=navajowhite;bcolor=black'/>
    </way>
+   <way>
+      <tag k='contour' v='elevation'/>
+      <tag k='contour_ext' v='!elevation_minor!'/>
+      <tag k='ele' v=']0['/>
+      <tag k='_action_' v='draw:bcolor=chocolate'/>
+   </way>
+   <way>
+      <tag k='contour' v='elevation'/>
+      <tag k='contour_ext' v='elevation_minor'/>
+      <tag k='ele' v=']0['/>
+      <tag k='_action_' v='draw:bcolor=chocolate;bstyle=dashed'/>
+   </way>
    <way version='1'>
       <tag k='seamark:sounding:quality' v='/report/'/>
       <tag k='seamark:sounding' v=']10.01['/>

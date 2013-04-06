@@ -463,6 +463,32 @@ static double cairo_smr_fill_width(const struct actDraw *d)
 }
 
 
+static void cairo_smr_dash(cairo_t *ctx, int style)
+{
+   double dash[2];
+   int n = 0;
+
+   switch (style)
+   {
+      case DRAW_DASHED:
+         dash[0] = mm2unit(2);
+         dash[1] = mm2unit(0.5);
+         n = 2;
+         break;
+
+      case DRAW_DOTTED:
+         dash[0] = mm2unit(0.3);
+         n = 1;
+         break;
+/*
+      case DRAW_SOLID:
+      default:
+ */
+   }
+   cairo_set_dash(ctx, dash, n, 0);
+}
+
+
 /*! Render the way properly to the cairo context.
  */
 static void render_poly_line(cairo_t *ctx, const struct actDraw *d, const osm_way_t *w, int cw)
@@ -471,6 +497,7 @@ static void render_poly_line(cairo_t *ctx, const struct actDraw *d, const osm_wa
    {
       cairo_smr_set_source_color(ctx, d->border.col);
       cairo_set_line_width(ctx, cairo_smr_border_width(d, is_closed_poly(w)));
+      cairo_smr_dash(ctx, d->border.style);
       cairo_smr_poly_line(w, ctx);
       cairo_stroke(ctx);
    }
@@ -495,6 +522,7 @@ static void render_poly_line(cairo_t *ctx, const struct actDraw *d, const osm_wa
          else
          {
             cairo_set_line_width(ctx, cairo_smr_fill_width(d));
+            cairo_smr_dash(ctx, d->fill.style);
             cairo_stroke(ctx);
          }
       }
