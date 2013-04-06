@@ -160,7 +160,7 @@ int parse_color(const char *s)
       }
 
       errno = 0;
-      c = strtol(s, NULL, 16);
+      c = strtoll(s, NULL, 16);
       if (errno)
       {
          log_msg(LOG_WARN, "cannot convert HTML color '#%s': %s", s, strerror(errno));
