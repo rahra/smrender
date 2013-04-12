@@ -119,7 +119,7 @@ struct auto_rot
 {
    double phase;     // phase of weighting function. 0 degress means east (0)
                      // and west (180) is most important
-   int autocol;      // background color which is used for auto-rotation detection
+   int autocol;      // (deprecated) background color which is used for auto-rotation detection
    double weight;    // auto-rot weighting (0-1), 1 means everything equal
 };
 
@@ -155,6 +155,7 @@ struct actCaption
    double size;      // font size in mm
    double angle;     // angle to rotate caption. 0 degress equals east,
                      // counterclockwise. NAN means auto-rotate
+   char *akey;       // angle is defined in a tag
    struct auto_rot rot;
 #ifdef HAVE_CAIRO
    cairo_t *ctx;

@@ -666,6 +666,11 @@ int act_cap_ini(smrule_t *r)
       cap.col = parse_color(s);
 
    parse_auto_rot(r->act, &cap.angle, &cap.rot);
+   if ((cap.akey = get_param("anglekey", NULL, r->act)) != NULL && isnan(cap.angle))
+   {
+      log_msg(LOG_NOTICE, "anglekey=%s overrides angle=auto", cap.akey);
+      cap.angle = 0;
+   }
 
    if ((s = get_param("halign", NULL, r->act)) != NULL)
    {
@@ -1198,7 +1203,7 @@ static double find_angle(const struct coord *c, const struct auto_rot *rot, cair
 }
 
 
-static int cap_coord(const struct actCaption *cap, const struct coord *c, const bstring_t *str)
+static int cap_coord(const struct actCaption *cap, const struct coord *c, const bstring_t *str, const osm_obj_t *o)
 {
    cairo_text_extents_t tx;
    cairo_font_extents_t fe;
@@ -1207,6 +1212,7 @@ static int cap_coord(const struct actCaption *cap, const struct coord *c, const 
    double x, y, a, r;
    double width, height;
    short pos;
+   int n;
 
    cairo_save(cap->ctx);
    geo2pt(c->lon, c->lat, &x, &y);
@@ -1259,7 +1265,10 @@ static int cap_coord(const struct actCaption *cap, const struct coord *c, const 
    }
    else
    {
-      a = DEG2RAD(360 - cap->angle);
+      a = 0;
+      if (cap->akey != NULL && (n = match_attr(o, cap->akey, NULL)) >= 0)
+         a = DEG2RAD(bs_tod(o->otag[n].v));
+      a += DEG2RAD(360 - cap->angle);
       pos = cap->pos;
    }
 
@@ -1304,7 +1313,7 @@ static int cap_way(const struct actCaption *cap, osm_way_t *w, const bstring_t *
       //log_debug("r->rule.cap.size = %f (%f 1/1000)", r->rule.cap.size, r->rule.cap.size / 100 * 1000);
    }
 
-   return cap_coord(&tmp_cap, &c, str);
+   return cap_coord(&tmp_cap, &c, str, (osm_obj_t*) w);
 }
 
 
@@ -1324,7 +1333,7 @@ int act_cap_main(smrule_t *r, osm_obj_t *o)
       case OSM_NODE:
          c.lon = ((osm_node_t*) o)->lon;
          c.lat = ((osm_node_t*) o)->lat;
-         return cap_coord(r->data, &c, &o->otag[n].v);
+         return cap_coord(r->data, &c, &o->otag[n].v, o);
 
       case OSM_WAY:
          return cap_way(r->data, (osm_way_t*) o, &o->otag[n].v);
