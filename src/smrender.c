@@ -176,11 +176,17 @@ void install_sigint(void)
 
 
 /*! Match and apply ruleset to object if it is visible.
- *  @param o Object which should be rendered.
- *  @param rd Pointer to general rendering parameters.
- *  @param r Rule object.
+ *  @param o Object which should be rendered (to which to action is applied).
+ *  @param r Rule.
+ *  @param ret This variable receives the return value of the rule's
+ *  act_XXX_main() function. It may be set to NULL.
+ *  @return If the act_XXX_main() function was called 0 is returned and its
+ *  return value will be stored to ret. If the rule's main function was not
+ *  called, a positive integer is returned which defines the reason for
+ *  act_XXX_main() not being called. These reasons are defined as cpp macros
+ *  named ERULE_xxx.
  */
-int apply_smrules0(osm_obj_t *o, smrule_t *r)
+int apply_rule(osm_obj_t *o, smrule_t *r, int *ret)
 {
    int i;
 
@@ -191,7 +197,7 @@ int apply_smrules0(osm_obj_t *o, smrule_t *r)
       c.lon = ((osm_node_t*) o)->lon;
       c.lat = ((osm_node_t*) o)->lat;
       if (!is_on_page(&c))
-         return 0;
+         return ERULE_OUTOFBBOX;
    }
 
    // check if way rule applies to either areas (closed ways) or lines (open
@@ -202,23 +208,35 @@ int apply_smrules0(osm_obj_t *o, smrule_t *r)
          // test if it applies to areas only but way is open
          case ACTION_CLOSED_WAY:
             if (((osm_way_t*) o)->ref_cnt && ((osm_way_t*) o)->ref[0] != ((osm_way_t*) o)->ref[((osm_way_t*) o)->ref_cnt - 1])
-               return 0;
+               return ERULE_WAYOPEN;
             break;
          // test if it applies to lines only but way is closed
          case ACTION_OPEN_WAY:
             if (((osm_way_t*) o)->ref_cnt && ((osm_way_t*) o)->ref[0] == ((osm_way_t*) o)->ref[((osm_way_t*) o)->ref_cnt - 1])
-               return 0;
+               return ERULE_WAYCLOSED;
             break;
       }
 
    for (i = 0; i < r->oo->tag_cnt; i++)
       if (bs_match_attr(o, &r->oo->otag[i], &r->act->stag[i]) == -1)
-         return 0;
+         return ERULE_NOMATCH;
 
-   if (o->vis)
-      return r->act->main.func(r, o);
+   if (!o->vis)
+      return ERULE_INVISIBLE;
 
+   i = r->act->main.func(r, o);
+   if (ret != NULL)
+      *ret = i;
    return 0;
+}
+
+
+int apply_smrules0(osm_obj_t *o, smrule_t *r)
+{
+   int ret = 0;
+
+   (void) apply_rule(o, r, &ret);
+   return ret;
 }
 
 

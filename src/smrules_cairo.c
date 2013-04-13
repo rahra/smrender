@@ -94,6 +94,12 @@ static cairo_surface_t *sfc_;
 static cairo_rectangle_t ext_;
 
 
+void __attribute__((constructor)) cairo_smr_init(void)
+{
+   log_msg(LOG_INFO, "using libcairo %s", cairo_version_string());
+}
+
+
 static cairo_status_t cairo_smr_log_surface_status(cairo_surface_t *sfc)
 {
    cairo_status_t e;

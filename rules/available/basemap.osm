@@ -34,7 +34,7 @@
    <node version="-10">
       <tag k='seamark:type' v='depthcont'/>
       <tag k='distance' v=''/>
-      <tag k='_action_' v='shape:style=circle;radius=1.2'/>
+      <tag k='_action_' v='shape:style=circle;radius=0.8'/>
    </node>
    <node>
       <tag k='seamark:type' v='depthcont'/>
