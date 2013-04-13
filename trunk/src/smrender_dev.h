@@ -106,6 +106,13 @@
 #define FTYPE_JPG 1
 #define FTYPE_PDF 2
 
+// return values of apply_rule()
+#define ERULE_OUTOFBBOX 1  //!< The node is outside of the area to render.
+#define ERULE_WAYOPEN 2    //!< The rule applies only to closed ways.
+#define ERULE_WAYCLOSED 3  //!< The rule applies only to open ways.
+#define ERULE_NOMATCH 4    //!< The tags of the rule do not match the object.
+#define ERULE_INVISIBLE 5  //!< The object is invisible.
+
 
 typedef int (*tree_func_t)(osm_obj_t*, void*);
 
