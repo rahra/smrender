@@ -1,5 +1,17 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <osm version='0.6'>
+
+   <node>
+      <tag k='seamark:type' v='wreck'/>
+      <tag k='seamark:wreck:category' v='/non-dangerous|distributed_remains/'/>
+      <tag k='_action_' v='img:file=icons/WreckND.png'/>
+   </node>
+   <node>
+      <tag k='seamark:type' v='wreck'/>
+      <tag k='seamark:wreck:category' v='/^dangerous|mast_showing/'/>
+      <tag k='_action_' v='img:file=icons/WreckD.png'/>
+   </node>
+
    <node>
       <tag k='seamark:type' v='buoy_safe_water'/>
       <tag k='seamark:buoy_safe_water:shape' v='pillar'/>
