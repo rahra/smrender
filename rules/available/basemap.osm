@@ -28,38 +28,38 @@
       <tag k='_action_' v='refine_poly'/>
    </way>
    <way version="-10">
-      <tag k='seamark:type' v='depthcont'/>
+      <tag k='seamark:type' v='depth_contour'/>
       <tag k='_action_' v='ins_eqdist:distance=3'/>
    </way>
    <node version="-10">
-      <tag k='seamark:type' v='depthcont'/>
+      <tag k='seamark:type' v='depth_contour'/>
       <tag k='distance' v=''/>
       <tag k='_action_' v='shape:style=circle;radius=0.8'/>
    </node>
    <node>
-      <tag k='seamark:type' v='depthcont'/>
+      <tag k='seamark:type' v='depth_contour'/>
       <tag k='distance' v=''/>
-      <tag k='_action_' v='cap:font=sans-serif;size=1.6;angle=90;anglekey=bearing;key=seamark:depthcont'/>
+      <tag k='_action_' v='cap:font=sans-serif;size=1.6;angle=90;anglekey=bearing;key=seamark:depth_contour:depth'/>
    </node>
    <way>
-      <tag k='seamark:type' v='depthcont'/>
+      <tag k='seamark:type' v='depth_contour'/>
       <tag k='~distance~' v=''/>
       <tag k='_action_' v='refine_poly'/>
    </way>
    <way>
-      <tag k='seamark:type' v='depthcont'/>
-      <tag k='seamark:depthcont' v='10'/>
+      <tag k='seamark:type' v='depth_contour'/>
+      <tag k='seamark:depth_contour:depth' v='10'/>
       <tag k='~distance~' v=''/>
       <tag k='_action_' v='cat_poly'/>
    </way>
    <way>
-      <tag k='seamark:type' v='depthcont'/>
-      <tag k='seamark:depthcont' v='10'/>
+      <tag k='seamark:type' v='depth_contour'/>
+      <tag k='seamark:depth_contour:depth' v='10'/>
       <tag k='~distance~' v=''/>
       <tag k='_action_' v='draw:color=skyblue;ignore_open=1;directional=1'/>
    </way>
    <way>
-      <tag k='seamark:type' v='depthcont'/>
+      <tag k='seamark:type' v='depth_contour'/>
       <tag k='~distance~' v=''/>
       <tag k='_action_' v='draw:bcolor=black'/>
    </way>
@@ -68,7 +68,7 @@
       <tag k='_action_' v='draw:color=darkseagreen'/>
    </way>
    <way>
-      <tag k='seamark:type' v='depthcont'/>
+      <tag k='seamark:type' v='depth_contour'/>
       <tag k='distance' v=''/>
       <tag k='_action_' v='draw:color=white'/>
    </way>
