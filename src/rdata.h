@@ -28,7 +28,9 @@
 
 
 // maximum number if different rule versions (processing iterations)
-#define MAX_ITER 8
+#define MAX_ITER 64
+// define OSM version number which contain sub routines
+#define SUBROUTINE_VERSION 0x10000
 
 
 typedef enum

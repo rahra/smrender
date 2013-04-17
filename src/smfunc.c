@@ -60,6 +60,15 @@ struct fmt_info
 };
 
 
+struct sub_handler
+{
+   int version;
+   bx_node_t *rules;
+   osm_obj_t *parent;
+   int finish;
+};
+
+
 static struct out_handle *oh_ = NULL;
 
 
@@ -1333,6 +1342,120 @@ int act_strfmt_main(smrule_t *r, osm_obj_t *o)
 
 int act_strfmt_fini(smrule_t *r)
 {
+   free(r->data);
+   r->data = NULL;
+   return 0;
+}
+
+
+static int apply_subrules_way(smrule_t *r, osm_way_t *w)
+{
+   osm_obj_t *o;
+   int i;
+
+   for (i = 0; i < w->ref_cnt; i++)
+   {
+      if ((o = get_object(OSM_NODE, w->ref[i])) == NULL)
+      {
+         log_msg(LOG_ERR, "node %ld of way %ld does not exist", (long) w->obj.id, (long) w->ref[i]);
+         continue;
+      }
+      apply_rule(o, r, NULL);
+   }
+   return 0;
+}
+
+
+static int apply_subrules(smrule_t *r, struct sub_handler *sh)
+{
+   static char *name = NULL;
+   int e = 0;
+
+   if (r == NULL)
+   {
+      log_msg(LOG_EMERG, "NULL pointer to rule, ignoring");
+      return 1;
+   }
+
+   if (!r->oo->vis)
+   {
+      log_msg(LOG_INFO, "ignoring invisible rule %016lx", (long) r->oo->id);
+      return 0;
+   }
+
+   if (sh == NULL || r->oo->ver != sh->version)
+      return 0;
+
+   if (name != r->act->func_name)
+   {
+      name = r->act->func_name;
+      log_debug("applying rule id 0x%016lx '%s'", (long) r->oo->id, r->act->func_name);
+   }
+
+   if (r->act->main.func != NULL && !sh->finish)
+   {
+      if (sh->parent->type == OSM_WAY)
+      {
+         apply_subrules_way(r, (osm_way_t*) sh->parent);
+      }
+   }
+
+   if (sh->finish)
+      call_fini(r);
+
+   return e;
+}
+
+
+int act_sub_ini(smrule_t *r)
+{
+   struct sub_handler *sh;
+
+   if ((sh = calloc(1, sizeof(*sh))) == NULL)
+   {
+      log_msg(LOG_ERR, "failed to calloc() in sub(): %s", strerror(errno));
+      return 1;
+   }
+
+   if (get_parami("version", &sh->version, r->act) == NULL)
+   {
+      log_msg(LOG_WARN, "parameter 'version' missing");
+      return 1;
+   }
+
+   sh->rules = get_rdata()->rules;
+   r->data = sh;
+
+   return 0;
+}
+
+
+int act_sub_main(smrule_t *r, osm_obj_t *o)
+{
+   struct sub_handler *sh = r->data;
+
+   if (o->type != OSM_WAY)
+   {
+      log_msg(LOG_WARN, "sub() is only available for ways yert");
+      return 1;
+   }
+
+   sh->parent = o;
+   //traverse(sh->rules, 0, IDX_REL, (tree_func_t) apply_subrules, (void*) (long) sh->version);
+   //traverse(sh->rules, 0, IDX_WAY, (tree_func_t) apply_subrules, (void*) (long) sh->version);
+   traverse(sh->rules, 0, IDX_NODE, (tree_func_t) apply_subrules, sh);
+
+   return 0;
+}
+
+
+int act_sub_fini(smrule_t *r)
+{
+   struct sub_handler *sh = r->data;
+
+   sh->parent = NULL;
+   sh->finish = 1;
+   traverse(sh->rules, 0, IDX_NODE, (tree_func_t) apply_subrules, sh);
    free(r->data);
    r->data = NULL;
    return 0;

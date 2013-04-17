@@ -306,7 +306,7 @@ int dequeue_fini(void)
 #endif
 
 
-int apply_smrules(smrule_t *r, osm_obj_t *o)
+int apply_smrules(smrule_t *r, long ver)
 {
    int e = 0;
 
@@ -322,7 +322,7 @@ int apply_smrules(smrule_t *r, osm_obj_t *o)
       return 0;
    }
 
-   if (o != NULL && r->oo->ver != o->ver)
+   if (r->oo->ver != (int) ver)
       return 0;
 
    // FIXME: wtf is this?
@@ -370,6 +370,31 @@ int apply_smrules(smrule_t *r, osm_obj_t *o)
 }
 
 
+static int execute_rules(bx_node_t *rules, int version)
+{
+   // FIXME: order rel -> way -> node?
+   log_msg(LOG_INFO, " relations...");
+   traverse(rules, 0, IDX_REL, (tree_func_t) apply_smrules, (void*) (long) version);
+#ifdef WITH_THREADS
+   sm_wait_threads();
+   dequeue_fini();
+#endif
+   log_msg(LOG_INFO, " ways...");
+   traverse(rules, 0, IDX_WAY, (tree_func_t) apply_smrules, (void*) (long) version);
+#ifdef WITH_THREADS
+   sm_wait_threads();
+   dequeue_fini();
+#endif
+   log_msg(LOG_INFO, " nodes...");
+   traverse(rules, 0, IDX_NODE, (tree_func_t) apply_smrules, (void*) (long) version);
+#ifdef WITH_THREADS
+   sm_wait_threads();
+   dequeue_fini();
+#endif
+   return 0;
+}
+
+ 
 int norm_rule_node(osm_obj_t *o, void * UNUSED(p))
 {
 #define RULE_LON_DIFF 1.0/600.0
@@ -963,7 +988,6 @@ int main(int argc, char *argv[])
    struct filter fi;
    struct dstats rstats;
    struct grid grd;
-   osm_obj_t o;
    char *s;
    struct tile_info ti;
 
@@ -1341,31 +1365,10 @@ int main(int argc, char *argv[])
    install_sigint();
    init_cat_poly(rd);
 
-   memset(&o, 0, sizeof(o));
-   for (n = 0; (n < rstats.ver_cnt) && !int_; n++)
+   for (n = 0; (n < rstats.ver_cnt) && !int_ && (rstats.ver[n] < SUBROUTINE_VERSION); n++)
    {
       log_msg(LOG_INFO, "rendering pass %d (ver = %d)", n, rstats.ver[n]);
-      o.ver = rstats.ver[n];
-
-      // FIXME: order rel -> way -> node?
-      log_msg(LOG_INFO, " relations...");
-      traverse(rd->rules, 0, IDX_REL, (tree_func_t) apply_smrules, &o);
-#ifdef WITH_THREADS
-      sm_wait_threads();
-      dequeue_fini();
-#endif
-      log_msg(LOG_INFO, " ways...");
-      traverse(rd->rules, 0, IDX_WAY, (tree_func_t) apply_smrules, &o);
-#ifdef WITH_THREADS
-      sm_wait_threads();
-      dequeue_fini();
-#endif
-      log_msg(LOG_INFO, " nodes...");
-      traverse(rd->rules, 0, IDX_NODE, (tree_func_t) apply_smrules, &o);
-#ifdef WITH_THREADS
-      sm_wait_threads();
-      dequeue_fini();
-#endif
+      execute_rules(rd->rules, rstats.ver[n]);
    }
 
    int_ = 0;
