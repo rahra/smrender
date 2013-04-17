@@ -237,7 +237,9 @@ void mk_chart_coords(int, int, struct rdata*, double*, double*);
 int poly_area(const osm_way_t*, struct coord *, double *);
 struct rdata *get_rdata(void);
 int save_osm(const char *, bx_node_t *, const struct bbox *, const char *);
-
+int apply_smrules0(osm_obj_t*, smrule_t*);
+int apply_rule(osm_obj_t*, smrule_t*, int*);
+int call_fini(smrule_t*);
 
 /* smutil.c */
 int bs_match_attr(const osm_obj_t*, const struct otag *, const struct stag*);
@@ -246,7 +248,6 @@ void set_util_rd(struct rdata*);
 int put_object0(bx_node_t**, int64_t, void*, int);
 void *get_object0(bx_node_t*, int64_t, int);
 int coord_str(double, int, char*, int);
-inline long col_cmp(int, int);
 int func_name(char*, int, void*);
 int strcnt(const char*, int);
 
