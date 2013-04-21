@@ -284,7 +284,7 @@ static int gen_hist(struct rdata *rd, void *img, struct hist_data **hy)
 }
 
 
-inline long col_cmp(int c1, int c2)
+long col_cmp(int c1, int c2)
 {
    return SQRL(RED(c1) - RED(c2)) + SQRL(GREEN(c1) - GREEN(c2)) + SQRL(BLUE(c1) - BLUE(c2));
 }

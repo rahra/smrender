@@ -973,6 +973,91 @@ int parse_tile_info(char *tstr, struct tile_info *ti)
 }
 
 
+static int get_rev_index(osm_obj_t **optr, osm_obj_t *o)
+{
+   int i;
+
+   for (i = 0; *optr != NULL; optr++, i++)
+      if (o == *optr)
+         break;
+   return i;
+}
+
+
+static int add_rev_ptr(bx_node_t **idx_root, int64_t id, int idx, osm_obj_t *o)
+{
+   osm_obj_t **optr;
+   int n;
+
+   // get index pointer
+   if ((optr = get_object0(*idx_root, id, idx)) == NULL)
+   {
+      n = 0;
+   }
+   else
+   {
+      n = get_rev_index(optr, o);
+      // check if index exists
+      if (optr[n] != NULL)
+         return 1;
+   }
+
+   if ((optr = realloc(optr, sizeof(*optr) * (n + 2))) == NULL)
+   {
+      log_msg(LOG_ERR, "could not realloc() in rev_index_way_nodes(): %s", strerror(errno));
+      return -1;
+   }
+   optr[n] = o;
+   optr[n + 1] = NULL;
+   put_object0(idx_root, id, optr, idx);
+   return 0;
+}
+
+ 
+static int rev_index_way_nodes(osm_way_t *w, bx_node_t **idx_root)
+{
+   int i;
+
+   for (i = 0; i < w->ref_cnt; i++)
+   {
+      if (get_object(OSM_NODE, w->ref[i]) == NULL)
+      {
+         log_msg(LOG_ERR, "node %ld in way %ld does not exist", (long) w->ref[i], (long) w->obj.id);
+         continue;
+      }
+
+      if (add_rev_ptr(idx_root, w->ref[i], IDX_NODE, (osm_obj_t*) w) == -1)
+         return -1;
+   }
+   return 0;
+}
+
+
+static int rev_index_rel_nodes(osm_rel_t *r, bx_node_t **idx_root)
+{
+   int i, incomplete = 0;
+   osm_obj_t *o;
+
+   for (i = 0; i < r->mem_cnt; i++)
+   {
+      if ((o = get_object(r->mem[i].type, r->mem[i].id)) == NULL)
+      {
+         //log_msg(LOG_ERR, "object %ld in relation %ld does not exist", (long) r->mem[i].id, (long) r->obj.id);
+         incomplete++;
+         continue;
+      }
+
+      if (add_rev_ptr(idx_root, r->mem[i].id, r->mem[i].type - 1, (osm_obj_t*) r) == -1)
+         return -1;
+   }
+
+   if (incomplete)
+      log_msg(LOG_NOTICE, "relation %ld incomplete, %d objects missing", (long) r->obj.id, incomplete);
+
+   return 0;
+}
+
+
 int main(int argc, char *argv[])
 {
    hpx_ctrl_t *ctl, *cfctl;
@@ -998,7 +1083,7 @@ int main(int argc, char *argv[])
    rd->cmdline = mk_cmd_line((const char**) argv);
    memset(&ti, 0, sizeof(ti));
    log_msg(LOG_INFO, "args: %s", rd->cmdline);
-   if (sizeof(long) > 8)
+   if (sizeof(long) < 8)
       log_msg(LOG_WARN, "system seems to have %d bits only. This may lead to errors.", (int) sizeof(long) * 8);
 
    while ((n = getopt(argc, argv, "ab:d:fg:Ghi:k:K:lMmo:O:P:r:R:s:t:T:uVw:")) != -1)
@@ -1348,6 +1433,11 @@ int main(int argc, char *argv[])
    log_msg(LOG_INFO, "stripping filtered way nodes");
    traverse(*get_objtree(), 0, IDX_WAY, (tree_func_t) strip_ways, NULL);
 
+   log_msg(LOG_INFO, "creating reverse pointers from nodes to ways");
+   traverse(*get_objtree(), 0, IDX_WAY, (tree_func_t) rev_index_way_nodes, &rd->index);
+   log_msg(LOG_INFO, "creating reverse pointers from relation members to relations");
+   traverse(*get_objtree(), 0, IDX_REL, (tree_func_t) rev_index_rel_nodes, &rd->index);
+
    switch (gen_grid)
    {
       case AUTO_GRID:
@@ -1373,7 +1463,10 @@ int main(int argc, char *argv[])
 
    int_ = 0;
 
-   save_osm(osm_ofile, *get_objtree(), &rd->bb, rd->cmdline);
+   if (argv[optind] == NULL)
+      save_osm(osm_ofile, *get_objtree(), NULL, rd->cmdline);
+   else
+      save_osm(osm_ofile, *get_objtree(), &rd->bb, rd->cmdline);
    (void) close(ctl->fd);
    hpx_free(ctl);
    hpx_free(cfctl);

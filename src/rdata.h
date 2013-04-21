@@ -31,6 +31,8 @@
 #define MAX_ITER 64
 // define OSM version number which contain sub routines
 #define SUBROUTINE_VERSION 0x10000
+// if set in rdata.flags, a page border way is generated
+#define RD_CORNER_POINTS 1
 
 
 typedef enum
@@ -59,8 +61,10 @@ struct dstats
 
 struct rdata
 {
-   // root nodes of node rules and way rules
+   // root node of node rules and way rules
    bx_node_t *rules;
+   // root node of reverse pointers for OSM objects
+   bx_node_t *index;
    // bounding box (left lower and right upper coordinates)
    struct bbox bb;
    // coordinate with/height (wc=bb.ru.lon-bb.ll.lon, hc=bb.ru.lat-bb.ll.lat)
@@ -84,6 +88,8 @@ struct rdata
    char *cmdline;
    // chart title
    char *title;
+   // general control flags (RD_xxx)
+   int flags;
 };
 
 
