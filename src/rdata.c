@@ -133,7 +133,7 @@ void rdata_log(void)
    log_msg(LOG_NOTICE, "   1 px = %.3f mm, 1mm = %d px", PX2MM(1), (int) MM2PX(1));
    log_msg(LOG_NOTICE, "   scale 1:%.0f, %.1f x %.1f nm",
          rd_.scale, rd_.wc * 60 * cos(DEG2RAD(rd_.mean_lat)), rd_.hc * 60);
-
+   log_msg(LOG_NOTICE, "   flags = 0x%04x", rd_.flags);
    log_debug("   G_GRID %.3f, G_TICKS %.3f, G_STICKS %.3f, G_MARGIN %.2f, G_TW %.2f, G_STW %.2f, G_BW %.2f",
          G_GRID, G_TICKS, G_STICKS, G_MARGIN, G_TW, G_STW, G_BW);
    log_msg(LOG_NOTICE, "***");

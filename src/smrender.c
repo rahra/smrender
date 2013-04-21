@@ -757,7 +757,7 @@ int save_osm(const char *s, bx_node_t *tree, const struct bbox *bb, const char *
 /*! Initializes data about paper (image) size.
  *  rd->dpi must be pre-initialized!
  */
-void init_rd_paper(struct rdata *rd, const char *paper, int landscape)
+void init_rd_paper(struct rdata *rd, const char *paper)
 {
    char buf[strlen(paper) + 1], *s;
    double a4_w, a4_h;
@@ -820,7 +820,7 @@ void init_rd_paper(struct rdata *rd, const char *paper, int landscape)
       rd->h = a4_h;
    }
 
-   if (landscape)
+   if (rd->flags & RD_LANDSCAPE)
    {
       a4_w = rd->w;
       rd->w = rd->h;
@@ -1058,6 +1058,120 @@ static int rev_index_rel_nodes(osm_rel_t *r, bx_node_t **idx_root)
 }
 
 
+int init_rendering_window(struct rdata *rd, char *win, const char *paper)
+{
+   char *s;
+   int n;
+
+   if (win == NULL)
+   {
+      log_msg(LOG_WARN, "window parameter missing, setting defaults 0:0:100000 and activating option -a");
+      rd->scale = 100000;
+      render_all_nodes_ = 1;
+   }
+   else
+   {
+      int i = strcnt(win, ':');
+      double param;
+
+      if (i < 2 || i > 3)
+         log_msg(LOG_ERR, "format error in window"), exit(EXIT_FAILURE);
+
+      s = strtok(win, ":");
+      n = parse_coord(s, &param);
+      if (n == COORD_LON)
+         rd->mean_lon = param;
+      else
+         rd->mean_lat = param;
+
+      s = strtok(NULL, ":");
+      n = parse_coord(s, &param);
+      if (n == COORD_LAT)
+         rd->mean_lat = param;
+      else
+         rd->mean_lon = param;
+
+      s = strtok(NULL, ":");
+      // window contains length of mean latitude
+      if (i == 2)
+      {
+         if ((param = atof(s)) <= 0)
+            log_msg(LOG_ERR, "illegal size argument, must be > 0"), exit(EXIT_FAILURE);
+ 
+         if (isdigit((unsigned) s[strlen(s) - 1]) || (s[strlen(s) - 1] == '.'))
+            rd->scale = param;
+         else if (s[strlen(s) - 1] == 'm')
+            rd->mean_lat_len = param / 60;
+         else if (s[strlen(s) - 1] == 'd')
+            rd->wc = param;
+         else
+            log_msg(LOG_ERR, "illegal size parameter"), exit(EXIT_FAILURE);
+      }
+      // window is bounding box
+      else
+      {
+         rd->bb.ll.lon = rd->mean_lon;
+         rd->bb.ll.lat = rd->mean_lat;
+   
+         n = parse_coord(s, &param);
+         if (n == COORD_LON)
+            rd->bb.ru.lon = param;
+         else
+            rd->bb.ru.lat = param;
+
+         s = strtok(NULL, ":");
+         n = parse_coord(s, &param);
+         if (n == COORD_LAT)
+            rd->bb.ru.lat = param;
+         else
+            rd->bb.ru.lon = param;
+
+         rd->mean_lon = (rd->bb.ru.lon + rd->bb.ll.lon) / 2.0;
+         rd->mean_lat = (rd->bb.ru.lat + rd->bb.ll.lat) / 2.0;
+      }
+   }
+
+   init_rd_paper(rd, paper);
+   if (rd->scale > 0)
+   {
+      if (!rd->w || !rd->h)
+         log_msg(LOG_ERR, "zero height or width only possible with bounding box window"),
+            exit(EXIT_FAILURE);
+      rd->mean_lat_len = rd->scale * ((double) rd->w / (double) rd->dpi) * 2.54 / (60.0 * 1852 * 100);
+   }
+   else if (rd->wc > 0)
+   {
+      if (!rd->w || !rd->h)
+         log_msg(LOG_ERR, "zero height or width only possible with bounding box window"),
+            exit(EXIT_FAILURE);
+      rd->mean_lat_len  = rd->wc * cos(rd->mean_lat * M_PI / 180);
+   }
+   else if (rd->mean_lat_len == 0)
+   {
+      rd->mean_lat_len = (rd->bb.ru.lon - rd->bb.ll.lon) * cos(DEG2RAD(rd->mean_lat));
+
+      // autofit page
+      if (!rd->w)
+         rd->w = round((double) rd->h * rd->mean_lat_len / (rd->bb.ru.lat - rd->bb.ll.lat));
+      else if (!rd->h)
+         rd->h = round((double) rd->w * (rd->bb.ru.lat - rd->bb.ll.lat) / rd->mean_lat_len);
+
+      if (rd->mean_lat_len * rd->h / rd->w < rd->bb.ru.lat - rd->bb.ll.lat)
+      {
+         rd->mean_lat_len = (rd->bb.ru.lat - rd->bb.ll.lat) * rd->w / rd->h;
+         //log_msg(LOG_INFO, "bbox widened from %.2f to %.2f nm", (rd->bb.ru.lon - rd->bb.ll.lon) * cos(DEG2RAD(rd->mean_lat)) * 60, rd->mean_lat_len * 60);
+      }
+   }
+
+   rd->fw = rd->w;
+   rd->fh = rd->h;
+
+   init_bbox_mll(rd);
+
+   return 0;
+}
+
+
 int main(int argc, char *argv[])
 {
    hpx_ctrl_t *ctl, *cfctl;
@@ -1068,7 +1182,7 @@ int main(int argc, char *argv[])
       NULL, *osm_rfile = NULL, *kap_file = NULL, *kap_hfile = NULL, *pdf_file = NULL;
    struct rdata *rd;
    struct timeval tv_start, tv_end;
-   int landscape = 0, w_mmap = 1, load_filter = 0, init_exit = 0, gen_grid = AUTO_GRID, prt_url = 0;
+   int w_mmap = 1, load_filter = 0, init_exit = 0, gen_grid = AUTO_GRID, prt_url = 0;
    char *paper = "A3", *bg = NULL;
    struct filter fi;
    struct dstats rstats;
@@ -1166,7 +1280,7 @@ int main(int argc, char *argv[])
             break;
 
          case 'l':
-            landscape = 1;
+            rd->flags |= RD_LANDSCAPE;
             break;
 
          case 'o':
@@ -1218,113 +1332,7 @@ int main(int argc, char *argv[])
             break;
       }
 
-   if (argv[optind] == NULL)
-   {
-      log_msg(LOG_WARN, "window parameter missing, setting defaults 0:0:100000 and activating option -a");
-      rd->scale = 100000;
-      render_all_nodes_ = 1;
-   }
-   else
-   {
-      int i = strcnt(argv[optind], ':');
-      double param;
-
-      if (i < 2 || i > 3)
-         log_msg(LOG_ERR, "format error in window"), exit(EXIT_FAILURE);
-
-      s = strtok(argv[optind], ":");
-      n = parse_coord(s, &param);
-      if (n == COORD_LON)
-         rd->mean_lon = param;
-      else
-         rd->mean_lat = param;
-
-      s = strtok(NULL, ":");
-      n = parse_coord(s, &param);
-      if (n == COORD_LAT)
-         rd->mean_lat = param;
-      else
-         rd->mean_lon = param;
-
-      s = strtok(NULL, ":");
-      // window contains length of mean latitude
-      if (i == 2)
-      {
-         if ((param = atof(s)) <= 0)
-            log_msg(LOG_ERR, "illegal size argument, must be > 0"), exit(EXIT_FAILURE);
- 
-         if (isdigit((unsigned) s[strlen(s) - 1]) || (s[strlen(s) - 1] == '.'))
-            rd->scale = param;
-         else if (s[strlen(s) - 1] == 'm')
-            rd->mean_lat_len = param / 60;
-         else if (s[strlen(s) - 1] == 'd')
-            rd->wc = param;
-         else
-            log_msg(LOG_ERR, "illegal size parameter"), exit(EXIT_FAILURE);
-      }
-      // window is bounding box
-      else
-      {
-         rd->bb.ll.lon = rd->mean_lon;
-         rd->bb.ll.lat = rd->mean_lat;
-   
-         n = parse_coord(s, &param);
-         if (n == COORD_LON)
-            rd->bb.ru.lon = param;
-         else
-            rd->bb.ru.lat = param;
-
-         s = strtok(NULL, ":");
-         n = parse_coord(s, &param);
-         if (n == COORD_LAT)
-            rd->bb.ru.lat = param;
-         else
-            rd->bb.ru.lon = param;
-
-         rd->mean_lon = (rd->bb.ru.lon + rd->bb.ll.lon) / 2.0;
-         rd->mean_lat = (rd->bb.ru.lat + rd->bb.ll.lat) / 2.0;
-      }
-   }
-
-   // install exit handlers
-   osm_read_exit();
-
-   init_rd_paper(rd, paper, landscape);
-   if (rd->scale > 0)
-   {
-      if (!rd->w || !rd->h)
-         log_msg(LOG_ERR, "zero height or width only possible with bounding box window"),
-            exit(EXIT_FAILURE);
-      rd->mean_lat_len = rd->scale * ((double) rd->w / (double) rd->dpi) * 2.54 / (60.0 * 1852 * 100);
-   }
-   else if (rd->wc > 0)
-   {
-      if (!rd->w || !rd->h)
-         log_msg(LOG_ERR, "zero height or width only possible with bounding box window"),
-            exit(EXIT_FAILURE);
-      rd->mean_lat_len  = rd->wc * cos(rd->mean_lat * M_PI / 180);
-   }
-   else if (rd->mean_lat_len == 0)
-   {
-      rd->mean_lat_len = (rd->bb.ru.lon - rd->bb.ll.lon) * cos(DEG2RAD(rd->mean_lat));
-
-      // autofit page
-      if (!rd->w)
-         rd->w = round((double) rd->h * rd->mean_lat_len / (rd->bb.ru.lat - rd->bb.ll.lat));
-      else if (!rd->h)
-         rd->h = round((double) rd->w * (rd->bb.ru.lat - rd->bb.ll.lat) / rd->mean_lat_len);
-
-      if (rd->mean_lat_len * rd->h / rd->w < rd->bb.ru.lat - rd->bb.ll.lat)
-      {
-         rd->mean_lat_len = (rd->bb.ru.lat - rd->bb.ll.lat) * rd->w / rd->h;
-         //log_msg(LOG_INFO, "bbox widened from %.2f to %.2f nm", (rd->bb.ru.lon - rd->bb.ll.lon) * cos(DEG2RAD(rd->mean_lat)) * 60, rd->mean_lat_len * 60);
-      }
-   }
-
-   rd->fw = rd->w;
-   rd->fh = rd->h;
-
-   init_bbox_mll(rd);
+   init_rendering_window(rd, argv[optind], paper);
 
    if (prt_url)
    {
@@ -1336,6 +1344,9 @@ int main(int argc, char *argv[])
 
    if (init_exit)
       exit(EXIT_SUCCESS);
+
+   // install exit handlers
+   osm_read_exit();
 
    // preparing image
 #ifdef HAVE_CAIRO
