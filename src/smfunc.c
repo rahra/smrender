@@ -1569,3 +1569,22 @@ int act_inherit_tags_fini(smrule_t *r)
    return 0;
 }
 
+
+int act_zeroway_main(smrule_t * UNUSED(r), osm_node_t *n)
+{
+   osm_way_t *w;
+
+   if (n->obj.type != OSM_NODE)
+   {
+      log_msg(LOG_WARN, "zeroway() is only applicable to nodes");
+      return 1;
+   }
+
+   w = malloc_way(n->obj.tag_cnt + 1, 2);
+   osm_way_default(w);
+   memcpy(&w->obj.otag[1], &n->obj.otag[0], sizeof(*w->obj.otag) * n->obj.tag_cnt);
+   w->ref[0] = w->ref[1] = n->obj.id;
+   put_object((osm_obj_t*) w);
+   return 0;
+}
+
