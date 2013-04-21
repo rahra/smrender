@@ -33,6 +33,7 @@
 #define SUBROUTINE_VERSION 0x10000
 // if set in rdata.flags, a page border way is generated
 #define RD_CORNER_POINTS 1
+#define RD_LANDSCAPE 2
 
 
 typedef enum
