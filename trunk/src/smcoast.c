@@ -705,7 +705,8 @@ void init_cat_poly(struct rdata *rd)
 {
    center_.lat = rd->mean_lat;
    center_.lon = rd->mean_lon;
-   init_corner_brg(rd, &center_, co_pt_);
+   if (rd->flags & RD_CORNER_POINTS)
+      init_corner_brg(rd, &center_, co_pt_);
 }
 
 
@@ -768,6 +769,9 @@ static int cat_poly_ini(smrule_t *r)
    if (get_param("no_corner", &d, r->act) != NULL)
       if (d != 0)
          cp->no_corner = 1;
+
+   if (!cp->no_corner)
+      get_rdata()->flags |= RD_CORNER_POINTS;
 
    if ((cp->obj.otag = malloc(sizeof(*cp->obj.otag) * r->oo->tag_cnt)) == NULL)
    {

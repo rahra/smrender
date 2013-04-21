@@ -69,6 +69,14 @@ struct sub_handler
 };
 
 
+struct inherit_data
+{
+   struct rdata *rdata;
+   int force;
+   int type;
+};
+
+
 static struct out_handle *oh_ = NULL;
 
 
@@ -1190,6 +1198,10 @@ static int mk_fmt_str(char *buf, int len, const char *fmt, fparam_t **fp, const 
    char *key;
    double v;
 
+   // safety check
+   if (fp == NULL)
+      return 0;
+
    for (len--, cnt = 0; *fmt != 0 && len > 0; fmt++)
    {
       if (*fmt == '%')
@@ -1222,7 +1234,7 @@ static int mk_fmt_str(char *buf, int len, const char *fmt, fparam_t **fp, const 
          }
 
          // find next tag in taglist
-         for (key = NULL; fp != NULL; fp++)
+         for (key = NULL; *fp != NULL; fp++)
             if (!strcasecmp((*fp)->attr, "key"))
             {
                key = (*fp)->val;
@@ -1458,6 +1470,102 @@ int act_sub_fini(smrule_t *r)
    traverse(sh->rules, 0, IDX_NODE, (tree_func_t) apply_subrules, sh);
    free(r->data);
    r->data = NULL;
+   return 0;
+}
+
+
+int act_inherit_tags_ini(smrule_t *r)
+{
+   struct inherit_data *id;
+   char *type;
+
+   if ((id = calloc(1, sizeof(*id))) == NULL)
+   {
+      log_msg(LOG_ERR, "failed to calloc() in inherit_tags(): %s", strerror(errno));
+      return -1;
+   }
+
+   id->rdata = get_rdata();
+   if (get_param("force", NULL, r->act) != NULL)
+      id->force = 1;
+
+   if ((type = get_param("object", NULL, r->act)) != NULL)
+   {
+      if (!strcasecmp(type, "way"))
+         id->type = OSM_WAY;
+      else if (!strcasecmp(type, "relation"))
+         id->type = OSM_REL;
+      else
+         log_msg(LOG_WARN, "unknown object type '%s'", type);
+   }
+
+   r->data = id;
+   return 0;
+}
+
+
+int act_inherit_tags_main(smrule_t *r, osm_obj_t *o)
+{
+   struct inherit_data *id = r->data;
+   osm_obj_t **optr;
+   struct otag *ot;
+   fparam_t **fp;
+   int n, m;
+
+   if ((optr = get_object0(id->rdata->index, o->id, o->type - 1)) == NULL)
+      return 0;
+
+   // safety check
+   if (r->act->fp == NULL)
+      return -1;
+
+   // loop over parameter list of rule
+   for (fp = r->act->fp; *fp != NULL; fp++)
+   {
+      // test if there is a 'key' parameter
+      if (strcasecmp((*fp)->attr, "key"))
+         continue;
+
+      // test if source object has such a key
+      if ((n = match_attr(o, (*fp)->val, NULL)) < 0)
+         continue;
+
+      // loop over all reverse pointers
+      for (; *optr != NULL; optr++)
+      {
+         // test if if tags should be copied to ways/relations only
+         if (id->type && id->type != (*optr)->type)
+            continue;
+
+         // test if reverse object (destination) already has no such a key
+         if ((m = match_attr(*optr, (*fp)->val, NULL)) < 0)
+         {
+            if ((ot = realloc((*optr)->otag, sizeof(*(*optr)->otag) * ((*optr)->tag_cnt + 1))) == NULL)
+            {
+               log_msg(LOG_ERR, "failed to realloc() in inherit_tags(): %s", strerror(errno));
+               return -1;
+            }
+            (*optr)->otag = ot;
+            // copy tag
+            (*optr)->otag[(*optr)->tag_cnt] = o->otag[n];
+            (*optr)->tag_cnt++;
+            log_debug("adding tag %s to object(%d).id = %ld", (*fp)->val, (*optr)->type, (long) (*optr)->id);
+         }
+         // otherwise overwrite if 'force' is set
+         else if (id->force)
+         {
+            log_debug("overwriting tag %s to object(%d).id = %ld", (*fp)->val, (*optr)->type, (long) (*optr)->id);
+            (*optr)->otag[(*optr)->tag_cnt].v = o->otag[n].v;
+         }
+      }
+   }
+   return 0;
+}
+
+
+int act_inherit_tags_fini(smrule_t *r)
+{
+   free(r->data);
    return 0;
 }
 
