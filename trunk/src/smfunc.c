@@ -1572,6 +1572,7 @@ int act_inherit_tags_fini(smrule_t *r)
 
 int act_zeroway_main(smrule_t * UNUSED(r), osm_node_t *n)
 {
+   osm_node_t *node;
    osm_way_t *w;
 
    if (n->obj.type != OSM_NODE)
@@ -1580,11 +1581,77 @@ int act_zeroway_main(smrule_t * UNUSED(r), osm_node_t *n)
       return 1;
    }
 
+   node = malloc_node(1);
+   osm_node_default(node);
+   node->lat = n->lat;
+   node->lon = n->lon;
+   put_object((osm_obj_t*) node);
+
    w = malloc_way(n->obj.tag_cnt + 1, 2);
    osm_way_default(w);
    memcpy(&w->obj.otag[1], &n->obj.otag[0], sizeof(*w->obj.otag) * n->obj.tag_cnt);
-   w->ref[0] = w->ref[1] = n->obj.id;
+   w->ref[0] = n->obj.id;
+   w->ref[1] = node->obj.id;
    put_object((osm_obj_t*) w);
+
+   return 0;
+}
+
+
+int act_neg_ids_ini(smrule_t * UNUSED(r))
+{
+   return 0;
+}
+
+
+int act_neg_ids_main(smrule_t * UNUSED(r), osm_obj_t *o)
+{
+   int i;
+
+   // safety check: 0 id should not exist!
+   if (!o->id)
+   {
+      log_msg(LOG_ERR, "object with id 0 should not exit!");
+      return 1;
+   }
+
+   // do nothing if id is positive
+   if (o->id > 0)
+      return 0;
+
+   // negate id
+   o->id *= -1;
+
+   switch (o->type)
+   {
+      case OSM_NODE:
+         // nothing else to do for nodes
+         break;
+
+      case OSM_WAY:
+         // invert all negative references to nodes
+         for (i = 0; i < ((osm_way_t*) o)->ref_cnt; i++)
+            if (((osm_way_t*) o)->ref[i] < 0)
+               ((osm_way_t*) o)->ref[i] *= -1;
+         break;
+
+      case OSM_REL:
+         // invert all negative references to members
+         for (i = 0; i < ((osm_rel_t*) o)->mem_cnt; i++)
+            if (((osm_rel_t*) o)->mem[i].id < 0)
+               ((osm_rel_t*) o)->mem[i].id *= -1;
+         break;
+
+      default:
+         log_msg(LOG_ERR, "unknown object type %d!", o->type);
+   }
+
+   return 0;
+}
+
+
+int act_neg_ids_fini(smrule_t * UNUSED(r))
+{
    return 0;
 }
 
