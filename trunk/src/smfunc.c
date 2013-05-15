@@ -1598,6 +1598,71 @@ int act_zeroway_main(smrule_t * UNUSED(r), osm_node_t *n)
 }
 
 
+int act_split_ini(smrule_t *r)
+{
+   r->data = get_rdata();
+   return 0;
+}
+
+
+int act_split_main(smrule_t *r, osm_node_t *n)
+{
+   osm_obj_t **optr;
+   osm_way_t *w;
+   int i;
+
+   if (n->obj.type != OSM_NODE)
+   {
+      log_msg(LOG_WARN, "zeroway() is only applicable to nodes");
+      return 1;
+   }
+
+   if ((optr = get_object0(((struct rdata*) r->data)->index, n->obj.id, n->obj.type - 1)) == NULL)
+      return 0;
+
+   for (; *optr != NULL; optr++)
+   {
+      if ((*optr)->type != OSM_WAY)
+         continue;
+
+      for (i = 0; i < ((osm_way_t*) (*optr))->ref_cnt; i++)
+         if (((osm_way_t*) (*optr))->ref[i] == n->obj.id)
+            break;
+
+      // safety check
+      if (i >= ((osm_way_t*) (*optr))->ref_cnt)
+      {
+         log_msg(LOG_EMERG, "node not found in reverse pointer to way. This should not happen!");
+         continue;
+      }
+
+      if (!i || i == ((osm_way_t*) (*optr))->ref_cnt - 1)
+      {
+         log_msg(LOG_INFO, "way cannot be split at first/last node");
+         continue;
+      }
+
+      log_debug("splitting way %ld at ref index %d", (long) (*optr)->id, i);
+      i++;
+      w = malloc_way((*optr)->tag_cnt, ((osm_way_t*) (*optr))->ref_cnt - i + 1);
+      osm_way_default(w);
+      memcpy(w->obj.otag, (*optr)->otag, (*optr)->tag_cnt * sizeof(*(*optr)->otag));
+      memcpy(w->ref, ((osm_way_t*) (*optr))->ref + i - 1, (((osm_way_t*) (*optr))->ref_cnt - i + 1) * sizeof(*((osm_way_t*) (*optr))->ref));
+      put_object(&w->obj);
+      ((osm_way_t*) (*optr))->ref_cnt = i;
+   }
+
+   return 0;
+}
+
+
+int act_split_fini(smrule_t *r)
+{
+   r->data = NULL;
+   return 0;
+}
+
+
 int act_neg_ids_ini(smrule_t * UNUSED(r))
 {
    return 0;
