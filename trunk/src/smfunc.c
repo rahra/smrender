@@ -1665,58 +1665,7 @@ int act_split_fini(smrule_t *r)
 
 int act_neg_ids_ini(smrule_t * UNUSED(r))
 {
-   return 0;
-}
-
-
-int act_neg_ids_main(smrule_t * UNUSED(r), osm_obj_t *o)
-{
-   int i;
-
-   // safety check: 0 id should not exist!
-   if (!o->id)
-   {
-      log_msg(LOG_ERR, "object with id 0 should not exit!");
-      return 1;
-   }
-
-   // do nothing if id is positive
-   if (o->id > 0)
-      return 0;
-
-   // negate id
-   o->id *= -1;
-
-   switch (o->type)
-   {
-      case OSM_NODE:
-         // nothing else to do for nodes
-         break;
-
-      case OSM_WAY:
-         // invert all negative references to nodes
-         for (i = 0; i < ((osm_way_t*) o)->ref_cnt; i++)
-            if (((osm_way_t*) o)->ref[i] < 0)
-               ((osm_way_t*) o)->ref[i] *= -1;
-         break;
-
-      case OSM_REL:
-         // invert all negative references to members
-         for (i = 0; i < ((osm_rel_t*) o)->mem_cnt; i++)
-            if (((osm_rel_t*) o)->mem[i].id < 0)
-               ((osm_rel_t*) o)->mem[i].id *= -1;
-         break;
-
-      default:
-         log_msg(LOG_ERR, "unknown object type %d!", o->type);
-   }
-
-   return 0;
-}
-
-
-int act_neg_ids_fini(smrule_t * UNUSED(r))
-{
-   return 0;
+   log_msg(LOG_WARN, "neg_ids() was removed!");
+   return 1;
 }
 

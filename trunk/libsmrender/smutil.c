@@ -65,7 +65,7 @@ void set_const_tag(struct otag *tag, char *k, char *v)
 }
 
 
-#define UNIQUE_ID_START -100000000000L
+#define UNIQUE_ID_START UINT64_C(-100000000000)
 int64_t unique_node_id(void)
 {
    static int64_t uid = UNIQUE_ID_START;

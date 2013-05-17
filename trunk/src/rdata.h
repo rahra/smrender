@@ -34,6 +34,7 @@
 // if set in rdata.flags, a page border way is generated
 #define RD_CORNER_POINTS 1
 #define RD_LANDSCAPE 2
+#define RD_UIDS 4          //<! output IDs unsigned
 
 
 typedef enum

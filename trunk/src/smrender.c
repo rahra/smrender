@@ -27,6 +27,7 @@
 
 #include <stdio.h>
 #include <stdint.h>
+#include <inttypes.h>
 #include <stdlib.h>
 #include <ctype.h>
 #include <unistd.h>
@@ -614,6 +615,12 @@ int bs_safe_put_xml(FILE *f, const bstring_t *b)
 }
 
 
+static int64_t out_id(int64_t id)
+{
+   return get_rdata()->flags & RD_UIDS ? id & INT64_C(0x7fffffffffffffff) : id;
+}
+
+
 static int fprint_defattr(FILE *f, const osm_obj_t *o, const char *ostr)
 {
 #define TBUFLEN 24
@@ -623,8 +630,8 @@ static int fprint_defattr(FILE *f, const osm_obj_t *o, const char *ostr)
    if ((tm = gmtime(&o->tim)) != NULL)
       strftime(ts, sizeof(ts), "%Y-%m-%dT%H:%M:%SZ", tm);
 
-   return fprintf(f, "<%s id=\"%ld\" version=\"%d\" timestamp=\"%s\" uid=\"%d\" visible=\"%s\"",
-         ostr, (long) o->id, o->ver, ts, o->uid, o->vis ? "true" : "false");
+   return fprintf(f, "<%s id=\"%"PRId64"\" version=\"%d\" timestamp=\"%s\" uid=\"%d\" visible=\"%s\"", 
+         ostr, out_id(o->id), o->ver, ts, o->uid, o->vis ? "true" : "false");
 }
 
 
@@ -683,14 +690,14 @@ int print_onode(FILE *f, const osm_obj_t *o)
 
       case OSM_WAY:
          for (i = 0; i < ((osm_way_t*) o)->ref_cnt; i++)
-            fprintf(f, "<nd ref=\"%ld\"/>\n", (long) ((osm_way_t*) o)->ref[i]);
+            fprintf(f, "<nd ref=\"%"PRId64"\"/>\n", out_id(((osm_way_t*) o)->ref[i]));
          fprintf(f, "</way>\n");
          break;
 
       case OSM_REL:
          for (i = 0; i < ((osm_rel_t*) o)->mem_cnt; i++)
-            fprintf(f, "<member type=\"%s\" ref=\"%ld\" role=\"%s\"/>\n",
-                  ((osm_rel_t*) o)->mem[i].type == OSM_NODE ? "node" : "way", (long) ((osm_rel_t*) o)->mem[i].id,
+            fprintf(f, "<member type=\"%s\" ref=\"%"PRIu64"\" role=\"%s\"/>\n",
+                  ((osm_rel_t*) o)->mem[i].type == OSM_NODE ? "node" : "way", out_id(((osm_rel_t*) o)->mem[i].id),
                   role_str(((osm_rel_t*) o)->mem[i].role));
          fprintf(f, "</relation>\n");
          break;
@@ -856,6 +863,7 @@ void usage(const char *s)
          "   -l .................. Select landscape output. Only useful with option -P.\n"
          "   -M .................. Input file is memory mapped (default).\n"
          "   -m .................. Input file is read into heap memory.\n"
+         "   -n .................. Output IDs as positive values only.\n"
          "   -r <rules file> ..... Rules file ('rules.osm' is default).\n"
          "   -s <ovs> ............ Deprecated, kept for backwards compatibility.\n"
          "   -t <title> .......... Set descriptional chart title.\n"
@@ -1200,7 +1208,7 @@ int main(int argc, char *argv[])
    if (sizeof(long) < 8)
       log_msg(LOG_WARN, "system seems to have %d bits only. This may lead to errors.", (int) sizeof(long) * 8);
 
-   while ((n = getopt(argc, argv, "ab:d:fg:Ghi:k:K:lMmo:O:P:r:R:s:t:T:uVw:")) != -1)
+   while ((n = getopt(argc, argv, "ab:d:fg:Ghi:k:K:lMmno:O:P:r:R:s:t:T:uVw:")) != -1)
       switch (n)
       {
          case 'a':
@@ -1277,6 +1285,10 @@ int main(int argc, char *argv[])
 
          case 'm':
             w_mmap = 0;
+            break;
+
+         case 'n':
+            rd->flags |= RD_UIDS;
             break;
 
          case 'l':
