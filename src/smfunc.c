@@ -1605,6 +1605,87 @@ int act_split_ini(smrule_t *r)
 }
 
 
+/*! Test if the way w has a reference to id.
+ *  @param w Pointer to the way.
+ *  @param id ID which is tested.
+ *  @return Returns to the index of the reference (0 <= index < w->ref_cnt) or
+ *  -1 if there is no reference.
+ */
+static int has_id(const osm_way_t *w, int64_t id)
+{
+   int i;
+
+   for (i = 0; i < w->ref_cnt; i++)
+      if (w->ref[i] == id)
+         return i;
+   return -1;
+}
+
+
+/*! This function updates the reverse pointers of the nodes after a way was
+ *  split.
+ *  @param idx_root Pointer to the root of the rev ptr object tree.
+ *  @param org Pointer to the original part of the way after splitting.
+ *  @param new Pointer to the new part of the way.
+ *  @return Greater or equal 0 on success and -1 in case of error. If the
+ *  return value is greater than 0 at list one rev ptr list was realloc'ed.
+ */
+static int update_rev_ptr(bx_node_t **idx_root, const osm_way_t *org, const osm_way_t *new)
+{
+   osm_obj_t **optr;
+   int i, n, ret = 0;
+
+   // safety check
+   if (org == NULL || new == NULL)
+   {
+      log_msg(LOG_ERR, "NULL pointer caught in update_rev_ptr()");
+      return -1;
+   }
+
+   for (i = 0; i < new->ref_cnt; i++)
+   {
+      // get rev ptr list for
+      if ((optr = get_object0(*idx_root, new->ref[i], IDX_NODE)) == NULL)
+      {
+         log_msg(LOG_EMERG, "there is no reverse pointer, this may indicate a bug somewhere");
+         if ((optr = malloc(sizeof(*optr))) == NULL)
+         {
+            log_msg(LOG_ERR, "malloc() failed: %s", strerror(errno));
+            return -1;
+         }
+         *optr = NULL;
+         put_object0(idx_root, new->ref[i], optr, IDX_NODE);
+         ret++;
+      }
+ 
+      // check if node of way /new/ does not exist in way /org/
+      if (has_id(org, new->ref[i]) == -1)
+      {
+         // get index to rev ptr of org
+         n = get_rev_index(optr, &org->obj);
+      }
+      else
+      {
+         // get index to last ptr
+         n = get_rev_index(optr, NULL);
+         // add element to list
+         if ((optr = realloc(optr, sizeof(*optr) * (n + 2))) == NULL)
+         {
+            log_msg(LOG_ERR, "realloc() failed: %s", strerror(errno));
+            return -1;
+         }
+         optr[n + 1] = NULL;
+         put_object0(idx_root, new->ref[i], optr, IDX_NODE);
+         ret++;
+      }
+      // add rev ptr to way /new/
+      optr[n] = (osm_obj_t*) new;
+   }
+   log_debug("ret = %d", ret);
+   return ret;
+}
+
+
 int act_split_main(smrule_t *r, osm_node_t *n)
 {
    osm_obj_t **optr;
@@ -1620,11 +1701,14 @@ int act_split_main(smrule_t *r, osm_node_t *n)
    if ((optr = get_object0(((struct rdata*) r->data)->index, n->obj.id, n->obj.type - 1)) == NULL)
       return 0;
 
+   // loop over all reverse pointers
    for (; *optr != NULL; optr++)
    {
+      // skip those which are not ways
       if ((*optr)->type != OSM_WAY)
          continue;
 
+      // find index of node in way
       for (i = 0; i < ((osm_way_t*) (*optr))->ref_cnt; i++)
          if (((osm_way_t*) (*optr))->ref[i] == n->obj.id)
             break;
@@ -1632,24 +1716,48 @@ int act_split_main(smrule_t *r, osm_node_t *n)
       // safety check
       if (i >= ((osm_way_t*) (*optr))->ref_cnt)
       {
+         // ...SW bug somewhere...
          log_msg(LOG_EMERG, "node not found in reverse pointer to way. This should not happen!");
          continue;
       }
 
+      // continue to next rev ptr if node is first/last
       if (!i || i == ((osm_way_t*) (*optr))->ref_cnt - 1)
       {
          log_msg(LOG_INFO, "way cannot be split at first/last node");
          continue;
       }
 
+      /* split way */
       log_debug("splitting way %ld at ref index %d", (long) (*optr)->id, i);
       i++;
+      // allocate new way
       w = malloc_way((*optr)->tag_cnt, ((osm_way_t*) (*optr))->ref_cnt - i + 1);
       osm_way_default(w);
+      // copy all tags
       memcpy(w->obj.otag, (*optr)->otag, (*optr)->tag_cnt * sizeof(*(*optr)->otag));
+      // copy all refs from this node up to the last node
       memcpy(w->ref, ((osm_way_t*) (*optr))->ref + i - 1, (((osm_way_t*) (*optr))->ref_cnt - i + 1) * sizeof(*((osm_way_t*) (*optr))->ref));
+      // store new way
       put_object(&w->obj);
+      // short original way
       ((osm_way_t*) (*optr))->ref_cnt = i;
+
+      // update rev ptrs of nodes of new way
+      switch (update_rev_ptr(&((struct rdata*) r->data)->index, (osm_way_t*) *optr, w))
+      {
+         case -1:
+            return -1;
+         case 0:
+            break;
+         default:
+            log_debug("reloading optr");
+            if ((optr = get_object0(((struct rdata*) r->data)->index, n->obj.id, n->obj.type - 1)) == NULL)
+            {
+               log_msg(LOG_EMERG, "something fatally went wrong...");
+               return -1;
+            }
+      }
    }
 
    return 0;
