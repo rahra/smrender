@@ -240,6 +240,7 @@ int save_osm(const char *, bx_node_t *, const struct bbox *, const char *);
 int apply_smrules0(osm_obj_t*, smrule_t*);
 int apply_rule(osm_obj_t*, smrule_t*, int*);
 int call_fini(smrule_t*);
+int get_rev_index(osm_obj_t**, const osm_obj_t*);
 
 /* smutil.c */
 int bs_match_attr(const osm_obj_t*, const struct otag *, const struct stag*);

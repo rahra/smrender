@@ -981,10 +981,19 @@ int parse_tile_info(char *tstr, struct tile_info *ti)
 }
 
 
-static int get_rev_index(osm_obj_t **optr, osm_obj_t *o)
+/*! Find OSM object in object list and return index.
+ *  @param optr Pointer to NULL-terminated object list.
+ *  @param o Pointer to object.
+ *  @return Index greater or equal 0 of object within list. If the list has no
+ *  such object the index of the last element (which is a NULL pointer) is
+ *  returned. If optr itself is a NULL pointer -1 is returned.
+ */
+int get_rev_index(osm_obj_t **optr, const osm_obj_t *o)
 {
    int i;
 
+   if (optr == NULL)
+      return -1;
    for (i = 0; *optr != NULL; optr++, i++)
       if (o == *optr)
          break;
