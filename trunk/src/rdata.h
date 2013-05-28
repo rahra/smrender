@@ -56,6 +56,8 @@ struct dstats
    int64_t max_nid;
    int64_t min_wid;
    int64_t max_wid;
+   int nid_bits, wid_bits;
+   int64_t nid_mask, wid_mask;
    const void *lo_addr, *hi_addr;   // lowest and highest memory address
    int ver_cnt;
    int ver[MAX_ITER];

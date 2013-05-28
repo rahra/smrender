@@ -615,9 +615,34 @@ int bs_safe_put_xml(FILE *f, const bstring_t *b)
 }
 
 
-static int64_t out_id(int64_t id)
+static int64_t out_id(int64_t id, int type)
 {
-   return get_rdata()->flags & RD_UIDS ? id & INT64_C(0x7fffffffffffffff) : id;
+   struct rdata *rd = get_rdata();
+   int64_t mask;
+
+   if ((id > 0) || !(rd->flags & RD_UIDS))
+      return id;
+
+   switch (type)
+   {
+      case OSM_NODE:
+         mask = rd->ds.nid_mask;
+         break;
+      case OSM_WAY:
+         mask = rd->ds.wid_mask;
+         break;
+      case OSM_REL:
+         // FIXME: artificial limit!
+         mask = INT64_C(30);
+         break;
+      default:
+         log_msg(LOG_EMERG, "unknown object type %d", type);
+         return 0;
+   }
+
+   //log_debug("mask = %"PRIx64, mask);
+
+   return (id & mask) | (mask + 1);
 }
 
 
@@ -631,7 +656,7 @@ static int fprint_defattr(FILE *f, const osm_obj_t *o, const char *ostr)
       strftime(ts, sizeof(ts), "%Y-%m-%dT%H:%M:%SZ", tm);
 
    return fprintf(f, "<%s id=\"%"PRId64"\" version=\"%d\" timestamp=\"%s\" uid=\"%d\" visible=\"%s\"", 
-         ostr, out_id(o->id), o->ver, ts, o->uid, o->vis ? "true" : "false");
+         ostr, out_id(o->id, o->type), o->ver, ts, o->uid, o->vis ? "true" : "false");
 }
 
 
@@ -690,14 +715,15 @@ int print_onode(FILE *f, const osm_obj_t *o)
 
       case OSM_WAY:
          for (i = 0; i < ((osm_way_t*) o)->ref_cnt; i++)
-            fprintf(f, "<nd ref=\"%"PRId64"\"/>\n", out_id(((osm_way_t*) o)->ref[i]));
+            fprintf(f, "<nd ref=\"%"PRId64"\"/>\n", out_id(((osm_way_t*) o)->ref[i], OSM_NODE));
          fprintf(f, "</way>\n");
          break;
 
       case OSM_REL:
          for (i = 0; i < ((osm_rel_t*) o)->mem_cnt; i++)
             fprintf(f, "<member type=\"%s\" ref=\"%"PRIu64"\" role=\"%s\"/>\n",
-                  ((osm_rel_t*) o)->mem[i].type == OSM_NODE ? "node" : "way", out_id(((osm_rel_t*) o)->mem[i].id),
+                  ((osm_rel_t*) o)->mem[i].type == OSM_NODE ? "node" : "way",
+                  out_id(((osm_rel_t*) o)->mem[i].id, ((osm_rel_t*) o)->mem[i].type),
                   role_str(((osm_rel_t*) o)->mem[i].role));
          fprintf(f, "</relation>\n");
          break;
