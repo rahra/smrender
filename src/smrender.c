@@ -656,7 +656,7 @@ static int fprint_defattr(FILE *f, const osm_obj_t *o, const char *ostr)
       strftime(ts, sizeof(ts), "%Y-%m-%dT%H:%M:%SZ", tm);
 
    return fprintf(f, "<%s id=\"%"PRId64"\" version=\"%d\" timestamp=\"%s\" uid=\"%d\" visible=\"%s\"", 
-         ostr, out_id(o->id, o->type), o->ver, ts, o->uid, o->vis ? "true" : "false");
+         ostr, out_id(o->id, o->type), o->ver ? o->ver : 1, ts, o->uid, o->vis ? "true" : "false");
 }
 
 
