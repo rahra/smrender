@@ -123,8 +123,8 @@ static void init_stats(struct dstats *ds)
  
 static void log_stats(const struct dstats *ds)
 {
-   log_debug(" ncnt = %ld, min_nid = %ld, max_nid = %ld", ds->ncnt, ds->min_nid, ds->max_nid);
-   log_debug(" wcnt = %ld, min_wid = %ld, max_wid = %ld", ds->wcnt, ds->min_wid, ds->max_wid);
+   log_debug(" ncnt = %ld, min_nid = %ld, max_nid = %ld (%d bits)", ds->ncnt, ds->min_nid, ds->max_nid, ds->nid_bits);
+   log_debug(" wcnt = %ld, min_wid = %ld, max_wid = %ld (%d bits)", ds->wcnt, ds->min_wid, ds->max_wid, ds->wid_bits);
    log_debug(" rcnt = %ld", ds->rcnt);
    log_debug(" left lower %.3f,%.3f right bottom %.3f,%.3f", ds->bb.ll.lon, ds->bb.ll.lat, ds->bb.ru.lon, ds->bb.ru.lat);
    log_debug(" lo_addr = %p, hi_addr = %p", ds->lo_addr, ds->hi_addr);
@@ -182,6 +182,27 @@ static int update_stats(const osm_obj_t *o, struct dstats *ds)
    }
 
    return 0;
+}
+
+
+/*! Determine the number of bits used by n.
+ */
+static int bits(int64_t n)
+{
+   int i;
+
+   if (n < 0) n *= -1;
+   for (i = 0; n > (int64_t) 1 << i; i++);
+   return i;
+}
+
+
+static void fin_stats(struct dstats *ds)
+{
+   ds->nid_bits = bits(ds->max_nid);
+   ds->nid_mask = ((int64_t) 1 << ds->nid_bits) - 1;
+   ds->wid_bits = bits(ds->max_wid);
+   ds->wid_mask = ((int64_t) 1 << ds->wid_bits) - 1;
 }
 
 
@@ -584,7 +605,10 @@ int read_osm_file(hpx_ctrl_t *ctl, bx_node_t **tree, const struct filter *fi, st
    hpx_tm_free(tag);
 
    if (ds != NULL)
+   {
+      fin_stats(ds);
       log_stats(ds);
+   }
 
    return 0;
 }
