@@ -96,7 +96,7 @@ static cairo_rectangle_t ext_;
 
 void __attribute__((constructor)) cairo_smr_init(void)
 {
-   log_msg(LOG_INFO, "using libcairo %s", cairo_version_string());
+   log_debug("using libcairo %s", cairo_version_string());
 }
 
 

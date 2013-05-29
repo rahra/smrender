@@ -28,6 +28,7 @@
 #include <signal.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <inttypes.h>
 
 #include "smrender_dev.h"
 
@@ -1771,9 +1772,64 @@ int act_split_fini(smrule_t *r)
 }
 
 
-int act_neg_ids_ini(smrule_t * UNUSED(r))
+int act_incomplete_ini(smrule_t *r)
 {
-   log_msg(LOG_WARN, "neg_ids() was removed!");
-   return 1;
+   char *name;
+
+   if ((name = get_param("file", NULL, r->act)) == NULL)
+   {
+      log_msg(LOG_WARN, "incomplete() requires parameter 'file'");
+      return 1;
+   }
+
+   if ((r->data = fopen(name, "w")) == NULL)
+   {
+      log_msg(LOG_WARN, "cannot open file %s: %s", name, strerror(errno));
+      return 1;
+   }
+
+   return 0;
+}
+
+
+static const char *type_to_str(int type)
+{
+   switch (type)
+   {
+      case OSM_NODE:
+         return "node";
+      case OSM_WAY:
+         return "way";
+      case OSM_REL:
+         return "relation";
+      default:
+         return "unknown";
+   }
+}
+
+
+int act_incomplete_main(smrule_t *r, osm_rel_t *rel)
+{
+   int i;
+
+   if (rel->obj.type != OSM_REL)
+   {
+      log_msg(LOG_WARN, "incomplete() is only appicaple to relations");
+      return 1;
+   }
+
+   for (i = 0; i < rel->mem_cnt; i++)
+      if (get_object(rel->mem[i].type, rel->mem[i].id) == NULL)
+         fprintf(r->data, "%s/%"PRId64"\n", type_to_str(rel->mem[i].type), rel->mem[i].id);
+
+   return 0;
+}
+
+
+int act_incomplete_fini(smrule_t *r)
+{
+   fclose(r->data);
+   r->data = NULL;
+   return 0;
 }
 

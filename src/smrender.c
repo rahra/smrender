@@ -862,9 +862,17 @@ void init_rd_paper(struct rdata *rd, const char *paper)
 }
 
 
-void usage(const char *s)
+static void print_version(void)
 {
    printf("Seamark renderer V" PACKAGE_VERSION ", (c) 2011-2012, Bernhard R. Fischer, <bf@abenteuerland.at>.\n"
+          "See http://www.abenteuerland.at/smrender/ for more information.\n");
+}
+
+
+void usage(const char *s)
+{
+   print_version();
+   printf(
          "usage: %s [OPTIONS] <window>\n"
          "   <window> := <center> | <bbox>\n"
          "   <bbox>   := <left lower>:<right upper>\n"
@@ -879,6 +887,7 @@ void usage(const char *s)
          "   -a .................. Render all nodes, otherwise only nodes which are\n"
          "                         on the page are rendered.\n"
          "   -b <color> .......... Choose background color ('white' is default).\n"
+         "   -D .................. Print debug messages.\n"
          "   -d <density> ........ Set image density (300 is default).\n"
          "   -f .................. Use loading filter.\n"
          "   -g <grd>[:<t>[:<s>]]  Distance of grid/ticks/subticks in minutes.\n"
@@ -902,10 +911,10 @@ void usage(const char *s)
          "   -u .................. Output URLs suitable for OSM data download and\n"
          "                         exit.\n"
          "   -V .................. Show chart parameters and exit.\n"
+         "   -v .................. Print version and exit.\n"
          "   -w <osm file> ....... Output OSM data to file.\n",
          s
          );
-   printf("\nSee http://www.abenteuerland.at/smrender/ for more information.\n");
 }
 
 
@@ -1234,16 +1243,14 @@ int main(int argc, char *argv[])
    struct tile_info ti;
 
    (void) gettimeofday(&tv_start, NULL);
-   init_log("stderr", LOG_DEBUG);
    rd = get_rdata();
    init_grid(&grd);
    rd->cmdline = mk_cmd_line((const char**) argv);
    memset(&ti, 0, sizeof(ti));
-   log_msg(LOG_INFO, "args: %s", rd->cmdline);
    if (sizeof(long) < 8)
       log_msg(LOG_WARN, "system seems to have %d bits only. This may lead to errors.", (int) sizeof(long) * 8);
 
-   while ((n = getopt(argc, argv, "ab:d:fg:Ghi:k:K:lMmno:O:P:r:R:s:t:T:uVw:")) != -1)
+   while ((n = getopt(argc, argv, "ab:Dd:fg:Ghi:k:K:lMmno:O:P:r:R:s:t:T:uVvw:")) != -1)
       switch (n)
       {
          case 'a':
@@ -1252,6 +1259,10 @@ int main(int argc, char *argv[])
 
          case 'b':
             bg = optarg;
+            break;
+
+         case 'D':
+            init_log("stderr", LOG_DEBUG);
             break;
 
          case 'd':
@@ -1374,10 +1385,16 @@ int main(int argc, char *argv[])
             init_exit = 1;
             break;
 
+         case 'v':
+            print_version();
+            exit(EXIT_SUCCESS);
+
          case 'w':
             osm_ofile = optarg;
             break;
       }
+
+   log_debug("args: %s", rd->cmdline);
 
    init_rendering_window(rd, argv[optind], paper);
 

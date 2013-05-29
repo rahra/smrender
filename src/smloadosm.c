@@ -248,7 +248,7 @@ void __attribute__((constructor)) install_sigusr1(void)
    if (sigaction(SIGUSR1, &sa, NULL) == -1)
       log_msg(LOG_WARNING, "SIGUSR1 handler cannot be installed: %s", strerror(errno));
    else
-      log_msg(LOG_INFO, "SIGUSR1 installed (pid = %ld)", (long) getpid());
+      log_debug("SIGUSR1 installed (pid = %ld)", (long) getpid());
 }
 
 
