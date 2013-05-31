@@ -425,13 +425,6 @@ int sm_thread_id(void)
    return tcnt++;
 }
 
-
-/*void __attribute__((constructor(101))) init_sm_thread_id(void)
-{
-   (void) sm_thread_id();
-}*/
-
-
 #else
 
 int sm_thread_id(void)

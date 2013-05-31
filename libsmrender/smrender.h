@@ -25,9 +25,16 @@
 #include "bxtree.h"
 //#include "smath.h"
 
+#if __STDC_VERSION__ < 199901L
+#if __GNUC__ >= 2
+#define __func__ __FUNCTION__
+#else
+#define __func__ "<unknown>"
+#endif
+#endif
 
 #define LOG_WARN LOG_WARNING
-#define log_debug(x...) log_msg(LOG_DEBUG, ## x)
+#define log_debug(fmt, x...) log_msg(LOG_DEBUG, "%s() " fmt, __func__, ## x)
 #define log_warn(x...) log_msg(LOG_WARN, ## x)
 
 #define DEG2RAD(x) ((x) * M_PI / 180.0)
