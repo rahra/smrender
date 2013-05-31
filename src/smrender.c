@@ -344,7 +344,7 @@ int apply_smrules(smrule_t *r, long ver)
    }
 #endif
 
-   log_debug("applying rule id 0x%016lx '%s'", (long) r->oo->id, r->act->func_name);
+   log_msg(LOG_INFO, "applying rule id 0x%"PRIx64" '%s'", r->oo->id, r->act->func_name);
 
    if (r->act->main.func != NULL)
    {

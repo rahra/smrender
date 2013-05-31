@@ -1402,7 +1402,7 @@ static int apply_subrules(smrule_t *r, struct sub_handler *sh)
    if (name != r->act->func_name)
    {
       name = r->act->func_name;
-      log_debug("applying rule id 0x%016lx '%s'", (long) r->oo->id, r->act->func_name);
+      log_msg(LOG_INFO, "applying rule id 0x%"PRIx64" '%s'", r->oo->id, r->act->func_name);
    }
 
    if (r->act->main.func != NULL && !sh->finish)
