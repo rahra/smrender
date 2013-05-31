@@ -141,7 +141,7 @@ void *sm_traverse_thread(struct sm_thread *smth)
       // execute rule
       log_debug("thread %d executing action %p", smth->nr, smth->dhandler);
       //smth->result = smth->func(smth->rule, smth->obj);
-      smth->result = traverse(smth->tree, 0, smth->idx, smth->dhandler, NULL, smth->param);
+      smth->result = traverse(smth->tree, 0, smth->idx, smth->dhandler, smth->param);
 
       pthread_mutex_lock(smth->mutex);
       smth->status = SM_THREAD_WAIT;
