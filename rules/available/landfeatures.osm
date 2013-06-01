@@ -38,7 +38,7 @@
    </way>
    <way>
       <tag k='highway' v='/^(secondary|primary|residential)$/'/>
-      <tag k='_action_' v='draw:color=black'/>
+      <tag k='_action_' v='draw:bcolor=black'/>
    </way>
    <way version="-10">
       <tag k='natural' v='cliff'/>
