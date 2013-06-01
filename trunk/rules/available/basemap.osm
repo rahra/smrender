@@ -149,5 +149,10 @@
       <tag k='type' v='multipolygon'/>
       <tag k='_action_' v='cat_poly:no_corner=1'/>
    </relation>
+   <relation>
+      <tag k='waterway' v=''/>
+      <tag k='type' v='multipolygon'/>
+      <tag k='_action_' v='cat_poly:no_corner=1'/>
+   </relation>
 </osm>
 
