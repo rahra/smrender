@@ -48,6 +48,7 @@
 #include <stdio.h>
 #include <errno.h>
 #include <math.h>
+#include <inttypes.h>
 
 #include "smrender_dev.h"
 #include "smcoast.h"
@@ -59,7 +60,7 @@ struct refine
 };
 
 
-static void node_brg(struct pcoord*, struct coord*, int64_t);
+static int node_brg(struct pcoord*, const struct coord*, int64_t);
 
 
 static struct corner_point co_pt_[4];
@@ -84,8 +85,13 @@ int is_closed_poly(const osm_way_t *w)
 }
 
 
-/*! This collects open polygons and adds the node references to the wlist
- * structure.
+/*! This function adds a way w to the way list wl thereby reallocating the
+ * waylist.
+ * @param w Pointer to the way.
+ * @param wl Pointer to a way list pointer. The way list must be freed again
+ * later.
+ * @return Always returns 0. FIXME: This function exits the program if
+ * realloc() fails.
  */
 int gather_poly0(osm_way_t *w, struct wlist **wl)
 {
@@ -137,7 +143,18 @@ static struct pdef *poly_get_node_ids(const struct wlist *wl)
 }
 
 
-static int poly_get_brg(struct pdef *pd, struct wlist *wl, int ocnt)
+/*! This function calculates the bearing and distance from the center point to
+ * the first and last node of all open ways in the way list wl. The result
+ * (bearing, distance) is stored into a list of struct pdefs.
+ * @param pd Pointer to pdef list. This list must be pre-allocated and must
+ * contain at least 2 * ocnt elements which should be greater or equal to
+ * wl->ref_cnt * 2.
+ * @param wl Pointer to the way list.
+ * @param ocnt Number of open ways in wl. (FIXME: Why that? Isn't ref_cnt enough?)
+ * @return Returns the number of open ways found in wl which is always less or
+ * equal than ocnt.
+ */
+static int poly_get_brg(struct pdef *pd, const struct wlist *wl, int ocnt)
 {
    int i, j;
 
@@ -159,6 +176,13 @@ static int poly_get_brg(struct pdef *pd, struct wlist *wl, int ocnt)
 }
 
 
+/*! Returns the octant of a position outside the rendering window. This is one
+ * of N, NE, E, SE, S, SW, W, NW.
+ * @param crd Pointer to position.
+ * @return Returns Octant as a combination of the logical or'ed flags  POS_N,
+ * POS_S, POS_E, POS_W. If the position is inside the rendering window 0 is
+ * returned.
+ */
 static int octant(const struct coord *crd)
 {
    int pos = 0;
@@ -240,67 +264,51 @@ static int64_t edge_point(struct coord crd, int pos, int64_t nid)
 }
 
 
-static int trim_way_rev(osm_way_t *w)
+/*! This function returns the true index within the reference list of a way
+ * according to the given index idx and a direction rev.
+ * @param w Pointer to way.
+ * @param idx Number of reference. This value must be in the range 0 <= idx <
+ * w->ref_cnt. This function does no boundary check!
+ * @param rev Direction 0 (false) means ascending order (starting at the
+ * beginning), != 0 (true) means descending, i.e. starting at the end of the
+ * reference list.
+ * @return Returns the true index.
+ */
+static int windex(const osm_way_t *w, int idx, int rev)
 {
-   struct coord crd;
-   osm_node_t *n;
-   int i, p[2] = {0, 0};
-   int64_t nid;
-
-   for (i = w->ref_cnt - 1; i >= 0; i--)
-   {
-      if ((n = get_object(OSM_NODE, w->ref[i])) == NULL)
-      {
-         log_msg(LOG_ERR, "node %ld in way %ld does not exist", (long) w->ref[i], (long) w->obj.id);
-         return -1;
-      }
-
-      crd.lat = n->lat;
-      crd.lon = n->lon;
-      p[0] = p[1];
-      if (!(p[1] = octant(&crd)))
-         break;
-   }
-
-   if (i < 0)
-   {
-      log_msg(LOG_ERR, "unhandled error: all nodes of way %ld are outside the page", (long) w->obj.id);
-      return -1;
-   }
-
-   if (i < w->ref_cnt - 1)
-   {
-      log_debug("trimming way %ld, %d - %d out of page, octant = 0x%02x", (long) w->obj.id, w->ref_cnt - 1, i + 1, p[0]);
-
-      if (!(nid = edge_point(crd, p[0], w->ref[i + 1])))
-         return -1;
-
-      w->ref[i + 1] = nid;
-      log_debug("added new edge point %ld", (long) nid);
-
-      //memmove(&w->ref[1], &w->ref[i], sizeof(int64_t) * (w->ref_cnt - i));
-      w->ref_cnt = i + 2;
-   }
-
-   return w->ref_cnt - 1 - i;
+   return rev ? w->ref_cnt - idx - 1 : idx;
 }
 
 
-static int trim_way(osm_way_t *w)
+/*! This function trims all node refs from the beginning of a way which are
+ * outside the rendering window. This means shortening the way by removing
+ * those which are outside up to the first node which is inside.
+ * @param w Pointer to way which should be trimmed.
+ * @return It returns the index of the of the original reference list of the
+ * way of the first node which was inside. This node is at index 1 after
+ * modification and at index 0 a newly generated edge point was inserted.
+ * If 0 is returned the way was not modified, i.e. even the first point is
+ * inside. -1 is returned in case of error which occures if all nodes are
+ * outside.
+ */
+static int trim_way(osm_way_t *w, int rev)
 {
    struct coord crd;
    osm_node_t *n;
    int i, p[2] = {0, 0};
    int64_t nid;
 
+   // loop over all node refs of way
    for (i = 0; i < w->ref_cnt; i++)
    {
-      if ((n = get_object(OSM_NODE, w->ref[i])) == NULL)
+      // get corresponding node
+      if ((n = get_object(OSM_NODE, w->ref[windex(w, i, rev)])) == NULL)
       {
-         log_msg(LOG_ERR, "node %ld in way %ld does not exist", (long) w->ref[i], (long) w->obj.id);
+         log_msg(LOG_ERR, "node %"PRId64" in way %"PRId64" does not exist", w->ref[windex(w, i, rev)], w->obj.id);
          return -1;
       }
 
+      // calculate octant and break loop if node is inside the page border
       crd.lat = n->lat;
       crd.lon = n->lon;
       p[0] = p[1];
@@ -308,23 +316,39 @@ static int trim_way(osm_way_t *w)
          break;
    }
 
+   // check if at least one node is on the page
    if (i >= w->ref_cnt)
    {
-      log_msg(LOG_ERR, "unhandled error: all nodes of way %ld are outside the page", (long) w->obj.id);
+      log_msg(LOG_ERR, "unhandled error: all nodes of way %"PRId64" are outside the page", w->obj.id);
       return -1;
    }
 
-   if (i)
+   // check that the corresponding node is not the 1st one
+   if (p[0])
    {
-      log_debug("trimming way %ld, %d - %d out of page, octant = 0x%02x", (long) w->obj.id, 0, i - 1, p[0]);
+      log_debug("trimming way %"PRId64", %d - %d out of page, octant = 0x%02x",
+            w->obj.id, windex(w, 0, rev), windex(w, i - 1, rev), p[0]);
 
-      if (!(nid = edge_point(crd, p[0], w->ref[i - 1])))
+      // create new edge point
+      if (!(nid = edge_point(crd, p[0], w->ref[windex(w, i - 1, rev)])))
          return -1;
 
-      w->ref[0] = nid;
-      log_debug("added new edge point %ld", (long) nid);
+      log_debug("added new edge point %"PRId64" at ref# %d", nid, windex(w, i - 1, rev));
 
-      memmove(&w->ref[1], &w->ref[i], sizeof(int64_t) * (w->ref_cnt - i));
+      // ascending order has to be handled slightly different
+      if (!rev)
+      {
+         // set first ref to new edge point
+         w->ref[windex(w, 0, rev)] = nid;
+         // move all other refs starting with the first ref which is inside (at
+         // position i) directly behind ref 0
+         memmove(&w->ref[1], &w->ref[i], sizeof(int64_t) * (w->ref_cnt - i));
+      }
+      // descending order
+      else
+         w->ref[windex(w, i - 1, rev)] = nid;
+
+      // decrease ref count accordingly
       w->ref_cnt -= i - 1;
    }
 
@@ -341,10 +365,10 @@ static void trim_ways(struct wlist *wl, int ocnt)
       if (!wl->ref[i].open)
          continue;
 
-      if (trim_way(wl->ref[i].w) > 0)
+      if (trim_way(wl->ref[i].w, 0) > 0)
          log_debug("wl_index = %d", i);
 
-      if (trim_way_rev(wl->ref[i].w) > 0)
+      if (trim_way(wl->ref[i].w, 1) > 0)
          log_debug("wl_index = %d", i);
    }
 }
@@ -370,11 +394,12 @@ static int poly_find_adj2(struct wlist *wl, struct pdef *pd)
 }
 
 
-/*! This function detects if a way is already closed (loop) and determines the
- * total number of nodes.
+/*! This function detects if a way is already closed (loop, i.e. cyclic list of
+ * way segments) and determines the total number of nodes.
  * @param pl Pointer to beginning of ways.
  * @param cnt Pointer to integer which will reveive the number of nodes.
- * @return The function returns 1 of it is a loop, 0 if it is unclosed, and -1 on error.
+ * @return The function returns 1 of it is a loop, 0 if it is unclosed, and -1
+ * on error.
  */
 static int count_poly_refs(struct poly *pl, int *cnt)
 {
@@ -398,6 +423,16 @@ static int count_poly_refs(struct poly *pl, int *cnt)
 }
 
 
+/*! This function copies tags from the the source object src to the destination
+ * object dst if the keys of those tags are listed in the reference object cp
+ * and exist in src.
+ * @param cp Pointer to reference object for a list of tag keys which should be
+ * honored by this function.
+ * @param src Pointer to source object.
+ * @param dst Pointer to destination object.
+ * @return Returns the number of tags that were copied from src to dst. -1 is
+ * returned in case of error, i.e. memory reallocation has failed.
+ */
 static int collect_tags(const osm_obj_t *cp, const osm_obj_t *src, osm_obj_t *dst)
 {
    struct otag ot, *tags;
@@ -407,27 +442,33 @@ static int collect_tags(const osm_obj_t *cp, const osm_obj_t *src, osm_obj_t *ds
    memset(&st, 0, sizeof(st));
    memset(&ot, 0, sizeof(ot));
 
-   log_debug("collect_tags(src = %ld)", (long) src->id);
+   log_debug("collect_tags(src = %"PRId64")", src->id);
+   // loop over all tags in cp
    for (i = 0, cnt = 0; i < cp->tag_cnt; i++)
    {
+      // check if tag of cp exists in src and continue if not
       ot.k = cp->otag[i].k;
       if ((n = bs_match_attr(src, &ot, &st)) < 0)
          continue;
 
+      // check if tag also exists in dst and continue in that case
       if (bs_match_attr(dst, &ot, &st) >= 0)
       {
          if (bs_match_attr(dst, &src->otag[n], &st) < 0)
-            log_msg(LOG_WARN, "value missmatch of key %.*s between ways %ld and %ld",
-                  ot.k.len, ot.k.buf, (long) dst->id, (long) src->id);
+            log_msg(LOG_WARN, "value missmatch of key %.*s between ways %"PRId64" and %"PRId64,
+                  ot.k.len, ot.k.buf, dst->id, src->id);
          continue;
       }
 
+      // reallocate tag list in dst
       if ((tags = realloc(dst->otag, sizeof(*dst->otag) * (dst->tag_cnt + 1))) == NULL)
       {
          log_msg(LOG_ERR, "realloc() failed in collect_tags(): %s", strerror(errno));
          return -1;
       }
       dst->otag = tags;
+
+      // copy tag
       memcpy(dst->otag + dst->tag_cnt, src->otag + n, sizeof(*dst->otag));
       dst->tag_cnt++;
       cnt++;
@@ -464,11 +505,18 @@ static int join_open_poly(struct poly *pl, osm_way_t *w)
 }
 
 
+/*! This function merges all tags from the ways found in the cyclic poly list
+ * pl whose tags are also found in the reference object o to the way w.
+ * @param pl Pointer to the poly list.
+ * @param o Pointer to the reference object.
+ * @param w Pointer to the way to which the tags are merged.
+ * @return Return 0 on success or -1 in case of error, i.e. collect_tags() fails.
+ */
 static int join_tags(const struct poly *pl, const osm_obj_t *o, osm_way_t *w)
 {
    const struct poly *list;
 
-   log_debug("joining tags from way %ld to %ld", (long) pl->w->obj.id, w->obj.id);
+   log_debug("joining tags from way %"PRId64" to %"PRId64, pl->w->obj.id, w->obj.id);
    for (list = pl; list != NULL; list = list->next)
    {
       // copy all non-existing tags to new way
@@ -483,13 +531,30 @@ static int join_tags(const struct poly *pl, const osm_obj_t *o, osm_way_t *w)
 }
 
 
-static int loop_detect(const osm_obj_t *o, struct wlist *wl)
+static void poly_join_tags(const struct wlist *wl, const smrule_t *r)
+{
+   for (int i = 0; i < wl->ref_cnt; i++)
+      if (wl->ref[i].nw != NULL)
+      {
+         log_debug("joining tags to way %"PRId64, wl->ref[i].nw->obj.id);
+         (void) join_tags(&wl->ref[i], &((struct catpoly*) r->data)->obj, wl->ref[i].nw);
+         if (r->oo->type == OSM_REL)
+         {
+            log_debug("joining relation tags");
+            collect_tags(r->oo, r->oo, &wl->ref[i].nw->obj);
+         }
+      }
+}
+
+
+static int loop_detect(struct wlist *wl)
 {
    osm_way_t *w;
    int i, cnt, ret, ocnt = 0;
 
    for (i = 0; i < wl->ref_cnt; i++)
    {
+      // ignore ways which are marked for removal from the way list
       if (wl->ref[i].del)
          continue;
 
@@ -509,7 +574,7 @@ static int loop_detect(const osm_obj_t *o, struct wlist *wl)
       log_debug("waylist: wl_index %d (start = %p, cnt = %d, loop = %d)", i, &wl->ref[i], cnt, ret);
       w = malloc_way(1, cnt);
       osm_way_default(w);
-      join_tags(&wl->ref[i], o, w);
+      wl->ref[i].nw = w;
       cnt = join_open_poly(&wl->ref[i], w);
       put_object((osm_obj_t*) w);
       log_debug("%d ways joined", cnt);
@@ -527,6 +592,9 @@ static int loop_detect(const osm_obj_t *o, struct wlist *wl)
 }
 
 
+/*! Helper function for qsort(). This compares node ids and order of occurence
+ * within their ways (i.e. first or last node).
+ */
 static int compare_pdef_nid(const struct pdef *p1, const struct pdef *p2)
 {
    if (p1->nid < p2->nid) return -1;
@@ -539,6 +607,13 @@ static int compare_pdef_nid(const struct pdef *p1, const struct pdef *p2)
 }
 
 
+/*! Helper function for qsort(). This compares the bearings of to pdef
+ * structures.
+ * @param p1 Pointer to first pdef structure.
+ * @param p2 Pointer to second pdef structure.
+ * @return Returns -1 if 1st bearing is less then 2nd, 1 if 1st bearing is
+ * greater than 2nd, or 0 if both are equal.
+ */
 static int compare_pdef(const struct pdef *p1, const struct pdef *p2)
 {
    if (p1->pc.bearing < p2->pc.bearing) return -1;
@@ -547,6 +622,8 @@ static int compare_pdef(const struct pdef *p1, const struct pdef *p2)
 }
 
 
+/*! Initialization function for bearings from the center to the corner points.
+ */
 static void init_corner_brg(const struct rdata *rd, const struct coord *src, struct corner_point *co_pt)
 {
    struct coord corner_coord[4] = {rd->bb.ru, {rd->bb.ll.lat, rd->bb.ru.lon}, rd->bb.ll, {rd->bb.ru.lat, rd->bb.ll.lon}};
@@ -564,7 +641,7 @@ static void init_corner_brg(const struct rdata *rd, const struct coord *src, str
       co_pt[i].n->lon = corner_coord[i].lon;
       set_const_tag(&co_pt[i].n->obj.otag[1], "grid", "pagecorner");
       put_object((osm_obj_t*) co_pt[i].n);
-      log_msg(LOG_DEBUG, "corner_point[%d].bearing = %f (id = %ld)", i, co_pt[i].pc.bearing, co_pt[i].n->obj.id);
+      log_msg(LOG_DEBUG, "corner_point[%d].bearing = %f (id = %"PRId64")", i, co_pt[i].pc.bearing, co_pt[i].n->obj.id);
 
       w->ref[3 - i] = co_pt[i].n->obj.id;
    }
@@ -576,16 +653,28 @@ static void init_corner_brg(const struct rdata *rd, const struct coord *src, str
 }
 
 
-static void node_brg(struct pcoord *pc, struct coord *src, int64_t nid)
+/*! This function calculates the bearing and distance from the position defined
+ * by src to a node defined by its node id nid. The result is stored to pc.
+ * @param pc Pointer to a pcoord structure for the result (distance, bearing).
+ * @param src Source coordinates.
+ * @param nid Id of destination node id.
+ * @return Returns 0 on success or -1 in case of error, i.e. if the node
+ * defined by nid does not exist.
+ */
+static int node_brg(struct pcoord *pc, const struct coord *src, int64_t nid)
 {
    osm_node_t *n;
    struct coord dst;
 
    if ((n = get_object(OSM_NODE, nid)) == NULL)
-      return;
+   {
+      log_msg(LOG_ERR, "node %"PRId64" does not exist", nid);
+      return -1;
+   }
    dst.lat = n->lat;
    dst.lon = n->lon;
    *pc = coord_diff(src, &dst);
+   return 0;
 }
 
 
@@ -644,7 +733,7 @@ static int connect_open(struct pdef *pd, struct wlist *wl, int ocnt, short no_co
                ref[0] = co_pt[k % 4].n->obj.id;
                wl->ref[pd[i].wl_index].w->ref = ref;
                wl->ref[pd[i].wl_index].w->ref_cnt++;
-               log_debug("added corner point %d (id = %ld)", k % 4, co_pt[k % 4].n->obj.id);
+               log_debug("added corner point %d (id = %"PRId64")", k % 4, co_pt[k % 4].n->obj.id);
             }
          } //if (!no_corner)
 
@@ -658,7 +747,7 @@ static int connect_open(struct pdef *pd, struct wlist *wl, int ocnt, short no_co
             wl->ref[pd[i].wl_index].w->ref = ref;
             wl->ref[pd[i].wl_index].w->ref_cnt++;
             wl->ref[pd[i].wl_index].open = 0;
-            log_debug("way %ld (wl_index = %d) is now closed", wl->ref[pd[i].wl_index].w->obj.id, pd[i].wl_index);
+            log_debug("way %"PRId64" (wl_index = %d) is now closed", wl->ref[pd[i].wl_index].w->obj.id, pd[i].wl_index);
          }
          else
          {
@@ -691,7 +780,7 @@ static int connect_open(struct pdef *pd, struct wlist *wl, int ocnt, short no_co
                   pd[i].pc = pd[k].pc;
                   break;
                }
-            log_debug("way %ld (wl_index = %d) marked as closed, resorting pdef", wl->ref[pd[j % ocnt].wl_index].w->obj.id, pd[j % ocnt].wl_index);
+            log_debug("way %"PRId64" (wl_index = %d) marked as closed, resorting pdef", wl->ref[pd[j % ocnt].wl_index].w->obj.id, pd[j % ocnt].wl_index);
             return -1;
          }
          break;
@@ -701,6 +790,8 @@ static int connect_open(struct pdef *pd, struct wlist *wl, int ocnt, short no_co
 }
 
 
+/*! Initialization function for center and corner points.
+ */
 void init_cat_poly(struct rdata *rd)
 {
    center_.lat = rd->mean_lat;
@@ -710,6 +801,8 @@ void init_cat_poly(struct rdata *rd)
 }
 
 
+/*! Initialization function for way list structure.
+ */
 struct wlist *init_wlist(void)
 {
    struct wlist *wl;
@@ -725,6 +818,13 @@ struct wlist *init_wlist(void)
 }
 
 
+/*! This function creates an artificial tag list within the (temporary) object
+ * obj. All tags which are found as parameters 'copy=*' within the parameter
+ * list fp are created within obj.
+ * @param fp Pointer to the parameter list.
+ * @param obj Pointer to the object within which the tag list is created.
+ * @return Returns the number of tags found or -1 in case of error.
+ */
 static int cat_poly_ini_copy(fparam_t * const *fp, osm_obj_t *obj)
 {
    struct otag *ot;
@@ -815,7 +915,7 @@ int act_cat_poly_ini(smrule_t *r)
 
 static int cat_poly(smrule_t *r, osm_obj_t *o)
 {
-   // check if it is an open polygon
+   // safety check: ignore illegal ways
    if (((osm_way_t*) o)->ref_cnt < 2)
       return 0;
 // FIXME: this is originally NOT commented out but it would hinder to name e.g.
@@ -838,8 +938,10 @@ static int cat_poly_fini(smrule_t *r)
    pd = poly_get_node_ids(wl);
    qsort(pd, wl->ref_cnt * 2, sizeof(struct pdef), (int(*)(const void *, const void *)) compare_pdef_nid);
    poly_find_adj2(wl, pd);
-   ocnt = loop_detect(&cp->obj, wl);
+   ocnt = loop_detect(wl);
    free(pd);
+
+   poly_join_tags(wl, r);
 
    log_debug("trimming ways");
    trim_ways(wl, ocnt);
@@ -859,7 +961,7 @@ static int cat_poly_fini(smrule_t *r)
 
          for (i = 0; i < ocnt << 1; i++)
             if (wl->ref[pd[i].wl_index].open)
-               log_debug("%d: wl_index = %d, pn = %d, wid = %ld, brg = %f", i, pd[i].wl_index, pd[i].pn, wl->ref[pd[i].wl_index].w->obj.id, pd[i].pc.bearing);
+               log_debug("%d: wl_index = %d, pn = %d, wid = %"PRId64", brg = %f", i, pd[i].wl_index, pd[i].pn, wl->ref[pd[i].wl_index].w->obj.id, pd[i].pc.bearing);
       }
       while (connect_open(pd, wl, ocnt << 1, cp->no_corner));
 
@@ -874,10 +976,9 @@ static int cat_poly_fini(smrule_t *r)
 static int cat_relways(smrule_t *r, osm_obj_t *o)
 {
    osm_way_t *w;
-   smrule_t tr;
    int i;
 
-   log_msg(LOG_DEBUG, "cat_relways(id = %ld)", (long) o->id);
+   log_msg(LOG_DEBUG, "cat_relways(id = %"PRId64")", o->id);
    ((struct catpoly*) r->data)->wl = init_wlist();
    for (i = 0; i < ((osm_rel_t*) o)->mem_cnt; i++)
    {
@@ -885,13 +986,14 @@ static int cat_relways(smrule_t *r, osm_obj_t *o)
          continue;
       if ((w = get_object(OSM_WAY, ((osm_rel_t*) o)->mem[i].id)) == NULL)
       {
-         log_msg(LOG_ERR, "way %ld of relation %ld does not exist", (long) ((osm_rel_t*) o)->mem[i].id, (long) o->id);
+         log_msg(LOG_ERR, "way %"PRId64" of relation %"PRId64" does not exist", ((osm_rel_t*) o)->mem[i].id, o->id);
          continue;
       }
       cat_poly(r, (osm_obj_t*) w);
    }
+
    // create temporary rule for copying tags of the relation object to new ways.
-   memcpy(&tr, r, sizeof(tr));
+   smrule_t tr = *r;
    tr.oo = o;
    cat_poly_fini(&tr);
    return 0;
