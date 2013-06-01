@@ -39,12 +39,13 @@ struct corner_point
 
 struct poly
 {
-   struct poly *next, *prev;  // cat_poly:
-   osm_way_t *w;
-   short del;                 // cat_poly: 1 if element should be removed from list
-   short open;                // cat_poly: 1 if element is connected but still open way
-   double area;               // gen_layer: area of polygon
-   short cw;                  // 1 if polygon is clockwise, otherwise 0
+   struct poly *next, *prev;  //!< pointer to next/prev directly connected segment
+   osm_way_t *w;              //!< pointer to way segment
+   short del;                 //!< cat_poly: 1 if element should be removed from list
+   short open;                //!< cat_poly: 1 if element is connected but still open way
+   double area;               //!< gen_layer: area of polygon
+   short cw;                  //!< 1 if polygon is clockwise, otherwise 0
+   osm_way_t *nw;             //!< pointer to new way
 };
 
 struct wlist
