@@ -866,6 +866,11 @@ static void print_version(void)
 {
    printf("Seamark renderer V" PACKAGE_VERSION ", (c) 2011-2012, Bernhard R. Fischer, <bf@abenteuerland.at>.\n"
           "See http://www.abenteuerland.at/smrender/ for more information.\n");
+#ifdef HAVE_CAIRO
+   printf("Using libcairo %s.\n", cairo_version_string());
+#else
+   printf("Compile without libcairo support.\n");
+#endif
 }
 
 
