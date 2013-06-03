@@ -11,6 +11,7 @@
 #include "bstring.h"
 
 
+#define SYNTAX_RELAXED
 #define NEXT_TOKEN(x) if (!next_token(x)) return 0
 
 
@@ -182,7 +183,8 @@ static int next_token(bstring_t *b)
 
 static int isword(int c)
 {
-   return isalpha(c) || isdigit(c) || c == '\\' || c == '*' || c == '-' || c == '_' || c == '#' || c == '.' || c == '/';
+   // FIXME: is inclusion of ',' dangerous?
+   return isalpha(c) || isdigit(c) || c == '\\' || c == '*' || c == '-' || c == '_' || c == '#' || c == '.' || c == '/' || c== ',';
 }
 
 
@@ -499,7 +501,7 @@ static int read_mcss_obj(bstring_t *src)
    {
       for (; *src->buf == '[';)
       {
-         if (read_tag(src, &tag) <= 0)
+         if (read_tag(src, &tag) < 0)
             return tag.cmp;
          //print_osm_tag(&k, &v, e);
          mcss_obj_add_tag(&obj, &tag);
@@ -539,6 +541,18 @@ static int read_mcss_elem(bstring_t *src)
    while (*src->buf == ',')
    {
       bs_advance(src);
+
+#ifdef SYNTAX_RELAXED
+      // handle special case where no object follows after the ','
+      i = line_count(0);
+      NEXT_TOKEN(src);
+      if (*src->buf == '{')
+      {
+         printf("<!-- syntax violation in line %d: spurious comma -->\n", i);
+         break;
+      }
+#endif
+
       if ((e = read_mcss_obj(src)) <= 0)
          return e;
    }
