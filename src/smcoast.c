@@ -163,12 +163,12 @@ static int poly_get_brg(struct pdef *pd, const struct wlist *wl, int ocnt)
       if (!wl->ref[i].open)
          continue;
 
-      node_brg(&pd[j].pc, &center_, wl->ref[i].w->ref[0]);
+      node_brg(&pd[j].pc, &center_, wl->ref[i].nw->ref[0]);
       pd[j].wl_index = i;
       pd[j].pn = 0;
-      node_brg(&pd[j + ocnt].pc, &center_, wl->ref[i].w->ref[wl->ref[i].w->ref_cnt - 1]);
+      node_brg(&pd[j + ocnt].pc, &center_, wl->ref[i].nw->ref[wl->ref[i].nw->ref_cnt - 1]);
       pd[j + ocnt].wl_index = i;
-      pd[j + ocnt].pn = wl->ref[i].w->ref_cnt - 1;
+      pd[j + ocnt].pn = wl->ref[i].nw->ref_cnt - 1;
       j++;
    }
 
@@ -365,10 +365,10 @@ static void trim_ways(struct wlist *wl, int ocnt)
       if (!wl->ref[i].open)
          continue;
 
-      if (trim_way(wl->ref[i].w, 0) > 0)
+      if (trim_way(wl->ref[i].nw, 0) > 0)
          log_debug("wl_index = %d", i);
 
-      if (trim_way(wl->ref[i].w, 1) > 0)
+      if (trim_way(wl->ref[i].nw, 1) > 0)
          log_debug("wl_index = %d", i);
    }
 }
@@ -438,6 +438,12 @@ static int collect_tags(const osm_obj_t *cp, const osm_obj_t *src, osm_obj_t *ds
    struct otag ot, *tags;
    struct stag st;
    int i, n, cnt;
+
+   if (src->type == dst->type && src->id == dst->id)
+   {
+      log_msg(LOG_ERR, "ignoring src == dst, this may indicate a software bug!");
+      return 0;
+   }
 
    memset(&st, 0, sizeof(st));
    memset(&ot, 0, sizeof(ot));
@@ -583,7 +589,6 @@ static int loop_detect(struct wlist *wl)
       if (!ret)
       {
          wl->ref[i].open = 1;
-         wl->ref[i].w = w;
          ocnt++;
       }
    }
@@ -726,13 +731,13 @@ static int connect_open(struct pdef *pd, struct wlist *wl, int ocnt, short no_co
             for (; k < l; k++)
             {
                // FIXME: realloc() and memmove() should be done outside of the loop
-               if ((ref = realloc(wl->ref[pd[i].wl_index].w->ref, sizeof(int64_t) * (wl->ref[pd[i].wl_index].w->ref_cnt + 1))) == NULL)
+               if ((ref = realloc(wl->ref[pd[i].wl_index].nw->ref, sizeof(int64_t) * (wl->ref[pd[i].wl_index].nw->ref_cnt + 1))) == NULL)
                   log_msg(LOG_ERR, "realloc() failed: %s", strerror(errno)), exit(EXIT_FAILURE);
 
-               memmove(&ref[1], &ref[0], sizeof(int64_t) * wl->ref[pd[i].wl_index].w->ref_cnt); 
+               memmove(&ref[1], &ref[0], sizeof(int64_t) * wl->ref[pd[i].wl_index].nw->ref_cnt); 
                ref[0] = co_pt[k % 4].n->obj.id;
-               wl->ref[pd[i].wl_index].w->ref = ref;
-               wl->ref[pd[i].wl_index].w->ref_cnt++;
+               wl->ref[pd[i].wl_index].nw->ref = ref;
+               wl->ref[pd[i].wl_index].nw->ref_cnt++;
                log_debug("added corner point %d (id = %"PRId64")", k % 4, co_pt[k % 4].n->obj.id);
             }
          } //if (!no_corner)
@@ -740,27 +745,27 @@ static int connect_open(struct pdef *pd, struct wlist *wl, int ocnt, short no_co
          // if start and end point belong to same way close
          if (pd[i].wl_index == pd[j % ocnt].wl_index)
          {
-            if ((ref = realloc(wl->ref[pd[i].wl_index].w->ref, sizeof(int64_t) * (wl->ref[pd[i].wl_index].w->ref_cnt + 1))) == NULL)
+            if ((ref = realloc(wl->ref[pd[i].wl_index].nw->ref, sizeof(int64_t) * (wl->ref[pd[i].wl_index].nw->ref_cnt + 1))) == NULL)
                log_msg(LOG_ERR, "realloc() failed: %s", strerror(errno)), exit(EXIT_FAILURE);
 
-            ref[wl->ref[pd[i].wl_index].w->ref_cnt] = ref[0];
-            wl->ref[pd[i].wl_index].w->ref = ref;
-            wl->ref[pd[i].wl_index].w->ref_cnt++;
+            ref[wl->ref[pd[i].wl_index].nw->ref_cnt] = ref[0];
+            wl->ref[pd[i].wl_index].nw->ref = ref;
+            wl->ref[pd[i].wl_index].nw->ref_cnt++;
             wl->ref[pd[i].wl_index].open = 0;
-            log_debug("way %"PRId64" (wl_index = %d) is now closed", wl->ref[pd[i].wl_index].w->obj.id, pd[i].wl_index);
+            log_debug("way %"PRId64" (wl_index = %d) is now closed", wl->ref[pd[i].wl_index].nw->obj.id, pd[i].wl_index);
          }
          else
          {
             log_debug("pd[%d].wl_index(%d) != pd[%d].wl_index(%d)", i, pd[i].wl_index, j % ocnt, pd[j % ocnt].wl_index);
-            if ((ref = realloc(wl->ref[pd[i].wl_index].w->ref, sizeof(int64_t) * (wl->ref[pd[i].wl_index].w->ref_cnt + wl->ref[pd[j % ocnt].wl_index].w->ref_cnt))) == NULL)
+            if ((ref = realloc(wl->ref[pd[i].wl_index].nw->ref, sizeof(int64_t) * (wl->ref[pd[i].wl_index].nw->ref_cnt + wl->ref[pd[j % ocnt].wl_index].nw->ref_cnt))) == NULL)
                log_msg(LOG_ERR, "realloc() failed: %s", strerror(errno)), exit(EXIT_FAILURE);
 
             // move refs from i^th way back
-            memmove(&ref[wl->ref[pd[j % ocnt].wl_index].w->ref_cnt], &ref[0], sizeof(int64_t) * wl->ref[pd[i].wl_index].w->ref_cnt); 
+            memmove(&ref[wl->ref[pd[j % ocnt].wl_index].nw->ref_cnt], &ref[0], sizeof(int64_t) * wl->ref[pd[i].wl_index].nw->ref_cnt); 
             // copy refs from j^th way to the beginning of i^th way
-            memcpy(&ref[0], wl->ref[pd[j % ocnt].wl_index].w->ref, sizeof(int64_t) * wl->ref[pd[j % ocnt].wl_index].w->ref_cnt);
-            wl->ref[pd[i].wl_index].w->ref = ref;
-            wl->ref[pd[i].wl_index].w->ref_cnt += wl->ref[pd[j % ocnt].wl_index].w->ref_cnt;
+            memcpy(&ref[0], wl->ref[pd[j % ocnt].wl_index].nw->ref, sizeof(int64_t) * wl->ref[pd[j % ocnt].wl_index].nw->ref_cnt);
+            wl->ref[pd[i].wl_index].nw->ref = ref;
+            wl->ref[pd[i].wl_index].nw->ref_cnt += wl->ref[pd[j % ocnt].wl_index].nw->ref_cnt;
             // (pseudo) close j^th way
             // FIXME: onode and its refs should be free()'d and removed from tree
             wl->ref[pd[j % ocnt].wl_index].open = 0;
@@ -769,7 +774,7 @@ static int connect_open(struct pdef *pd, struct wlist *wl, int ocnt, short no_co
                if ((pd[i].wl_index == pd[k].wl_index) && pd[k].pn)
                {
                   // set point index of new end point of i^th way
-                  pd[k % ocnt].pn = wl->ref[pd[i].wl_index].w->ref_cnt - 1;
+                  pd[k % ocnt].pn = wl->ref[pd[i].wl_index].nw->ref_cnt - 1;
                   break;
                }
             // find start-point of j^th way
@@ -780,7 +785,7 @@ static int connect_open(struct pdef *pd, struct wlist *wl, int ocnt, short no_co
                   pd[i].pc = pd[k].pc;
                   break;
                }
-            log_debug("way %"PRId64" (wl_index = %d) marked as closed, resorting pdef", wl->ref[pd[j % ocnt].wl_index].w->obj.id, pd[j % ocnt].wl_index);
+            log_debug("way %"PRId64" (wl_index = %d) marked as closed, resorting pdef", wl->ref[pd[j % ocnt].wl_index].nw->obj.id, pd[j % ocnt].wl_index);
             return -1;
          }
          break;
@@ -855,7 +860,6 @@ static int cat_poly_ini_copy(fparam_t * const *fp, osm_obj_t *obj)
 static int cat_poly_ini(smrule_t *r)
 {
    struct catpoly *cp;
-   double d;
 
    if ((cp = calloc(1, sizeof(*cp))) == NULL)
    {
@@ -863,12 +867,8 @@ static int cat_poly_ini(smrule_t *r)
       return -1;
    }
 
-   if (get_param("ign_incomplete", &d, r->act) != NULL)
-      if (d != 0)
-         cp->ign_incomplete = 1;
-   if (get_param("no_corner", &d, r->act) != NULL)
-      if (d != 0)
-         cp->no_corner = 1;
+   cp->ign_incomplete = get_param_bool("ign_incomplete", r->act);
+   cp->no_corner = get_param_bool("no_corner", r->act);
 
    if (!cp->no_corner)
       get_rdata()->flags |= RD_CORNER_POINTS;
@@ -961,7 +961,7 @@ static int cat_poly_fini(smrule_t *r)
 
          for (i = 0; i < ocnt << 1; i++)
             if (wl->ref[pd[i].wl_index].open)
-               log_debug("%d: wl_index = %d, pn = %d, wid = %"PRId64", brg = %f", i, pd[i].wl_index, pd[i].pn, wl->ref[pd[i].wl_index].w->obj.id, pd[i].pc.bearing);
+               log_debug("%d: wl_index = %d, pn = %d, wid = %"PRId64", brg = %f", i, pd[i].wl_index, pd[i].pn, wl->ref[pd[i].wl_index].nw->obj.id, pd[i].pc.bearing);
       }
       while (connect_open(pd, wl, ocnt << 1, cp->no_corner));
 
