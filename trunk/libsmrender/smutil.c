@@ -387,6 +387,27 @@ char *get_parami(const char *attr, int *ival, const action_t *act)
 }
 
 
+/*! This function tests an attribute to be true or false.
+ * @param attr Pointer to attribute key.
+ * @param act Pointer to action_t (which contains the list of action parameters).
+ * @return The function returns 1 (true) if such an attribute exists and
+ * contains the value '1' or 'yes'. If no such attribute exists or if the
+ * attribute does not contain a "true" value the function returns 0 (false).
+ */
+int get_param_bool(const char *attr, const action_t *act)
+{
+   char *s;
+
+   if ((s = get_param(attr, NULL, act)) == NULL)
+      return 0;
+
+   if (!strcmp(s, "1") || !strcasecmp(s, "yes"))
+      return 1;
+
+   return 0;
+}
+
+
 int sm_is_threaded(const smrule_t *r)
 {
    return (r->act->flags & ACTION_THREADED) != 0;

@@ -128,6 +128,7 @@ struct auto_rot
                      // and west (180) is most important
    int autocol;      // (deprecated) background color which is used for auto-rotation detection
    double weight;    // auto-rot weighting (0-1), 1 means everything equal
+   int mkarea;       // if set to 1, OSM ways/nodes are generated according to the diffvec_t
 };
 
 struct actImage
@@ -270,7 +271,7 @@ void *create_tile(void);
 void delete_tile(void *);
 void cut_tile(const struct bbox *, void *);
 int save_image(const char *, void *, int);
-void *cairo_smr_image_surface_from_bg(void);
+void *cairo_smr_image_surface_from_bg(cairo_format_t);
 #else
 #define save_main_image(a, b)
 #define create_tile() NULL

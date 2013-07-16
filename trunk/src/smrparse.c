@@ -31,6 +31,15 @@
 #include "colors.c"
 
 
+static char *skipb(char *s)
+{
+   for (; isspace((unsigned) *s); s++);
+   if (*s == '\0')
+      return NULL;
+   return s;
+}
+
+
 int parse_matchtype(bstring_t *b, struct specialTag *t)
 {
    t->type = 0;
@@ -179,13 +188,41 @@ int parse_color(const char *s)
 }
 
 
+static int parse_double_option(char *s, double *v, char **endptr)
+{
+   if (s == NULL)
+      return -1;
+
+   if ((s = skipb(s)) == NULL)
+      return -2;
+
+   if (*s != ':')
+   {
+      log_msg(LOG_ERR, "syntax error in style definition, ':' expected");
+      return -3;
+   }
+
+   *v = strtod(s, endptr);
+   if (s == *endptr)
+      return -4;
+
+   return 0;
+}
+
+
 int parse_style(const char *s)
 {
    if (s == NULL)
       return DRAW_SOLID;
 
    if (!strcmp(s, "solid")) return DRAW_SOLID;
-   if (!strcmp(s, "dashed")) return DRAW_DASHED;
+   if (!strncmp(s, "dashed", 6))
+   {
+      double v;
+      if (parse_double_option(s, &v, &s))
+         log_msg(LOG_ERR, "conversion error");
+      return DRAW_DASHED;
+   }
    if (!strcmp(s, "dotted")) return DRAW_DOTTED;
    if (!strcmp(s, "transparent")) return DRAW_TRANSPARENT;
 
@@ -229,15 +266,6 @@ smrule_t *alloc_rule(struct rdata *rd, osm_obj_t *o)
 
    bn->next[o->type - 1] = rl;
    return rl;
-}
-
-
-char *skipb(char *s)
-{
-   for (; isspace((unsigned) *s); s++);
-   if (*s == '\0')
-      return NULL;
-   return s;
 }
 
 

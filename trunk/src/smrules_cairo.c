@@ -72,11 +72,13 @@
 #define PX2PT_SCALE (72.0 / rdata_dpi())
 #define DP_LIMIT 0.95
 #define TILE_SIZE 256
+#define TRANSPIX 0x7fffffff
+#define sqr(x) pow(x, 2)
 
 
 typedef struct diffvec
 {
-   double dv_diff;
+   double dv_diff, dv_var;
    int dv_x, dv_y;
    double dv_angle, dv_quant;
    int dv_index;
@@ -97,6 +99,36 @@ static cairo_rectangle_t ext_;
 void __attribute__((constructor)) cairo_smr_init(void)
 {
    log_debug("using libcairo %s", cairo_version_string());
+}
+
+
+static inline int cairo_smr_bpp(cairo_format_t fmt)
+{
+   switch (fmt)
+   {
+      case CAIRO_FORMAT_ARGB32:
+      case CAIRO_FORMAT_RGB24:
+      case CAIRO_FORMAT_RGB30:
+         return 4;
+      
+      case CAIRO_FORMAT_RGB16_565:
+         return 2;
+
+      // FIXME: not implemented yet case CAIRO_FORMAT_A1:
+
+      case CAIRO_FORMAT_A8:
+      default:
+         return 1;
+ 
+   }
+}
+
+
+static void cairo_smr_log_surface_data(cairo_surface_t *sfc)
+{
+   log_debug("format = %d, bpp = %d, stride = %d",
+         cairo_image_surface_get_format(sfc), cairo_smr_bpp(cairo_image_surface_get_format(sfc)),
+         cairo_image_surface_get_stride(sfc));
 }
 
 
@@ -175,18 +207,19 @@ static cairo_status_t cairo_smr_write_func(void *closure, const unsigned char *d
 }
 
 
-void *cairo_smr_image_surface_from_bg(void)
+void *cairo_smr_image_surface_from_bg(cairo_format_t fmt)
 {
    cairo_surface_t *sfc;
    cairo_t *dst;
 
-   sfc = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, rdata_width(U_PX), rdata_height(U_PX));
+   sfc = cairo_image_surface_create(fmt, rdata_width(U_PX), rdata_height(U_PX));
    dst = cairo_create(sfc);
    cairo_smr_log_status(dst);
    cairo_scale(dst, (double) rdata_dpi() / 72, (double) rdata_dpi() / 72);
    cairo_set_source_surface(dst, sfc_, 0, 0);
    cairo_paint(dst);
    cairo_destroy(dst);
+   cairo_smr_log_surface_data(sfc);
    return sfc;
 }
 
@@ -202,7 +235,7 @@ void save_main_image(FILE *f, int ftype)
    switch (ftype)
    {
       case FTYPE_PNG:
-         sfc = cairo_smr_image_surface_from_bg();
+         sfc = cairo_smr_image_surface_from_bg(CAIRO_FORMAT_ARGB32);
          if ((e = cairo_surface_write_to_png_stream(sfc, cairo_smr_write_func, f)) != CAIRO_STATUS_SUCCESS)
             log_msg(LOG_ERR, "failed to save png image: %s", cairo_status_to_string(e));
          cairo_surface_destroy(sfc);
@@ -282,9 +315,46 @@ void cut_tile(const struct bbox *bb, void *img)
 }
 
 
-static inline int cairo_smr_pixel_pos(int x, int y, int s)
+/*! Return the memory address of a Pixel.
+ *  @param x X position.
+ *  @param y Y position.
+ *  @param s Stride, i.e. the number of bytes per row.
+ *  @param bpp Number of bytes per pixel.
+ *  @return Memory offset to the base pointer of the pixel matrix.
+ */
+static inline int cairo_smr_pixel_pos(int x, int y, int s, int bpp)
 {
-   return x * sizeof (uint32_t) + y * s;
+   return x * bpp + y * s;
+}
+
+
+static uint32_t cairo_smr_get_raw_pixel(unsigned char *data, cairo_format_t fmt)
+{
+   uint32_t rc;
+
+   switch (fmt)
+   {
+      case CAIRO_FORMAT_ARGB32:
+      case CAIRO_FORMAT_RGB24:
+         return *((uint32_t*) data);
+
+      case CAIRO_FORMAT_RGB30:
+         rc = *((uint32_t*) data);
+         return ((rc >> 2) & 0xff) | ((rc >> 4) & 0xff00) | ((rc >> 6) & 0xff0000);
+      
+      case CAIRO_FORMAT_RGB16_565:
+         rc = *((uint16_t*) data);
+         return ((rc << 3) & 0xff) | ((rc << 5) & 0xfc00) | ((rc << 8) & 0xf80000);
+
+      // FIXME: not implemented yet case CAIRO_FORMAT_A1:
+
+      case CAIRO_FORMAT_A8:
+         rc = *data;
+         return rc | ((rc << 8) & 0xff00) | ((rc << 16) & 0xff0000);
+
+      default:
+         return 0;
+   }
 }
 
 
@@ -297,14 +367,10 @@ int cairo_smr_get_pixel(cairo_surface_t *sfc, int x, int y)
    if ((data = cairo_image_surface_get_data(sfc)) == NULL)
       return 0;
 
-   return *((uint32_t*) ((data + cairo_smr_pixel_pos(x, y, cairo_image_surface_get_stride(sfc)))));
+   return cairo_smr_get_raw_pixel(data + cairo_smr_pixel_pos(x, y,
+                  cairo_image_surface_get_stride(sfc), cairo_smr_bpp(cairo_image_surface_get_format(sfc))),
+         cairo_image_surface_get_format(sfc));
 }
-
-
-/*int cairo_smr_get_bg_pixel(int x, int y)
-{
-   return cairo_smr_get_pixel(sfc_, x, y);
-}*/
 
 
 static void parse_auto_rot(const action_t *act, double *angle, struct auto_rot *rot)
@@ -337,13 +403,13 @@ static void parse_auto_rot(const action_t *act, double *angle, struct auto_rot *
    }
 
    (void) get_param("phase", &rot->phase, act);
+   rot->mkarea = get_param_bool("mkarea", act);
 }
 
  
 int act_draw_ini(smrule_t *r)
 {
    struct actDraw *d;
-   double a;
    char *s;
 
    // just to be on the safe side
@@ -383,13 +449,8 @@ int act_draw_ini(smrule_t *r)
    d->border.style = parse_style(get_param("bstyle", NULL, r->act));
 
    // honor direction of ways
-   if (get_param("directional", &a, r->act) == NULL)
-      a = 0;
-   d->directional = a != 0;
-
-   if (get_param("ignore_open", &a, r->act) == NULL)
-      a = 0;
-   d->collect_open = a == 0;
+   d->directional = get_param_bool("directional", r->act);
+   d->collect_open = !get_param_bool("ignore_open", r->act);
 
    d->wl = init_wlist();
 
@@ -840,10 +901,10 @@ static inline double max(double a, double b)
 }
 
 
-static inline double sqr(double a)
+/*static inline double sqr(double a)
 {
    return a * a;
-}
+}*/
 
 
 static uint32_t cairo_smr_double_to_gray(double a)
@@ -896,11 +957,20 @@ static double cairo_smr_color_dist(uint32_t c1, uint32_t c2)
 #endif
 
 
-static double cairo_smr_dist(cairo_surface_t *dst, cairo_surface_t *src)
+/*! This calculates the difference and its variance between two surfaces.
+ * Pixels which have a transparancy of more than 20% are ignored.
+ * @param dst Destination surface. This surface will receive the actual
+ * difference as a 1-dimensional color space (gray scale).
+ * @param src To this surface dst is compared to.
+ * @param v Pointer to variable which will receive the variance if not NULL.
+ * @return Returns the difference which always is 0 <= diff <= 1. Values near
+ * to 1 mean a high difference.
+ */
+static double cairo_smr_dist(cairo_surface_t *dst, cairo_surface_t *src, double *v)
 {
    unsigned char *psrc, *pdst;
    uint32_t dst_pixel;
-   double dist, avg;
+   double dist, avg, var;
    int x, y, mx, my, cnt;
 
    cairo_surface_flush(src);
@@ -912,13 +982,20 @@ static double cairo_smr_dist(cairo_surface_t *dst, cairo_surface_t *src)
 
    avg = 0;
    cnt = 0;
+   var = 0;
    for (y = 0; y < my; y++)
    {
       for (x = 0; x < mx; x++)
       {
          // ignore (partially) transparent pixels
          if (ALPHAD(*(((uint32_t*) pdst) + x)) > 0.2 || ALPHAD(*(((uint32_t*) psrc) + x)) > 0.2)
+         {
+#define CLEAR_TRANS_PIX
+#ifdef CLEAR_TRANS_PIX
+            *(((uint32_t*) pdst) + x) = TRANSPIX;
+#endif
             continue;
+         }
 
          // see http://www.w3.org/TR/AERT#color-contrast and
          // http://www.hgrebdes.com/colour/spectrum/colourvisibility.html and
@@ -942,6 +1019,7 @@ static double cairo_smr_dist(cairo_surface_t *dst, cairo_surface_t *src)
          dst_pixel = cairo_smr_double_to_gray(dist);
          *(((uint32_t*) pdst) + x) = dst_pixel;
          avg += dist;
+         var += sqr(dist);
          cnt++;
       }
       pdst += cairo_image_surface_get_stride(dst);
@@ -950,11 +1028,12 @@ static double cairo_smr_dist(cairo_surface_t *dst, cairo_surface_t *src)
    cairo_surface_mark_dirty(dst);
    if (cnt)
       avg /= cnt;
+   if (v != NULL)
+      *v = var - sqr(avg);
    return avg;
 }
 
 
-//static void cairo_smr_diff(cairo_surface_t *dst, cairo_t *ctx, cairo_surface_t *bg, cairo_surface_t *fg, int x, int y, double a)
 static void cairo_smr_diff(cairo_t *ctx, cairo_surface_t *bg, int x, int y, double a)
 {
    // drehpunkt festlegen
@@ -1020,6 +1099,15 @@ static void dv_mkarea(const struct coord *cnode, double r, const diffvec_t *dv, 
 }
 
 
+/*! This function weights a diffvec according to the phase and weight. This is
+ * squeezing the circle to an ellipse in order to let some angles be preferred
+ * over some other angles.
+ * @param dv Pointer to diffvec_t list.
+ * @param len Number of diffvecs in dv.
+ * @param phase Angle of major axis, 0 means horizontal.
+ * @param weight Weight parameter, 0 <= weight <= 1. This is the factor to
+ * which the minor axis is shortened, i.e. 1 is no distortion.
+ */
 static void dv_weight(diffvec_t *dv, int len, double phase, double weight)
 {
    for (; len; len--, dv++)
@@ -1052,11 +1140,18 @@ static void dv_sample(cairo_surface_t *bg, cairo_surface_t *fg, diffvec_t *dv, i
    for (a = 0, i = 0; i < num_dv; a += M_2PI / num_dv, i++)
    {
       cairo_smr_diff(ctx, bg, x, y, a);
-      dv[i].dv_diff = cairo_smr_dist(dst, fg);
+      dv[i].dv_diff = cairo_smr_dist(dst, fg, &dv[i].dv_var);
       dv[i].dv_angle = a;
       dv[i].dv_x = 0;
       dv[i].dv_y = 0;
       dv[i].dv_index = i;
+//#define DV_SAMPLES_TO_DISK
+#ifdef DV_SAMPLES_TO_DISK
+      char buf[256];
+      snprintf(buf, sizeof(buf), "dv_sample_%d_%d_%.1f.png", (int) x, (int) y, RAD2DEG(a));
+      cairo_surface_write_to_png(dst, buf);
+      //log_debug("diff = %.1f, sqrt(var) = %.1f, a = %.1f", dv[i].dv_diff, sqrt(dv[i].dv_var), RAD2DEG(dv[i].dv_angle));
+#endif
    }
 
    cairo_destroy(ctx);
@@ -1064,6 +1159,10 @@ static void dv_sample(cairo_surface_t *bg, cairo_surface_t *fg, diffvec_t *dv, i
 }
 
 
+/*! This function stretches the dv_diff values to the range 0.0 to 1.0.
+ * @param dv Pointer to list of diffvec_ts.
+ * @param num_dv Number of diffvec_ts in dv.
+ */
 static void dv_quantize(diffvec_t *dv, int num_dv)
 {
    double min, max;
@@ -1187,7 +1286,8 @@ static double find_angle(const struct coord *c, const struct auto_rot *rot, cair
 
    dv_weight(dv, num_steps, DEG2RAD(rot->phase), rot->weight);
    dv_quantize(dv, num_steps);
-   dv_mkarea(c, r, dv, num_steps);
+   if (rot->mkarea)
+      dv_mkarea(c, r, dv, num_steps);
    if ((i = dp_get(dv, num_steps, &dp)) == -1)
    {
       log_msg(LOG_ERR, "something went wrong in dp_get()");
