@@ -1,14 +1,5 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <osm version='0.6'>
-   <!-- <node version="-10">
-      <tag k='seamark:light:range' v='[2.5]'/>
-      <tag k='_action_' v='disable'/>
-   </node>-->
-
-   <node version="-10">
-      <tag k='seamark:type' v=''/>
-      <tag k='_action_' v='vsector@libsmfilter.so'/>
-   </node>
   <node version="-10">
       <tag k='seamark:type' v='sounding'/>
       <tag k='seamark:sounding:quality' v=''/>
@@ -17,11 +8,6 @@
    <node>
       <tag k='seamark:type' v=''/>
       <tag k='_action_' v='pchar@libsmfilter.so'/>
-   </node>
-   <node version="5">
-      <tag k='/^seamark:light:.*/' v=''/>
-      <!--<tag k='~/buoy/~' v=''/>-->
-      <tag k='_action_' v='img:angle=auto;weight=1;file=icons/Light_Magenta_90.png'/>
    </node>
    <node>
       <tag k='seamark:type' v='light_minor'/>
@@ -164,7 +150,7 @@
       <tag k='seamark:type' v='light_major'/>
       <tag k='_action_' v='cap:font=sans-serif;size=1.4;key=seamark:name'/>
    </node>
-   <node version="5">
+   <node version="6">
       <tag k='_action_' v='cap:font=sans-serif;size=1.4;halign=east;key=seamark:light_character;angle=auto;weight=0.7'/>
       <tag k='seamark:light_character' v=''/>
    </node>
@@ -185,20 +171,6 @@
    <way>
       <tag k='man_made' v='breakwater'/>
       <tag k='_action_' v='draw:color=black'/>
-   </way>
-   <way>
-      <tag k='seamark:light_radial' v=''/>
-      <tag k='_action_' v='draw:color=black'/>
-   </way>
-   <way>
-      <tag k='seamark:light_arc' v=''/>
-      <tag k='seamark:arc_style' v='solid'/>
-      <tag k='_action_' v='draw:color=black'/>
-   </way>
-   <way>
-      <tag k='seamark:light_arc' v=''/>
-      <tag k='seamark:arc_style' v='dashed'/>
-      <tag k='_action_' v='draw:color=black;style=dashed'/>
    </way>
 </osm>
 
