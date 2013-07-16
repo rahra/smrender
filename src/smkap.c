@@ -38,31 +38,15 @@
 
 #ifdef HAVE_CAIRO
 #define get_pixel(x, y, z) cairo_smr_get_pixel(x, y, z)
-#define get_image() cairo_smr_image_surface_from_bg()
+#define get_image() cairo_smr_image_surface_from_bg(CAIRO_FORMAT_RGB24)
 #define destroy_image(x) cairo_surface_destroy(x)
+int cairo_image_surface_color_reduce(cairo_surface_t *, int , uint32_t *);
 #else
 #define get_pixel(x, y, z) 0
 #define get_image() NULL
 #define destroy_image(x) 0
+#define cairo_image_surface_color_reduce(x, y, z) 0
 #endif
-
-
-
-typedef struct color
-{
-   int r, g, b;
-} color_t;
-
-typedef struct cbox
-{
-   color_t min, max;
-} cbox_t;
-
-struct hist_data
-{
-   int col;
-   int cnt;
-};
 
 
 static uint16_t bsb_compress_nb(uint8_t *p, uint16_t nb, uint8_t pixel, uint16_t max)
@@ -182,131 +166,13 @@ int gen_kap_header(FILE *f, struct rdata *rd)
 }
 
 
-static int kap_cmp_color(const color_t *c1, const color_t *c2)
+static int palette_index(uint32_t *palette, int cnt, uint32_t col)
 {
-   if (c1->r < c2->r && c1->g < c2->g && c1->b < c2->b)
-      return -1;
-   if (c1->r > c2->r && c1->g > c2->g && c1->b > c2->b)
-      return 1;
-   return 0;
-}
-
-
-static void kap_set_color(color_t *ct, int col)
-{
-   ct->r = (col >> 16) & 0xff;
-   ct->g = (col >> 8) & 0xff;
-   ct->b = col & 0xff;
-}
-
-
-static void find_cbox(void *img, cbox_t *cb)
-{
-   color_t ct;
-   int x, y, c;
-
-   kap_set_color(&cb->min, 0xffffff);
-   kap_set_color(&cb->max, 0);
-#if 0
-   for (x = 0; x < cairo_width(img); x++)
-      for (y = 0; y < cairo_height(img); y++)
-      {
-         kap_set_color(&ct, get_pixel(img, x, y));
-         if (kap_cmp_color(&ct, &cb->min) < 0)
-            cb->min = ct;
-         if (kap_cmp_color(&ct, &cb->max) > 0)
-            cb->max = ct;
-      }
-#endif
-}
-
-
-static int color_reduce(void *img)
-{
-#define KAP_COLORS 127
-   cbox_t cb[KAP_COLORS];
-
-   find_cbox(img, &cb[0]);
-
-}
-
-
-static int cmp_hist(const void *h1, const void *h2)
-{
-   if (((struct hist_data*) h1)->cnt > ((struct hist_data*) h2)->cnt)
-      return 1;
-   if (((struct hist_data*) h1)->cnt < ((struct hist_data*) h2)->cnt)
-      return -1;
-   return 0;
-}
-
-
-static int gen_hist(struct rdata *rd, void *img, struct hist_data **hy)
-{
-   struct hist_data *hist = NULL;
-   int hcnt = 0, i, x, y;
-
-   log_debug("generating histogram");
-   for (x = 0; x < rd->fw; x++)
-   {
-      for (y = 0; y < rd->fh; y++)
-      {
-         for (i = 0; i < hcnt; i++)
-         {
-            if (hist[i].col == (get_pixel(img, x, y) & 0xffffff))
-            {
-               hist[i].cnt++;
-               break;
-            }
-         }
-         if (i >= hcnt)
-         {
-            if ((hist = realloc(hist, (i + 1) * sizeof(*hist))) == NULL)
-               log_msg(LOG_ERR, "cannot realloc in gen_hist(): %s", strerror(errno)),
-                  exit(EXIT_FAILURE);
-            hcnt++;
-            hist[i].col = get_pixel(img, x, y) & 0xffffff;
-            hist[i].cnt = 1;
-            //log_debug("hist[%d].col = #%08x", i, hist[i].col);
-         }
-      }
-   }
-
-   log_debug("histogram has %d colors", hcnt);
-   qsort(hist, hcnt, sizeof(*hist), cmp_hist);
-   if (hcnt > 127)
-   {
-      hcnt = 127;
-      log_debug("histogram reduced to %d colors", hcnt);
-   }
-   *hy = hist;
-   return hcnt;
-}
-
-
-long col_cmp(int c1, int c2)
-{
-   return SQRL(RED(c1) - RED(c2)) + SQRL(GREEN(c1) - GREEN(c2)) + SQRL(BLUE(c1) - BLUE(c2));
-}
-
-
-static int col_index(struct hist_data *hist, int hcnt, int col)
-{
-   long diff, delta;
-   int i, j;
-
-   for (i = 0, j = 0, diff = SQRL(0x1000000); i < hcnt; i++)
-   {
-      delta = col_cmp(col, hist[i].col);
-      if (delta < diff)
-      {
-         j = i;
-         diff = delta;
-      }
-      /*if (col >= hist[i].col && col <= hist[i + 1].col)
-         return i + (col - hist[i].col > hist[i + 1].col - col);*/
-   }
-   return j + 1;
+   for (int i = 0; i < cnt; i++)
+      if (col == palette[i])
+         return i + 1;
+   log_msg(LOG_ERR, "color #%06x not found in palette", col);
+   return -1;
 }
 
 
@@ -324,21 +190,29 @@ int save_kap(FILE *f, struct rdata *rd)
    int d, i, x, y, hcnt, off, w = rd->fh;
    uint8_t buf_out[w + 4], buf_in[w];
    int32_t offp[rd->fh + 1];
-   struct hist_data *hist;
    void *img;
+   uint32_t palette[127];
 
    log_debug("writing KAP header");
    off = gen_kap_header(f, rd);
 
    img = get_image();
-   hcnt = gen_hist(rd, img, &hist);
+   log_debug("reducing colors");
+   if ((hcnt = cairo_image_surface_color_reduce(img, 127, palette)) <= 0)
+   {
+      log_msg(LOG_ERR, "reducing colors failed");
+      return -1;
+   }
+
    d = get_depth(hcnt);
    log_debug("KAP color depth %d", d);
    off += fprintf(f, "OST/1\r\nIFM/%d\r\n", d);
    for (i = 0; i < hcnt; i++)
-      off += fprintf(f, "RGB/%d,%d,%d,%d\r\n", i + 1, (hist[i].col >> 16) & 0xff, (hist[i].col >> 8) & 0xff, hist[i].col & 0xff);
+   {
+      off += fprintf(f, "RGB/%d,%d,%d,%d\r\n", i + 1, (palette[i] >> 16) & 0xff, (palette[i] >> 8) & 0xff, palette[i] & 0xff);
+      log_debug("palette[%d] = #%06x", i , palette[i]);
+   }
 
-   //fwrite("\x1a", 2, 1, f);
    off += fprintf(f, "\x1a%c%c", '\0', (char) d);
 
    log_debug("compressing image");
@@ -346,7 +220,7 @@ int save_kap(FILE *f, struct rdata *rd)
    {
       offp[y] = htonl(off);
       for (x = 0; x < rd->fw; x++)
-         buf_in[x] = col_index(hist, hcnt, get_pixel(img, x, y) & 0xffffff);
+         buf_in[x] = palette_index(palette, hcnt, get_pixel(img, x, y));
       i = bsb_compress_row(buf_in, buf_out, d, y, rd->fw, rd->fw);
       fwrite(buf_out, i, 1, f);
       off += i;
@@ -354,7 +228,6 @@ int save_kap(FILE *f, struct rdata *rd)
    offp[y] = htonl(off);
    fwrite(offp, sizeof(int32_t), rd->fh + 1, f);
    
-   free(hist);
    destroy_image(img);
 
    return 0;
