@@ -416,6 +416,12 @@ static int count_poly_refs(struct poly *pl, int *cnt)
       *cnt += list->w->ref_cnt - 1;
       if (list->next == pl)
          break;
+      // safety check to detect incorrect pointers in double-linked list
+      if (list->next != NULL && list->next->prev != NULL && list != list->next->prev)
+      {
+         log_msg(LOG_WARN, "loop error! this may indicated an incorrect ruleset");
+         return -1;
+      }
    }
 
    (*cnt)++;
@@ -920,6 +926,9 @@ static int cat_poly(smrule_t *r, osm_obj_t *o)
       return 0;
 // FIXME: this is originally NOT commented out but it would hinder to name e.g.
 // islands which consist of just a single way but are tagged in a relation.
+// FIXME: If commented in it could lead to the case that overlapping ways are
+// collected which have been created bevor by another cat_poly() rules. A
+// safety check was added to count_poly_refs().
 //   if (((osm_way_t*) o)->ref[0] == ((osm_way_t*) o)->ref[((osm_way_t*) o)->ref_cnt - 1])
 //      return 0;
 

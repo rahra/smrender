@@ -31,12 +31,12 @@
 #include "colors.c"
 
 
-static char *skipb(char *s)
+static char *skipb(const char *s)
 {
    for (; isspace((unsigned) *s); s++);
    if (*s == '\0')
       return NULL;
-   return s;
+   return (char*) s;
 }
 
 
@@ -188,7 +188,16 @@ int parse_color(const char *s)
 }
 
 
-static int parse_double_option(char *s, double *v, char **endptr)
+/*! This function parses strings with decimal numbers prepended by a colon into
+ * a double variable.
+ * @param s Pointer to string. May be preceded by spaces.
+ * @param v Pointer to double variable for the result.
+ * @param endptr Pointer to receive address of string behind decimal number.
+ * This is directly passed to strtod().
+ * @return -1 if s == NULL, -2 if s does not contain any data ('\0'), -3 if
+ * there is no expected colon, and -4 if no conversion took place.
+ */
+static int parse_double_option(const char *s, double *v, char **endptr)
 {
    if (s == NULL)
       return -1;
@@ -197,10 +206,7 @@ static int parse_double_option(char *s, double *v, char **endptr)
       return -2;
 
    if (*s != ':')
-   {
-      log_msg(LOG_ERR, "syntax error in style definition, ':' expected");
       return -3;
-   }
 
    *v = strtod(s, endptr);
    if (s == *endptr)
@@ -219,8 +225,9 @@ int parse_style(const char *s)
    if (!strncmp(s, "dashed", 6))
    {
       double v;
-      if (parse_double_option(s, &v, &s))
-         log_msg(LOG_ERR, "conversion error");
+      int err;
+      if ((err = parse_double_option(s + 6, &v, NULL)))
+         log_debug("parse_double_option() returned %d", err);
       return DRAW_DASHED;
    }
    if (!strcmp(s, "dotted")) return DRAW_DOTTED;
