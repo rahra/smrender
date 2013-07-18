@@ -30,6 +30,7 @@
 #include <stdint.h>
 #include <cairo.h>
 
+#include "smrender.h"
 
 #define NUM_DIMENSIONS 3
 
@@ -49,6 +50,7 @@ typedef struct Block
     mc_point_t min_corner, max_corner, avg;
     mc_point_t* points;
     int len;
+    int lum;
 } mc_block_t;
 
 
@@ -108,6 +110,13 @@ static int mc_block_compare(const mc_block_t *a, const mc_block_t *b)
    return mc_longest_side_length(b) - mc_longest_side_length(a);
 }
 
+
+static int mc_block_lum_compare(const mc_block_t *a, const mc_block_t *b)
+{
+   return a->lum - b->lum;
+}
+
+
 /*
 static void mc_block_longest_first(mc_block_t *blk, int size)
 {
@@ -146,17 +155,24 @@ static mc_pdim_t mc_max(mc_pdim_t a, mc_pdim_t b)
 
 static int mc_nearest_block_index(const mc_block_t *blk, int size, const mc_point_t *pt)
 {
+   int diff0[NUM_DIMENSIONS], diff1[NUM_DIMENSIONS];
    int n, m;
+
+   for (int i = 0; i < NUM_DIMENSIONS; i++)
+      diff0[i] = abs(mc_point_compare0(&blk->avg, pt, i));
 
    n = 0;
    for (int i = 1; i < size; i++)
    {
       m = 0;
       for (int j = 0; j < NUM_DIMENSIONS; j++)
-         if (abs(mc_point_compare0(&blk[i].avg, pt, j)) < abs(mc_point_compare0(&blk[n].avg, pt, j)))
+         if ((diff1[j] = abs(mc_point_compare0(&blk[i].avg, pt, j))) < diff0[j])
             m++;
       if (m >= NUM_DIMENSIONS)
+      {
          n = i;
+         memcpy(diff0, diff1, sizeof(diff0));
+      }
    }
    return n;
 }
@@ -180,12 +196,15 @@ static void mc_avg_block(mc_block_t *blk)
 {
    long sum;
 
+   blk->lum = 0;
    for (int j = 0; j < NUM_DIMENSIONS; j++)
    {
       sum = 0;
       for (int i = 0; i < blk->len; i++)
          sum += blk->points[i].x[j];
       blk->avg.x[j] = sum / blk->len;
+#define CSQR(x) ((int) (x) * (int) (x))
+      blk->lum += CSQR(blk->avg.x[j]);
    }
    //printf("%02x%02x%02x\n", blk->avg.x[2], blk->avg.x[1], blk->avg.x[0]);
 }
@@ -199,14 +218,15 @@ static mc_block_t *mc_block_list(unsigned desired)
 
 static int mc_median_cut(mc_point_t *image, unsigned num, unsigned desired, mc_block_t *blk)
 {
-   unsigned size;
+   int size;
    int len;
 
+   log_debug("reducing...");
    mc_init_block(blk, image, num);
    mc_shrink(blk);
    size = 1;
 
-   while (size < desired && blk->len > 1)
+   while (size < (int) desired && blk->len > 1)
    {
       // qsort_r() could be used instead but this would cause compatibility
       // issues (GNU/BSD versions differ). Since this code is not
@@ -223,15 +243,24 @@ static int mc_median_cut(mc_point_t *image, unsigned num, unsigned desired, mc_b
 
       mc_shrink(blk);
       mc_shrink(&blk[size]);
+      mc_avg_block(&blk[size]);
       size++;
       qsort(blk, size, sizeof(*blk), (int (*) (const void*, const void*)) mc_block_compare);
       //mc_block_longest_first(blk, size);
    }
 
-   qsort(blk, size, sizeof(*blk), (int (*) (const void*, const void*)) mc_block_compare);
+   //qsort(blk, size, sizeof(*blk), (int (*) (const void*, const void*)) mc_block_compare);
 
-   for (unsigned i = 0; i < size; i++)
-      mc_avg_block(&blk[i]);
+   // remove duplicates
+   for (int i = 0; i < size - 1; i++)
+      if (!memcmp(&blk[i].avg, &blk[i + 1].avg, sizeof(blk[i + 1].avg)))
+      {
+         log_debug("removing dup at %d", i);
+         if (i < size - 2)
+            memmove(&blk[i + 1], &blk[i + 2], sizeof(*blk) * (size - i - 2));
+         size--;
+         i--;
+      }
 
    return size;
 }
@@ -264,6 +293,7 @@ int cairo_image_surface_color_reduce(cairo_surface_t *src, int ncol, uint32_t *p
       return -1;
    }
 
+   log_debug("retrieving pixels");
    for (int y = 0; y < cairo_image_surface_get_height(src); y++)
    {
       for (int x = 0; x < cairo_image_surface_get_width(src); x++, i++)
@@ -277,6 +307,7 @@ int cairo_image_surface_color_reduce(cairo_surface_t *src, int ncol, uint32_t *p
       pix += cairo_image_surface_get_stride(src);
    }
 
+   log_debug("allocating block list");
    if ((blk = mc_block_list(ncol)) == NULL)
       return -1;
 
@@ -286,6 +317,7 @@ int cairo_image_surface_color_reduce(cairo_surface_t *src, int ncol, uint32_t *p
       for (int i = 0; i < ncol; i++)
          palette[i] = mc_point_to_cairo_color(&blk[i].avg);
 
+   log_debug("modifying pixels");
    pix = cairo_image_surface_get_data(src);
    for (int y = 0; y < cairo_image_surface_get_height(src); y++)
    {
