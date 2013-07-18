@@ -396,13 +396,17 @@ char *get_parami(const char *attr, int *ival, const action_t *act)
  */
 int get_param_bool(const char *attr, const action_t *act)
 {
+   double f;
    char *s;
 
-   if ((s = get_param(attr, NULL, act)) == NULL)
+   if ((s = get_param(attr, &f, act)) == NULL)
       return 0;
 
-   if (!strcmp(s, "1") || !strcasecmp(s, "yes"))
+   if ((f != 0) || !strcasecmp(s, "yes") || !strcasecmp(s, "true"))
       return 1;
+
+   if (!strcasecmp(s, "no") || !strcasecmp(s, "false") || !strcasecmp(s, "0"))
+      return 0;
 
    return 0;
 }
