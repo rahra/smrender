@@ -4,9 +4,9 @@ AC_INIT([smrender], [[3.0.r]svnversion], [bf@abenteuerland.at])
 AC_CONFIG_MACRO_DIR([m4])
 AM_INIT_AUTOMAKE([foreign -Wall -Werror])
 LT_INIT
-AC_SUBST([CFLAGS], [["$CFLAGS -Wall -Wextra -std=gnu99"]])
+AC_SUBST([CFLAGS], [["$CFLAGS -Wall -Wextra"]])
 #AC_SUBST([CFLAGS], [["-g -Wall"]])
-AC_PROG_CC
+AC_PROG_CC_C99
 AC_PROG_LN_S
 AC_PROG_MKDIR_P
 AC_CONFIG_HEADERS([config.h])
@@ -49,7 +49,7 @@ AX_PTHREAD([
 AC_SEARCH_LIBS([sin], [m])
 AC_SEARCH_LIBS([dlopen], [dl])
 
-AC_CHECK_FUNCS([strptime dladdr])
+AC_CHECK_FUNCS([strptime dladdr mbtowc])
 
 AS_IF([test -n "$export_dynamic_flag_spec"], [
    exp_dyn=`eval echo $export_dynamic_flag_spec`

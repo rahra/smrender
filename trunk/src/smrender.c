@@ -40,6 +40,7 @@
 #include <fcntl.h>         // stat()
 #include <syslog.h>
 #include <signal.h>
+#include <locale.h>
 
 #include "smrender_dev.h"
 #include "rdata.h"
@@ -1254,6 +1255,9 @@ int main(int argc, char *argv[])
    memset(&ti, 0, sizeof(ti));
    if (sizeof(long) < 8)
       log_msg(LOG_WARN, "system seems to have %d bits only. This may lead to errors.", (int) sizeof(long) * 8);
+
+   if (setlocale(LC_CTYPE, "") == NULL)
+      log_msg(LOG_WARN, "setlocale() failed");
 
    while ((n = getopt(argc, argv, "ab:Dd:fg:Ghi:k:K:lMmno:O:P:r:R:s:t:T:uVvw:")) != -1)
       switch (n)
