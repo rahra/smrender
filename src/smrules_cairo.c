@@ -31,6 +31,7 @@
 #include <syslog.h>
 #include <errno.h>
 #include <ctype.h>
+#include <wctype.h>
 #ifdef WITH_THREADS
 #include <pthread.h>
 #endif
@@ -797,6 +798,7 @@ int act_cap_ini(smrule_t *r)
 }
 
 
+#ifndef HAVE_MBTOWC
 static void strupper(char *s)
 {
    if (s == NULL)
@@ -805,6 +807,54 @@ static void strupper(char *s)
    for (; *s != '\0'; s++)
       *s = toupper(/*(unsigned)*/ *s);
 }
+
+#else
+
+static int strupper(char *s)
+{
+   wchar_t wc;
+   char *su, *ss, *ostr = s;
+   int wl, sl, len;
+
+   // safety check
+   if (s == NULL)
+      return -1;
+
+   len = strlen(s);
+   if ((ss = su = malloc(len + 1)) == NULL)
+      return -1;
+
+   for (;;)
+   {
+      if ((wl = mbtowc(&wc, s, len)) == -1)
+      {
+         log_msg(LOG_ERR, "mbtowc() failed at '%s'", s);
+         break;
+         /* free(su);
+         return NULL; */
+      }
+
+      if (!wl)
+         break;
+
+      s += wl;
+      wc = towupper(wc);
+      if ((sl = wctomb(ss, wc)) == -1)
+      {
+         log_msg(LOG_ERR, "wctomb() failed");
+         break;
+         /*free(su);
+         return NULL;*/
+      }
+      ss += sl;
+   }
+
+   *ss = '\0';
+   strcpy(ostr, su);
+   free(su);
+   return 0;
+}
+#endif
 
 
 static void pos_offset(int pos, double width, double height, double *ox, double *oy)
