@@ -508,7 +508,6 @@ void hpx_free(hpx_ctrl_t *ctl)
  */
 long hpx_get_eleml(hpx_ctrl_t *ctl, bstringl_t *b, int *in_tag, long *lno)
 {
-   static int read1 = 0;
    long s;
 
    for (;;)
@@ -542,13 +541,13 @@ long hpx_get_eleml(hpx_ctrl_t *ctl, bstringl_t *b, int *in_tag, long *lno)
 
       if (ctl->empty)
       {
-         if (ctl->mmap || read1)
+         if (ctl->mmap)
          {
             ctl->eof = 1;
             log_msg(LOG_DEBUG, "end of memory mapped area, buf.len = %ld, len = %ld, pos = %ld",
                   ctl->buf.len, ctl->len, ctl->pos);
          }
-         else if (!read1)
+         else
          {
             // move remaining data to the beginning of the buffer
             ctl->buf.len -= ctl->pos;
@@ -572,13 +571,11 @@ long hpx_get_eleml(hpx_ctrl_t *ctl, bstringl_t *b, int *in_tag, long *lno)
             ctl->buf.len += s;
          }
          ctl->empty = 0;
-         read1 = 1;
       }
 
       // no more data available
       if (!ctl->buf.len)
-         // FIXME: return value questionable (-1 eq error)
-         return -1;
+         return 0;
 
       b->buf = ctl->buf.buf + ctl->pos;
       b->len = ctl->buf.len - ctl->pos;
