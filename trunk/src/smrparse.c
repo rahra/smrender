@@ -393,7 +393,7 @@ int init_rules(osm_obj_t *o, void *p)
          log_msg(LOG_ERR, "%s_ini() failed: %d. Rule will be ignored.", rl->act->func_name, e);
          rl->act->main.func = NULL;
          rl->act->fini.func = NULL;
-         return e;
+         return 0;
       }
    }
 

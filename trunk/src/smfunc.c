@@ -1810,15 +1810,13 @@ static const char *type_to_str(int type)
 
 int act_incomplete_main(smrule_t *r, osm_rel_t *rel)
 {
-   int i;
-
    if (rel->obj.type != OSM_REL)
    {
       log_msg(LOG_WARN, "incomplete() is only appicaple to relations");
       return 1;
    }
 
-   for (i = 0; i < rel->mem_cnt; i++)
+   for (int i = 0; i < rel->mem_cnt; i++)
       if (get_object(rel->mem[i].type, rel->mem[i].id) == NULL)
          fprintf(r->data, "%s/%"PRId64"\n", type_to_str(rel->mem[i].type), rel->mem[i].id);
 

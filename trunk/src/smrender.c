@@ -66,6 +66,7 @@ struct tile_info
 };
 
 static volatile sig_atomic_t int_ = 0;
+static volatile sig_atomic_t pipe_ = 0;
 static int render_all_nodes_ = 0;
 
 
@@ -156,9 +157,17 @@ int parse_coord(const char *s, double *a)
 }
 
 
-void int_handler(int UNUSED(sig))
+void int_handler(int sig)
 {
-   int_++;
+   switch (sig)
+   {
+      case SIGINT:
+         int_++;
+         break;
+      case SIGPIPE:
+         pipe_++;
+         break;
+   }
 }
 
 
@@ -168,12 +177,16 @@ void install_sigint(void)
 
    memset(&sa, 0, sizeof(sa));
    sa.sa_handler = int_handler;
-   sa.sa_flags = SA_RESETHAND;
 
    if (sigaction(SIGINT, &sa, NULL) == -1)
       log_msg(LOG_WARNING, "SIGINT handler cannot be installed: %s", strerror(errno));
    else
       log_msg(LOG_INFO, "SIGINT installed (pid = %ld)", (long) getpid());
+
+   if (sigaction(SIGPIPE, &sa, NULL) == -1)
+      log_msg(LOG_WARNING, "SIGPIPE handler cannot be installed: %s", strerror(errno));
+   else
+      log_msg(LOG_INFO, "SIGPIPE installed (pid = %ld)", (long) getpid());
 }
 
 
@@ -362,11 +375,14 @@ int apply_smrules(smrule_t *r, long ver)
    if (e) log_debug("traverse(apply_smrules0) returned %d", e);
 
    if (e >= 0)
+   {
+      e = 0;
 #ifdef WITH_THREADS
       queue_fini(r);
 #else
       call_fini(r);
 #endif
+   }
 
    return e;
 }
@@ -528,7 +544,7 @@ int traverse(const bx_node_t *nt, int d, int idx, tree_func_t dhandler, void *p)
             {
                (void) func_name(buf, sizeof(buf), dhandler);
                log_msg(LOG_WARNING, "dhandler(), sym = '%s', addr = '%p' returned %d", buf, dhandler, e);
-               if (e < 0)
+               if (e)
                {
                   log_msg(LOG_INFO, "breaking recursion");
                   return e;
@@ -542,17 +558,8 @@ int traverse(const bx_node_t *nt, int d, int idx, tree_func_t dhandler, void *p)
    for (i = 0; i < 1 << BX_RES; i++)
       if (nt->next[i])
       {
-         if ((e = traverse(nt->next[i], d + 1, idx, dhandler, p)) < 0)
+         if ((e = traverse(nt->next[i], d + 1, idx, dhandler, p)))
             return e;
-         /*
-         if (e < 0)
-         {
-            log_msg(LOG_WARNING, "traverse() returned %d, breaking recursion.", e);
-            return e;
-         }
-         else if (e > 0)
-            log_msg(LOG_INFO, "traverse() returned %d", e);
-            */
       }
 
    return 0;
@@ -1331,10 +1338,6 @@ int main(int argc, char *argv[])
             break;
 
          case 'M':
-#ifndef WITH_MMAP
-            log_msg(LOG_ERR, "memory mapping support disabled, recompile with WITH_MMAP");
-            exit(EXIT_FAILURE);
-#endif
             w_mmap = 1;
             break;
 
@@ -1475,12 +1478,6 @@ int main(int argc, char *argv[])
    {
       log_msg(LOG_INFO, "input file will be memory mapped with mmap()");
       st.st_size = -st.st_size;
-   }
-   else
-   {
-      // FIXME
-      log_msg(LOG_CRIT, "***** Smrender currently does not work without mmap(). Sorry guys, this is a bug and will be fixed. *****");
-      exit(EXIT_FAILURE);
    }
    if ((ctl = hpx_init(fd, st.st_size)) == NULL)
       perror("hpx_init_simple"), exit(EXIT_FAILURE);
