@@ -57,6 +57,8 @@
 //#define COL_DIFF_BRGT
 // define this if color difference shall be calculated by the luminosity.
 #define COL_DIFF_LUM
+//#define COL_STRETCH_BW
+#define COL_STRETCH_F 1.0
 
 #define POS_OFFSET mm2ptf(1.4)
 
@@ -66,6 +68,11 @@
 #define GREEND(x) COL_COMPD(x, 8)
 #define BLUED(x) COL_COMPD(x, 0)
 #define ALPHAD(x) (1.0 - COL_COMPD(x & 0x7f000000, 23))
+#define COL_D(x) ((int) round((x) * 255))
+#define COL_DS(x, y) (COL_D(x) << (y))
+#define COL_RED(x) COL_DS(x, 16)
+#define COL_GREEN(x) COL_DS(x, 8)
+#define COL_BLUE(x) COL_D(x)
 
 #define M_2PI (2.0 * M_PI)
 #define PT2PX_SCALE (rdata_dpi() / 72.0)
@@ -91,6 +98,18 @@ typedef struct diffpeak
    double dp_start;
    double dp_end;
 } diffpeak_t;
+
+
+typedef struct cartesian
+{
+   double x, y, z;
+} cartesian_t;
+
+
+typedef struct spherical
+{
+   double r, phi, th;
+} spherical_t;
 
 
 static cairo_surface_t *sfc_;
@@ -837,6 +856,7 @@ static int strupper(char *s)
       if (!wl)
          break;
 
+      // FIXME: len should be decremented?
       s += wl;
       wc = towupper(wc);
       if ((sl = wctomb(ss, wc)) == -1)
@@ -969,6 +989,68 @@ static uint32_t cairo_smr_double_to_gray(double a)
 }
 
 
+#ifdef COL_STRETCH_BW
+static void spherical_to_cartesian(cartesian_t *c, const spherical_t *s)
+{
+   c->x = s->r * sin(s->th) * cos(s->phi);
+   c->y = s->r * sin(s->th) * sin(s->phi);
+   c->z = s->r * cos(s->th);
+}
+
+
+static void cartesian_to_spherical(spherical_t *s, const cartesian_t *c)
+{
+   s->r = sqrt(sqr(c->x) + sqr(c->y) + sqr(c->z));
+   s->phi = atan2(c->y, c->x);
+   s->th = acos(c->z / s->r);
+}
+
+
+static void rotate_up(spherical_t *s)
+{
+      s->phi += M_PI_4;
+      s->th -= acos(1 / sqrt(3));
+}
+ 
+
+static void rotate_dia(spherical_t *s)
+{
+   s->phi -= M_PI_4;
+   s->th += acos(1 / sqrt(3));
+}
+
+
+static uint32_t cairo_smr_rgb_to_color(double r, double g, double b)
+{
+   return COL_RED(r) | COL_GREEN(g) | COL_BLUE(b);
+}
+
+
+static void cairo_smr_color_bw_stretch(double f, uint32_t *col)
+{
+   spherical_t s;
+   cartesian_t c;
+
+   c.x = REDD(*col);
+   c.y = GREEND(*col);
+   c.z = BLUED(*col);
+
+   cartesian_to_spherical(&s, &c);
+   rotate_up(&s);
+   spherical_to_cartesian(&c, &s);
+
+   c.x /= f;
+   c.y /= f;
+
+   cartesian_to_spherical(&s, &c);
+   rotate_dia(&s);
+   spherical_to_cartesian(&c, &s);
+
+   *col = (*col & 0xff000000) | cairo_smr_rgb_to_color(c.x, c.y, c.z);
+}
+#endif
+
+
 #ifdef COL_DIFF_LUM
 static double cairo_smr_rgb_luminosity(double r, double g, double b)
 {
@@ -1053,17 +1135,25 @@ static double cairo_smr_dist(cairo_surface_t *dst, cairo_surface_t *src, double 
          // for visibility of colors and the background.
          // Also read this: http://www.lighthouse.org/accessibility/design/accessible-print-design/effective-color-contrast
 
+         uint32_t dst_col = *(((uint32_t*) pdst) + x);
+         uint32_t src_col = *(((uint32_t*) psrc) + x);
+
+#ifdef COL_STRETCH_BW
+         cairo_smr_color_bw_stretch(COL_STRETCH_F, &dst_col);
+         cairo_smr_color_bw_stretch(COL_STRETCH_F, &src_col);
+#endif
+
 #ifdef COL_DIFF_BRGT
-         dist = fabs(cairo_smr_color_brightness(*(((uint32_t*) pdst) + x)) -
-                  cairo_smr_color_brightness(*(((uint32_t*) psrc) + x)));
+         dist = fabs(cairo_smr_color_brightness(dst_col) -
+                  cairo_smr_color_brightness(src_col));
 #endif
 #ifdef COL_DIFF_LUM
-         dist = fabs(cairo_smr_color_luminosity(*(((uint32_t*) pdst) + x)) -
-                  cairo_smr_color_luminosity(*(((uint32_t*) psrc) + x)));
+         dist = fabs(cairo_smr_color_luminosity(dst_col) -
+                  cairo_smr_color_luminosity(src_col));
 #endif
 #ifdef COL_DIFF_3D
          // calculate 3D color distance
-         dist = cairo_smr_color_dist(*(((uint32_t*) pdst) + x), *(((uint32_t*) psrc) + x));
+         dist = cairo_smr_color_dist(dst_col, src_col);
 #endif
 
          dst_pixel = cairo_smr_double_to_gray(dist);
