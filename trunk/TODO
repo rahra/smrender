@@ -1,7 +1,10 @@
 * captions along ways (open polygons) not supported yet
-* border width of closed polygons seams to have a bug.
-* Negative OSM IDs may colide, read_osm() does not assign IDs properly.
+* border width of closed polygons seams to have a bug. (already fixed?)
+* Negative OSM IDs may colide, read_osm() does not assign IDs properly. (low prio)
 * Bug refine_poly() if lat[0] == lat[1]
-* signal handling in threaded mode does not work (sigprocmask)
 * free objects sometimes segfaults in threaded mode
+* multi-line text output
+* incomplete() several rules, one filename (like out())
+* automatic bay/cape font size
+* color diff function improvement (black/white stretching in spherical coordinate system)
 
