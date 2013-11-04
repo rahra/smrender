@@ -28,7 +28,7 @@
  * 2) Create pdef list which contains all end points of open polygons (pdef_cnt = open_poly_cnt * 2)
  * 3) Retrieve node ids from those points (each start and end point)
  * 4) Sort pdef list by node id.
- * 5) Set prev/next pointers in points of pdef list at neighboring points, i.e. if one start point has the same node id as the neighboring end point.
+ * 5) Set prev/next pointers in points of pdef list at neighboring points, i.e. if one start point has the same node id as the neighboring end point (poly_find_adj2()).
  * 6) loop over all ways (loop_detect() returns number of open ways)
  * 6.1) count nodes of "connected" (pointered) ways and detect if there is a loop (count_poly_ref() = 1 if loop, 0 if unclosed)
  * 6.2) create new way with the according number of nodes (node count = sum of all connected ways)
@@ -318,10 +318,7 @@ static int trim_way(osm_way_t *w, int rev)
 
    // check if at least one node is on the page
    if (i >= w->ref_cnt)
-   {
-      log_msg(LOG_ERR, "unhandled error: all nodes of way %"PRId64" are outside the page", w->obj.id);
       return -1;
-   }
 
    // check that the corresponding node is not the 1st one
    if (p[0])
@@ -356,21 +353,44 @@ static int trim_way(osm_way_t *w, int rev)
 }
 
 
-static void trim_ways(struct wlist *wl, int ocnt)
+/*! This function trims all open ways in the way list to the page border. Ways
+ * which are completely outside of the page are marked as closed to avoid
+ * further processing.
+ * @param wl Pointer to the way list.
+ * @return Returns the number of open ways which are still on the page (or
+ * partially on the page).
+ */
+static int trim_ways(struct wlist *wl)
 {
-   int i, j;
+   int i, j, e;
 
-   for (i = 0, j = 0; (i < wl->ref_cnt) && (j < ocnt); i++)
+   for (i = 0, j = 0; i < wl->ref_cnt; i++)
    {
       if (!wl->ref[i].open)
          continue;
 
-      if (trim_way(wl->ref[i].nw, 0) > 0)
+      if ((e = trim_way(wl->ref[i].nw, 0)) == -1)
+      {
+         log_debug("marking %"PRId64" at wl_index = %d out-of-page", wl->ref[i].nw->obj.id, i);
+         // pretend way to be closed to avoid further processing
+         wl->ref[i].open = 0;
+         continue;
+      }
+      else if (e > 0)
          log_debug("wl_index = %d", i);
 
-      if (trim_way(wl->ref[i].nw, 1) > 0)
+      if ((e = trim_way(wl->ref[i].nw, 1)) == -1)
+      {
+         log_msg(LOG_EMERG, "fatal error, this should not happen!");
+         continue;
+      }
+      else if (e > 0)
          log_debug("wl_index = %d", i);
+      j++;
    }
+
+   log_debug("new open_count = %d", j);
+   return j;
 }
 
 
@@ -489,6 +509,12 @@ static int collect_tags(const osm_obj_t *cp, const osm_obj_t *src, osm_obj_t *ds
 }
 
 
+/*! This function copies all node refs of the way chain found in pl to the way
+ * w. The original ways in the list are marked for deletion.
+ * @param pl Starting way of a waylist.
+ * @param w Way to which the node refs are joined.
+ * @return The fcuntion returns the total number finally joined refs.
+ */
 static int join_open_poly(struct poly *pl, osm_way_t *w)
 {
    int pos, wcnt = 0;
@@ -690,7 +716,6 @@ static int node_brg(struct pcoord *pc, const struct coord *src, int64_t nid)
 
 
 /*! Connect still unconnected ways.
- *  @param rd Pointer to struct rdata.
  *  @param pd Pointer to list of end points of type struct pdef.
  *  @param wl Pointer to list of open ways.
  *  @param ocnt number of end points within pd. Obviously, ocnt MUST be an even number.
@@ -731,7 +756,9 @@ static int connect_open(struct pdef *pd, struct wlist *wl, int ocnt, short no_co
             for (l = 0; l < 4; l++)
                if (pd[j % ocnt].pc.bearing < co_pt[l].pc.bearing)
                   break;
-            if (l < k)
+            // if the 2nd corner point is before the first or if the last point
+            // is the first in the list, wrap around "360 degrees".
+            if (l < k || j == ocnt)
                l += 4;
             // add corner points to way
             for (; k < l; k++)
@@ -795,8 +822,8 @@ static int connect_open(struct pdef *pd, struct wlist *wl, int ocnt, short no_co
             return -1;
          }
          break;
-      }
-   }
+      } // for (j = i + 1; j <= ocnt; j++)
+   } // for (i = 0; i < ocnt; i++)
    return 0;
 }
 
@@ -952,8 +979,8 @@ static int cat_poly_fini(smrule_t *r)
 
    poly_join_tags(wl, r);
 
-   log_debug("trimming ways");
-   trim_ways(wl, ocnt);
+   log_debug("trimming ways, open_count = %d", ocnt);
+   ocnt = trim_ways(wl);
 
    if (!cp->ign_incomplete)
    {
