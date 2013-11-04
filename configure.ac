@@ -24,6 +24,8 @@ AC_ARG_ENABLE([threads], [AS_HELP_STRING([--enable-threads],[compile with pthrea
 
 AC_ARG_WITH([cairo], [AS_HELP_STRING([--without-cairo], [disable support for libcairo])], [], [with_cairo=yes])
 
+PKG_CHECK_MODULES([FONTCONFIG], [fontconfig])
+
 AS_IF([test "x$with_cairo" != xno], [
 PKG_CHECK_MODULES([CAIRO], [cairo],
                   [AC_DEFINE([HAVE_CAIRO], [1], [compile with support for libcairo.])]
@@ -49,7 +51,7 @@ AX_PTHREAD([
 AC_SEARCH_LIBS([sin], [m])
 AC_SEARCH_LIBS([dlopen], [dl])
 
-AC_CHECK_FUNCS([strptime dladdr mbtowc])
+AC_CHECK_FUNCS([strptime dladdr mbtowc execvpe])
 
 AS_IF([test -n "$export_dynamic_flag_spec"], [
    exp_dyn=`eval echo $export_dynamic_flag_spec`
