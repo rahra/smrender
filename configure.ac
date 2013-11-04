@@ -3,6 +3,7 @@ define([svnversion], esyscmd([sh -c "echo -n `svnversion | tr -d 'M'`"]))dnl
 AC_INIT([smrender], [[3.0.r]svnversion], [bf@abenteuerland.at])
 AC_CONFIG_MACRO_DIR([m4])
 AM_INIT_AUTOMAKE([foreign -Wall -Werror])
+AM_PROG_AR
 LT_INIT
 AC_SUBST([CFLAGS], [["$CFLAGS -Wall -Wextra"]])
 #AC_SUBST([CFLAGS], [["-g -Wall"]])
