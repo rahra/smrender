@@ -64,6 +64,9 @@ extern char **environ;
 #endif
 
 
+static void send_status(FILE *, int , const char *);
+
+
 static int eclose(int fd)
 {
    if (fd == -1)
@@ -388,6 +391,34 @@ static void exec_help(FILE *fout)
 }
 
 
+static int exec_next(FILE *fout, char **sptr, int *ni)
+{
+   char *s;
+   long n;
+
+   if ((s = strtok_r(NULL, " ", sptr)) == NULL)
+   {
+      *ni = 0;
+      return 0;
+   }
+
+   errno = 0;
+   n = strtol(s, NULL, 0);
+   if (errno)
+   {
+      send_status(fout, 400, strerror(errno));
+      return -1;
+   }
+   if (n < -128 || n > 127)
+   {
+      send_status(fout, 400, "-128 <= n <= 127");
+      return -1;
+   }
+   *ni = n;
+   return 0;
+}
+
+ 
 static int exec_get(FILE *fout, char **sptr)
 {
    osm_obj_t *o;
@@ -441,7 +472,7 @@ static int fd_read(int fd, char *buf, int buflen)
 }
 
  
-static void send_status(FILE *fout, int code)
+static void send_status(FILE *fout, int code, const char *xstr)
 {
    const struct scode scode[] = {
       {500, "internal server error"},
@@ -454,11 +485,14 @@ static void send_status(FILE *fout, int code)
    for (i = 0; scode[i].code; i++)
       if (code == scode[i].code)
       {
-         fprintf(fout, "<status code=\"%d\">%s</status>\n", scode[i].code, scode[i].desc);
+         fprintf(fout, "<status code=\"%d\">%s", scode[i].code, scode[i].desc);
+         if (xstr != NULL)
+            fprintf(fout, ", %s", xstr);
+         fprintf(fout, "</status>\n");
          fflush(fout);
          return;
       }
-   send_status(fout, 500);
+   send_status(fout, 500, NULL);
 }
 
 
@@ -466,7 +500,7 @@ static int exec_cli(struct exec_ctrl *ec)
 {
    char buf[1024], *sptr;
    fd_set rset;
-   int len, i, n, last, e;
+   int len, i, n, last, e, ret = 0;
 
    for (int next = 0; !next;)
    {
@@ -545,27 +579,28 @@ static int exec_cli(struct exec_ctrl *ec)
                         break;
 
                      case CMD_NEXT:
-                        next++;
+                        if (!exec_next(ec->fout, &sptr, &ret))
+                           next++;
                         break;
 
                      case CMD_HELP:
                         exec_help(ec->fout);
-                        send_status(ec->fout, 200);
+                        send_status(ec->fout, 200, NULL);
                         break;
 
                      case CMD_GET:
                         if ((e = exec_get(ec->fout, &sptr)) <= 0)
                         {
                            log_msg(LOG_INFO, "exec_get() returned %d", e);
-                           send_status(ec->fout, 400);
+                           send_status(ec->fout, 400, NULL);
                         }
                         else
-                           send_status(ec->fout, e);
+                           send_status(ec->fout, e, NULL);
                         break;
 
                      default:
                         log_msg(LOG_ERR, "unknown command '%s'", buf);
-                        send_status(ec->fout, 400);
+                        send_status(ec->fout, 400, NULL);
                   }
                   break;
 
@@ -577,7 +612,7 @@ static int exec_cli(struct exec_ctrl *ec)
          }
       }
    }
-   return 0;
+   return ret;
 }
 
 
@@ -589,7 +624,7 @@ int act_exec_main(smrule_t *r, osm_obj_t *o)
       return 0;
 
    print_onode_osm(ec->fout, o);
-   send_status(ec->fout, 200);
+   send_status(ec->fout, 200, NULL);
 
    return exec_cli(ec);
 }
@@ -602,7 +637,7 @@ int act_exec_fini(smrule_t *r)
    if (ec == NULL)
       return 0;
 
-   send_status(ec->fout, 404);
+   send_status(ec->fout, 404, NULL);
    (void) exec_cli(ec);
    fprintf(ec->fout, "</smrender>\n");
    fflush(ec->fout);
