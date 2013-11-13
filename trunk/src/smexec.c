@@ -47,6 +47,7 @@ struct exec_ctrl
    int cfd[3];
    char **arg, **env;
    pid_t pid;
+   int osm_hdr;
    int last_cmd;
 };
 
@@ -277,6 +278,8 @@ int act_exec_ini(smrule_t *r)
       return -1;
    }
 
+   ec->osm_hdr = get_param_bool("osmhdr", r->act);
+
    ec->cfd[CHLD_OUT] = sub_pipe[0][1];
    ec->cfd[CHLD_IN] = sub_pipe[1][0];
    ec->cfd[CHLD_EIN] = sub_pipe[2][0];
@@ -298,8 +301,8 @@ int act_exec_ini(smrule_t *r)
    }
 
    r->data = ec;
-   fprintf(ec->fout, "<?xml version='1.0' encoding='UTF-8'?>\n<smrender version='%s'>\n",
-         PACKAGE_VERSION);
+   fprintf(ec->fout, "<?xml version='1.0' encoding='UTF-8'?>\n<smrender version='0.1' generator='%s'>\n",
+         PACKAGE_STRING);
 
    log_msg(LOG_INFO, "forked process %d", (int) ec->pid);
    return 0;
@@ -419,9 +422,8 @@ static int exec_next(FILE *fout, char **sptr, int *ni)
 }
 
  
-static int exec_get(FILE *fout, char **sptr)
+static int exec_get(char **sptr, osm_obj_t **o)
 {
-   osm_obj_t *o;
    int64_t id;
    int type;
    char *s;
@@ -443,10 +445,9 @@ static int exec_get(FILE *fout, char **sptr)
    if (errno)
       return -4;
 
-   if ((o = get_object(type, id)) == NULL)
+   if ((*o = get_object(type, id)) == NULL)
       return 404;
 
-   print_onode_osm(fout, o);
    return 200;
 }
 
@@ -499,6 +500,7 @@ static void send_status(FILE *fout, int code, const char *xstr)
 static int exec_cli(struct exec_ctrl *ec)
 {
    char buf[1024], *sptr;
+   osm_obj_t *o;
    fd_set rset;
    int len, i, n, last, e, ret = 0;
 
@@ -589,13 +591,22 @@ static int exec_cli(struct exec_ctrl *ec)
                         break;
 
                      case CMD_GET:
-                        if ((e = exec_get(ec->fout, &sptr)) <= 0)
+                        if ((e = exec_get(&sptr, &o)) <= 0)
                         {
                            log_msg(LOG_INFO, "exec_get() returned %d", e);
                            send_status(ec->fout, 400, NULL);
                         }
                         else
+                        {
+                           if (e == 200 && o != NULL)
+                           {
+                              if (!ec->osm_hdr)
+                                 print_onode(ec->fout, o);
+                              else
+                                 print_onode_osm(ec->fout, o);
+                           }
                            send_status(ec->fout, e, NULL);
+                        }
                         break;
 
                      default:
@@ -623,7 +634,10 @@ int act_exec_main(smrule_t *r, osm_obj_t *o)
    if (ec == NULL)
       return 0;
 
-   print_onode_osm(ec->fout, o);
+   if (!ec->osm_hdr)
+      print_onode(ec->fout, o);
+   else
+      print_onode_osm(ec->fout, o);
    send_status(ec->fout, 200, NULL);
 
    return exec_cli(ec);
