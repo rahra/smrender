@@ -73,6 +73,11 @@
 #define G_FONT "/usr/share/fonts/truetype/ttf-liberation/LiberationSans-Regular.ttf"
 #define G_FTSIZE 3
 #define G_SFTSIZE 2
+// default macros for auto-sized caption limits
+#define MIN_AUTO_SIZE 0.5
+#define MAX_AUTO_SIZE 12.0
+#define MIN_AREA_SIZE 8.0
+#define AUTO_SCALE 0.2
 
 #define ANGLE_DIFF 10
 
@@ -131,6 +136,13 @@ struct auto_rot
    int mkarea;       // if set to 1, OSM ways/nodes are generated according to the diffvec_t
 };
 
+struct auto_scale
+{
+   double max_auto_size, min_auto_size;   //!< min/max font size [mm] for auto-size area captions
+   double min_area_size;   //!< minimum size [mm2] of area for auto-sized area captions
+   double auto_scale;      //!< scaling factor
+};
+ 
 struct actImage
 {
    double angle;
@@ -161,6 +173,7 @@ struct actCaption
    char *font;       // pointer to font filename
    char *key;        // pointer to caption string
    double size;      // font size in mm
+   struct auto_scale scl;
    double angle;     // angle to rotate caption. 0 degress equals east,
                      // counterclockwise. NAN means auto-rotate
    char *akey;       // angle is defined in a tag

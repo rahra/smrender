@@ -1571,29 +1571,168 @@ int act_inherit_tags_fini(smrule_t *r)
 }
 
 
-int act_zeroway_main(smrule_t * UNUSED(r), osm_node_t *n)
+int act_zeroway_ini(smrule_t *r)
 {
+   r->data = &get_rdata()->index;
+   return 0;
+}
+
+
+int act_zeroway_fini(smrule_t *r)
+{
+   r->data = NULL;
+   return 0;
+}
+
+
+/*! Check if id is first or last node of way.
+ * @param w Pointer to way.
+ * @param id Node id to check for.
+ * @return 0 If id is first node. If id is the last node the positive index
+ * number is returned (ref_cnt - 1). In case of error -1 is returned.
+ */
+static int first_or_last(osm_way_t *w, int64_t id)
+{
+   if (w->ref[0] == id)
+      return 0;
+   if (w->ref[w->ref_cnt - 1])
+      return w->ref_cnt - 1;
+   return -1;
+}
+
+
+/*! Find first way in list of rev pointers who has a the specified node at the
+ * beginning or end.
+ * @param optr List of rev pointers.
+ * @param id Node id.
+ * @param rev Pointer to integer which will receive the position of the id
+ * within the way (see function first_or_last()).
+ * @return Return the index number within the list of rev pointers which points
+ * to the way. If no way matches the criteria -1 is returned.
+ */
+static int next_rev_way(osm_obj_t **optr, int64_t id, int *rev)
+{
+   int r;
+
+   // find first way rev pointer in list of rev pointers.
+   for (int i = 0; *optr != NULL; i++)
+   {
+      // ignore non-way rev pointers 
+      if (optr[i]->type != OSM_WAY)
+         continue;
+
+      if ((r = first_or_last((osm_way_t*) optr[i], id)) != -1)
+      {
+         if (rev != NULL)
+            *rev = r;
+         return i;
+      }
+   }
+   return -1;
+}
+
+
+/*! This function insert a way of length zero between two ways at the node
+ * which connects those two ways. The new way will inherit all tags from the
+ * node. This operation is carried out only if the node which was matched in
+ * advance for this function to be called is an intermediate node as explained
+ * before.
+ */
+int act_zeroway_main(smrule_t *r, osm_node_t *n)
+{
+   bx_node_t **idx_root = r->data;
+   osm_obj_t **optr, **nptr, **pptr = NULL;
+   int i, j, k, cnt, rev;
    osm_node_t *node;
    osm_way_t *w;
 
-   if (n->obj.type != OSM_NODE)
+   log_debug("zeroway(%"PRId64")", n->obj.id);
+   if ((optr = get_object0(*idx_root, n->obj.id, IDX_NODE)) == NULL)
    {
-      log_msg(LOG_WARN, "zeroway() is only applicable to nodes");
-      return 1;
+      log_debug("no rev pointers for node %"PRId64, n->obj.id);
+      return 0;
    }
 
-   node = malloc_node(1);
-   osm_node_default(node);
-   node->lat = n->lat;
-   node->lon = n->lon;
-   put_object((osm_obj_t*) node);
+   if ((cnt = next_rev_way(optr, n->obj.id, NULL)) == -1)
+   {
+      log_debug("node %"PRId64" has no suitable way", n->obj.id);
+      return 0;
+   }
 
-   w = malloc_way(n->obj.tag_cnt + 1, 2);
-   osm_way_default(w);
-   memcpy(&w->obj.otag[1], &n->obj.otag[0], sizeof(*w->obj.otag) * n->obj.tag_cnt);
-   w->ref[0] = n->obj.id;
-   w->ref[1] = node->obj.id;
-   put_object((osm_obj_t*) w);
+   for (node = NULL, j = 1, k = 0, nptr = NULL; (i = next_rev_way(optr + cnt + j, n->obj.id, &rev)) != -1; j++)
+   {
+      j += i;
+      // In the first run of the loop create the new way (+node). If the node
+      // connects several ways (and not just two), the same way is reused for
+      // every other way.
+      if (node == NULL)
+      {
+         // create new blind node
+         node = malloc_node(1);
+         osm_node_default(node);
+         node->lat = n->lat;
+         node->lon = n->lon;
+         put_object((osm_obj_t*) node);
+
+         // create new zero length way
+         w = malloc_way(n->obj.tag_cnt + 1, 2);
+         osm_way_default(w);
+         memcpy(&w->obj.otag[1], &n->obj.otag[0], sizeof(*w->obj.otag) * n->obj.tag_cnt);
+         w->ref[0] = n->obj.id;
+         w->ref[1] = node->obj.id;
+         put_object((osm_obj_t*) w);
+         log_debug("new zeroway %"PRId64" created", w->obj.id);
+
+         // create new reverse pointer list for origin node n
+         // get number of elements and reserve new memory
+         int ni = get_rev_index(optr, NULL);
+         if ((pptr = malloc(sizeof(*pptr) * (ni + 2))) == NULL)
+         {
+            log_msg(LOG_ERR, "realloc() failed: %s", strerror(errno));
+            return -1;
+         }
+         // copy reverse pointers
+         memcpy(pptr, optr, sizeof(*pptr) * ni);
+         // add reverse pointer to new way
+         pptr[ni] = (osm_obj_t*) w;
+         pptr[ni + 1] = NULL;
+         // store list into index
+         put_object0(idx_root, n->obj.id, pptr, IDX_NODE);
+
+         // create reverse pointer list for new node
+         if ((nptr = malloc(sizeof(*nptr) * (k + 2))) == NULL)
+         {
+            log_msg(LOG_ERR, "malloc() failed: %s", strerror(errno));
+            return -1;
+         }
+         // add reverse pointer to way and store list into index
+         nptr[k++] = (osm_obj_t*) w;
+         nptr[k] = NULL;
+         put_object0(idx_root, node->obj.id, nptr, IDX_NODE);
+      }
+
+      // modify way to to have new node as connecting node to new way
+      ((osm_way_t*) optr[j])->ref[rev] = node->obj.id;
+      log_debug("way %"PRId64" modified", ((osm_way_t*) optr[j])->obj.id);
+
+      // update reverse pointer of new node
+      if ((nptr = realloc(nptr, sizeof(*nptr) * (k + 2))) == NULL)
+      {
+         log_msg(LOG_ERR, "malloc() failed: %s", strerror(errno));
+         return -1;
+      }
+      nptr[k] = optr[j];
+      nptr[k + 1] = NULL;
+      // store list into index (necassary because realloc() may change address)
+      put_object0(idx_root, node->obj.id, nptr, IDX_NODE);
+ 
+      // FIXME: if ways are member(s) of relations, new way is not added to
+      // same relation(s)
+   }
+
+   // free old list of reverse pointers of origin node if new list was created
+   if (pptr != NULL)
+      free(optr);
 
    return 0;
 }
@@ -1695,7 +1834,7 @@ int act_split_main(smrule_t *r, osm_node_t *n)
 
    if (n->obj.type != OSM_NODE)
    {
-      log_msg(LOG_WARN, "zeroway() is only applicable to nodes");
+      log_msg(LOG_WARN, "split() is only applicable to nodes");
       return 1;
    }
 

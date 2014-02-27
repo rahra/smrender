@@ -136,6 +136,7 @@ void rdata_log(void)
    log_msg(LOG_NOTICE, "   flags = 0x%04x, MAX_ITER = %d", rd_.flags, MAX_ITER);
    log_debug("   G_GRID %.3f, G_TICKS %.3f, G_STICKS %.3f, G_MARGIN %.2f, G_TW %.2f, G_STW %.2f, G_BW %.2f",
          G_GRID, G_TICKS, G_STICKS, G_MARGIN, G_TW, G_STW, G_BW);
+   log_debug("   square_nm = %f, square_mm = %f", rdata_square_nm(), rdata_square_mm());
    log_msg(LOG_NOTICE, "***");
 }
 

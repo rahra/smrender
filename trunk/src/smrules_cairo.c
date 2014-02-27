@@ -30,6 +30,7 @@
 #include <string.h>
 #include <syslog.h>
 #include <errno.h>
+#include <inttypes.h>
 #include <ctype.h>
 #include <wctype.h>
 #ifdef WITH_THREADS
@@ -82,6 +83,9 @@
 #define TILE_SIZE 256
 #define TRANSPIX 0x7fffffff
 #define sqr(x) pow(x, 2)
+
+#define MAJORAXIS 720.0
+#define AUTOROT NAN
 
 
 typedef struct diffvec
@@ -400,30 +404,38 @@ static void parse_auto_rot(const action_t *act, double *angle, struct auto_rot *
    if ((val = get_param("angle", angle, act)) == NULL)
       return;
 
-   if (strcmp("auto", val))
-      return;
-
-   *angle = NAN;
-   if (get_param("auto-color", NULL, act) != NULL)
-      log_msg(LOG_NOTICE, "parameter 'auto-color' deprecated");
-
-   if ((val = get_param("weight", &rot->weight, act)) == NULL)
-      rot->weight = 1.0;
-
-   // boundary check for 'weight' parameter
-   if (rot->weight > 1.0)
+   if (!strcasecmp("auto", val))
    {
-      rot->weight = 1.0;
-      log_msg(LOG_NOTICE, "weight limited to %.1f", rot->weight);
-   }
-   else if (rot->weight < -1.0)
-   {
-      rot->weight = -1.0;
-      log_msg(LOG_NOTICE, "weight limited to %.1f", rot->weight);
-   }
+      *angle = AUTOROT;
+      if (get_param("auto-color", NULL, act) != NULL)
+         log_msg(LOG_NOTICE, "parameter 'auto-color' deprecated");
 
-   (void) get_param("phase", &rot->phase, act);
-   rot->mkarea = get_param_bool("mkarea", act);
+      if ((val = get_param("weight", &rot->weight, act)) == NULL)
+         rot->weight = 1.0;
+
+      // boundary check for 'weight' parameter
+      if (rot->weight > 1.0)
+      {
+         rot->weight = 1.0;
+         log_msg(LOG_NOTICE, "weight limited to %.1f", rot->weight);
+      }
+      else if (rot->weight < -1.0)
+      {
+         rot->weight = -1.0;
+         log_msg(LOG_NOTICE, "weight limited to %.1f", rot->weight);
+      }
+
+      (void) get_param("phase", &rot->phase, act);
+      rot->mkarea = get_param_bool("mkarea", act);
+   }
+   else if (!strcasecmp("majoraxis", val))
+   {
+      *angle = MAJORAXIS;
+   }
+   else
+   {
+      *angle = fmod(*angle, 360.0);
+   }
 }
 
  
@@ -718,6 +730,91 @@ int act_draw_fini(smrule_t *r)
 }
 
 
+static int farthest_node(const struct coord *c, const osm_way_t *w, struct pcoord *pc)
+{
+   struct pcoord pct;
+   struct coord cd;
+   osm_node_t *n;
+   int ref;
+
+   memset(pc, 0, sizeof(*pc));
+
+   for (int i = 0; i < w->ref_cnt; i++)
+   {
+      if ((n = get_object(OSM_NODE, w->ref[i])) == NULL)
+      {
+         log_msg(LOG_EMERG, "node %"PRId64" not found", w->ref[i]);
+         continue;
+      }
+
+      cd.lat = n->lat;
+      cd.lon = n->lon;
+      pct = coord_diff(c, &cd);
+
+      if (pct.dist > pc->dist)
+      {
+         *pc = pct;
+         ref = i;
+      }
+   }
+
+   return ref;
+}
+
+
+static int area_axis(const osm_way_t *w, double *a)
+{
+   struct coord c;
+   struct pcoord pc, pc_final;
+   osm_node_t *n;
+   int fpair[2];
+   int nref;
+
+   // safety check
+   if (w->ref_cnt < 2)
+   {
+      log_msg(LOG_EMERG, "way %"PRId64" has ill number of nodes: %d", w->obj.id, w->ref_cnt);
+      return -1;
+   }
+
+   memset(&pc_final, 0, sizeof(pc_final));
+   memset(fpair, 0, sizeof(fpair));
+
+   for (;;)
+   {
+      if ((n = get_object(OSM_NODE, w->ref[fpair[1]])) == NULL)
+      {
+         log_msg(LOG_EMERG, "node %"PRId64" not found", w->ref[fpair[1]]);
+         continue;
+      }
+
+      c.lat = n->lat;
+      c.lon = n->lon;
+
+      if (!(nref = farthest_node(&c, w, &pc)))
+      {
+         log_debug("endless loop detected - break");
+         break;
+      }
+
+      if (pc.dist <= pc_final.dist)
+         break;
+
+      fpair[0] = fpair[1];
+      fpair[1] = nref;
+      pc_final = pc;
+   }
+
+   log_debug("way.id = %"PRId64", ref[%d] = %"PRId64", ref[%d] = %"PRId64", dist = %f, bearing = %f",
+         w->obj.id, fpair[0], w->ref[fpair[0]], fpair[1], w->ref[fpair[1]], pc_final.dist, pc_final.bearing);
+
+   if (a != NULL)
+      *a = pc_final.bearing;
+
+   return 0;
+}
+
+
 int act_cap_ini(smrule_t *r)
 {
    struct actCaption cap;
@@ -728,6 +825,10 @@ int act_cap_ini(smrule_t *r)
 #endif
 
    memset(&cap, 0, sizeof(cap));
+   cap.scl.min_auto_size = MIN_AUTO_SIZE;
+   cap.scl.max_auto_size = MAX_AUTO_SIZE;
+   cap.scl.min_area_size = MIN_AREA_SIZE;
+   cap.scl.auto_scale = AUTO_SCALE;
 
    if ((cap.font = get_param("font", NULL, r->act)) == NULL)
    {
@@ -751,6 +852,11 @@ int act_cap_ini(smrule_t *r)
    }
    if ((s = get_param("color", NULL, r->act)) != NULL)
       cap.col = parse_color(s);
+
+   (void) get_param("min_size", &cap.scl.min_auto_size, r->act);
+   (void) get_param("max_size", &cap.scl.max_auto_size, r->act);
+   (void) get_param("min_area", &cap.scl.min_area_size, r->act);
+   (void) get_param("auto_scale", &cap.scl.auto_scale, r->act);
 
    parse_auto_rot(r->act, &cap.angle, &cap.rot);
    if ((cap.akey = get_param("anglekey", NULL, r->act)) != NULL && isnan(cap.angle))
@@ -809,8 +915,10 @@ int act_cap_ini(smrule_t *r)
    if (!isnan(cap.angle))
       sm_threaded(r);
 
-   log_msg(LOG_DEBUG, "%04x, %08x, '%s', '%s', %.1f, %.1f, {%.1f, %08x, %.1f}",
-         cap.pos, cap.col, cap.font, cap.key, cap.size, cap.angle,
+   log_debug("%04x, %08x, '%s', '%s', %.1f, {%.1f, %.1f, %.1f, %.2f}, %.1f, {%.1f, %08x, %.1f}",
+         cap.pos, cap.col, cap.font, cap.key, cap.size,
+         cap.scl.max_auto_size, cap.scl.min_auto_size, cap.scl.min_area_size, cap.scl.auto_scale,
+         cap.angle,
          cap.rot.phase, cap.rot.autocol, cap.rot.weight);
    memcpy(r->data, &cap, sizeof(cap));
    return 0;
@@ -1460,6 +1568,9 @@ static int cap_coord(const struct actCaption *cap, const struct coord *c, const 
    short pos;
    int n;
 
+   if (cap->size == 0.0)
+      return 0;
+
    cairo_save(cap->ctx);
    geo2pt(c->lon, c->lat, &x, &y);
    cairo_translate(cap->ctx, x, y);
@@ -1544,19 +1655,36 @@ static int cap_way(const struct actCaption *cap, osm_way_t *w, const bstring_t *
    memcpy(&tmp_cap, cap, sizeof(tmp_cap));
    if (tmp_cap.size == 0.0)
    {
-      log_debug("nm2 = %f, mm2 = %f, ar = %f, str = \"%.*s\"", rdata_square_nm(), rdata_square_mm(), fabs(ar), str->len, str->buf);
-      /* Papiergröße [mm2] = nm2 / (scale^2) * (1852000^2) -> seitenlänge = wurzel aus papiergröße
-       * 1 [nm2/ar] ..... 
-      fabs(ar) / pow(rdata_scale() * 2) * 3.429904E12;
-      */
-      //double pgborder = sqrt(rdata_square_mm());
-      double pgborder = 80;
-      tmp_cap.size = pgborder * sqrt(fabs(ar) / rdata_square_nm());
-#define MIN_AUTO_SIZE 0.7
-#define MAX_AUTO_SIZE 12.0
-      if (tmp_cap.size < MIN_AUTO_SIZE) tmp_cap.size = MIN_AUTO_SIZE;
-      if (tmp_cap.size > MAX_AUTO_SIZE) tmp_cap.size = pgborder * 0.10;
-      //log_debug("r->rule.cap.size = %f (%f 1/1000)", r->rule.cap.size, r->rule.cap.size / 100 * 1000);
+      double area_mm2 = fabs(ar) * rdata_square_mm() / rdata_square_nm();
+      tmp_cap.size = cap->scl.auto_scale * sqrt(area_mm2);
+      log_debug("tmp_cap.size = %.1f, ar = %f [nm2], ar = %.1f [mm2], str = \"%.*s\"",
+            tmp_cap.size, fabs(ar), area_mm2,  str->len, str->buf);
+
+      // check upper font size limit
+      if (cap->scl.max_auto_size != 0.0 && tmp_cap.size > cap->scl.max_auto_size)
+         tmp_cap.size = cap->scl.max_auto_size;
+
+      // check lower font size limit
+      if (cap->scl.min_auto_size != 0.0 && tmp_cap.size < cap->scl.min_auto_size)
+      {
+         // omit caption if area is smaller than allowed
+         if (area_mm2 < cap->scl.min_area_size)
+            tmp_cap.size = 0.0;
+         else
+            tmp_cap.size = cap->scl.min_auto_size;
+      }
+   }
+
+   if (tmp_cap.angle == MAJORAXIS)
+   {
+      area_axis(w, &tmp_cap.angle);
+      // correct bearing to math angle
+      tmp_cap.angle = fmod2(90 - tmp_cap.angle, 360);
+      // correct angle if that font is upright readable
+      // FIXME: that's probably the wrong place to do that
+      if (tmp_cap.angle > 90 && tmp_cap.angle <= 270)
+         tmp_cap.angle -= 180.0;
+      log_debug("tmp_cap.angle = %.1f", tmp_cap.angle);
    }
 
    return cap_coord(&tmp_cap, &c, str, (osm_obj_t*) w);
