@@ -735,7 +735,7 @@ static int farthest_node(const struct coord *c, const osm_way_t *w, struct pcoor
    struct pcoord pct;
    struct coord cd;
    osm_node_t *n;
-   int ref;
+   int ref = -1;
 
    memset(pc, 0, sizeof(*pc));
 
@@ -795,6 +795,13 @@ static int area_axis(const osm_way_t *w, double *a)
       {
          log_debug("endless loop detected - break");
          break;
+      }
+
+      // safety check
+      if (nref == -1)
+      {
+         log_msg(LOG_EMERG, "farthes_node() return -1: this should never happen!");
+         return -1;
       }
 
       if (pc.dist <= pc_final.dist)
