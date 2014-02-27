@@ -131,7 +131,7 @@
       <tag k='_action_' v='draw:color=skyblue;bcolor=skyblue'/>
    </way>
    <way>
-      <tag k='_action_' v='cap:font=sans-serif:bold;size=auto;key=*name'/>
+      <tag k='_action_' v='cap:font=sans-serif:bold;size=auto;key=*name;angle=majoraxis'/>
       <tag k='place' v='/island|islet/'/>
    </way>
    <way>
