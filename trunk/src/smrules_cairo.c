@@ -37,11 +37,18 @@
 #include <pthread.h>
 #endif
 #include <cairo.h>
+#undef CAIRO_HAS_FT_FONT
+#undef CAIRO_HAS_FC_FONT
 #ifdef CAIRO_HAS_FT_FONT
 #include <cairo-ft.h>
 #endif
 #ifdef CAIRO_HAS_PDF_SURFACE
 #include <cairo-pdf.h>
+#endif
+
+// this format was defined in version 1.12
+#ifndef CAIRO_FORMAT_RGB30
+#define CAIRO_FORMAT_RGB30 5
 #endif
 
 #define mm2unit(x) mm2ptf(x)

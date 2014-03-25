@@ -683,11 +683,18 @@ int ins_eqdist(osm_way_t *w, double dist)
    }
 
    // find first valid point (usually this is ref[0])
-   for (i = 0; i < w->ref_cnt - 1; i++)
+   for (i = 0, s = NULL; i < w->ref_cnt - 1; i++)
    {
       if ((s = get_object(OSM_NODE, w->ref[i])) != NULL)
          break;
       log_msg(LOG_WARN, "node %ld of way %ld does not exist", (long) w->ref[i], (long) w->obj.id);
+   }
+
+   // safety check
+   if (s == NULL)
+   {
+      log_msg(LOG_EMERG, "no valid node found. This should never happen");
+      return -1;
    }
 
    sc.lat = s->lat;
