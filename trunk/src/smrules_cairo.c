@@ -346,6 +346,17 @@ void cut_tile(const struct bbox *bb, void *img)
 }
 
 
+void clear_tile(void *img)
+{
+   cairo_t *ctx;
+   ctx = cairo_create(img);
+   cairo_smr_set_source_color(ctx, parse_color("bgcolor"));
+   cairo_set_operator(ctx, CAIRO_OPERATOR_CLEAR);
+   cairo_paint(ctx);
+   cairo_destroy(ctx);
+}
+
+
 /*! Return the memory address of a Pixel.
  *  @param x X position.
  *  @param y Y position.

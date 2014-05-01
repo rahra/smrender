@@ -47,6 +47,7 @@
 #define create_tile(x) NULL
 #define delete_tile(x)
 #define cut_tile(x, y)
+#define clear_tile(x)
 #define save_image(x, y, z)
 #endif
 
@@ -64,7 +65,13 @@ static int lon2tile(double lon, int z)
 
 static int lat2tile(double lat, int z)
 { 
-   return (int)(floor((1.0 - log(tan(lat * M_PI/180.0) + 1.0 / cos(lat * M_PI/180.0)) / M_PI) / 2.0 * pow(2.0, z))); 
+   int y = floor((1.0 - log(tan(lat * M_PI/180.0) + 1.0 / cos(lat * M_PI/180.0)) / M_PI) / 2.0 * pow(2.0, z));
+#define CHECK_TILE_LAT
+#ifdef CHECK_TILE_LAT
+   return y < 0 ? 0 : y;
+#else
+   return y;
+#endif
 }
  
 
@@ -198,6 +205,7 @@ int create_tiles(const char *tile_path, const struct rdata *rd, int zoom, int ft
 
          log_debug("tile y = %d, %f - %f", y, bb.ru.lat, bb.ll.lat);
 
+         clear_tile(tile);
          cut_tile(&bb, tile);
          if (!ftype)
             snprintf(tbuf, sizeof(tbuf), "%s/%d/%d.png", buf, x, y);
