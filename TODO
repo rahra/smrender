@@ -7,4 +7,4 @@
 * incomplete() several rules, one filename (like out())
 * automatic bay/cape font size
 * color diff function improvement (black/white stretching in spherical coordinate system)
-
+* missing safety check for latitudes > 85.05

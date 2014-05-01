@@ -283,6 +283,7 @@ void save_main_image(FILE*, int);
 void *create_tile(void);
 void delete_tile(void *);
 void cut_tile(const struct bbox *, void *);
+void clear_tile(void *);
 int save_image(const char *, void *, int);
 void *cairo_smr_image_surface_from_bg(cairo_format_t);
 #else
