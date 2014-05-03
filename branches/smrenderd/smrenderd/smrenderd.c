@@ -14,13 +14,6 @@ volatile sig_atomic_t int_ = 0;
 int render_all_nodes_ = 1;
 
 
-//FIXME: this is defined because used in traverse if render_all_nodes_ == 0
-int is_on_page(const struct coord * UNUSED(p))
-{
-   return 1;
-}
-
-
 static int free_objects(osm_obj_t *o, void * UNUSED(p))
 {
    free_obj(o);

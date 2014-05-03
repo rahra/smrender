@@ -27,8 +27,10 @@
 #include <inttypes.h>
 
 #include "smrender.h"
-//#include "smrender_dev.h" // only there for print_onode()
 #include "smhttp.h"
+
+
+int print_onode(FILE*, const osm_obj_t*);
 
 
 struct smhttpd
@@ -157,12 +159,6 @@ static int http_header(FILE *f, time_t t)
    strftime(buf, sizeof(buf), "%a, %d %b %Y %T %z", &tm);
    len += fprintf(f, "%sServer: smrenderd\r\nDate: %s\r\n\r\n", STATUS_200, buf);
    return len;
-}
-
-
-static int print_onode(FILE *f, const osm_obj_t *o)
-{
-   return 0;
 }
 
 
