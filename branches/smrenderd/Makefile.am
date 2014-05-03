@@ -1,4 +1,4 @@
-SUBDIRS = libsmrender src libsmfilter libskel
+SUBDIRS = libsmrender src smrenderd libsmfilter libskel
 ACLOCAL_AMFLAGS = -I m4
 rules_datadir = $(datadir)/smrender
 dist_rules_data_DATA = rules/rules.osm rules/rulesbig.osm rules/rules_land.osm

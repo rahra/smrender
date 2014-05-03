@@ -61,6 +61,6 @@ AS_IF([test -n "$export_dynamic_flag_spec"], [
 
 AC_SUBST([SMFILTER_NAME], [["libsmfilter$shrext_cmds"]])
 
-AC_CONFIG_FILES([Makefile libsmrender/Makefile src/Makefile libsmfilter/Makefile libskel/Makefile tools/smfilter2])
+AC_CONFIG_FILES([Makefile libsmrender/Makefile src/Makefile smrenderd/Makefile libsmfilter/Makefile libskel/Makefile tools/smfilter2])
 AC_OUTPUT
 

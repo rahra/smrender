@@ -272,7 +272,7 @@ int call_fini(smrule_t *r)
 }
 
 
-#ifdef WITH_THREADS
+#ifdef THREADED_RULES
 
 static list_t *li_fini_;
 
@@ -347,7 +347,7 @@ int apply_smrules(smrule_t *r, long ver)
       return 0;
    }
 
-#ifdef WITH_THREADS
+#ifdef THREADED_RULES
    // if rule is not threaded
    if (!sm_is_threaded(r))
    {
@@ -362,7 +362,7 @@ int apply_smrules(smrule_t *r, long ver)
 
    if (r->act->main.func != NULL)
    {
-#ifdef WITH_THREADS
+#ifdef THREADED_RULES
       if (sm_is_threaded(r))
          e = traverse_queue(*get_objtree(), r->oo->type - 1, (tree_func_t) apply_smrules0, r);
       else
@@ -377,7 +377,7 @@ int apply_smrules(smrule_t *r, long ver)
    if (e >= 0)
    {
       e = 0;
-#ifdef WITH_THREADS
+#ifdef THREADED_RULES
       queue_fini(r);
 #else
       call_fini(r);
@@ -393,19 +393,19 @@ static int execute_rules(bx_node_t *rules, int version)
    // FIXME: order rel -> way -> node?
    log_msg(LOG_INFO, " relations...");
    traverse(rules, 0, IDX_REL, (tree_func_t) apply_smrules, (void*) (long) version);
-#ifdef WITH_THREADS
+#ifdef THREADED_RULES
    sm_wait_threads();
    dequeue_fini();
 #endif
    log_msg(LOG_INFO, " ways...");
    traverse(rules, 0, IDX_WAY, (tree_func_t) apply_smrules, (void*) (long) version);
-#ifdef WITH_THREADS
+#ifdef THREADED_RULES
    sm_wait_threads();
    dequeue_fini();
 #endif
    log_msg(LOG_INFO, " nodes...");
    traverse(rules, 0, IDX_NODE, (tree_func_t) apply_smrules, (void*) (long) version);
-#ifdef WITH_THREADS
+#ifdef THREADED_RULES
    sm_wait_threads();
    dequeue_fini();
 #endif
@@ -660,6 +660,7 @@ static int fprint_defattr(FILE *f, const osm_obj_t *o, const char *ostr)
    char ts[TBUFLEN] = "0000-00-00T00:00:00Z";
    struct tm *tm;
 
+   //FIXME: not thread safe
    if ((tm = gmtime(&o->tim)) != NULL)
       strftime(ts, sizeof(ts), "%Y-%m-%dT%H:%M:%SZ", tm);
 

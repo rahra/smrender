@@ -18,7 +18,6 @@
 #ifndef SMHTTP_H
 #define SMHTTP_H
 
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
@@ -32,7 +31,7 @@
 #include <fcntl.h>
 #include <time.h>
 #include <limits.h>
-#ifdef MULTITHREADED
+#ifdef WITH_THREADS
 #include <pthread.h>
 #endif
 #include <netinet/in.h>
@@ -59,21 +58,23 @@
 #define SEND_STATUS(f, s) write(f, s, strlen(s))
 
 
+#define API06_URL "/api/0.6/"
+#define WS_URL "/ws/"
+
 //! data structure handled over to threads
-typedef struct HttpThread
+typedef struct http_thread
 {
-#ifdef MULTITHREADED
+#ifdef WITH_THREADS
    pthread_t th;
 #else
    pid_t pid;
 #endif
    int n;
    int sfd;
-} HttpThread_t;
+} http_thread_t;
 
 
-// prototypes
-void *handle_http(void*);
+int main_smrenderd(void);
 
 
 #endif
