@@ -36,6 +36,7 @@
 #include <regex.h>
 
 #include "smrender_dev.h"
+#include "smloadosm.h"
 #include "libhpxml.h"
 
 

@@ -45,6 +45,7 @@
 #define BLUE(x) (((x) & 0xff))
 #define SQRL(x) ((long) (x) * (long) (x))
 
+typedef struct smrule smrule_t;
 
 typedef struct fparam
 {

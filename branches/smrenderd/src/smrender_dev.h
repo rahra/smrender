@@ -111,18 +111,7 @@
 #define FTYPE_JPG 1
 #define FTYPE_PDF 2
 
-// return values of apply_rule()
-#define ERULE_OUTOFBBOX 1  //!< The node is outside of the area to render.
-#define ERULE_WAYOPEN 2    //!< The rule applies only to closed ways.
-#define ERULE_WAYCLOSED 3  //!< The rule applies only to open ways.
-#define ERULE_NOMATCH 4    //!< The tags of the rule do not match the object.
-#define ERULE_INVISIBLE 5  //!< The object is invisible.
 
-
-typedef int (*tree_func_t)(osm_obj_t*, void*);
-
-// indexes to object tree
-enum {IDX_NODE, IDX_WAY, IDX_REL};
 //enum {WHITE, YELLOW, BLACK, BLUE, MAGENTA, BROWN, TRANSPARENT, BGCOLOR, MAXCOLOR};
 enum {LAT, LON};
 enum {DRAW_SOLID, DRAW_DASHED, DRAW_DOTTED, DRAW_TRANSPARENT};
@@ -222,16 +211,6 @@ struct grid
    int copyright, cmdline;
 };
 
-struct filter
-{
-   // c1 = left upper corner, c2 = right lower corner of bounding box
-   struct coord c1, c2;
-   // set use_bbox to 1 if bbox should be honored
-   int use_bbox;
-   // pointer to rules tree (or NULL if it should be ignored)
-   bx_node_t *rules;
-};
-
 struct file
 {
    char *name;
@@ -241,7 +220,6 @@ struct file
 
 
 /* smrender.c */
-int traverse(const bx_node_t*, int, int, tree_func_t, void*);
 int print_onode(FILE *, const osm_obj_t*);
 int col_freq(struct rdata *, int, int, int, int, double, int);
 int cf_dist(struct rdata *, int, int, int, int, double, int, int);
@@ -254,22 +232,6 @@ int save_osm(const char *, bx_node_t *, const struct bbox *, const char *);
 int apply_smrules0(osm_obj_t*, smrule_t*);
 int apply_rule(osm_obj_t*, smrule_t*, int*);
 int call_fini(smrule_t*);
-int get_rev_index(osm_obj_t**, const osm_obj_t*);
-
-/* smutil.c */
-int bs_match_attr(const osm_obj_t*, const struct otag *, const struct stag*);
-int bs_match(const bstring_t *, const bstring_t *, const struct specialTag *);
-void set_util_rd(struct rdata*);
-int put_object0(bx_node_t**, int64_t, void*, int);
-void *get_object0(bx_node_t*, int64_t, int);
-int coord_str(double, int, char*, int);
-int func_name(char*, int, void*);
-int strcnt(const char*, int);
-
-/* smloadosm.c */
-void osm_read_exit(void);
-int read_osm_file(hpx_ctrl_t*, bx_node_t**, const struct filter*, struct dstats*);
-hpx_ctrl_t *open_osm_source(const char*, int);
 
 /* smcoast.c */
 int is_closed_poly(const osm_way_t*);
@@ -322,11 +284,6 @@ void grid(struct rdata *, const struct grid *);
 
 /* smqr.c */
 image_t *smqr_image(void);
-
-/* smthread.c */
-void sm_wait_threads(void);
-int traverse_queue(const bx_node_t *, int , tree_func_t , void *);
-int sm_is_threaded(const smrule_t *);
 
 /* smtile.c */
 int create_tiles(const char *, const struct rdata *, int , int );

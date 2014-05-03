@@ -31,6 +31,8 @@
 #include <inttypes.h>
 
 #include "smrender_dev.h"
+#include "smcore.h"
+#include "smloadosm.h"
 
 
 #define DIR_CW 0

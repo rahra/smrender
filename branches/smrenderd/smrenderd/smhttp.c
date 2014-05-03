@@ -160,7 +160,7 @@ static int http_header(FILE *f, time_t t)
 }
 
 
-int print_onode(FILE *f, const osm_obj_t *o)
+static int print_onode(FILE *f, const osm_obj_t *o)
 {
    return 0;
 }
