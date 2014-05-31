@@ -5,4 +5,5 @@
 autoreconf -f
 automake --add-missing --copy
 libtoolize --copy
+autoreconf -f
 
