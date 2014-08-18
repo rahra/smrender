@@ -35,6 +35,17 @@
 #include "rdata.h"
 
 
+struct ostream
+{
+   FILE *stream;
+   size_t len;
+};
+
+
+
+/*! Safely output a literal string, i.e. it replaces '<' and '"'.
+ *  @return It returns the number of bytes written.
+ */
 int bs_safe_put_xml(FILE *f, const bstring_t *b)
 {
    int i, c;
@@ -101,8 +112,12 @@ static int fprint_defattr(FILE *f, const osm_obj_t *o, const char *ostr)
 }
 
 
+/* This functions outputs an OSM object to a stream.
+ * FIXME: Return values of fprintf() and fputs() are not verified.
+ */
 int print_onode(FILE *f, const osm_obj_t *o)
 {
+   size_t len = 0;
    int i;
 
    if (o == NULL)
@@ -114,35 +129,35 @@ int print_onode(FILE *f, const osm_obj_t *o)
    switch (o->type)
    {
       case OSM_NODE:
-         fprint_defattr(f, o, "node");
+         len += fprint_defattr(f, o, "node");
          if (o->tag_cnt)
-            fprintf(f, " lat=\"%.7f\" lon=\"%.7f\">\n", ((osm_node_t*) o)->lat, ((osm_node_t*) o)->lon);
+            len += fprintf(f, " lat=\"%.7f\" lon=\"%.7f\">\n", ((osm_node_t*) o)->lat, ((osm_node_t*) o)->lon);
          else
-            fprintf(f, " lat=\"%.7f\" lon=\"%.7f\"/>\n", ((osm_node_t*) o)->lat, ((osm_node_t*) o)->lon);
+            len += fprintf(f, " lat=\"%.7f\" lon=\"%.7f\"/>\n", ((osm_node_t*) o)->lat, ((osm_node_t*) o)->lon);
          break;
 
       case OSM_WAY:
-         fprint_defattr(f, o, "way");
-         fprintf(f, ">\n");
+         len += fprint_defattr(f, o, "way");
+         len += fprintf(f, ">\n");
          break;
 
       case OSM_REL:
-         fprint_defattr(f, o, "relation");
-         fprintf(f, ">\n");
+         len += fprint_defattr(f, o, "relation");
+         len += fprintf(f, ">\n");
          break;
 
       default:
-         fprintf(f, "<!-- unknown node type: %d -->\n", o->type);
+         len += fprintf(f, "<!-- unknown node type: %d -->\n", o->type);
          return -1;
    }
 
    for (i = 0; i < o->tag_cnt; i++)
    {
-      fputs("<tag k=\"", f);
-      bs_safe_put_xml(f, &o->otag[i].k);
-      fputs("\" v=\"", f);
-      bs_safe_put_xml(f, &o->otag[i].v);
-      fputs("\"/>\n", f);
+      len += fputs("<tag k=\"", f);
+      len += bs_safe_put_xml(f, &o->otag[i].k);
+      len += fputs("\" v=\"", f);
+      len += bs_safe_put_xml(f, &o->otag[i].v);
+      len += fputs("\"/>\n", f);
       /*fprintf(f, "<tag k=\"%.*s\" v=\"%.*s\"/>\n",
             (int) o->otag[i].k.len, o->otag[i].k.buf, (int) o->otag[i].v.len, o->otag[i].v.buf);*/
    }
@@ -151,35 +166,99 @@ int print_onode(FILE *f, const osm_obj_t *o)
    {
       case OSM_NODE:
          if (o->tag_cnt)
-            fprintf(f, "</node>\n");
+            len += fprintf(f, "</node>\n");
          break;
 
       case OSM_WAY:
          for (i = 0; i < ((osm_way_t*) o)->ref_cnt; i++)
-            fprintf(f, "<nd ref=\"%"PRId64"\"/>\n", out_id(((osm_way_t*) o)->ref[i], OSM_NODE));
-         fprintf(f, "</way>\n");
+            len += fprintf(f, "<nd ref=\"%"PRId64"\"/>\n", out_id(((osm_way_t*) o)->ref[i], OSM_NODE));
+         len += fprintf(f, "</way>\n");
          break;
 
       case OSM_REL:
          for (i = 0; i < ((osm_rel_t*) o)->mem_cnt; i++)
-            fprintf(f, "<member type=\"%s\" ref=\"%"PRIu64"\" role=\"%s\"/>\n",
+            len += fprintf(f, "<member type=\"%s\" ref=\"%"PRIu64"\" role=\"%s\"/>\n",
                   ((osm_rel_t*) o)->mem[i].type == OSM_NODE ? "node" : "way",
                   out_id(((osm_rel_t*) o)->mem[i].id, ((osm_rel_t*) o)->mem[i].type),
                   role_str(((osm_rel_t*) o)->mem[i].role));
-         fprintf(f, "</relation>\n");
+         len += fprintf(f, "</relation>\n");
          break;
    }
 
-   return 0;
+   return len;
 }
 
 
-int print_tree(osm_obj_t *o, void *p)
+int print_tree(osm_obj_t *o, struct ostream *os)
 {
-   print_onode(p, o);
+   os->len += print_onode(os->stream, o);
    return 0;
 }
 
+
+/*! Save OSM data of tree to file f.
+ *  @param s FILE handle of output file.
+ *  @param Pointer to bxtree containing the information.
+ *  @param bb Optional bounding box (written to tag <bounds>).
+ *  @param info Optional information written to the header as comment (<!-- info -->).
+ *  @return The function returns 0.
+ */
+size_t save_osm0(FILE *f, bx_node_t *tree, const struct bbox *bb, const char *info)
+{
+   struct ostream os;
+   size_t len = 0;
+   int n;
+
+   if ((n = fprintf(f, "<?xml version='1.0' encoding='UTF-8'?>\n"
+              "<osm version='0.6' generator='smrender'>\n")) < 0)
+   {
+      n = errno;
+      log_msg(LOG_ERR, "fprintf() failed: '%s'", strerror(n));
+      return -n;
+   }
+   len += n;
+
+   if (info != NULL)
+   {
+      if ((n = fprintf(f, "<!--\n%s\n-->\n", info)) < 0)
+      {
+         n = errno;
+         log_msg(LOG_ERR, "fprintf() failed: '%s'", strerror(n));
+         return -n;
+      }
+      len += n;
+   }
+
+   if (bb != NULL)
+   {
+      if ((n = fprintf(f, "<bounds minlat='%f' minlon='%f' maxlat='%f' maxlon='%f'/>\n",
+            bb->ll.lat, bb->ll.lon, bb->ru.lat, bb->ru.lon)) < 0)
+      {
+         n = errno;
+         log_msg(LOG_ERR, "fprintf() failed: '%s'", strerror(n));
+         return -n;
+      }
+      len += n;
+   }
+
+   os.stream = f;
+   os.len = 0;
+   traverse(tree, 0, IDX_NODE, (tree_func_t) print_tree, &os);
+   traverse(tree, 0, IDX_WAY, (tree_func_t) print_tree, &os);
+   traverse(tree, 0, IDX_REL, (tree_func_t) print_tree, &os);
+   len += os.len;
+
+   if ((n = fprintf(f, "</osm>\n")) < 0)
+   {
+      n = errno;
+      log_msg(LOG_ERR, "fprintf() failed: '%s'", strerror(n));
+      return -n;
+   }
+   len += n;
+
+   return len;
+}
+ 
 
 /*! Save OSM data of tree to file s.
  *  @param s Filename of output file.
@@ -188,8 +267,9 @@ int print_tree(osm_obj_t *o, void *p)
  *  @param info Optional information written to the header as comment (<!-- info -->).
  *  @return The function returns 0, or -1 in case of error.
  */
-int save_osm(const char *s, bx_node_t *tree, const struct bbox *bb, const char *info)
+size_t save_osm(const char *s, bx_node_t *tree, const struct bbox *bb, const char *info)
 {
+   size_t len = 0;
    FILE *f;
 
    if (s == NULL)
@@ -198,22 +278,15 @@ int save_osm(const char *s, bx_node_t *tree, const struct bbox *bb, const char *
    log_msg(LOG_INFO, "saving osm output to '%s'", s);
    if ((f = fopen(s, "w")) != NULL)
    {
-      fprintf(f, "<?xml version='1.0' encoding='UTF-8'?>\n"
-                 "<osm version='0.6' generator='smrender'>\n");
-      if (info != NULL)
-         fprintf(f, "<!--\n%s\n-->\n", info);
-      if (bb != NULL)
-         fprintf(f, "<bounds minlat='%f' minlon='%f' maxlat='%f' maxlon='%f'/>\n",
-               bb->ll.lat, bb->ll.lon, bb->ru.lat, bb->ru.lon);
-      traverse(tree, 0, IDX_NODE, print_tree, f);
-      traverse(tree, 0, IDX_WAY, print_tree, f);
-      traverse(tree, 0, IDX_REL, print_tree, f);
-      fprintf(f, "</osm>\n");
+      len = save_osm0(f, tree, bb, info);
       fclose(f);
    }
    else
+   {
       log_msg(LOG_WARN, "could not open '%s': %s", s, strerror(errno));
+      return -1;
+   }
 
-   return 0;
+   return len;
 }
 

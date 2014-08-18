@@ -40,7 +40,16 @@ static char *skipb(const char *s)
 }
 
 
-int parse_matchtype(bstring_t *b, struct specialTag *t)
+/*! Parse a literal match condition into a struct specialTag.
+ *  @param b Pointer to bstring_t with match definition.
+ *  @param t Pointer to struct specialTag.
+ *  @return The function returns 0 if everything is ok. If a condition could
+ *  not be properly parsed, a negative value is returned and it will be
+ *  interpreted as simple string compare. Thus, it could still be used as
+ *  conditon. -1 means that the regex failed to compile and -2 means that the
+ *  value of a GT or LT condition could not be interpreted.
+ */
+static int parse_matchtype(bstring_t *b, struct specialTag *t)
 {
    t->type = 0;
 
@@ -60,7 +69,6 @@ int parse_matchtype(bstring_t *b, struct specialTag *t)
          b->len -= 2;
          t->type |= SPECIAL_NOT;
       }
- 
    }
 
    if (b->len > 2)
@@ -74,10 +82,11 @@ int parse_matchtype(bstring_t *b, struct specialTag *t)
 
          if (regcomp(&t->re, b->buf, REG_EXTENDED | REG_NOSUB))
          {
-            log_msg(LOG_WARN, "failed to compile regex '%s'", b->buf);
+            log_msg(LOG_ERR, "failed to compile regex '%s'", b->buf);
             return -1;
          }
-         t->type |= SPECIAL_REGEX;
+         else
+            t->type |= SPECIAL_REGEX;
       }
       else if ((b->buf[0] == ']') && (b->buf[b->len - 1] == '['))
       {
@@ -88,7 +97,10 @@ int parse_matchtype(bstring_t *b, struct specialTag *t)
          errno = 0;
          t->val = strtod(b->buf, NULL);
          if (errno)
+         {
             log_msg(LOG_ERR, "failed to convert value of GT rule: %s", strerror(errno));
+            return -2;
+         }
          else
             t->type |= SPECIAL_GT;
       }
@@ -101,7 +113,10 @@ int parse_matchtype(bstring_t *b, struct specialTag *t)
          errno = 0;
          t->val = strtod(b->buf, NULL);
          if (errno)
+         {
             log_msg(LOG_ERR, "failed to convert value of LT rule: %s", strerror(errno));
+            return -2;
+         }
          else
             t->type |= SPECIAL_LT;
       }
@@ -254,24 +269,17 @@ int get_structor(void *lhandle, void **stor, const char *sym, const char *trail)
 }
 
 
-smrule_t *alloc_rule(struct rdata *rd, osm_obj_t *o)
+static smrule_t *alloc_rule(osm_obj_t *o)
 {
-   bx_node_t *bn;
    smrule_t *rl;
 
    if ((rl = malloc(sizeof(smrule_t) + sizeof(action_t) + sizeof(struct stag) * o->tag_cnt)) == NULL)
-      log_msg(LOG_ERR, "alloc_rule failed: %s", strerror(errno)),
-         exit(EXIT_FAILURE);
+   {
+      log_msg(LOG_ERR, "alloc_rule failed: %s", strerror(errno));
+      return NULL; 
+   }
+
    rl->act = (action_t*) (rl + 1);
-   //memset(&rl->act, 0, sizeof(action_t));
-   //rl->oo = o;
-   //rl->act->tag_cnt = o->tag_cnt;
-
-   if ((bn = bx_get_node(rd->rules, o->id)) == NULL)
-      log_msg(LOG_EMERG, "bx_get_node() returned NULL in rule_alloc()"),
-         exit(EXIT_FAILURE);
-
-   bn->next[o->type - 1] = rl;
    return rl;
 }
 
@@ -290,16 +298,30 @@ void check_way_type(smrule_t *r)
 }
 
 
-int init_rules(osm_obj_t *o, void *p)
+/*! This function parse a rule defined within the object o into the smrule_t
+ * structure r. The memory is reserved by a call to alloc_rule() and must be
+ * freed again with free(). If the _action_ tag was parsed properly, it is
+ * removed from that object's list of tags.
+ * @param o Pointer to object.
+ * @param r Point to rule pointer. It will receive the pointer to the newly
+ * allocated memory or NULL in case of error.
+ * @return 0 if everything is ok. In case of a fatal error a negative value is
+ * returned and *r is set to NULL. In case of a minor error a positive number
+ * is returned and *r is set to a valued memory.
+ * FIXME: Return codes must be revised!
+ */
+int init_rule(osm_obj_t *o, smrule_t **r)
 {
    char *s, *t, *func, buf[1024];
    smrule_t *rl;
-   //action_t act;
    int e, i;
 
    log_debug("initializing rule 0x%016lx", o->id);
 
-   rl = alloc_rule(p, o);
+   if ((*r = alloc_rule(o)) == NULL)
+      return -1;
+
+   rl = *r;
    rl->oo = o;
    rl->data = NULL;
    memset(rl->act, 0, sizeof(*rl->act));
@@ -308,18 +330,17 @@ int init_rules(osm_obj_t *o, void *p)
    rl->act->tag_cnt = o->tag_cnt;
    for (i = 0; i < o->tag_cnt; i++)
    {
-      if (parse_matchtype(&o->otag[i].k, &rl->act->stag[i].stk) == -1)
+      if (parse_matchtype(&o->otag[i].k, &rl->act->stag[i].stk) < 0)
          return 0;
-      if (parse_matchtype(&o->otag[i].v, &rl->act->stag[i].stv) == -1)
+      if (parse_matchtype(&o->otag[i].v, &rl->act->stag[i].stv) < 0)
          return 0;
    }
 
    if ((i = match_attr(o, "_action_", NULL)) == -1)
    {
+      // FIXME: don't understand next fixme
       // FIXME need to be added to btree
       log_msg(LOG_DEBUG, "rule %ld has no action, it may be used as template", o->id);
-      //rl->act->func_name = "templ";
-      //rl->act->main.func = act_templ;
       return 0;
    }
 
@@ -410,6 +431,30 @@ int init_rules(osm_obj_t *o, void *p)
    return 0;
 }
  
+
+int init_rules(osm_obj_t *o, void *p)
+{
+   bx_node_t *bn;
+   smrule_t *rl;
+   int err;
+
+   err = init_rule(o, &rl);
+
+   if (rl == NULL)
+   {
+      log_msg(LOG_EMERG, "init_rule() fatally failed");
+      return -1;
+   }
+
+   if ((bn = bx_get_node(p, o->id)) == NULL)
+      log_msg(LOG_EMERG, "bx_get_node() returned NULL in rule_alloc()"),
+         exit(EXIT_FAILURE);
+
+   bn->next[o->type - 1] = rl;
+
+   return err;
+}
+
 
 void free_fparam(fparam_t **fp)
 {

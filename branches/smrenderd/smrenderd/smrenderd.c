@@ -10,8 +10,13 @@
 #include "libhpxml.h"
 
 
+/* from smlog.c/libsmrender */
+FILE *init_log(const char *, int );
+
+
 volatile sig_atomic_t int_ = 0;
 int render_all_nodes_ = 1;
+bx_node_t *index_ = NULL;
 
 
 static int free_objects(osm_obj_t *o, void * UNUSED(p))
@@ -24,12 +29,14 @@ static int free_objects(osm_obj_t *o, void * UNUSED(p))
 int main(int argc, char **argv)
 {
    char *osm_ifile = "/dev/stdin";
-   bx_node_t *index = NULL;
+   //bx_node_t *index = NULL;
    struct dstats ds;
    hpx_ctrl_t *ctl;
    struct stat st;
    int w_mmap = 1;
    int fd;
+
+   (void) init_log("stderr", LOG_DEBUG);
 
    if (argc > 1)
       osm_ifile = argv[1];
@@ -58,9 +65,9 @@ int main(int argc, char **argv)
    log_debug("onode memory used: %ld kb", (long) onode_mem() / 1024);
 
    log_msg(LOG_INFO, "creating reverse pointers from nodes to ways");
-   traverse(*get_objtree(), 0, IDX_WAY, (tree_func_t) rev_index_way_nodes, &index);
+   traverse(*get_objtree(), 0, IDX_WAY, (tree_func_t) rev_index_way_nodes, &index_);
    log_msg(LOG_INFO, "creating reverse pointers from relation members to relations");
-   traverse(*get_objtree(), 0, IDX_REL, (tree_func_t) rev_index_rel_nodes, &index);
+   traverse(*get_objtree(), 0, IDX_REL, (tree_func_t) rev_index_rel_nodes, &index_);
 
    main_smrenderd();
    (void) close(ctl->fd);

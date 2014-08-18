@@ -37,6 +37,12 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
+#include "bxtree.h"
+#include "rdata.h"
+
+#define HTTP_09 9
+#define HTTP_10 10
+#define HTTP_11 11
 
 //! default listening port number
 #define DEF_PORT 8080
@@ -58,8 +64,8 @@
 #define SEND_STATUS(f, s) write(f, s, strlen(s))
 
 
-#define API06_URL "/api/0.6/"
-#define WS_URL "/ws/"
+#define API06_URI "/api/0.6/"
+#define WS_URI "/ws/"
 
 //! data structure handled over to threads
 typedef struct http_thread
@@ -75,6 +81,9 @@ typedef struct http_thread
 
 
 int main_smrenderd(void);
+
+/* smdb.c */
+bx_node_t *get_obj_bb(bx_node_t *, const struct bbox *);
 
 
 #endif

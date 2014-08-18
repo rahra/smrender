@@ -39,6 +39,9 @@
 #endif
 
 
+// Define the following macro if log_msg() should preserve errno.
+#define PRESERVE_ERRNO
+
 #define SIZE_1K 1024
 #define TIMESTRLEN 64
 #define CBUFLEN SIZE_1K
@@ -154,16 +157,16 @@ void vlog_msgf(FILE *out, int lf, const char *fmt, va_list ap)
 void log_msg(int lf, const char *fmt, ...)
 {
    va_list ap;
+#ifdef PRESERVE_ERRNO
+   int err = errno;
+#endif
 
    va_start(ap, fmt);
    vlog_msgf(log_, lf, fmt, ap);
    va_end(ap);
-/*   if (lf)
-   {
-      va_start(ap, fmt);
-      vfprintf(stderr, fmt, ap);
-      va_end(ap);
-      fprintf(stderr, "\n");
-   }*/
+
+#ifdef PRESERVE_ERRNO
+   errno = err;
+#endif
 }
 

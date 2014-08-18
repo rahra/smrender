@@ -1,6 +1,6 @@
-/* Copyright 2011 Bernhard R. Fischer, 2048R/5C5FFD47 <bf@abenteuerland.at>
+/* Copyright 2011-2014 Bernhard R. Fischer, 2048R/5C5FFD47 <bf@abenteuerland.at>
  *
- * This file is part of smrender.
+ * This file is part of Smrender.
  *
  * Smrender is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -12,7 +12,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with smrender. If not, see <http://www.gnu.org/licenses/>.
+ * along with Smrender. If not, see <http://www.gnu.org/licenses/>.
  */
 
 /*! This program reads an OSM/XML file and parses it into an object tree.
@@ -276,50 +276,27 @@ static void clear_ostor(osm_storage_t *o)
 }
 
 
-int read_osm_file(hpx_ctrl_t *ctl, bx_node_t **tree, const struct filter *fi, struct dstats *ds)
+int read_osm_obj(hpx_ctrl_t *ctl, hpx_tree_t *tlist, const struct filter *fi, osm_obj_t **obj)
 {
-   hpx_tag_t *tag;
    bstring_t b;
    int t = 0, e, i, j, rcnt, mcnt;
    osm_storage_t o;
-   osm_obj_t *obj;
-   hpx_tree_t *tlist = NULL;
-   bx_node_t *tr;
+   hpx_tag_t *tag;
    int64_t *ref;
-   int64_t nid = MIN_ID + 1;
-   time_t tim;
+   static int64_t nid = MIN_ID + 1;
    struct rmember *mem;
 
-   //install_sigusr1();
-
-   if (hpx_tree_resize(&tlist, 0) == -1)
-      perror("hpx_tree_resize"), exit(EXIT_FAILURE);
-   if ((tlist->tag = hpx_tm_create(16)) == NULL)
-      perror("hpx_tm_create"), exit(EXIT_FAILURE);
-
-   //oline_ = 0;
-   tim = time(NULL);
+   clear_ostor(&o);
+   *obj = NULL;
    tlist->nsub = 0;
    tag = tlist->tag;
-   clear_ostor(&o);
-
-   if (ds != NULL)
-      init_stats(ds);
 
    while ((e = hpx_get_elem(ctl, &b, NULL, &tag->line)) > 0)
    {
       oline_ = tag->line;
-      if (usr1_)
-      {
-         usr1_ = 0;
-         log_msg(LOG_INFO, "onode_memory: %ld kByte, line %ld, %.2f MByte/s", (long) onode_mem() / 1024, tag->line, ((double) ctl->pos / (double) (time(NULL) - tim)) / (double) (1024 * 1024));
-         log_msg(LOG_INFO, "ctl->pos = %ld, ctl->len = %ld, ctl->buf.len = %ld", ctl->pos, ctl->len, ctl->buf.len);
-      }
 
       if (!hpx_process_elem(b, tag))
       {
-         //oline_++;
-
          if (!bs_cmp(tag->tag, "node"))
             t = OSM_NODE;
          else if (!bs_cmp(tag->tag, "way"))
@@ -333,7 +310,7 @@ int read_osm_file(hpx_ctrl_t *ctl, bx_node_t **tree, const struct filter *fi, st
          {
             if (tag->type == HPX_OPEN)
             {
-               memset(&o, 0, sizeof(o));
+               clear_ostor(&o);
                proc_osm_node(tag, (osm_obj_t*) &o);
 #ifdef READ_FILTER
                if ((fi != NULL) && (t == OSM_NODE))
@@ -367,7 +344,7 @@ int read_osm_file(hpx_ctrl_t *ctl, bx_node_t **tree, const struct filter *fi, st
             }
             else if (tag->type == HPX_SINGLE)
             {
-               memset(&o, 0, sizeof(o));
+               clear_ostor(&o);
                proc_osm_node(tag, (osm_obj_t*) &o);
 #ifdef READ_FILTER
                if ((fi != NULL) && (t == OSM_NODE))
@@ -387,17 +364,17 @@ int read_osm_file(hpx_ctrl_t *ctl, bx_node_t **tree, const struct filter *fi, st
                switch (o.o.type)
                {
                   case OSM_NODE:
-                     obj = (osm_obj_t*) malloc_node(0);
+                     *obj = (osm_obj_t*) malloc_node(0);
                      break;
 
                   case OSM_WAY:
                      log_msg(LOG_WARN, "single <way/>?");
-                     obj = (osm_obj_t*) malloc_way(0, 0);
+                     *obj = (osm_obj_t*) malloc_way(0, 0);
                      break;
 
                   case OSM_REL:
                      log_msg(LOG_WARN, "single <relation/>?");
-                     obj = (osm_obj_t*) malloc_rel(0, 0);
+                     *obj = (osm_obj_t*) malloc_rel(0, 0);
                      break;
                      
                   default:
@@ -406,23 +383,8 @@ int read_osm_file(hpx_ctrl_t *ctl, bx_node_t **tree, const struct filter *fi, st
                      continue;
 
                }
-               assign_o(obj, (osm_obj_t*) &o);
-
-               tr = bx_add_node(tree, o.o.id);
-               if (tr->next[o.o.type - 1] != NULL)
-               {
-                  free_obj(tr->next[o.o.type - 1]);
-                  // too much debugging if there are many duplicates
-                  //log_msg(LOG_ERR, "object %ld already exists, overwriting.", nd.id);
-               }
-               tr->next[o.o.type - 1] = obj;
-
-               if (ds != NULL)
-                  update_stats(obj, ds);
-
-               // finally
-               tlist->nsub = 0;
-               clear_ostor(&o);
+               assign_o(*obj, (osm_obj_t*) &o);
+               break;
             }
             else if (tag->type == HPX_CLOSE)
             {
@@ -443,39 +405,38 @@ int read_osm_file(hpx_ctrl_t *ctl, bx_node_t **tree, const struct filter *fi, st
                switch (o.o.type)
                {
                   case OSM_NODE:
-                     obj = (osm_obj_t*) malloc_node(o.o.tag_cnt);
+                     *obj = (osm_obj_t*) malloc_node(o.o.tag_cnt);
                      break;
 
                   case OSM_WAY:
-                     obj = (osm_obj_t*) malloc_way(o.o.tag_cnt, o.w.ref_cnt);
+                     *obj = (osm_obj_t*) malloc_way(o.o.tag_cnt, o.w.ref_cnt);
                      break;
 
                   case OSM_REL:
-                     obj = (osm_obj_t*) malloc_rel(o.o.tag_cnt, o.r.mem_cnt);
+                     *obj = (osm_obj_t*) malloc_rel(o.o.tag_cnt, o.r.mem_cnt);
                      break;
  
                   default:
-                     log_msg(LOG_ERR, "type %d no implemented yet", o.o.type);
+                     log_msg(LOG_EMERG, "this should never happen! type %d no implemented yet", o.o.type);
                      clear_ostor(&o);
                      continue;
-
                }
 
-               assign_o(obj, (osm_obj_t*) &o);
+               assign_o(*obj, (osm_obj_t*) &o);
 
-               ref = ((osm_way_t*) obj)->ref;
+               ref = ((osm_way_t*) *obj)->ref;
                rcnt = 0;
-               mem = ((osm_rel_t*) obj)->mem;
+               mem = ((osm_rel_t*) *obj)->mem;
                mcnt = 0;
 
                for (i = 0, j = 0; i < tlist->nsub; i++)
                {
                   if (!bs_cmp(tlist->subtag[i]->tag->tag, "tag"))
                   {
-                     if (get_value("k", tlist->subtag[i]->tag, &obj->otag[j].k) == -1)
-                        memset(&obj->otag[j].k, 0, sizeof(bstring_t));
-                     if (get_value("v", tlist->subtag[i]->tag, &obj->otag[j].v) == -1)
-                        memset(&obj->otag[j].v, 0, sizeof(bstring_t));
+                     if (get_value("k", tlist->subtag[i]->tag, &(*obj)->otag[j].k) == -1)
+                        memset(&(*obj)->otag[j].k, 0, sizeof(bstring_t));
+                     if (get_value("v", tlist->subtag[i]->tag, &(*obj)->otag[j].v) == -1)
+                        memset(&(*obj)->otag[j].v, 0, sizeof(bstring_t));
                      j++;
                   }
                   else if (!bs_cmp(tlist->subtag[i]->tag->tag, "nd"))
@@ -541,41 +502,27 @@ int read_osm_file(hpx_ctrl_t *ctl, bx_node_t **tree, const struct filter *fi, st
                         mcnt++;
                      }
                   }
-               }
+               } // for (i = 0, j = 0; i < tlist->nsub; i++)
 
 #ifdef READ_FILTER
                //FIXME: read filter does not take care on relations!
                if ((fi != NULL) && (o.o.type == OSM_WAY) && (rcnt == 0))
                {
-                  free_obj(obj);
+                  free_obj(*obj);
+                  *obj = NULL;
                }
                else
 #endif
                {
                   if (o.o.type == OSM_WAY)
-                     ((osm_way_t*) obj)->ref_cnt = rcnt;
+                     ((osm_way_t*) *obj)->ref_cnt = rcnt;
                   else if (o.o.type == OSM_REL)
-                     ((osm_rel_t*) obj)->mem_cnt = mcnt;
-                  tr = bx_add_node(tree, o.o.id);
-                  if (tr->next[o.o.type - 1] != NULL)
-                  {
-                     free_obj(tr->next[o.o.type - 1]);
-                     // too much debugging if there are many duplicates
-                     //log_msg(LOG_ERR, "object %ld already exists, overwriting.", nd.id);
-                  }
-                  tr->next[o.o.type - 1] = obj;
-
-                  if (ds != NULL)
-                     update_stats(obj, ds);
+                     ((osm_rel_t*) *obj)->mem_cnt = mcnt;
                }
-
-               // finally
-               tlist->nsub = 0;
-               tag = tlist->tag;
-               clear_ostor(&o);
-            }
+               break;
+            } // else if (tag->type == HPX_CLOSE)
             continue;
-         } //if (!bs_cmp(tag->tag, "node"))
+         } // if (t)
 
          if ((o.o.type != OSM_NODE) && (o.o.type != OSM_WAY) && (o.o.type != OSM_REL))
             continue;
@@ -595,15 +542,66 @@ int read_osm_file(hpx_ctrl_t *ctl, bx_node_t **tree, const struct filter *fi, st
             tlist->subtag[tlist->nsub]->nsub = 0;
             tag = tlist->subtag[tlist->nsub]->tag;
          }
-      }
+      } // if (!hpx_process_elem(b, tag))
    } //while ((e = hpx_get_elem(ctl, &b, NULL, &tag->line)) > 0)
+
+   return e;
+}
+
+
+int read_osm_file(hpx_ctrl_t *ctl, bx_node_t **tree, const struct filter *fi, struct dstats *ds)
+{
+   osm_obj_t *obj;
+   hpx_tree_t *tlist = NULL;
+   bx_node_t *tr;
+   time_t tim;
+   int e;
+
+   log_debug("revision >= 1593");
+   //install_sigusr1();
+
+   if (hpx_tree_resize(&tlist, 0) == -1)
+      perror("hpx_tree_resize"), exit(EXIT_FAILURE);
+   if ((tlist->tag = hpx_tm_create(16)) == NULL)
+      perror("hpx_tm_create"), exit(EXIT_FAILURE);
+
+   //oline_ = 0;
+   tim = time(NULL);
+
+   if (ds != NULL)
+      init_stats(ds);
+
+   while ((e = read_osm_obj(ctl, tlist, fi, &obj)) > 0)
+   {
+      if (usr1_)
+      {
+         usr1_ = 0;
+         log_msg(LOG_INFO, "onode_memory: %ld kByte, line %ld, %.2f MByte/s",
+               (long) onode_mem() / 1024, oline_, ((double) ctl->pos / (double) (time(NULL) - tim)) / (double) (1024 * 1024));
+         log_msg(LOG_INFO, "ctl->pos = %ld, ctl->len = %ld, ctl->buf.len = %ld", ctl->pos, ctl->len, ctl->buf.len);
+      }
+
+      if (obj != NULL)
+      {
+         tr = bx_add_node(tree, obj->id);
+         if (tr->next[obj->type - 1] != NULL)
+            free_obj(tr->next[obj->type - 1]);
+         tr->next[obj->type - 1] = obj;
+
+         if (ds != NULL)
+            update_stats(obj, ds);
+      }
+      else
+         log_debug("read_osm_obj() returned NULL object");
+   }
 
    if (e == -1)
       log_msg(LOG_ERR, "hpx_get_elem() failed: %s", strerror(errno));
 
-   log_msg(LOG_INFO, "onode_memory: %ld kByte, line %ld, %.2f MByte/s", (long) onode_mem() / 1024, tag->line, ((double) ctl->len / (double) (time(NULL) - tim)) / (double) (1024 * 1024));
+   log_msg(LOG_INFO, "onode_memory: %ld kByte, line %ld, %.2f MByte/s",
+         (long) onode_mem() / 1024, oline_, ((double) ctl->len / (double) (time(NULL) - tim)) / (double) (1024 * 1024));
  
-   hpx_tm_free(tag);
+   hpx_tm_free_tree(tlist);
 
    if (ds != NULL)
    {
