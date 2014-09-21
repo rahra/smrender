@@ -167,11 +167,13 @@
       <tag k='type' v='multipolygon'/>
       <tag k='_action_' v='cat_poly:no_corner=1'/>
    </relation>
+<!-- the following rule somehow interferes with other cat_poly()s
    <relation>
       <tag k='natural' v='water'/>
       <tag k='type' v='multipolygon'/>
       <tag k='_action_' v='cat_poly:no_corner=1'/>
    </relation>
+-->
    <relation>
       <tag k='waterway' v=''/>
       <tag k='type' v='multipolygon'/>
