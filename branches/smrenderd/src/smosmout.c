@@ -177,7 +177,7 @@ int print_onode(FILE *f, const osm_obj_t *o)
 
       case OSM_REL:
          for (i = 0; i < ((osm_rel_t*) o)->mem_cnt; i++)
-            len += fprintf(f, "<member type=\"%s\" ref=\"%"PRIu64"\" role=\"%s\"/>\n",
+            len += fprintf(f, "<member type=\"%s\" ref=\"%"PRId64"\" role=\"%s\"/>\n",
                   ((osm_rel_t*) o)->mem[i].type == OSM_NODE ? "node" : "way",
                   out_id(((osm_rel_t*) o)->mem[i].id, ((osm_rel_t*) o)->mem[i].type),
                   role_str(((osm_rel_t*) o)->mem[i].role));
