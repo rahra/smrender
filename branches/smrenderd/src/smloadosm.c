@@ -555,7 +555,7 @@ int read_osm_file(hpx_ctrl_t *ctl, bx_node_t **tree, const struct filter *fi, st
    hpx_tree_t *tlist = NULL;
    bx_node_t *tr;
    time_t tim;
-   int e;
+   int e, dup_cnt = 0;
 
    log_debug("revision >= 1593");
    //install_sigusr1();
@@ -578,14 +578,17 @@ int read_osm_file(hpx_ctrl_t *ctl, bx_node_t **tree, const struct filter *fi, st
          usr1_ = 0;
          log_msg(LOG_INFO, "onode_memory: %ld kByte, line %ld, %.2f MByte/s",
                (long) onode_mem() / 1024, oline_, ((double) ctl->pos / (double) (time(NULL) - tim)) / (double) (1024 * 1024));
-         log_msg(LOG_INFO, "ctl->pos = %ld, ctl->len = %ld, ctl->buf.len = %ld", ctl->pos, ctl->len, ctl->buf.len);
+         log_msg(LOG_INFO, "ctl->pos = %ld (%ld %%), ctl->len = %ld, ctl->buf.len = %ld", ctl->pos, ctl->pos * 100 / ctl->len, ctl->len, ctl->buf.len);
       }
 
       if (obj != NULL)
       {
          tr = bx_add_node(tree, obj->id);
          if (tr->next[obj->type - 1] != NULL)
+         {
             free_obj(tr->next[obj->type - 1]);
+            dup_cnt++;
+         }
          tr->next[obj->type - 1] = obj;
 
          if (ds != NULL)
@@ -597,6 +600,9 @@ int read_osm_file(hpx_ctrl_t *ctl, bx_node_t **tree, const struct filter *fi, st
 
    if (e == -1)
       log_msg(LOG_ERR, "hpx_get_elem() failed: %s", strerror(errno));
+
+   if (dup_cnt)
+      log_msg(LOG_WARN, "%d duplicate elements found! This may cause unexpected results!", dup_cnt);
 
    log_msg(LOG_INFO, "onode_memory: %ld kByte, line %ld, %.2f MByte/s",
          (long) onode_mem() / 1024, oline_, ((double) ctl->len / (double) (time(NULL) - tim)) / (double) (1024 * 1024));
