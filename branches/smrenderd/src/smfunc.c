@@ -77,6 +77,9 @@ struct inherit_data
    struct rdata *rdata;
    int force;
    int type;
+   int dir;
+#define UP 0
+#define DOWN 1
 };
 
 
@@ -1505,8 +1508,41 @@ int act_inherit_tags_ini(smrule_t *r)
          id->type = OSM_WAY;
       else if (!strcasecmp(type, "relation"))
          id->type = OSM_REL;
+      else if (!strcasecmp(type, "node"))
+         id->type = OSM_NODE;
       else
          log_msg(LOG_WARN, "unknown object type '%s'", type);
+   }
+
+   if ((type = get_param("direction", NULL, r->act)) != NULL)
+   {
+      if (!strcasecmp(type, "up"))
+         id->dir = UP;
+      else if (!strcasecmp(type, "down"))
+         id->dir = DOWN;
+      else
+         log_msg(LOG_WARN, "unknown direction '%s', defaulting to UP", type);
+   }
+
+   if (id->type == OSM_NODE && id->dir == UP)
+   {
+      log_msg(LOG_WARN, "object type 'NODE' doesn't make sense together with direction 'UP'. Ignoring 'object'");
+      id->type = 0;
+   }
+
+   if (id->dir == DOWN)
+   {
+      if (r->oo->type == OSM_NODE)
+      {
+         log_msg(LOG_WARN, "direction DOWN doesn't make sense on NODE rules. Ignoring rule.");
+         free(id);
+         return 1;
+      }
+      if (r->oo->type == OSM_WAY && id->type && id->type != OSM_NODE)
+      {
+         log_msg(LOG_WARN, "ways always have just nodes as parents. Ignoring 'object'");
+         id->type = 0;
+      }
    }
 
    r->data = id;
@@ -1514,15 +1550,64 @@ int act_inherit_tags_ini(smrule_t *r)
 }
 
 
+/*! Copy a specific tag from OSM object src to object dst. It is tested if a
+ * tag with the key as specificed by the index si in the list of tags of src
+ * exists in dst. If not, it is added to dst, thereby increasing its tag count
+ * (tag_cnt) by 1. If there is already such a tag it will be overwritten if
+ * parameter force is not 0.
+ *  @param src Pointer to source OSM object.
+ *  @param dst Pointer to destination object.
+ *  @param si Index of tag in source.
+ *  @param force If force is not 0, already existing tags will be overwritten.
+ *  @return The function returns 1 if a tag was added to dst, 2 if a tag in dst
+ *  was overwritten, 0 if dst already has such a tag and it was not overwritten
+ *  (because force == 0), or -1 in case of error (realloc(3)).
+ */
+static int copy_tag_cond(const osm_obj_t *src, osm_obj_t *dst, int si, int force)
+{
+   char tag[src->otag[si].k.len + 1];
+   struct otag *ot;
+   int m;
+
+   memcpy(tag, src->otag[si].k.buf, src->otag[si].k.len);
+   tag[src->otag[si].k.len] = '\0';
+   // test if destination object has no such a key
+   if ((m = match_attr(dst, tag, NULL)) < 0)
+   {
+      if ((ot = realloc(dst->otag, sizeof(*dst->otag) * (dst->tag_cnt + 1))) == NULL)
+      {
+         log_msg(LOG_ERR, "failed to realloc() in copy_tag_cond(): %s", strerror(errno));
+         return -1;
+      }
+      dst->otag = ot;
+      // copy tag
+      dst->otag[dst->tag_cnt] = src->otag[si];
+      dst->tag_cnt++;
+      log_debug("adding tag %s to object(%d).id = %ld", tag, dst->type, (long) dst->id);
+      return 1;
+   }
+   // otherwise overwrite if 'force' is set
+   else if (force)
+   {
+      log_debug("overwriting tag %s to object(%d).id = %ld", tag, dst->type, (long) dst->id);
+      dst->otag[m].v = src->otag[si].v;
+      return 2;
+   }
+   return 0;
+}
+ 
+
 int act_inherit_tags_main(smrule_t *r, osm_obj_t *o)
 {
    struct inherit_data *id = r->data;
-   osm_obj_t **optr;
-   struct otag *ot;
+   osm_obj_t *dummy = NULL, **optr = &dummy, *dst;
+   //struct otag *ot;
    fparam_t **fp;
    int n, m;
 
-   if ((optr = get_object0(id->rdata->index, o->id, o->type - 1)) == NULL)
+   // reverse pointers are not use for upwards inheritance
+   if (id->dir == UP)
+     if ((optr = get_object0(id->rdata->index, o->id, o->type - 1)) == NULL)
       return 0;
 
    // safety check
@@ -1540,32 +1625,71 @@ int act_inherit_tags_main(smrule_t *r, osm_obj_t *o)
       if ((n = match_attr(o, (*fp)->val, NULL)) < 0)
          continue;
 
-      // loop over all reverse pointers
-      for (; *optr != NULL; optr++)
+      if (id->dir == UP)
       {
-         // test if if tags should be copied to ways/relations only
-         if (id->type && id->type != (*optr)->type)
-            continue;
+         // loop over all reverse pointers
+         for (; *optr != NULL; optr++)
+         {
+            // test if if tags should be copied to ways/relations only
+            if (id->type && id->type != (*optr)->type)
+               continue;
 
-         // test if reverse object (destination) already has no such a key
-         if ((m = match_attr(*optr, (*fp)->val, NULL)) < 0)
-         {
-            if ((ot = realloc((*optr)->otag, sizeof(*(*optr)->otag) * ((*optr)->tag_cnt + 1))) == NULL)
+            copy_tag_cond(o, *optr, n, id->force);
+#if 0
+            // test if reverse object (destination) already has no such a key
+            if ((m = match_attr(*optr, (*fp)->val, NULL)) < 0)
             {
-               log_msg(LOG_ERR, "failed to realloc() in inherit_tags(): %s", strerror(errno));
-               return -1;
+               if ((ot = realloc((*optr)->otag, sizeof(*(*optr)->otag) * ((*optr)->tag_cnt + 1))) == NULL)
+               {
+                  log_msg(LOG_ERR, "failed to realloc() in inherit_tags(): %s", strerror(errno));
+                  return -1;
+               }
+               (*optr)->otag = ot;
+               // copy tag
+               (*optr)->otag[(*optr)->tag_cnt] = o->otag[n];
+               (*optr)->tag_cnt++;
+               log_debug("adding tag %s to object(%d).id = %ld", (*fp)->val, (*optr)->type, (long) (*optr)->id);
             }
-            (*optr)->otag = ot;
-            // copy tag
-            (*optr)->otag[(*optr)->tag_cnt] = o->otag[n];
-            (*optr)->tag_cnt++;
-            log_debug("adding tag %s to object(%d).id = %ld", (*fp)->val, (*optr)->type, (long) (*optr)->id);
-         }
-         // otherwise overwrite if 'force' is set
-         else if (id->force)
+            // otherwise overwrite if 'force' is set
+            else if (id->force)
+            {
+               log_debug("overwriting tag %s to object(%d).id = %ld", (*fp)->val, (*optr)->type, (long) (*optr)->id);
+               (*optr)->otag[(*optr)->tag_cnt].v = o->otag[n].v;
+            }
+#endif
+         } //for (; *optr != NULL; optr++)
+      } //if (id->dir == UP)
+      else // if (id->dir == DOWN)
+      {
+         if (o->type == OSM_REL)
          {
-            log_debug("overwriting tag %s to object(%d).id = %ld", (*fp)->val, (*optr)->type, (long) (*optr)->id);
-            (*optr)->otag[(*optr)->tag_cnt].v = o->otag[n].v;
+            for (m = 0; m < ((osm_rel_t*) o)->mem_cnt; m++)
+            {
+               // use only objects of specific type, if specified (object=*)
+               if (id->type && id->type != ((osm_rel_t*) o)->mem[m].type)
+                  continue;
+               
+               if ((dst = get_object(((osm_rel_t*) o)->mem[m].type, ((osm_rel_t*) o)->mem[m].id)) == NULL)
+               {
+                  log_debug("no such object");
+                  continue;
+               }
+
+               copy_tag_cond(o, dst, n, id->force);
+            }
+         }
+         else if (o->type == OSM_WAY)
+         {
+            for (m = 0; m < ((osm_way_t*) o)->ref_cnt; m++)
+            {
+               if ((dst = get_object(OSM_NODE, ((osm_way_t*) o)->ref[m])) == NULL)
+               {
+                  log_debug("no such object");
+                  continue;
+               }
+
+               copy_tag_cond(o, dst, n, id->force);
+            }
          }
       }
    }
