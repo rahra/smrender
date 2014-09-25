@@ -65,7 +65,13 @@ static int node_brg(struct pcoord*, const struct coord*, int64_t);
 
 static struct corner_point co_pt_[4];
 static struct coord center_;
+static osm_way_t *page_way_;
 
+
+const osm_way_t *page_way(void)
+{
+   return page_way_;
+}
 
 
 /*! Check if way is a closed polygon and is an area (i.e. it has at least 4 points)
@@ -687,6 +693,7 @@ static void init_corner_brg(const struct rdata *rd, const struct coord *src, str
    w->ref_cnt = 5;
    set_const_tag(&w->obj.otag[1], "border", "page");
    put_object((osm_obj_t*) w);
+   page_way_ = w;
 }
 
 

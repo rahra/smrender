@@ -80,6 +80,7 @@ int compare_poly_area(const struct poly*, const struct poly*);
 //int cat_poly_ini(smrule_t*);
 int gather_poly0(osm_way_t *, struct wlist **);
 struct wlist *init_wlist(void);
+const osm_way_t *page_way(void);
 
 
 #endif
