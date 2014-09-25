@@ -21,6 +21,13 @@ enum { SEAMARK_LIGHT_CHARACTER, SEAMARK_LIGHT_OBJECT, SEAMARK_LIGHT_RADIAL,
    SEAMARK_LIGHT_SECTOR_NR, SEAMARK_ARC_STYLE, SEAMARK_LIGHT_ARC_AL,
    SEAMARK_LIGHT_ARC};
 
+struct compass_data
+{
+   double var;
+   double r;
+   int ticks;
+};
+
 struct vsec_data
 {
    double arc_div;         // param 'd'
@@ -1195,4 +1202,27 @@ int act_sounding_main(smrule_t * UNUSED(rl), osm_obj_t *o)
 
    return 0;
 }
+
+
+#if 0
+//FIXME: function not finished yet
+int act_compass_main(smrule_t *r, osm_obj_t *o)
+{
+   struct compass_data *cd = r->data;
+   double lat, lon, angle_step;
+   int i;
+
+   if (o->type != OSM_NODE)
+      return 1;
+
+   angle_step = 2 * M_PI / cd->ticks;
+   for (i = 0; i < cd->ticks; i++)
+   {
+       lat = ((osm_node_t*) o)->lat + cd->r * cos(angle_step * i - cd->var) - cd->r * sin(angle_step * i - cd->var);
+       lon = ((osm_node_t*) o)->lon + (cd->r * cos(angle_step * i - cd->var) + cd->r * sin(angle_step * i - cd->var)) / cos(DEG2RAD(lat));
+   }
+
+   return 0;
+}
+#endif
 
