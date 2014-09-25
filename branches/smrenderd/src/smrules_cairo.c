@@ -730,6 +730,13 @@ int act_draw_fini(smrule_t *r)
       qsort(d->wl->ref, d->wl->ref_cnt, sizeof(struct poly), (int(*)(const void *, const void *)) compare_poly_area);
 
       cairo_push_group(d->ctx);
+      // check if largest polygon is clockwise
+      if (d->wl->ref_cnt && d->wl->ref[0].cw)
+      {
+         // ...and render larger (page size) filled polygon
+         log_debug("inserting artifical background");
+         render_poly_line(d->ctx, d, page_way(), 0);
+      }
       for (i = 0; i < d->wl->ref_cnt; i++)
       {
          log_debug("cw = %d, area = %f", d->wl->ref[i].cw, d->wl->ref[i].area);
