@@ -94,6 +94,8 @@ struct rdata
    char *title;
    // general control flags (RD_xxx)
    int flags;
+   // offset of output ids
+   int64_t id_off;
 };
 
 

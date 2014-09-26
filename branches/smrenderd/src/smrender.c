@@ -437,9 +437,9 @@ void usage(const char *s)
          "   -l .................. Select landscape output. Only useful with option -P.\n"
          "   -M .................. Input file is memory mapped (default).\n"
          "   -m .................. Input file is read into heap memory.\n"
+         "   -N <offset> ......... Add numerical <offset> to all IDs in output data.\n"
          "   -n .................. Output IDs as positive values only.\n"
          "   -r <rules file> ..... Rules file ('rules.osm' is default).\n"
-         "   -s <ovs> ............ Deprecated, kept for backwards compatibility.\n"
          "   -t <title> .......... Set descriptional chart title.\n"
          "   -T <tile_info> ...... Create tiles.\n"
          "      <tile_info> := <zoom_lo> [ '-' <zoom_hi> ] ':' <tile_path> [ ':' <file_type> ]\n"
@@ -698,7 +698,7 @@ int main(int argc, char *argv[])
    if (setlocale(LC_CTYPE, "") == NULL)
       log_msg(LOG_WARN, "setlocale() failed");
 
-   while ((n = getopt(argc, argv, "ab:Dd:fg:Ghi:k:K:lMmno:O:P:r:R:s:t:T:uVvw:")) != -1)
+   while ((n = getopt(argc, argv, "ab:Dd:fg:Ghi:k:K:lMmN:no:O:P:r:R:t:T:uVvw:")) != -1)
       switch (n)
       {
          case 'a':
@@ -777,6 +777,15 @@ int main(int argc, char *argv[])
             w_mmap = 0;
             break;
 
+         case 'N':
+            errno = 0;
+            rd->id_off = strtoll(optarg, NULL, 0);
+            if (errno)
+               log_msg(LOG_ERR, "could not convert '%s': %s", optarg, strerror(errno)),
+                  exit(EXIT_FAILURE);
+            log_debug("id_off = %"PRId64, rd->id_off);
+            break;
+
          case 'n':
             rd->flags |= RD_UIDS;
             break;
@@ -799,10 +808,6 @@ int main(int argc, char *argv[])
 
          case 'r':
             cf = optarg;
-            break;
-
-         case 's':
-            log_msg(LOG_NOTICE, "Option -s is deprecated with libcairo support!");
             break;
 
          case 'R':

@@ -42,7 +42,6 @@ struct ostream
 };
 
 
-
 /*! Safely output a literal string, i.e. it replaces '<' and '"'.
  *  @return It returns the number of bytes written.
  */
@@ -72,7 +71,7 @@ static int64_t out_id(int64_t id, int type)
    int64_t mask;
 
    if ((id > 0) || !(rd->flags & RD_UIDS))
-      return id;
+      return id + rd->id_off;
 
    switch (type)
    {
@@ -93,7 +92,7 @@ static int64_t out_id(int64_t id, int type)
 
    //log_debug("mask = %"PRIx64, mask);
 
-   return (id & mask) | (mask + 1);
+   return ((id & mask) | (mask + 1)) + rd->id_off;
 }
 
 
