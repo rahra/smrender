@@ -2103,3 +2103,105 @@ int act_incomplete_fini(smrule_t *r)
    return 0;
 }
 
+
+int act_add_ini(smrule_t *r)
+{
+   struct rdata *rd = get_rdata();
+   double latref, lonref;
+#define UNITS_MM 1
+#define UNITS_CM 10
+   int units = 0;
+   int pos;
+   char *s;
+
+   if (r->oo->type != OSM_NODE)
+   {
+      log_msg(LOG_WARN, "function add() only implemented for nodes, yet.");
+      return 1;
+   }
+
+   if ((s = get_param("units", NULL, r->act)) != NULL)
+   {
+      if (!strcasecmp(s, "mm"))
+         units = UNITS_MM;
+      else if (!strcasecmp(s, "cm"))
+         units = UNITS_CM;
+      else if (strcasecmp(s, "degrees"))
+         log_msg(LOG_WARN, "unknown unit '%s', defaulting to degrees", s);
+   }
+
+   pos = parse_alignment(r->act);
+   switch (pos & 0x03)
+   {
+      case POS_M:
+         latref = (rd->bb.ll.lat + rd->bb.ru.lat) / 2;
+         break;
+      case POS_N:
+         latref = rd->bb.ru.lat;
+         break;
+      case POS_S:
+         latref = rd->bb.ll.lat;
+         break;
+      default:
+         log_msg(LOG_EMERG, "pos = 0x%02x this should never happen!", pos);
+         return -1;
+   }
+   switch (pos & 0x0c)
+   {
+      case POS_C:
+         lonref = (rd->bb.ll.lon + rd->bb.ru.lon) / 2;
+         break;
+      case POS_E:
+         lonref = rd->bb.ru.lon;
+         break;
+      case POS_W:
+         lonref = rd->bb.ll.lon;
+         break;
+      default:
+         log_msg(LOG_EMERG, "pos = 0x%02x this should never happen!", pos);
+         return -1;
+   }
+
+   if ((s = get_param("reference", NULL, r->act)) != NULL)
+   {
+      if (!strcasecmp(s, "relative"))
+      {
+         if (!units)
+         {
+            ((osm_node_t*) r->oo)->lat = latref + ((osm_node_t*) r->oo)->lat;
+            ((osm_node_t*) r->oo)->lon = lonref + ((osm_node_t*) r->oo)->lon;
+         }
+         else
+         {
+            ((osm_node_t*) r->oo)->lat = latref + MM2LAT(((osm_node_t*) r->oo)->lat * units);
+            ((osm_node_t*) r->oo)->lon = lonref + MM2LON(((osm_node_t*) r->oo)->lon * units);
+         }
+      }
+      else if (strcasecmp(s, "absolute"))
+         log_msg(LOG_WARN, "unknown reference '%s', defaulting to 'absolute'", s);
+   }
+
+   osm_node_t *n = malloc_node(r->oo->tag_cnt + 1);
+   osm_node_default(n);
+   memcpy(&n->obj.otag[1], &r->oo->otag[0], r->oo->tag_cnt * sizeof(*r->oo->otag));
+   n->lat = ((osm_node_t*) r->oo)->lat;
+   n->lon = ((osm_node_t*) r->oo)->lon;
+   put_object((osm_obj_t*) n);
+
+   log_msg(LOG_INFO, "placing node to lat = %f, lon = %f", n->lat, n->lon);
+
+   return 0;
+}
+
+
+int act_add_main(smrule_t * UNUSED(r), osm_obj_t *UNUSED(o))
+{
+   return 0;
+}
+
+
+int act_add_fini(smrule_t * UNUSED(r))
+{
+   return 0;
+}
+

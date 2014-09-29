@@ -605,3 +605,31 @@ fparam_t **parse_fparam(char *parm)
    return fp;
 }
 
+
+int parse_alignment(const action_t *act)
+{
+   int pos = 0;
+   char *s;
+
+   if ((s = get_param("halign", NULL, act)) != NULL)
+   {
+      if (!strcmp(s, "east"))
+         pos |= POS_E;
+      else if (!strcmp(s, "west"))
+         pos |= POS_W;
+      else
+         log_msg(LOG_WARN, "unknown alignment '%s'", s);
+   }
+   if ((s = get_param("valign", NULL, act)) != NULL)
+   {
+      if (!strcmp(s, "north"))
+         pos |= POS_N;
+      else if (!strcmp(s, "south"))
+         pos |= POS_S;
+      else
+         log_msg(LOG_WARN, "unknown alignment '%s'", s);
+   }
+
+   return pos;
+}
+

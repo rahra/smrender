@@ -897,25 +897,7 @@ int act_cap_ini(smrule_t *r)
       cap.angle = 0;
    }
 
-   if ((s = get_param("halign", NULL, r->act)) != NULL)
-   {
-      if (!strcmp(s, "east"))
-         cap.pos |= POS_E;
-      else if (!strcmp(s, "west"))
-         cap.pos |= POS_W;
-      else
-         log_msg(LOG_WARN, "unknown alignment '%s'", s);
-   }
-   if ((s = get_param("valign", NULL, r->act)) != NULL)
-   {
-      if (!strcmp(s, "north"))
-         cap.pos |= POS_N;
-      else if (!strcmp(s, "south"))
-         cap.pos |= POS_S;
-      else
-         log_msg(LOG_WARN, "unknown alignment '%s'", s);
-   }
-
+   cap.pos = parse_alignment(r->act);
    cap.ctx = cairo_create(sfc_);
    if (cairo_smr_log_status(cap.ctx) != CAIRO_STATUS_SUCCESS)
       return -1;
