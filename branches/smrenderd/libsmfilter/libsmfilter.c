@@ -15,6 +15,7 @@
 #define COL_ABBR_CNT COL_CNT
 #define ATYPE_CNT 4
 #define TAG_CNT 7
+#define SMFILTER_REV $Rev$
 
 
 enum { SEAMARK_LIGHT_CHARACTER, SEAMARK_LIGHT_OBJECT, SEAMARK_LIGHT_RADIAL,
@@ -101,7 +102,7 @@ void __attribute__ ((constructor)) init_libsmfilter(void)
    }
 #endif
 
-   log_msg(LOG_INFO, "libsmfilter initialized");
+   log_msg(LOG_INFO, "libsmfilter r%d initialized", SMFILTER_REV);
 }
 
 
