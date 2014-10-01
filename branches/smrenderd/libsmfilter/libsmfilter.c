@@ -188,13 +188,17 @@ int act_pchar_main(smrule_t *r, osm_obj_t *o)
    char *s;
    int i, n;
 
-   if ((n = match_attr(o, "seamark:light:group", NULL)) != -1)
+   if ((n = match_attr(o, "seamark:light:group", NULL)) != -1 || 
+         (n = match_attr(o, "seamark:light:1:group", NULL)) != -1)
       snprintf(group, sizeof(group), "(%.*s)", o->otag[n].v.len, o->otag[n].v.buf);
-   if ((n = match_attr(o, "seamark:light:period", NULL)) != -1)
+   if ((n = match_attr(o, "seamark:light:period", NULL)) != -1 ||
+         (n = match_attr(o, "seamark:light:1:period", NULL)) != -1)
       snprintf(period, sizeof(period), " %.*ss", o->otag[n].v.len, o->otag[n].v.buf);
-   if ((n = match_attr(o, "seamark:light:range", NULL)) != -1)
+   if ((n = match_attr(o, "seamark:light:range", NULL)) != -1 || 
+         (n = match_attr(o, "seamark:light:1:range", NULL)) != -1)
       snprintf(range, sizeof(range), " %.*sM", o->otag[n].v.len, o->otag[n].v.buf);
-   if ((n = match_attr(o, "seamark:light:character", NULL)) != -1)
+   if ((n = match_attr(o, "seamark:light:character", NULL)) != -1 ||
+         (n = match_attr(o, "seamark:light:1:character", NULL)) != -1)
       snprintf(lchar, sizeof(lchar), "%.*s%s", o->otag[n].v.len, o->otag[n].v.buf, group[0] == '\0' ? "." : "");
 
    memset(&col_mask, 0, sizeof(col_mask));
