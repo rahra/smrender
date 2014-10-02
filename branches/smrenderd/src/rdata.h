@@ -27,11 +27,11 @@
 #include "bxtree.h"
 
 
-// maximum number if different rule versions (processing iterations)
+//! maximum number if different rule versions (processing iterations)
 #define MAX_ITER 64
-// define OSM version number which contain sub routines
+//! define OSM version number which contain sub routines
 #define SUBROUTINE_VERSION 0x10000
-// if set in rdata.flags, a page border way is generated
+//! if set in rdata.flags, a page border way is generated
 #define RD_CORNER_POINTS 1
 #define RD_LANDSCAPE 2
 #define RD_UIDS 4          //<! output IDs unsigned
@@ -65,36 +65,36 @@ struct dstats
 
 struct rdata
 {
-   // root node of node rules and way rules
+   //! root node of node rules and way rules
    bx_node_t *rules;
-   // root node of reverse pointers for OSM objects
+   //! root node of reverse pointers for OSM objects
    bx_node_t *index;
-   // bounding box (left lower and right upper coordinates)
+   //! bounding box (left lower and right upper coordinates)
    struct bbox bb;
-   // coordinate with/height (wc=bb.ru.lon-bb.ll.lon, hc=bb.ru.lat-bb.ll.lat)
+   //! coordinate with/height (wc=bb.ru.lon-bb.ll.lon, hc=bb.ru.lat-bb.ll.lat)
    double wc, hc;
-   // mean latitude and its length in degrees corresponding to the real nautical miles
+   //! mean latitude and its length in degrees corresponding to the real nautical miles
    double mean_lat, mean_lat_len;
    double mean_lon;
-   // hyperbolic values for transversial Mercator (latitude stretching)
+   //! hyperbolic values for transversial Mercator (latitude stretching)
    double lath, lath_len;
-   // (pixel) image width and height of rendered image
+   //! (pixel) image width and height of rendered image
    int w, h;
-   // (pixel) image width and height of final image
+   //! (pixel) image width and height of final image
    int fw, fh;
-   // pixel resolution
+   //! pixel resolution
    int dpi;
-   // scale
+   //! scale
    double scale;
-   // node/way stats
+   //! node/way stats
    struct dstats ds;
-   // pointer to cmd line string
+   //! pointer to cmd line string
    char *cmdline;
-   // chart title
+   //! chart title
    char *title;
-   // general control flags (RD_xxx)
+   //! general control flags (RD_xxx)
    int flags;
-   // offset of output ids
+   //! offset of output ids
    int64_t id_off;
 };
 

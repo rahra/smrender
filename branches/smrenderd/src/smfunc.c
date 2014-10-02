@@ -2181,15 +2181,6 @@ int act_add_ini(smrule_t *r)
          log_msg(LOG_WARN, "unknown reference '%s', defaulting to 'absolute'", s);
    }
 
-   osm_node_t *n = malloc_node(r->oo->tag_cnt + 1);
-   osm_node_default(n);
-   memcpy(&n->obj.otag[1], &r->oo->otag[0], r->oo->tag_cnt * sizeof(*r->oo->otag));
-   n->lat = ((osm_node_t*) r->oo)->lat;
-   n->lon = ((osm_node_t*) r->oo)->lon;
-   put_object((osm_obj_t*) n);
-
-   log_msg(LOG_INFO, "placing node to lat = %f, lon = %f", n->lat, n->lon);
-
    return 0;
 }
 
@@ -2200,8 +2191,17 @@ int act_add_main(smrule_t * UNUSED(r), osm_obj_t *UNUSED(o))
 }
 
 
-int act_add_fini(smrule_t * UNUSED(r))
+int act_add_fini(smrule_t *r)
 {
+
+   osm_node_t *n = malloc_node(r->oo->tag_cnt + 1);
+   osm_node_default(n);
+   memcpy(&n->obj.otag[1], &r->oo->otag[0], r->oo->tag_cnt * sizeof(*r->oo->otag));
+   n->lat = ((osm_node_t*) r->oo)->lat;
+   n->lon = ((osm_node_t*) r->oo)->lon;
+   put_object((osm_obj_t*) n);
+
+   log_msg(LOG_INFO, "placing node to lat = %f, lon = %f", n->lat, n->lon);
    return 0;
 }
 
