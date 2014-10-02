@@ -24,9 +24,10 @@ enum { SEAMARK_LIGHT_CHARACTER, SEAMARK_LIGHT_OBJECT, SEAMARK_LIGHT_RADIAL,
 
 struct compass_data
 {
-   double var;
-   double r;
-   int ticks;
+   double var;       //!< magnetic variation
+   double r1;        //!< radius in mm
+   double r2;
+   int ticks;        //!< number of ticks on circle
 };
 
 struct vsec_data
@@ -1209,12 +1210,73 @@ int act_sounding_main(smrule_t * UNUSED(rl), osm_obj_t *o)
 }
 
 
-#if 0
+int act_compass_ini(smrule_t *r)
+{
+   struct compass_data *cd;
+
+   if ((cd = calloc(1, sizeof(*cd))) == NULL)
+   {
+      log_msg(LOG_ERR, "calloc() failed: %s", strerror(errno));
+      return -1;
+   }
+
+   if (get_parami("ticks", &cd->ticks, r->act) == NULL)
+      cd->ticks = 360;
+
+   (void) get_param("variation", &cd->var, r->act);
+
+   if (get_param("radius", &cd->r1, r->act) == NULL)
+   {
+      return 1;
+   }
+
+   cd->r2 = cd->r1 * 0.9;
+   cd->var = DEG2RAD(cd->var);
+   r->data = cd;
+
+   log_debug("var = %.2f, r1 = %f, ticks = %d", cd->var * 180.0 / M_PI, cd->r1, cd->ticks);
+   return 0;
+}
+
+
+static int64_t circle_node(const osm_node_t *cn, double radius, double angle)
+{
+   osm_node_t *n = malloc_node(1);
+   osm_node_default(n);
+   n->lat = cn->lat + radius * sin(angle);
+   n->lon = cn->lon + radius * cos(angle) / cos(DEG2RAD(n->lat));
+   put_object(&n->obj);
+   return n->obj.id;
+}
+
+
+static int circle_line(const osm_node_t *cn, double angle, double r1, double r2, double phase)
+{
+   char buf[8], *s;
+
+   osm_way_t *w = malloc_way(2, 2);
+   osm_way_default(w);
+   snprintf(buf, sizeof(buf), "%.2f", RAD2DEG(angle));
+   if ((s = strdup(buf)) == NULL)
+   {
+      log_msg(LOG_ERR, "strdup() failed: %s", strerror(errno));
+      return 1;
+   }
+   set_const_tag(&w->obj.otag[1], "smrender:compass", s);
+
+   w->ref[0] = circle_node(cn, r1, M_PI_2 - angle);
+   w->ref[1] = circle_node(cn, r2, M_PI_2 - angle + phase);
+   put_object(&w->obj);
+
+   return 0;
+}
+
+
 //FIXME: function not finished yet
 int act_compass_main(smrule_t *r, osm_obj_t *o)
 {
    struct compass_data *cd = r->data;
-   double lat, lon, angle_step;
+   double angle_step, angle, ri;
    int i;
 
    if (o->type != OSM_NODE)
@@ -1223,11 +1285,30 @@ int act_compass_main(smrule_t *r, osm_obj_t *o)
    angle_step = 2 * M_PI / cd->ticks;
    for (i = 0; i < cd->ticks; i++)
    {
-       lat = ((osm_node_t*) o)->lat + cd->r * cos(angle_step * i - cd->var) - cd->r * sin(angle_step * i - cd->var);
-       lon = ((osm_node_t*) o)->lon + (cd->r * cos(angle_step * i - cd->var) + cd->r * sin(angle_step * i - cd->var)) / cos(DEG2RAD(lat));
+      angle = angle_step * i /*+ cd->var*/;
+      if (!((int) round(RAD2DEG(angle)) % 10))
+         ri = cd->r2 * 0.9;
+      else if (!((int) round(RAD2DEG(angle)) % 5))
+         ri = cd->r2 * 0.95;
+      else
+         ri = cd->r2;
+ 
+      circle_line((osm_node_t*) o, angle, cd->r1, ri, 0);
    }
+
+   // N - S axis
+   circle_line((osm_node_t*) o, cd->var, cd->r1 / 0.9, cd->r1 / 0.9, M_PI);
+   // E - W axis
+   circle_line((osm_node_t*) o, cd->var + M_PI_2, cd->r1 / 0.9, cd->r1 / 0.9, M_PI);
 
    return 0;
 }
-#endif
+
+
+int act_compass_fini(smrule_t *r)
+{
+   free(r->data);
+   r->data = NULL;
+   return 0;
+}
 
