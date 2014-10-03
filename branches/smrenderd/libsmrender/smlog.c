@@ -78,13 +78,15 @@ FILE *init_log(const char *s, int level)
 }
 
 
-/*! Log a message to a file.
- *  @param out Open FILE pointer
+/*! Log a message to a file or syslogd.
+ *  @param out Open FILE pointer or NULL. In the latter case it will log to
+ *  syslogd.
  *  @param lf Logging priority (equal to syslog)
  *  @param fmt Format string
  *  @param ap Variable parameter list
+ *  @return Returns the number of bytes effectively written.
  */
-void vlog_msgf(FILE *out, int lf, const char *fmt, va_list ap)
+int vlog_msgf(FILE *out, int lf, const char *fmt, va_list ap)
 {
 #ifdef WITH_THREADS
    static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -96,8 +98,9 @@ void vlog_msgf(FILE *out, int lf, const char *fmt, va_list ap)
    char timestr[TIMESTRLEN] = "", timez[TIMESTRLEN] = "";
    int level = LOG_PRI(lf);
    char buf[SIZE_1K];
+   int len;
 
-   if (level_ < level) return;
+   if (level_ < level) return 0;
 
    //t = time(NULL);
    if (gettimeofday(&tv, NULL) == -1)
@@ -121,17 +124,17 @@ void vlog_msgf(FILE *out, int lf, const char *fmt, va_list ap)
       //(void) strftime(timez, TIMESTRLEN, "%z", tm);
    }
 
-   if (out)
+   if (out != NULL)
    {
 #ifdef WITH_THREADS
       int id = sm_thread_id();
       pthread_mutex_lock(&mutex);
-      fprintf(out, "%s.%03d %s (+%2d.%03d) %d:[%7s] ", timestr, (int) (tv.tv_usec / 1000), timez, (int) tr.tv_sec, (int) (tr.tv_usec / 1000), id, flty_[level]);
+      len = fprintf(out, "%s.%03d %s (+%2d.%03d) %d:[%7s] ", timestr, (int) (tv.tv_usec / 1000), timez, (int) tr.tv_sec, (int) (tr.tv_usec / 1000), id, flty_[level]);
 #else
-      fprintf(out, "%s.%03d %s (+%2d.%03d) [%7s] ", timestr, (int) (tv.tv_usec / 1000), timez, (int) tr.tv_sec, (int) (tr.tv_usec / 1000), flty_[level]);
+      len = fprintf(out, "%s.%03d %s (+%2d.%03d) [%7s] ", timestr, (int) (tv.tv_usec / 1000), timez, (int) tr.tv_sec, (int) (tr.tv_usec / 1000), flty_[level]);
 #endif
-      vfprintf(out, fmt, ap);
-      fprintf(out, "\n");
+      len += vfprintf(out, fmt, ap);
+      len += fprintf(out, "\n");
 #ifdef WITH_THREADS
       pthread_mutex_unlock(&mutex);
 #endif
@@ -140,11 +143,12 @@ void vlog_msgf(FILE *out, int lf, const char *fmt, va_list ap)
    {
       // log to syslog if no output stream is available
       //vsyslog(level | LOG_DAEMON, fmt, ap);
-      vsnprintf(buf, SIZE_1K, fmt, ap);
+      len = vsnprintf(buf, SIZE_1K, fmt, ap);
       syslog(level | LOG_DAEMON, "%s", buf);
 
    }
    tv_stat = tv;
+   return len;
 }
 
 
@@ -154,19 +158,27 @@ void vlog_msgf(FILE *out, int lf, const char *fmt, va_list ap)
  *  @param fmt Format string.
  *  @param ... arguments
  */
-void log_msg(int lf, const char *fmt, ...)
+int log_msg(int lf, const char *fmt, ...)
 {
    va_list ap;
+   int len;
 #ifdef PRESERVE_ERRNO
    int err = errno;
 #endif
 
    va_start(ap, fmt);
-   vlog_msgf(log_, lf, fmt, ap);
+   len = vlog_msgf(log_, lf, fmt, ap);
    va_end(ap);
 
 #ifdef PRESERVE_ERRNO
    errno = err;
 #endif
+   return len;
+}
+
+
+int log_errno(int lf, const char *s)
+{
+   return log_msg(lf, "%s: %s", s, strerror(errno));
 }
 

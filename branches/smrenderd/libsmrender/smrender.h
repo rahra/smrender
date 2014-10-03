@@ -93,7 +93,8 @@ int coord_str(double, int, char*, int);
 int strcnt(const char*, int);
 
 /* smlog.c */
-void log_msg(int, const char*, ...) __attribute__((format (printf, 2, 3)));
+int log_msg(int, const char*, ...) __attribute__((format (printf, 2, 3)));
+int log_errno(int , const char *);
 
 /* smthread.c */
 void sm_threaded(smrule_t*);
