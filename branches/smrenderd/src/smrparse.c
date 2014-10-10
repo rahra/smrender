@@ -298,17 +298,16 @@ void check_way_type(smrule_t *r)
 }
 
 
-/*! This function parse a rule defined within the object o into the smrule_t
+/*! This function parses a rule defined within the object o into the smrule_t
  * structure r. The memory is reserved by a call to alloc_rule() and must be
  * freed again with free(). If the _action_ tag was parsed properly, it is
  * removed from that object's list of tags.
  * @param o Pointer to object.
- * @param r Point to rule pointer. It will receive the pointer to the newly
+ * @param r Pointer to rule pointer. It will receive the pointer to the newly
  * allocated memory or NULL in case of error.
  * @return 0 if everything is ok. In case of a fatal error a negative value is
  * returned and *r is set to NULL. In case of a minor error a positive number
- * is returned and *r is set to a valued memory.
- * FIXME: Return codes must be revised!
+ * is returned and *r is set to a valid memory.
  */
 int init_rule(osm_obj_t *o, smrule_t **r)
 {
@@ -386,7 +385,7 @@ int init_rule(osm_obj_t *o, smrule_t **r)
       if ((func = strtok(buf, "@")) == NULL)
       {
          log_msg(LOG_CRIT, "strtok() returned NULL");
-         return 1;
+         return -1;
       }
    }
    else
@@ -436,9 +435,8 @@ int init_rules(osm_obj_t *o, void *p)
 {
    bx_node_t *bn;
    smrule_t *rl;
-   int err;
 
-   err = init_rule(o, &rl);
+   (void) init_rule(o, &rl);
 
    if (rl == NULL)
    {
@@ -451,8 +449,7 @@ int init_rules(osm_obj_t *o, void *p)
          exit(EXIT_FAILURE);
 
    bn->next[o->type - 1] = rl;
-
-   return err;
+   return 0;
 }
 
 
