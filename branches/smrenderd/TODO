@@ -8,4 +8,3 @@
 * automatic bay/cape font size
 * color diff function improvement (black/white stretching in spherical coordinate system)
 * missing safety check for latitudes > 85.05
-* segfault if library of external function in ruleset could not be loaded
