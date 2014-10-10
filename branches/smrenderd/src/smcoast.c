@@ -15,7 +15,8 @@
  * along with smrender. If not, see <http://www.gnu.org/licenses/>.
  */
 
-/*! This file contains the code which is used to close open polygons. Open
+/*! \file smcoast.c
+ * This file contains the code which is used to close open polygons. Open
  * polygons obviously cannot be filled, thus the must be closed before. Open
  * polygons occure at the edges of the boundbox which is used to select data out
  * of the OSM database. This is one of the most difficult parts at all.
@@ -74,7 +75,7 @@ const osm_way_t *page_way(void)
 }
 
 
-/*! Check if way is a closed polygon and is an area (i.e. it has at least 4 points)
+/*! Check if way is a closed polygon and is an area (i.e. it has at least 4 points).
  *  @param w Pointer to way.
  *  @return 1 if it is a closed area, 0 otherwise.
  */

@@ -15,10 +15,11 @@
  * along with smrender. If not, see <http://www.gnu.org/licenses/>.
  */
 
-/*! This file contains the code of the rule parser and main loop of the render
- * as well as the code for traversing the object (nodes/ways) tree.
+/*! \file rdata.c
+ * This file contains functions for rendering initialization, such as unit
+ * conversions and paper and coordinate initialization.
  *
- *  @author Bernhard R. Fischer
+ * @author Bernhard R. Fischer
  */
 
 #ifdef HAVE_CONFIG_H
@@ -29,7 +30,6 @@
 #include <math.h>
 #include <string.h>
 
-//#include "bxtree.h"
 #include "rdata.h"
 #include "smrender.h"
 #include "smrender_dev.h"

@@ -15,8 +15,8 @@
  * along with smrender. If not, see <http://www.gnu.org/licenses/>.
  */
 
-/*! This file contains the code of the rule parser and main loop of the render
- * as well as the code for traversing the object (nodes/ways) tree.
+/*! \file smrules_cairo.c
+ * This file contains all graphical rendering functions using libcairo.
  *
  *  @author Bernhard R. Fischer
  */

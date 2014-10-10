@@ -15,6 +15,12 @@
  * along with libhpxml. If not, see <http://www.gnu.org/licenses/>.
  */
 
+/*! \file libhpxml.c
+ * This file contains all functions for the XML input parser.
+ *
+ * @author Bernhard R. Fischer
+ */
+
 #ifdef HAVE_CONFIG_H
 #include "config.h"
 #endif

@@ -15,8 +15,8 @@
  * along with smrender. If not, see <http://www.gnu.org/licenses/>.
  */
 
-/*! This file contains the code of the rule parser and main loop of the render
- * as well as the code for traversing the object (nodes/ways) tree.
+/*! \file smcore.c
+ * This file contains the code of the main execution process.
  *
  *  @author Bernhard R. Fischer
  */
@@ -264,6 +264,19 @@ int execute_rules(bx_node_t *rules, int version)
 }
 
  
+/*! Recursively traverse tree and call function dhandler for all leaf nodes
+ * which are not NULL.
+ * @param nt Pointer to tree root.
+ * @param d Depth of traversal. This should be 0 if called at the root of the
+ * tree.
+ * @param idx The tree actually allows to be an overlapped tree of several
+ * trees. idx is the index of the tree which should be traversed.
+ * @param dhandler This is the function called at the leaf node.
+ * @param p This is a generic argument which is passed to dhandler upon call.
+ * @return On success 0 is returned. If dhandler() returns a value != 0
+ * traverse() will break the recursion and return the return value of
+ * dhandler().
+ */
 int traverse(const bx_node_t *nt, int d, int idx, tree_func_t dhandler, void *p)
 {
    int i, e, sidx, eidx;

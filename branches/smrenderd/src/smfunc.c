@@ -15,8 +15,8 @@
  * along with smrender. If not, see <http://www.gnu.org/licenses/>.
  */
 
-/*! 
- * 
+/*! \file smfunc.c
+ * This file contains all rule functions which do not create graphics output.
  *
  *  @author Bernhard R. Fischer
  */
