@@ -12,6 +12,8 @@ AC_PROG_LN_S
 AC_PROG_MKDIR_P
 AC_CONFIG_HEADERS([config.h])
 
+smrender_datadir=${datadir}/smrender
+AC_SUBST(smrender_datadir)
 
 # some #defines for smrender
 AC_DEFINE([MEM_USAGE], [], [Generate memory usage statistics.])

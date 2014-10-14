@@ -1,8 +1,7 @@
 SUBDIRS = libsmrender src smrenderd libsmfilter libskel
 ACLOCAL_AMFLAGS = -I m4
-rules_datadir = $(datadir)/smrender
-dist_rules_data_DATA = rules/rules.osm rules/rulesbig.osm rules/rules_land.osm
-available_rulesdir = $(rules_datadir)/available
+dist_smrender_data_DATA = rules/rules.osm rules/rulesbig.osm rules/rules_land.osm
+available_rulesdir = $(smrender_datadir)/available
 dist_available_rules_DATA = rules/available/basemap.osm \
 									 rules/available/basemap_col.osm \
 									 rules/available/landfeatures.osm \
@@ -14,9 +13,9 @@ dist_available_rules_DATA = rules/available/basemap.osm \
 									 rules/available/seamark_all.osm \
 									 rules/available/seamark_buoy.osm
 
-rules_100000dir = $(rules_datadir)/rules_100000
-r100k_yedir = $(rules_datadir)/r100k_ye
-r100k_coldir = $(rules_datadir)/r100k_col
+rules_100000dir = $(smrender_datadir)/rules_100000
+r100k_yedir = $(smrender_datadir)/r100k_ye
+r100k_coldir = $(smrender_datadir)/r100k_col
 
 install-data-hook:
 	if test -e $(DESTDIR)$(r100k_yedir) ; then \
