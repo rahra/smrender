@@ -5,7 +5,7 @@
       <tag k='_action_' v='shape:style=circle;radius=.3'/>
    </node>
    <node>
-      <tag k='_action_' v='cap:font=serif:bold;size=1.8;key=name;angle=auth;auto-color=yellow'/>
+      <tag k='_action_' v='cap:font=serif:bold;size=1.8;key=name;angle=auto'/>
       <tag k='place' v='village'/>
    </node>
    <node>
@@ -21,7 +21,7 @@
       <tag k='natural' v='peak'/>
    </node>
    <node>
-      <tag k='_action_' v='cap:font=sans-serif:bold;size=2.5;angle=auto;auto-color=yellow;key=name'/>
+      <tag k='_action_' v='cap:font=sans-serif:bold;size=2.5;angle=auto;key=name'/>
       <tag k='place' v='/town|city/'/>
    </node>
    <way>
