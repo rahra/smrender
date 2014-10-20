@@ -1511,8 +1511,7 @@ int act_inherit_tags_ini(smrule_t *r)
    }
 
    id->rdata = get_rdata();
-   if (get_param("force", NULL, r->act) != NULL)
-      id->force = 1;
+   id->force = get_param_bool("force", r->act);
 
    if ((type = get_param("object", NULL, r->act)) != NULL)
    {
