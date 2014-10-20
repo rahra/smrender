@@ -861,6 +861,7 @@ int act_cap_ini(smrule_t *r)
    cap.scl.max_auto_size = MAX_AUTO_SIZE;
    cap.scl.min_area_size = MIN_AREA_SIZE;
    cap.scl.auto_scale = AUTO_SCALE;
+   cap.xoff = cap.yoff = POS_OFFSET;
 
    if ((cap.font = get_param("font", NULL, r->act)) == NULL)
    {
@@ -889,6 +890,9 @@ int act_cap_ini(smrule_t *r)
    (void) get_param("max_size", &cap.scl.max_auto_size, r->act);
    (void) get_param("min_area", &cap.scl.min_area_size, r->act);
    (void) get_param("auto_scale", &cap.scl.auto_scale, r->act);
+
+   (void) get_param("xoff", &cap.xoff, r->act);
+   (void) get_param("yoff", &cap.yoff, r->act);
 
    parse_auto_rot(r->act, &cap.angle, &cap.rot);
    if ((cap.akey = get_param("anglekey", NULL, r->act)) != NULL && isnan(cap.angle))
@@ -929,10 +933,10 @@ int act_cap_ini(smrule_t *r)
    if (!isnan(cap.angle))
       sm_threaded(r);
 
-   log_debug("%04x, %08x, '%s', '%s', %.1f, {%.1f, %.1f, %.1f, %.2f}, %.1f, {%.1f, %08x, %.1f}",
+   log_debug("%04x, %08x, '%s', '%s', %.1f, {%.1f, %.1f, %.1f, %.2f}, %.1f, %.1f, %.1f, {%.1f, %08x, %.1f}",
          cap.pos, cap.col, cap.font, cap.key, cap.size,
          cap.scl.max_auto_size, cap.scl.min_auto_size, cap.scl.min_area_size, cap.scl.auto_scale,
-         cap.angle,
+         cap.angle, cap.xoff, cap.yoff,
          cap.rot.phase, cap.rot.autocol, cap.rot.weight);
    memcpy(r->data, &cap, sizeof(cap));
    return 0;
@@ -999,16 +1003,28 @@ static int strupper(char *s)
 #endif
 
 
-static void pos_offset(int pos, double width, double height, double *ox, double *oy)
+/*! This function calculates the relative origin for a given bounding box
+ * (width, height) dependent on the position definition pos (N, S, E, W) in
+ * respect to the origin 0/0.
+ * @param pos Position definition which is a bitwise OR'ed combination of
+ * POS_N, POS_S, POS_E, and POS_W.
+ * @param width Width of the bounding box.
+ * @param height Height of the bounding box.
+ * @param xoff Offset in x direction from origin.
+ * @param yoff Offset in y direction from origin.
+ * @param ox Pointer to a double which will receive the horizontal result.
+ * @param oy Ponter to a double which will receive the vertical result.
+ */
+static void pos_offset(int pos, double width, double height, double xoff, double yoff, double *ox, double *oy)
 {
    switch (pos & 0x3)
    {
       case POS_N:
-         *oy = 0 - POS_OFFSET;
+         *oy = 0 - yoff;
          break;
 
       case POS_S:
-         *oy = height + POS_OFFSET;
+         *oy = height + yoff;
          break;
 
       default:
@@ -1018,11 +1034,11 @@ static void pos_offset(int pos, double width, double height, double *ox, double 
    switch (pos & 0xc)
    {
       case POS_E:
-         *ox = 0 + POS_OFFSET;
+         *ox = 0 + xoff;
          break;
 
       case POS_W:
-         *ox = -width - POS_OFFSET;
+         *ox = -width - xoff;
          break;
 
       default:
@@ -1644,7 +1660,7 @@ static int cap_coord(const struct actCaption *cap, const struct coord *c, const 
    }
 
    cairo_rotate(cap->ctx, a);
-   pos_offset(pos, tx.width + tx.x_bearing, fe.ascent, &x, &y);
+   pos_offset(pos, tx.width + tx.x_bearing, fe.ascent, cap->xoff, cap->yoff, &x, &y);
    cairo_move_to(cap->ctx, x, y);
    cairo_show_text(cap->ctx, buf);
    cairo_restore(cap->ctx);

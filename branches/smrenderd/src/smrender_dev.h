@@ -166,6 +166,7 @@ struct actCaption
    double angle;     // angle to rotate caption. 0 degress equals east,
                      // counterclockwise. NAN means auto-rotate
    char *akey;       // angle is defined in a tag
+   double xoff, yoff;   //!< x/y offset from origin
    struct auto_rot rot;
 #ifdef HAVE_CAIRO
    cairo_t *ctx;
