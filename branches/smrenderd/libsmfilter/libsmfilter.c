@@ -1214,6 +1214,12 @@ int act_compass_ini(smrule_t *r)
 {
    struct compass_data *cd;
 
+   if (r->oo->type != OSM_NODE)
+   {
+      log_msg(LOG_ERR, "compass() is only applicable to nodes");
+      return 1;
+   }
+
    if ((cd = calloc(1, sizeof(*cd))) == NULL)
    {
       log_msg(LOG_ERR, "calloc() failed: %s", strerror(errno));
@@ -1258,7 +1264,7 @@ static int64_t circle_node(const osm_node_t *cn, double radius, double angle, co
       log_errno(LOG_ERR, "strdup() failed");
       s = ""; //FIXME: error handling?
    }
-   set_const_tag(&n->obj.otag[1], "bearing", s);
+   set_const_tag(&n->obj.otag[1], "smrender:compass", s);
 
    if (ndesc != NULL)
       set_const_tag(&n->obj.otag[2], "smrender:compass:description", (char*) ndesc); //FIXME: typecasting removes const
@@ -1297,6 +1303,7 @@ int act_compass_main(smrule_t *r, osm_obj_t *o)
    char buf[8], *s;
    int i;
 
+   // safety check
    if (o->type != OSM_NODE)
       return 1;
 
