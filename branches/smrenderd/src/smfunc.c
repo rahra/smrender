@@ -1207,7 +1207,7 @@ int act_exit_main(smrule_t * UNUSED(r), osm_obj_t * UNUSED(o))
 
 static int mk_fmt_str(char *buf, int len, const char *fmt, fparam_t **fp, const osm_obj_t *o)
 {
-   int cnt, n;
+   int cnt, n, prec, zero;
    char *key;
    double v;
 
@@ -1215,21 +1215,14 @@ static int mk_fmt_str(char *buf, int len, const char *fmt, fparam_t **fp, const 
    if (fp == NULL)
       return 0;
 
-   for (len--, cnt = 0; *fmt != 0 && len > 0; fmt++)
+   for (len--, cnt = 0; *fmt != '\0' && len > 0; fmt++)
    {
       if (*fmt == '%')
       {
          fmt++;
+         prec = zero = 0;
          // special case if '%' is at the end of the format string
-         if (*fmt == 0)
-         {
-            *buf = '%';
-            len--;
-            buf++;
-            cnt++;
-            break;
-         }
-         else if (*fmt == '%')
+         if (*fmt == '\0' || *fmt == '%')
          {
             *buf = '%';
             len--;
@@ -1237,6 +1230,7 @@ static int mk_fmt_str(char *buf, int len, const char *fmt, fparam_t **fp, const 
             cnt++;
             continue;
          }
+         // FIXME: What's that?
          else if (*fmt == 'v')
          {
             *buf = ';';
@@ -1245,6 +1239,19 @@ static int mk_fmt_str(char *buf, int len, const char *fmt, fparam_t **fp, const 
             cnt++;
             continue;
          }
+         else if (*fmt == '0')
+         {
+            zero++;
+            fmt++;
+         }
+         else if (*fmt >= '1' && *fmt <= '9')
+         {
+            prec = *fmt - '0';
+            fmt++;
+         }
+         
+         if (!prec)
+            prec = 1;
 
          // find next tag in taglist
          for (key = NULL; *fp != NULL; fp++)
@@ -1279,6 +1286,11 @@ static int mk_fmt_str(char *buf, int len, const char *fmt, fparam_t **fp, const 
             case 'f':
                v = bs_tod(o->otag[n].v);
                n = snprintf(buf, len, "%f", v);
+               break;
+
+            case 'r':
+               v = fmod(bs_tod(o->otag[n].v), 1.0) * pow(10, prec);
+               n = snprintf(buf, len, "%ld", (long) v);
                break;
 
             default:
