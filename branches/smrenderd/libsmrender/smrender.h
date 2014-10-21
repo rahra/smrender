@@ -56,7 +56,6 @@
 
 
 typedef struct smrule smrule_t;
-typedef struct action action_t;
 
 struct coord
 {

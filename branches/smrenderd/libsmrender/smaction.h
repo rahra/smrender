@@ -45,7 +45,7 @@
 #define BLUE(x) (((x) & 0xff))
 #define SQRL(x) ((long) (x) * (long) (x))
 
-typedef struct smrule smrule_t;
+typedef struct action action_t;
 
 typedef struct fparam
 {
@@ -80,17 +80,17 @@ struct action
 {
    union             // initialization function _ini()
    {
-      int (*func)(smrule_t*);
+      int (*func)(void*);
       void *sym;
    } ini;
    union             // rule function
    {
-      int (*func)(smrule_t*, osm_obj_t*);
+      int (*func)(void*, osm_obj_t*);
       void *sym;
    } main;
    union             // finalization function _fini()
    {
-      int (*func)(smrule_t*);
+      int (*func)(void*);
       void *sym;
    } fini;
    void *libhandle;  // pointer to lib base
