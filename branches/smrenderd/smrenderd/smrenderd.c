@@ -2,6 +2,7 @@
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <signal.h>
 
 #include "smhttp.h"
 #include "smrender.h"
@@ -34,7 +35,7 @@ int main(int argc, char **argv)
    hpx_ctrl_t *ctl;
    struct stat st;
    int w_mmap = 1;
-   int fd;
+   int fd = 0;
 
    (void) init_log("stderr", LOG_DEBUG);
 
