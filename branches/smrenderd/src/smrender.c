@@ -290,17 +290,43 @@ void print_url(struct bbox bb)
 }
 
 
+/*! This function initializes the projection parameters. This is the final
+ * geographic bounding box, the hyperpolic North-South stretching, and the
+ * chart scale.
+ * @param rd Pointer to the rdata structure. The following members of the
+ * structure have to be set correctly before calling init_bbox_mll():
+ * mean_lat, mean_lat_len, mean_lon, w, h, dpi
+ */
 void init_bbox_mll(struct rdata *rd)
 {
+   double lat, lon;
+
+   // calculate scale which depends on the mean latitude
+   rd->scale = (rd->mean_lat_len * 60.0 * 1852 * 100 / 2.54) / ((double) rd->w / (double) rd->dpi);
+   // calculate meridians on left and right border of the chart
    rd->wc = rd->mean_lat_len / cos(rd->mean_lat * M_PI / 180);
    rd->bb.ll.lon = rd->mean_lon - rd->wc / 2;
    rd->bb.ru.lon = rd->mean_lon + rd->wc / 2;
+
+   // estimate latitudes on upper on lower border of the chart
    rd->hc = rd->mean_lat_len * rd->h / rd->w;
    rd->bb.ru.lat = rd->mean_lat + rd->hc / 2.0;
    rd->bb.ll.lat = rd->mean_lat - rd->hc / 2.0;
-   rd->scale = (rd->mean_lat_len * 60.0 * 1852 * 100 / 2.54) / ((double) rd->w / (double) rd->dpi);
-   rd->lath = asinh(tan(DEG2RAD(rd->mean_lat)));
-   rd->lath_len = asinh(tan(DEG2RAD(rd->bb.ru.lat))) - asinh(tan(DEG2RAD(rd->bb.ll.lat)));
+
+   // iteratively approximate latitudes
+   for (int i = 0; i < 3; i++)
+   {
+      // calculate hyperbolic distoration factors
+      rd->lath = asinh(tan(DEG2RAD(rd->mean_lat)));
+      rd->lath_len = asinh(tan(DEG2RAD(rd->bb.ru.lat))) - asinh(tan(DEG2RAD(rd->bb.ll.lat)));
+
+      // recalculate northern and southern latitude
+      pxf2geo(0.0, 0.0, &lon, &lat);
+      rd->bb.ru.lat = lat;
+      pxf2geo(0.0, rd->h, &lon, &lat);
+      rd->bb.ll.lat = lat;
+      rd->hc = rd->bb.ru.lat - rd->bb.ll.lat;
+   }
 }
 
 
@@ -321,8 +347,11 @@ int free_objects(osm_obj_t *o, void * UNUSED(p))
 }
 
 
-/*! Initializes data about paper (image) size.
- *  rd->dpi must be pre-initialized!
+/*! This function initializes the pixel width (w) and height (h) of the rdata
+ * structure. rd->dpi must be pre-initialized!
+ * @param rd Pointer to the rdata structure.
+ * @param paper Pointer to a string containing page dimension information, i.e.
+ * "A4", "A3",..., or "<width>x<height>" in millimeters.
  */
 void init_rd_paper(struct rdata *rd, const char *paper)
 {
@@ -459,11 +488,7 @@ void usage(const char *s)
 
 int cmp_int(const int *a, const int *b)
 {
-   if (*a < *b)
-      return -1;
-   if (*a > *b)
-      return 1;
-   return 0;
+   return *a - *b;
 }
 
 
@@ -555,7 +580,15 @@ int parse_tile_info(char *tstr, struct tile_info *ti)
 }
 
 
-int init_rendering_window(struct rdata *rd, char *win, const char *paper)
+/*! This function initializes all parameters for rendering in dependence of the
+ * command line arguments. This is the page dimension, projection parameters
+ * and chart scale.
+ * @param rd Pointer to the rdata structure.
+ * @param win Pointer to the string which specifies the geograhic rendering
+ * window.
+ * @param paper Pointer to the string which specifies the page dimension.
+ */
+void init_rendering_window(struct rdata *rd, char *win, const char *paper)
 {
    char *s;
    int n;
@@ -664,8 +697,6 @@ int init_rendering_window(struct rdata *rd, char *win, const char *paper)
    rd->fh = rd->h;
 
    init_bbox_mll(rd);
-
-   return 0;
 }
 
 

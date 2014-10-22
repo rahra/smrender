@@ -734,7 +734,7 @@ static int connect_open(struct pdef *pd, struct wlist *wl, int ocnt, short no_co
 {
    int i, j, k, l;
    int64_t *ref;
-   struct corner_point *co_pt = co_pt_;
+   const struct corner_point *co_pt = co_pt_;
 
    for (i = 0; i < ocnt; i++)
    {
