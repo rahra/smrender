@@ -498,6 +498,8 @@ int act_draw_ini(smrule_t *r)
       d->border.width = 0;
    d->border.style = parse_style(get_param("bstyle", NULL, r->act));
 
+   d->curve = get_param_bool("curve", r->act);
+
    // honor direction of ways
    d->directional = get_param_bool("directional", r->act);
    d->collect_open = !get_param_bool("ignore_open", r->act);
@@ -521,6 +523,121 @@ int act_draw_ini(smrule_t *r)
         d->border.col, d->border.width, d->border.style, d->border.used,
         d->directional, d->collect_open, d->wl);
 
+   return 0;
+}
+
+
+typedef struct point
+{
+   double x, y;
+} point_t;
+
+typedef struct line
+{
+   point_t A, B;
+} line_t;
+
+#define DIV_PART 0.1
+static inline double angle(const line_t *g) { return atan2(g->B.y - g->A.y, g->B.x - g->A.x); }
+static inline double length(const line_t *g) { return sqrt(pow(g->B.x - g->A.x, 2) + pow(g->B.y - g->A.y, 2)); }
+
+static int qd(const line_t *g)
+{
+   double dx = g->B.x - g->A.x;
+   double dy = g->B.y - g->A.y;
+
+   if (dx >= 0)
+   {
+      if (dy >= 0) return 0; // NE
+      else return 1; //SE
+   }
+   else
+   {
+      if (dy >= 0) return 3; // NW
+      else return 2; // SW
+   }
+}
+
+
+void control_points(const line_t *g, const line_t *l, point_t *p1, point_t *p2, double f)
+{
+   line_t h = {g->B, l->A};
+   double lgt, a1, a2;
+
+   a1 = (angle(g) + angle(&h)) / 2.0;
+   lgt = length(&h) * f;
+
+   // SW -> NW
+   if (qd(g) == 2 && qd(&h) == 3) a1 -= M_PI;
+   // SW -> NE
+   else if (qd(g) == 2 && qd(&h) == 0) a1 -= M_PI;
+   // SE -> NW
+   else if (qd(g) == 1 && qd(&h) == 3) a1 -= M_PI;
+
+   p1->x = g->B.x + lgt * cos(a1);
+   p1->y = g->B.y + lgt * sin(a1);
+
+   a2 = (angle(l) + angle(&h)) / 2;
+
+   if (qd(&h) == 2 && qd(l) == 3) a2 -= M_PI;
+   else if (qd(&h) == 2 && qd(l) == 0) a2 -= M_PI;
+   else if (qd(&h) == 1 && qd(l) == 3) a2 -= M_PI;
+
+   p2->x = l->A.x - lgt * cos(a2);
+   p2->y = l->A.y - lgt * sin(a2);
+}
+
+
+static int cairo_smr_poly_curve(const osm_way_t *w, cairo_t *ctx)
+{
+   osm_node_t *n;
+   int i, cnt, start;
+   line_t g, l;
+   point_t c1, c2, *pt;
+
+   cnt = w->ref_cnt;
+   start = !is_closed_poly(w);
+   if (!start)
+      cnt--;
+
+   log_debug("w->ref_cnt = %d, cnt = %d, start = %d", w->ref_cnt, cnt, start);
+   if ((pt = malloc(cnt * sizeof(*pt))) == NULL)
+   {
+      log_errno(LOG_ERR, "malloc() failed in cairo_smr_poly_curve()");
+      return -1;
+   }
+
+   for (i = 0; i < cnt; i++)
+   {
+      if ((n = get_object(OSM_NODE, w->ref[i])) == NULL)
+      {
+         log_msg(LOG_EMERG, "node %ld of way %ld at pos %d does not exist", (long) w->ref[i], (long) w->obj.id, i);
+         free(pt);
+         return -1;
+      }
+      geo2pt(n->lon, n->lat, &pt[i].x, &pt[i].y);
+   }
+
+   cairo_move_to(ctx, pt[(start - 1 + cnt) % cnt].x, pt[(start - 1 + cnt) % cnt].y);
+   for (i = start; i < cnt; i++)
+   {
+      g.A = pt[(i + cnt - 2) % cnt];
+      g.B = pt[(i + cnt - 1) % cnt];
+      l.A = pt[(i + cnt + 0) % cnt];
+      l.B = pt[(i + cnt + 1) % cnt];
+    
+      control_points(&g, &l, &c1, &c2, DIV_PART);
+      if (start)
+      {
+         if (i == 1) c1 = g.B;
+         if (i == cnt - 1) c2 = l.A;
+      }
+
+      cairo_curve_to(ctx, c1.x, c1.y, c2.x, c2.y, pt[i].x, pt[i].y);
+      log_debug("%f %f %f %f %f %f", c1.x, c1.y, c2.x, c2.y, pt[i].x, pt[i].y);
+   }
+
+   free(pt);
    return 0;
 }
 
@@ -615,13 +732,19 @@ static void render_poly_line(cairo_t *ctx, const struct actDraw *d, const osm_wa
       cairo_smr_set_source_color(ctx, d->border.col);
       cairo_set_line_width(ctx, cairo_smr_border_width(d, is_closed_poly(w)));
       cairo_smr_dash(ctx, d->border.style);
-      cairo_smr_poly_line(w, ctx);
+      if (!d->curve)
+         cairo_smr_poly_line(w, ctx);
+      else
+         cairo_smr_poly_curve(w, ctx);
       cairo_stroke(ctx);
    }
 
    if (d->fill.used)
    {
-      cairo_smr_poly_line(w, ctx);
+      if (!d->curve)
+         cairo_smr_poly_line(w, ctx);
+      else
+         cairo_smr_poly_curve(w, ctx);
       if (cw)  // this should only be allowed if it is a closed polygon
       {
          //log_debug("cw: clearing");

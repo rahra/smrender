@@ -187,6 +187,7 @@ struct actDraw
    struct drawStyle border;
    int directional;
    int collect_open;
+   int curve;
    struct wlist *wl;
 #ifdef HAVE_CAIRO
    cairo_t *ctx;
