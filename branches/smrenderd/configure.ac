@@ -20,14 +20,18 @@ AC_DEFINE([MEM_USAGE], [], [Generate memory usage statistics.])
 AC_DEFINE([bx_hash_t], [int64_t], [Set hash type for bxtree.])
 AC_DEFINE([BX_RES], [4], [Set bit resolution for bxtree.])
 AC_DEFINE([WITH_MMAP], [], [Add mmap() support.])
-AC_DEFINE([READ_FILTER], [], [Add code for read filter.])
 
 AC_ARG_ENABLE([threads], [AS_HELP_STRING([--enable-threads],[compile with pthreads support])],
    AC_DEFINE([WITH_THREADS], [], [enable multi-threading]))
 
 AC_ARG_WITH([cairo], [AS_HELP_STRING([--without-cairo], [disable support for libcairo])], [], [with_cairo=yes])
+AC_ARG_WITH([fontconfig], [AS_HELP_STRING([--without-fontconfig], [disable support for fontconfig])], [], [with_fontconfig=yes])
 
-PKG_CHECK_MODULES([FONTCONFIG], [fontconfig])
+AS_IF([test "x$with_fontconfig" != xno], [
+PKG_CHECK_MODULES([FONTCONFIG], [fontconfig],
+                  [AC_DEFINE([HAVE_FONTCONFIG], [1], [compile with support for fontconfig.])]
+                  )
+])
 
 AS_IF([test "x$with_cairo" != xno], [
 PKG_CHECK_MODULES([CAIRO], [cairo],

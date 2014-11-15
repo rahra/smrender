@@ -740,7 +740,7 @@ int smws_proc_objt(bstring_t *b, hpx_tree_t *tlist, osm_obj_t **o)
    }
 
    hpx_init_membuf(&ctl, b->buf, b->len);
-   if ((read_osm_obj(&ctl, tlist, NULL, o)) < 0)
+   if ((read_osm_obj(&ctl, tlist, o)) < 0)
    {
       // FIXME: Is errno set appripriately by read_osm_obj()?
       log_msg(LOG_ERR, "read_osm_obj() failed: %s", strerror(errno));

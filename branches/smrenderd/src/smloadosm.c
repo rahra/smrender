@@ -276,7 +276,7 @@ static void clear_ostor(osm_storage_t *o)
 }
 
 
-int read_osm_obj(hpx_ctrl_t *ctl, hpx_tree_t *tlist, const struct filter *fi, osm_obj_t **obj)
+int read_osm_obj(hpx_ctrl_t *ctl, hpx_tree_t *tlist, osm_obj_t **obj)
 {
    bstring_t b;
    int t = 0, e, i, j, rcnt, mcnt;
@@ -312,17 +312,6 @@ int read_osm_obj(hpx_ctrl_t *ctl, hpx_tree_t *tlist, const struct filter *fi, os
             {
                clear_ostor(&o);
                proc_osm_node(tag, (osm_obj_t*) &o);
-#ifdef READ_FILTER
-               if ((fi != NULL) && (t == OSM_NODE))
-               {
-                  // skip nodes which are outside of bounding box
-                  if (fi->use_bbox && ((o.n.lat > fi->c1.lat) || (o.n.lat < fi->c2.lat) || (o.n.lon > fi->c2.lon) || (o.n.lon < fi->c1.lon)))
-                  {
-                     //log_debug("skipping node line %ld", oline_);
-                     continue;
-                  }
-               }
-#endif
                o.o.type = t;
                if (!o.o.id) o.o.id = nid++;
                //if (o.o.id <= 0) o.o.id = get_osm_id(&o.o);
@@ -346,17 +335,6 @@ int read_osm_obj(hpx_ctrl_t *ctl, hpx_tree_t *tlist, const struct filter *fi, os
             {
                clear_ostor(&o);
                proc_osm_node(tag, (osm_obj_t*) &o);
-#ifdef READ_FILTER
-               if ((fi != NULL) && (t == OSM_NODE))
-               {
-                  // skip nodes which are outside of bounding box
-                  if (fi->use_bbox && ((o.n.lat > fi->c1.lat) || (o.n.lat < fi->c2.lat) || (o.n.lon > fi->c2.lon) || (o.n.lon < fi->c1.lon)))
-                  {
-                     //log_debug("skipping node line %ld", oline_);
-                     continue;
-                  }
-               }
-#endif
                o.o.type = t;
                if (!o.o.id) o.o.id = nid++;
                //if (o.o.id <= 0) o.o.id = get_osm_id(&o.o);
@@ -449,10 +427,6 @@ int read_osm_obj(hpx_ctrl_t *ctl, hpx_tree_t *tlist, const struct filter *fi, os
                      if (get_value("ref", tlist->subtag[i]->tag, &b) != -1)
                      {
                         *ref = bs_tol(b);
-#ifdef READ_FILTER
-                        if (get_object(OSM_NODE, *ref) == NULL)
-                           continue;
-#endif
                         ref++;
                         rcnt++;
                      }
@@ -504,21 +478,10 @@ int read_osm_obj(hpx_ctrl_t *ctl, hpx_tree_t *tlist, const struct filter *fi, os
                   }
                } // for (i = 0, j = 0; i < tlist->nsub; i++)
 
-#ifdef READ_FILTER
-               //FIXME: read filter does not take care on relations!
-               if ((fi != NULL) && (o.o.type == OSM_WAY) && (rcnt == 0))
-               {
-                  free_obj(*obj);
-                  *obj = NULL;
-               }
-               else
-#endif
-               {
-                  if (o.o.type == OSM_WAY)
-                     ((osm_way_t*) *obj)->ref_cnt = rcnt;
-                  else if (o.o.type == OSM_REL)
-                     ((osm_rel_t*) *obj)->mem_cnt = mcnt;
-               }
+               if (o.o.type == OSM_WAY)
+                  ((osm_way_t*) *obj)->ref_cnt = rcnt;
+               else if (o.o.type == OSM_REL)
+                  ((osm_rel_t*) *obj)->mem_cnt = mcnt;
                break;
             } // else if (tag->type == HPX_CLOSE)
             continue;
@@ -552,6 +515,7 @@ int read_osm_obj(hpx_ctrl_t *ctl, hpx_tree_t *tlist, const struct filter *fi, os
 int read_osm_file(hpx_ctrl_t *ctl, bx_node_t **tree, const struct filter *fi, struct dstats *ds)
 {
    osm_obj_t *obj;
+   osm_node_t *n;
    hpx_tree_t *tlist = NULL;
    bx_node_t *tr;
    time_t tim;
@@ -571,7 +535,7 @@ int read_osm_file(hpx_ctrl_t *ctl, bx_node_t **tree, const struct filter *fi, st
    if (ds != NULL)
       init_stats(ds);
 
-   while ((e = read_osm_obj(ctl, tlist, fi, &obj)) > 0)
+   while ((e = read_osm_obj(ctl, tlist, &obj)) > 0)
    {
       if (usr1_)
       {
@@ -583,6 +547,62 @@ int read_osm_file(hpx_ctrl_t *ctl, bx_node_t **tree, const struct filter *fi, st
 
       if (obj != NULL)
       {
+         if (fi != NULL)
+         {
+            switch(obj->type)
+            {
+               case OSM_NODE:
+                  n = (osm_node_t*) obj;
+                  // skip nodes which are outside of bounding box
+                  if (fi->use_bbox && ((n->lat > fi->c1.lat) || (n->lat < fi->c2.lat) || (n->lon > fi->c2.lon) || (n->lon < fi->c1.lon)))
+                  {
+                     //log_debug("skipping node line %ld", oline_);
+                     free_obj(obj);
+                     obj = NULL;
+                  }
+                  break;
+
+               case OSM_WAY:
+                  for (int i = 0; i < ((osm_way_t*) obj)->ref_cnt; i++)
+                     // test if referenced node exists
+                     if (get_object(OSM_NODE, ((osm_way_t*) obj)->ref[i]) == NULL)
+                     {
+                        // remove, if not
+                        memmove(&((osm_way_t*) obj)->ref[i], &((osm_way_t*) obj)->ref[i + 1],
+                              (((osm_way_t*) obj)->ref_cnt - i - 1) * sizeof(*((osm_way_t*) obj)->ref));
+                        ((osm_way_t*) obj)->ref_cnt--;
+                        i--;
+                     }
+                  if (!((osm_way_t*) obj)->ref_cnt)
+                  {
+                     free_obj(obj);
+                     obj = NULL;
+                  }
+                  break;
+
+               case OSM_REL:
+                  for (int i = 0; i < ((osm_rel_t*) obj)->mem_cnt; i++)
+                     if (get_object(((osm_rel_t*) obj)->mem[i].type, ((osm_rel_t*) obj)->mem[i].type) == NULL)
+                     {
+                        memmove(&((osm_rel_t*) obj)->mem[i], &((osm_rel_t*) obj)->mem[i + 1],
+                              (((osm_rel_t*) obj)->mem_cnt - i - 1) * sizeof(*((osm_rel_t*) obj)->mem));
+                        ((osm_rel_t*) obj)->mem_cnt--;
+                        i--;
+ 
+                     }
+                  if (!((osm_rel_t*) obj)->mem_cnt)
+                  {
+                     free_obj(obj);
+                     obj = NULL;
+                  }
+                  break;
+            }
+         }
+
+         // object was deleted by filter
+         if (obj == NULL)
+            continue;
+
          tr = bx_add_node(tree, obj->id);
          if (tr->next[obj->type - 1] != NULL)
          {
