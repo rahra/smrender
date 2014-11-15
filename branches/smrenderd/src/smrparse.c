@@ -436,8 +436,10 @@ int init_rules(osm_obj_t *o, void *p)
 {
    bx_node_t *bn;
    smrule_t *rl;
+   int e;
 
-   (void) init_rule(o, &rl);
+   if ((e = init_rule(o, &rl)) < 0)
+      return e;
 
    if (rl == NULL)
    {
