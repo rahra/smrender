@@ -16,7 +16,7 @@ struct filter
 
 
 void osm_read_exit(void);
-int read_osm_obj(hpx_ctrl_t *, hpx_tree_t *, osm_obj_t **);
+int read_osm_obj(hpx_ctrl_t *, hpx_tree_t **, osm_obj_t **);
 int read_osm_file(hpx_ctrl_t*, bx_node_t**, const struct filter*, struct dstats*);
 hpx_ctrl_t *open_osm_source(const char*, int);
 

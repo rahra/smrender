@@ -276,7 +276,7 @@ static void clear_ostor(osm_storage_t *o)
 }
 
 
-int read_osm_obj(hpx_ctrl_t *ctl, hpx_tree_t *tlist, osm_obj_t **obj)
+int read_osm_obj(hpx_ctrl_t *ctl, hpx_tree_t **tlistptr, osm_obj_t **obj)
 {
    bstring_t b;
    int t = 0, e, i, j, rcnt, mcnt;
@@ -285,6 +285,8 @@ int read_osm_obj(hpx_ctrl_t *ctl, hpx_tree_t *tlist, osm_obj_t **obj)
    int64_t *ref;
    static int64_t nid = MIN_ID + 1;
    struct rmember *mem;
+   // FIXME: this is temporary
+   hpx_tree_t *tlist = *tlistptr;
 
    clear_ostor(&o);
    *obj = NULL;
@@ -508,6 +510,7 @@ int read_osm_obj(hpx_ctrl_t *ctl, hpx_tree_t *tlist, osm_obj_t **obj)
       } // if (!hpx_process_elem(b, tag))
    } //while ((e = hpx_get_elem(ctl, &b, NULL, &tag->line)) > 0)
 
+   *tlistptr = tlist;
    return e;
 }
 
@@ -519,7 +522,7 @@ int read_osm_file(hpx_ctrl_t *ctl, bx_node_t **tree, const struct filter *fi, st
    hpx_tree_t *tlist = NULL;
    bx_node_t *tr;
    time_t tim;
-   int e, dup_cnt = 0;
+   int e, dup_cnt = 0, t = 0;
 
    log_debug("revision >= 1593");
    //install_sigusr1();
@@ -535,7 +538,7 @@ int read_osm_file(hpx_ctrl_t *ctl, bx_node_t **tree, const struct filter *fi, st
    if (ds != NULL)
       init_stats(ds);
 
-   while ((e = read_osm_obj(ctl, tlist, &obj)) > 0)
+   while ((e = read_osm_obj(ctl, &tlist, &obj)) > 0)
    {
       if (usr1_)
       {
@@ -545,8 +548,16 @@ int read_osm_file(hpx_ctrl_t *ctl, bx_node_t **tree, const struct filter *fi, st
          log_msg(LOG_INFO, "ctl->pos = %ld (%ld %%), ctl->len = %ld, ctl->buf.len = %ld", ctl->pos, ctl->pos * 100 / ctl->len, ctl->len, ctl->buf.len);
       }
 
+      // debugging
+      if (t != obj->type)
+      {
+         t = obj->type;
+         log_debug("new object section: type = %d", t);
+      }
+
       if (obj != NULL)
       {
+         // filtering
          if (fi != NULL)
          {
             switch(obj->type)
