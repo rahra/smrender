@@ -45,6 +45,9 @@
 #ifdef CAIRO_HAS_PDF_SURFACE
 #include <cairo-pdf.h>
 #endif
+#ifdef CAIRO_HAS_SVG_SURFACE
+#include <cairo-svg.h>
+#endif
 
 // this format was defined in version 1.12
 #ifndef CAIRO_FORMAT_RGB30
@@ -286,6 +289,23 @@ void save_main_image(FILE *f, int ftype)
          cairo_surface_destroy(sfc);
 #else
          log_msg(LOG_NOTICE, "cannot create PDF, cairo was compiled without PDF support");
+#endif
+#ifdef CAIRO_HAS_SVG_SURFACE
+      case FTYPE_SVG:
+         log_debug("width = %.2f pt, height = %.2f pt", rdata_width(U_PT), rdata_height(U_PT));
+         sfc = cairo_svg_surface_create_for_stream(cairo_smr_write_func, f, rdata_width(U_PT), rdata_height(U_PT));
+         //sfc = cairo_svg_surface_create("out.svg", rdata_width(U_PT), rdata_height(U_PT));
+         cairo_svg_surface_restrict_to_version (sfc, CAIRO_SVG_VERSION_1_2);
+         dst = cairo_create(sfc);
+         cairo_smr_log_status(dst);
+         cairo_set_source_surface(dst, sfc_, 0, 0);
+         cairo_paint(dst);
+         //cairo_show_page(dst);
+         cairo_destroy(dst);
+         cairo_surface_destroy(sfc);
+
+#else
+         log_msg(LOG_NOTICE, "cannot create SVG, cairo was compiled without SVG support");
 #endif
          return;
    }
@@ -727,6 +747,9 @@ static void cairo_smr_dash(cairo_t *ctx, int style)
  */
 static void render_poly_line(cairo_t *ctx, const struct actDraw *d, const osm_way_t *w, int cw)
 {
+   // safety check
+   if (w == NULL) { log_msg(LOG_ERR, "NULL pointer to way"); return; }
+
    if (d->border.used)
    {
       cairo_smr_set_source_color(ctx, d->border.col);

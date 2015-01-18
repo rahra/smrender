@@ -707,7 +707,7 @@ int main(int argc, char *argv[])
    struct stat st;
    FILE *f;
    char *cf = "rules.osm", *img_file = NULL, *osm_ifile = NULL, *osm_ofile =
-      NULL, *osm_rfile = NULL, *kap_file = NULL, *kap_hfile = NULL, *pdf_file = NULL;
+      NULL, *osm_rfile = NULL, *kap_file = NULL, *kap_hfile = NULL, *pdf_file = NULL, *svg_file = NULL;
    struct rdata *rd;
    struct timeval tv_start, tv_end;
    int w_mmap = 1, load_filter = 0, init_exit = 0, gen_grid = AUTO_GRID, prt_url = 0;
@@ -826,7 +826,29 @@ int main(int argc, char *argv[])
             break;
 
          case 'o':
-            img_file = optarg;
+            log_debug("parsing '-o %s'", optarg);
+            if (strlen(optarg) >= 4)
+            {
+               if (!strcasecmp(optarg + strlen(optarg) - 4, ".png"))
+               {
+                  img_file = optarg;
+               }
+               else if (!strcasecmp(optarg + strlen(optarg) - 4, ".pdf"))
+               {
+                  pdf_file = optarg;
+               }
+               else if (!strcasecmp(optarg + strlen(optarg) - 4, ".svg"))
+               {
+                  svg_file = optarg;
+               }
+               else
+               {
+                  log_msg(LOG_NOTICE, "output file type for %s defaults to PNG", optarg);
+                  img_file = optarg;
+               }
+            }
+            else
+               img_file = optarg;
             break;
 
          case 'O':
@@ -1065,6 +1087,17 @@ int main(int argc, char *argv[])
       }
       else
          log_msg(LOG_ERR, "error opening file %s: %s", pdf_file, strerror(errno));
+   }
+
+   if (svg_file != NULL)
+   {
+      if ((f = fopen(svg_file, "w")) != NULL)
+      {
+         save_main_image(f, FTYPE_SVG);
+         fclose(f);
+      }
+      else
+         log_msg(LOG_ERR, "error opening file %s: %s", svg_file, strerror(errno));
    }
 
    if (kap_file != NULL)
