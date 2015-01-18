@@ -2216,3 +2216,81 @@ int act_add_fini(smrule_t *r)
    return 0;
 }
 
+
+int act_translate_ini(smrule_t *r)
+{
+   int64_t id;
+   char *s;
+
+   if ((get_param("key", NULL, r->act)) == NULL)
+   {
+      log_msg(LOG_ERR, "mandatory param 'key' missing");
+      return 1;
+   }
+
+   if ((s = get_param("id", NULL, r->act)) == NULL)
+   {
+      log_msg(LOG_ERR, "mandatory param 'id' missing");
+      return 1;
+   }
+
+   errno = 0;
+   id = strtol(s, NULL, 0);
+   if (errno)
+   {
+      log_msg(LOG_ERR, "conversion failed: %s", strerror(errno));
+      return 1;
+   }
+
+   if ((r->data = get_object0(get_rdata()->rules, id, r->oo->type - 1)) == NULL)
+   {
+      log_msg(LOG_WARN, "no template with id = %"PRId64, id);
+      return 1;
+   }
+   r->data = ((smrule_t*) r->data)->oo;
+
+   return 0;
+}
+
+
+int act_translate_main(smrule_t *r, osm_obj_t *o)
+{
+   struct stag st;
+   struct otag ot;
+   fparam_t **fp;
+   int n, m;
+
+   memset(&st, 0, sizeof(st));
+   memset(&ot, 0, sizeof(ot));
+
+   // loop over parameter list of rule
+   for (fp = r->act->fp; *fp != NULL; fp++)
+   {
+      // test if there is a 'key' parameter
+      if (strcasecmp((*fp)->attr, "key"))
+         continue;
+
+      // test if object has such a key
+      if ((n = match_attr(o, (*fp)->val, NULL)) < 0)
+         continue;
+
+      // copy value to temporary tag 'ot' as key
+      ot.k = o->otag[n].v;
+      // lookup if translation table object (in r->data) contains such key
+      if ((m = bs_match_attr(r->data, &ot, &st)) < 0)
+         continue;
+
+      // translate, i.e. set object value to value of translation object
+      o->otag[n].v = ((osm_obj_t*) r->data)->otag[m].v;
+   }
+
+   return 0;
+}
+
+
+int act_translate_fini(smrule_t *r)
+{
+   r->data = NULL;
+   return 0;
+}
+

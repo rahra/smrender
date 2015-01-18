@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<osm version="0.6" generator="Bernhard R. Fischer">
+
+   <!-- translation table for Croatian lights -->
+   <node id='1000'>
+      <tag k='Fl' v='Bl'/>
+      <tag k='LFl' v='DBl'/>
+      <tag k='white' v='B'/>
+      <tag k='red' v='C'/>
+      <tag k='green' v='Z'/>
+      <tag k='yellow' v='Ž'/>
+      <tag k='black' v='Cr'/>
+   </node>
+
+   <node version='-100'>
+      <tag k='/seamark:light:.*:character/' v=''/>
+      <tag k='_action_' v='translate:id=1000;key=seamark:light:character'/>
+   </node>
+   <node>
+      <tag k='/seamark:light:character/' v=''/>
+      <tag k='_action_' v='translate:id=1000;key=seamark:light:character'/>
+   </node>
+
+</osm>
+

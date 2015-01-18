@@ -11,7 +11,8 @@ dist_available_rules_DATA = rules/available/basemap.osm \
 									 rules/available/lightsectors_bw.osm \
 									 rules/available/lightsectors_col.osm \
 									 rules/available/seamark_all.osm \
-									 rules/available/seamark_buoy.osm
+									 rules/available/seamark_buoy.osm \
+									 rules/available/translation.osm
 
 rules_100000dir = $(smrender_datadir)/rules_100000
 r100k_yedir = $(smrender_datadir)/r100k_ye
@@ -24,6 +25,7 @@ install-data-hook:
 	$(MKDIR_P) $(DESTDIR)$(r100k_yedir) && \
 		cd $(DESTDIR)$(r100k_yedir) && \
 		$(LN_S) ../available/basemap.osm 000basemap.osm && \
+		$(LN_S) ../available/translation.osm 001translation.osm && \
 		$(LN_S) ../available/landfeatures.osm 010landfeatures.osm && \
 		$(LN_S) ../available/route.osm 020route.osm && \
 		$(LN_S) ../available/seamark_buoy.osm 029seamark.osm && \
@@ -41,6 +43,7 @@ install-data-hook:
 	$(MKDIR_P) $(DESTDIR)$(r100k_coldir) && \
 		cd $(DESTDIR)$(r100k_coldir) && \
 		$(LN_S) ../available/basemap_col.osm 000basemap.osm && \
+		$(LN_S) ../available/translation.osm 001translation.osm && \
 		$(LN_S) ../available/landfeatures.osm 010landfeatures.osm && \
 		$(LN_S) ../available/route.osm 020route.osm && \
 		$(LN_S) ../available/seamark_buoy.osm 029seamark.osm && \
