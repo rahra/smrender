@@ -5,20 +5,33 @@
    <node id='1000'>
       <tag k='Fl' v='Bl'/>
       <tag k='LFl' v='DBl'/>
+      <tag k='Oc' v='Pk'/>
+      <tag k='F' v=' '/> <!-- FIXME... -->
+      <tag k='Iso' v='Izo'/>
+      <tag k='Q' v='K'/>
+      <tag k='IQ' v='KPk'/>
+      <tag k='VQ' v='VK'/>
+      <tag k='IVQ' v='VKPk'/>
+      <tag k='UQ' v='UK'/>
+      <tag k='IUQ' v='UKPk'/>
+      <tag k='FFl' v='Sj'/>
       <tag k='white' v='B'/>
       <tag k='red' v='C'/>
       <tag k='green' v='Z'/>
       <tag k='yellow' v='Ž'/>
       <tag k='black' v='Cr'/>
+      <tag k='violett' v='Lj'/>
    </node>
 
+   <!-- translation rule for light character -->
    <node version='-100'>
-      <tag k='/seamark:light:.*:character/' v=''/>
-      <tag k='_action_' v='translate:id=1000;key=seamark:light:character'/>
+      <tag k='/seamark:light:.*character/' v=''/>
+      <tag k='_action_' v='translate:id=1000;key=/seamark:light:.*character/'/>
    </node>
-   <node>
-      <tag k='/seamark:light:character/' v=''/>
-      <tag k='_action_' v='translate:id=1000;key=seamark:light:character'/>
+   <!-- translation rule for light colour -->
+   <node version='-100'>
+      <tag k='/seamark:light:.*character/' v=''/>
+      <tag k='_action_' v='translate:id=1000;key=/seamark:light:.*character/'/>
    </node>
 
 </osm>

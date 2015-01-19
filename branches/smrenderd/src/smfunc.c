@@ -83,6 +83,15 @@ struct inherit_data
 };
 
 
+struct trans_data
+{
+   osm_obj_t *o;
+   int tag_cnt;
+   struct stag *st;
+   struct otag *ot;
+};
+
+
 static struct out_handle *oh_ = NULL;
 
 
@@ -2219,10 +2228,23 @@ int act_add_fini(smrule_t *r)
 
 int act_translate_ini(smrule_t *r)
 {
+   struct trans_data *td;
+   fparam_t **fp;
+   smrule_t *or;
    int64_t id;
+   int i, j;
    char *s;
 
-   if ((get_param("key", NULL, r->act)) == NULL)
+   // loop over parameter list of rule
+   for (i = 0, j = 0, fp = r->act->fp; *fp != NULL; fp++)
+      // test if there is a 'key' parameter
+      if (!strcasecmp((*fp)->attr, "key"))
+      {
+         i++;
+         j += strlen((*fp)->val);
+      }
+
+   if (!i)
    {
       log_msg(LOG_ERR, "mandatory param 'key' missing");
       return 1;
@@ -2242,12 +2264,51 @@ int act_translate_ini(smrule_t *r)
       return 1;
    }
 
-   if ((r->data = get_object0(get_rdata()->rules, id, r->oo->type - 1)) == NULL)
+   if ((or = get_object0(get_rdata()->rules, id, r->oo->type - 1)) == NULL)
    {
       log_msg(LOG_WARN, "no template with id = %"PRId64, id);
       return 1;
    }
-   r->data = ((smrule_t*) r->data)->oo;
+
+   if ((td = malloc(sizeof(*td) + i * (sizeof(*td->st) + sizeof(*td->ot)) + j + 1)) == NULL)
+   {
+      log_msg(LOG_ERR, "malloc() failed: %s", strerror(errno));
+      return -1;
+   }
+
+   td->o = or->oo;
+   td->tag_cnt = i;
+   td->st = (struct stag*) (td + 1);
+   td->ot = (struct otag*) ((char*) (td + 1) + i * sizeof(*td->st));
+
+   s = (char*) (td + 1) + i * (sizeof(*td->st) + sizeof(*td->ot));
+
+   // loop over parameter list of rule
+   for (i = 0, fp = r->act->fp; *fp != NULL; fp++)
+   {
+      // test if there is a 'key' parameter
+      if (strcasecmp((*fp)->attr, "key"))
+         continue;
+
+      log_debug("parsing key value '%s'", (*fp)->val);
+      strcpy(s, (*fp)->val);
+      td->ot[i].k.buf = s;
+      td->ot[i].k.len = strlen(s);
+      s += td->ot[i].k.len;
+      
+      parse_matchtype(&td->ot[i].k, &td->st[i].stk);
+
+      memset(&td->st[i].stv, 0, sizeof(td->st[i].stv));
+      memset(&td->ot[i].v, 0, sizeof(td->ot[i].v));
+
+      log_debug("key = '%.*s', type = %d", td->ot[i].k.len, td->ot[i].k.buf, td->st[i].stk.type);
+
+      i++;
+   }
+
+   r->data = td;
+
+   log_debug("found %d keys", i);
 
    return 0;
 }
@@ -2255,41 +2316,38 @@ int act_translate_ini(smrule_t *r)
 
 int act_translate_main(smrule_t *r, osm_obj_t *o)
 {
+   struct trans_data *td = r->data;
    struct stag st;
    struct otag ot;
-   fparam_t **fp;
-   int n, m;
+   int i, n, m;
 
    memset(&st, 0, sizeof(st));
    memset(&ot, 0, sizeof(ot));
 
-   // loop over parameter list of rule
-   for (fp = r->act->fp; *fp != NULL; fp++)
+   for (i = 0; i < td->tag_cnt; i++)
    {
-      // test if there is a 'key' parameter
-      if (strcasecmp((*fp)->attr, "key"))
-         continue;
-
       // test if object has such a key
-      if ((n = match_attr(o, (*fp)->val, NULL)) < 0)
+      if ((n = bs_match_attr(o, &td->ot[i], &td->st[i])) < 0)
          continue;
 
+      log_debug("match in tag(%d)@object(%"PRId64")", n, o->id);
       // copy value to temporary tag 'ot' as key
       ot.k = o->otag[n].v;
       // lookup if translation table object (in r->data) contains such key
-      if ((m = bs_match_attr(r->data, &ot, &st)) < 0)
+      if ((m = bs_match_attr(td->o, &ot, &st)) < 0)
          continue;
 
       // translate, i.e. set object value to value of translation object
-      o->otag[n].v = ((osm_obj_t*) r->data)->otag[m].v;
+      o->otag[n].v = td->o->otag[m].v;
    }
-
+   
    return 0;
 }
 
 
 int act_translate_fini(smrule_t *r)
 {
+   free(r->data);
    r->data = NULL;
    return 0;
 }

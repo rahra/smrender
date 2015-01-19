@@ -11,6 +11,11 @@
       <tag k='seamark:wreck:category' v='/^dangerous|mast_showing/'/>
       <tag k='_action_' v='img:file=icons/WreckD.png'/>
    </node>
+   <node>
+      <tag k='seamark:type' v='rock'/>
+      <tag k='seamark:rock:water_level' v='submerged'/>
+      <tag k='_action_' v='img:file=icons/Rock.png;scale=0.5'/>
+   </node>
 
    <node>
       <tag k='seamark:type' v='buoy_safe_water'/>

@@ -272,6 +272,7 @@ int init_rules(osm_obj_t*, void*);
 fparam_t **parse_fparam(char*);
 void free_fparam(fparam_t **);
 int parse_alignment(const action_t *act);
+int parse_matchtype(bstring_t *, struct specialTag *);
 
 /* smkap.c */
 int save_kap(FILE *, struct rdata *);

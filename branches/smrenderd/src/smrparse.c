@@ -50,7 +50,7 @@ static char *skipb(const char *s)
  *  conditon. -1 means that the regex failed to compile and -2 means that the
  *  value of a GT or LT condition could not be interpreted.
  */
-static int parse_matchtype(bstring_t *b, struct specialTag *t)
+int parse_matchtype(bstring_t *b, struct specialTag *t)
 {
    t->type = 0;
 
