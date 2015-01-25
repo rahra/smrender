@@ -50,7 +50,7 @@ static char *skipb(const char *s)
  *  conditon. -1 means that the regex failed to compile and -2 means that the
  *  value of a GT or LT condition could not be interpreted.
  */
-int parse_matchtype(bstring_t *b, struct specialTag *t)
+static int parse_matchtype(bstring_t *b, struct specialTag *t)
 {
    t->type = 0;
 
@@ -126,6 +126,26 @@ int parse_matchtype(bstring_t *b, struct specialTag *t)
    return 0;
 }
 
+
+/*! This function parses the match tags in ot and fills the special tag
+ * structure st accordingly. The bstrings in ot are modified. This function
+ * actually calls parse_matchtype().
+ * @param ot Pointer to a struct otag.
+ * @param st Pointer to a struct stag.
+ * @return On success, the function returns 0. On failure a negative value is
+ * returned (see parse_matchtype()).
+ */
+int parse_matchtag(struct otag *ot, struct stag *st)
+{
+   int e;
+
+   if ((e = parse_matchtype(&ot->k, &st->stk)) < 0)
+      return e;
+   if ((e = parse_matchtype(&ot->v, &st->stv)) < 0)
+      return e;
+   return 0;
+}
+ 
 
 short ppos(const char *s)
 {
@@ -330,10 +350,14 @@ int init_rule(osm_obj_t *o, smrule_t **r)
    rl->act->tag_cnt = o->tag_cnt;
    for (i = 0; i < o->tag_cnt; i++)
    {
+      if (parse_matchtag(&o->otag[i], &rl->act->stag[i]) < 0)
+         return 0;
+#if 0
       if (parse_matchtype(&o->otag[i].k, &rl->act->stag[i].stk) < 0)
          return 0;
       if (parse_matchtype(&o->otag[i].v, &rl->act->stag[i].stv) < 0)
          return 0;
+#endif
    }
 
    if ((i = match_attr(o, "_action_", NULL)) == -1)

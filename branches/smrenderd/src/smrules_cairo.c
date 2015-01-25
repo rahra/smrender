@@ -519,6 +519,8 @@ int act_draw_ini(smrule_t *r)
    d->border.style = parse_style(get_param("bstyle", NULL, r->act));
 
    d->curve = get_param_bool("curve", r->act);
+   if (get_param("curve_factor", &d->curve_fact, r->act) == NULL)
+      d->curve_fact = DIV_PART;
 
    // honor direction of ways
    d->directional = get_param_bool("directional", r->act);
@@ -557,58 +559,57 @@ typedef struct line
    point_t A, B;
 } line_t;
 
-#define DIV_PART 0.1
+
 static inline double angle(const line_t *g) { return atan2(g->B.y - g->A.y, g->B.x - g->A.x); }
 static inline double length(const line_t *g) { return sqrt(pow(g->B.x - g->A.x, 2) + pow(g->B.y - g->A.y, 2)); }
 
-static int qd(const line_t *g)
-{
-   double dx = g->B.x - g->A.x;
-   double dy = g->B.y - g->A.y;
 
-   if (dx >= 0)
-   {
-      if (dy >= 0) return 0; // NE
-      else return 1; //SE
-   }
-   else
-   {
-      if (dy >= 0) return 3; // NW
-      else return 2; // SW
-   }
+static double tri_area(const point_t **p, int n)
+{
+   double a = 0;
+
+   for (int i = 0; i < n; i++)
+      a += p[i]->x * p[(i + 1) % n]->y - p[(i + 1) % n]->x * p[i]->y;
+
+   return a / 2;
 }
 
 
 void control_points(const line_t *g, const line_t *l, point_t *p1, point_t *p2, double f)
 {
-   line_t h = {g->B, l->A};
+   const point_t *p[3];
    double lgt, a1, a2;
+   line_t h;
 
-   a1 = (angle(g) + angle(&h)) / 2.0;
-   lgt = length(&h) * f;
+   lgt = f * sqrt(pow(g->B.x - l->A.x, 2) + pow(g->B.y - l->A.y, 2));
 
-   // SW -> NW
-   if (qd(g) == 2 && qd(&h) == 3) a1 -= M_PI;
-   // SW -> NE
-   else if (qd(g) == 2 && qd(&h) == 0) a1 -= M_PI;
-   // SE -> NW
-   else if (qd(g) == 1 && qd(&h) == 3) a1 -= M_PI;
+   h.B = g->B;
+   h.A.x = (g->A.x + l->A.x) * 0.5;
+   h.A.y = (g->A.y + l->A.y) * 0.5;
+   a1 = angle(&h);
+   p[0] = &g->A;
+   p[1] = &g->B;
+   p[2] = &l->A;
+   a1 += tri_area(p, 3) < 0 ? -M_PI_2 : M_PI_2;
 
    p1->x = g->B.x + lgt * cos(a1);
    p1->y = g->B.y + lgt * sin(a1);
 
-   a2 = (angle(l) + angle(&h)) / 2;
-
-   if (qd(&h) == 2 && qd(l) == 3) a2 -= M_PI;
-   else if (qd(&h) == 2 && qd(l) == 0) a2 -= M_PI;
-   else if (qd(&h) == 1 && qd(l) == 3) a2 -= M_PI;
+   h.B = l->A;
+   h.A.x = (g->B.x + l->B.x) * 0.5;
+   h.A.y = (g->B.y + l->B.y) * 0.5;
+   a2 = angle(&h);
+   p[0] = &g->B;
+   p[1] = &l->A;
+   p[2] = &l->B;
+   a2 += tri_area(p, 3) < 0 ? -M_PI_2 : M_PI_2;
 
    p2->x = l->A.x - lgt * cos(a2);
    p2->y = l->A.y - lgt * sin(a2);
 }
 
 
-static int cairo_smr_poly_curve(const osm_way_t *w, cairo_t *ctx)
+static int cairo_smr_poly_curve(const osm_way_t *w, cairo_t *ctx, double f)
 {
    osm_node_t *n;
    int i, cnt, start;
@@ -646,7 +647,7 @@ static int cairo_smr_poly_curve(const osm_way_t *w, cairo_t *ctx)
       l.A = pt[(i + cnt + 0) % cnt];
       l.B = pt[(i + cnt + 1) % cnt];
     
-      control_points(&g, &l, &c1, &c2, DIV_PART);
+      control_points(&g, &l, &c1, &c2, f);
       if (start)
       {
          if (i == 1) c1 = g.B;
@@ -758,7 +759,7 @@ static void render_poly_line(cairo_t *ctx, const struct actDraw *d, const osm_wa
       if (!d->curve)
          cairo_smr_poly_line(w, ctx);
       else
-         cairo_smr_poly_curve(w, ctx);
+         cairo_smr_poly_curve(w, ctx, d->curve_fact);
       cairo_stroke(ctx);
    }
 
@@ -767,7 +768,7 @@ static void render_poly_line(cairo_t *ctx, const struct actDraw *d, const osm_wa
       if (!d->curve)
          cairo_smr_poly_line(w, ctx);
       else
-         cairo_smr_poly_curve(w, ctx);
+         cairo_smr_poly_curve(w, ctx, d->curve_fact);
       if (cw)  // this should only be allowed if it is a closed polygon
       {
          //log_debug("cw: clearing");

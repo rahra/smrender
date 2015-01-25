@@ -219,7 +219,8 @@ int act_out_fini(smrule_t *r)
 }
 
 
-/*! Calculate the area and the centroid of a closed polygon.
+/*! Calculate the area and the centroid of a closed polygon. The function
+ * implements Gauss's area formula aka shoelace formula.
  *  @param w Pointer to closed polygon.
  *  @param center Pointer to struct coord which will receive the coordinates of the
  *  centroid. It may be NULL.
@@ -2294,12 +2295,10 @@ int act_translate_ini(smrule_t *r)
       strcpy(s, (*fp)->val);
       td->ot[i].k.buf = s;
       td->ot[i].k.len = strlen(s);
+      td->ot[i].v.len = 0;
       s += td->ot[i].k.len;
       
-      parse_matchtype(&td->ot[i].k, &td->st[i].stk);
-
-      memset(&td->st[i].stv, 0, sizeof(td->st[i].stv));
-      memset(&td->ot[i].v, 0, sizeof(td->ot[i].v));
+      parse_matchtag(&td->ot[i], &td->st[i]);
 
       log_debug("key = '%.*s', type = %d", td->ot[i].k.len, td->ot[i].k.buf, td->st[i].stk.type);
 

@@ -78,6 +78,8 @@
 #define MAX_AUTO_SIZE 12.0
 #define MIN_AREA_SIZE 8.0
 #define AUTO_SCALE 0.2
+// default curve factor
+#define DIV_PART 0.25
 
 #define ANGLE_DIFF 10
 
@@ -189,6 +191,7 @@ struct actDraw
    int directional;
    int collect_open;
    int curve;
+   double curve_fact;
    struct wlist *wl;
 #ifdef HAVE_CAIRO
    cairo_t *ctx;
@@ -267,12 +270,11 @@ int set_color(const char *, int);
 int get_color(int);
 int parse_color(const char *);
 int parse_style(const char *s);
-//int parse_matchtype(bstring_t*, struct specialTag*);
+int parse_matchtag(struct otag *, struct stag *);
 int init_rules(osm_obj_t*, void*);
 fparam_t **parse_fparam(char*);
 void free_fparam(fparam_t **);
 int parse_alignment(const action_t *act);
-int parse_matchtype(bstring_t *, struct specialTag *);
 
 /* smkap.c */
 int save_kap(FILE *, struct rdata *);
