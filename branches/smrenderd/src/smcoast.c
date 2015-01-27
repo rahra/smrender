@@ -1230,6 +1230,7 @@ int act_refine_poly_ini(smrule_t *r)
    struct refine *rf;
    double it;
 
+   log_msg(LOG_WARN, "DEPRECATED. Use draw(curve=1) instead.");
    if ((rf = malloc(sizeof(*rf))) == NULL)
    {
       log_msg(LOG_ERR, "cannot malloc: %s", strerror(errno));
