@@ -79,7 +79,7 @@
 #define MIN_AREA_SIZE 8.0
 #define AUTO_SCALE 0.2
 // default curve factor
-#define DIV_PART 0.25
+#define DIV_PART 0.2
 
 #define ANGLE_DIFF 10
 

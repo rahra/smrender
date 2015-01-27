@@ -581,31 +581,43 @@ void control_points(const line_t *g, const line_t *l, point_t *p1, point_t *p2, 
    double lgt, a1, a2;
    line_t h;
 
-   lgt = f * sqrt(pow(g->B.x - l->A.x, 2) + pow(g->B.y - l->A.y, 2));
+   lgt = sqrt(pow(g->B.x - l->A.x, 2) + pow(g->B.y - l->A.y, 2));
 
    h.B = g->B;
+#define ISOSCELES_TRIANGLE
+#ifdef ISOSCELES_TRIANGLE
+   h.A.x = (g->B.x - lgt * cos(angle(g)) + l->A.x) * 0.5;
+   h.A.y = (g->B.y - lgt * sin(angle(g)) + l->A.y) * 0.5;
+#else
    h.A.x = (g->A.x + l->A.x) * 0.5;
    h.A.y = (g->A.y + l->A.y) * 0.5;
+#endif
+
    a1 = angle(&h);
    p[0] = &g->A;
    p[1] = &g->B;
    p[2] = &l->A;
    a1 += tri_area(p, 3) < 0 ? -M_PI_2 : M_PI_2;
 
-   p1->x = g->B.x + lgt * cos(a1);
-   p1->y = g->B.y + lgt * sin(a1);
+   p1->x = g->B.x + lgt * cos(a1) * f;
+   p1->y = g->B.y + lgt * sin(a1) * f;
 
    h.B = l->A;
+#ifdef ISOSCELES_TRIANGLE
+   h.A.x = (g->B.x + l->A.x + lgt * cos(angle(l))) * 0.5;
+   h.A.y = (g->B.y + l->A.y + lgt * sin(angle(l))) * 0.5;
+#else
    h.A.x = (g->B.x + l->B.x) * 0.5;
    h.A.y = (g->B.y + l->B.y) * 0.5;
+#endif
    a2 = angle(&h);
    p[0] = &g->B;
    p[1] = &l->A;
    p[2] = &l->B;
    a2 += tri_area(p, 3) < 0 ? -M_PI_2 : M_PI_2;
 
-   p2->x = l->A.x - lgt * cos(a2);
-   p2->y = l->A.y - lgt * sin(a2);
+   p2->x = l->A.x - lgt * cos(a2) * f;
+   p2->y = l->A.y - lgt * sin(a2) * f;
 }
 
 
