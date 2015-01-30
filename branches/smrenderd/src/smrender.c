@@ -359,7 +359,7 @@ void init_rd_paper(struct rdata *rd, const char *paper)
    double a4_w, a4_h;
 
    a4_w = MM2PX(210);
-   a4_h = MM2PX(296.9848);
+   a4_h = MM2PX(297);
 
    if (strchr(paper, 'x'))
    {
@@ -473,8 +473,9 @@ void usage(const char *s)
          "   -T <tile_info> ...... Create tiles.\n"
          "      <tile_info> := <zoom_lo> [ '-' <zoom_hi> ] ':' <tile_path> [ ':' <file_type> ]\n"
          "      <file_type> := 'png' | 'jpg'\n"
-         "   -o <image file> ..... Filename of output PNG image.\n"
-         "   -O <pdf file> ....... Filename of output PDF file.\n"
+         "   -o <image file> ..... Name of output file. The extensions determines the output format.\n"
+         "                         Currently supported formats: .PDF, .PNG, .SVG.\n"
+         "   -O <pdf file> ....... Filename of output PDF file (DEPRECATED).\n"
          "   -P <page format> .... Select output page format.\n"
          "   -u .................. Output URLs suitable for OSM data download and\n"
          "                         exit.\n"

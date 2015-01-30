@@ -38,6 +38,10 @@
       <tag k='_action_' v='cap:font=sans-serif;size=1.6;angle=90;anglekey=bearing;key=seamark:depth_contour:depth'/>
    </node>
    <way>
+      <tag k='natural' v='wetland'/>
+      <tag k='_action_' v='cat_poly'/>
+   </way>
+   <way>
       <tag k='seamark:type' v='depth_contour'/>
       <tag k='seamark:depth_contour:depth' v='10'/>
       <tag k='~distance~' v=''/>
@@ -56,6 +60,10 @@
    </way>
    <way>
       <tag k='tidal' v='yes'/>
+      <tag k='_action_' v='draw:color=darkseagreen'/>
+   </way>
+   <way>
+      <tag k='natural' v='wetland'/>
       <tag k='_action_' v='draw:color=darkseagreen'/>
    </way>
    <way>
