@@ -1,5 +1,5 @@
-AM_LDFLAGS = $(EXP_DYN) $(GD_LDFLAGS) $(GD_LIBS) $(CAIRO_LIBS) $(FONTCONFIG_LIBS)
-AM_CFLAGS = $(GD_CFLAGS) $(CAIRO_CFLAGS)
+AM_LDFLAGS = $(EXP_DYN) $(GD_LDFLAGS) $(GD_LIBS) $(CAIRO_LIBS) $(FONTCONFIG_LIBS) $(RSVG_LIBS)
+AM_CFLAGS = $(GD_CFLAGS) $(CAIRO_CFLAGS) $(RSVG_CFLAGS)
 AM_CPPFLAGS = -I$(srcdir)/../libsmrender
 bin_PROGRAMS = smrender
 smrender_SOURCES = smath.c smfunc.c smloadosm.c smrparse.c libhpxml.c smcoast.c smgrid.c smrender.c smkap.c smqr.c smthread.c smtile.c smrules_cairo.c rdata.c median_cut.c smexec.c smcore.c smosmout.c

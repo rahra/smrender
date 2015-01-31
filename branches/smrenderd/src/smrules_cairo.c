@@ -48,6 +48,9 @@
 #ifdef CAIRO_HAS_SVG_SURFACE
 #include <cairo-svg.h>
 #endif
+#ifdef HAVE_RSVG
+#include <librsvg/rsvg.h>
+#endif
 
 // this format was defined in version 1.12
 #ifndef CAIRO_FORMAT_RGB30
@@ -667,7 +670,7 @@ static int cairo_smr_poly_curve(const osm_way_t *w, cairo_t *ctx, double f)
       }
 
       cairo_curve_to(ctx, c1.x, c1.y, c2.x, c2.y, pt[i].x, pt[i].y);
-      log_debug("%f %f %f %f %f %f", c1.x, c1.y, c2.x, c2.y, pt[i].x, pt[i].y);
+      //log_debug("%f %f %f %f %f %f", c1.x, c1.y, c2.x, c2.y, pt[i].x, pt[i].y);
    }
 
    free(pt);
@@ -1698,6 +1701,13 @@ static double find_angle(const struct coord *c, const struct auto_rot *rot, cair
    double x, y, a, r;
    int i, num_steps;
 
+   // safety check...code works only with image surfaces
+   if (cairo_surface_get_type(fg) != CAIRO_SURFACE_TYPE_IMAGE)
+   {
+      log_msg(LOG_WARN, "this works only with image surfaces");
+      return 0;
+   }
+
    geo2pt(c->lon, c->lat, &x, &y);
    r = rdata_px_unit(hypot(cairo_image_surface_get_width(fg), cairo_image_surface_get_height(fg)), U_PT);
 
@@ -1946,28 +1956,70 @@ int act_img_ini(smrule_t *r)
    if (get_param("scale", &img.scale, r->act) == NULL)
       img.scale = 1;
 
-   sfc = cairo_image_surface_create_from_png(name);
-   if ((e = cairo_surface_status(sfc)) != CAIRO_STATUS_SUCCESS)
+#ifdef HAVE_RSVG
+   if (strlen(name) >= 4 && !strcasecmp(name + strlen(name) - 4, ".svg"))
    {
-      log_msg(LOG_ERR, "cannot open file %s: %s", name, cairo_status_to_string(e));
-      return -1;
-   }
+      log_debug("opening SVG '%s'", name);
 
-   img.w = cairo_image_surface_get_width(sfc) * img.scale;
-   img.h = cairo_image_surface_get_height(sfc) * img.scale;
-   img.img = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, img.w, img.h);
-   if ((e = cairo_surface_status(img.img)) != CAIRO_STATUS_SUCCESS)
-   {
-      log_msg(LOG_ERR, "cannot open file %s: %s", name, cairo_status_to_string(e));
-      //cairo_surface_destroy(img.img);
-      return -1;
+      cairo_rectangle_t rect;
+      RsvgDimensionData dd;
+      RsvgHandle *rh;
+
+      if ((rh = rsvg_handle_new_from_file(name, NULL)) == NULL)
+      {
+         log_msg(LOG_ERR, "error opening file %s", name);
+         return -1;
+      }
+
+      //rsvg_handle_set_dpi(rh, 72);
+      rsvg_handle_get_dimensions(rh, &dd);
+      log_debug("svg dimension: w = %d, h = %d", dd.width, dd.height);
+
+      img.w = dd.width * img.scale;
+      img.h = dd.height * img.scale;
+      rect.x = 0;
+      rect.y = 0;
+      rect.width = img.w;
+      rect.height = img.h;
+      img.img = cairo_recording_surface_create(CAIRO_CONTENT_COLOR_ALPHA, &rect);
+      ctx = cairo_create(img.img);
+      cairo_scale(ctx, img.scale, img.scale);
+      if (!rsvg_handle_render_cairo(rh, ctx))
+      {
+         log_msg(LOG_ERR, "rsvg_handle_render_cairo() failed");
+         return -1;
+      }
+      cairo_destroy(ctx);
+
+      g_object_unref(rh);
    }
-   ctx = cairo_create(img.img);
-   cairo_scale(ctx, img.scale, img.scale);
-   cairo_set_source_surface(ctx, sfc, 0, 0);
-   cairo_paint(ctx);
-   cairo_destroy(ctx);
-   cairo_surface_destroy(sfc);
+   else
+#endif
+   {
+      log_debug("opening PNG '%s'", name);
+      sfc = cairo_image_surface_create_from_png(name);
+      if ((e = cairo_surface_status(sfc)) != CAIRO_STATUS_SUCCESS)
+      {
+         log_msg(LOG_ERR, "cannot open file %s: %s", name, cairo_status_to_string(e));
+         return -1;
+      }
+
+      img.w = cairo_image_surface_get_width(sfc) * img.scale;
+      img.h = cairo_image_surface_get_height(sfc) * img.scale;
+      img.img = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, img.w, img.h);
+      if ((e = cairo_surface_status(img.img)) != CAIRO_STATUS_SUCCESS)
+      {
+         log_msg(LOG_ERR, "cannot open file %s: %s", name, cairo_status_to_string(e));
+         //cairo_surface_destroy(img.img);
+         return -1;
+      }
+      ctx = cairo_create(img.img);
+      cairo_scale(ctx, img.scale, img.scale);
+      cairo_set_source_surface(ctx, sfc, 0, 0);
+      cairo_paint(ctx);
+      cairo_destroy(ctx);
+      cairo_surface_destroy(sfc);
+   }
 
    img.ctx = cairo_create(sfc_);
    if ((e = cairo_status(img.ctx)) != CAIRO_STATUS_SUCCESS)
@@ -2047,11 +2099,22 @@ int img_place(struct actImage *img, osm_node_t *n)
       c.lat = n->lat;
       c.lon = n->lon;
 
-      x = cairo_image_surface_get_width(img->img);
-      y = cairo_image_surface_get_height(img->img);
-      cairo_device_to_user(img->ctx, &x, &y);
+      cairo_surface_t *fg = img->img;
+      int nimg = 0;
+      if (cairo_surface_get_type(img->img) != CAIRO_SURFACE_TYPE_IMAGE)
+      {
+         log_debug("create temporary image surface");
+         fg = cairo_surface_create_similar_image(img->img, CAIRO_FORMAT_ARGB32, img->w, img->h);
+         cairo_t *fgx = cairo_create(fg);
+         cairo_set_source_surface(fgx, img->img, 0, 0);
+         cairo_paint(fgx);
+         cairo_destroy(fgx);
+      }
 
-      a = find_angle(&c, &img->rot, img->img);
+      a = find_angle(&c, &img->rot, fg);
+
+      if (nimg)
+         cairo_surface_destroy(fg);
    }
    else
    {
