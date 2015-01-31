@@ -1,0 +1,10 @@
+<svg
+   xmlns="http://www.w3.org/2000/svg"
+   version="1.1"
+   width="50"
+   height="50">
+   <path d="M 2,13 L 2,2 48,2 48,13 M 17,2 L 17,10 M 33,2 L 33,10" style="fill:none;stroke:#000000;stroke-width:3"/>
+   <path d="M 2,37 L 2,48 48,48 48,37 M 17,48 L 17,40 M 33,48 L 33,40" style="fill:none;stroke:#000000;stroke-width:3"/>
+   <path d="M 3,33 A 30,30 0 0 1 47,25 M 3,17 A 30,30 0 0 0 47,25 M 32,19 A 17,17 0 0 0 32,31" style="fill:none;stroke:#000000;stroke-width:3"/>
+   <circle cx="37" cy="25" r="2" style="fill:#000000;stroke:none"/>
+</svg>

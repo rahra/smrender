@@ -1,0 +1,14 @@
+<svg
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:xlink="http://www.w3.org/1999/xlink"  
+   version="1.1"
+   width="80"
+   height="80">
+ <symbol id="lock_gate" width="80" height="80">
+    <path d="M 76.599014,39.700057 C 76.599014,59.748032 60.347297,76 40.299507,76 20.251714,76 4,59.748032 4,39.700057 4,19.652087 20.251714,3.4001167 40.299507,3.4001167 c 20.04779,0 36.299507,16.2519703 36.299507,36.2999403 z"
+     style="fill:none;stroke:#000000;stroke-width:3.99999762" />
+    <path d="m 44.649657,15.81724 a 5.0004849,5.0006001 0 0 0 -4.281153,2.78125 l -9.749775,18.906249 a 5.0004849,5.0006001 0 0 0 -0.468739,3.624996 5.0004849,5.0006001 0 0 0 0.0625,0.250002 5.0004849,5.0006001 0 0 0 0.09375,0.218748 5.0004849,5.0006001 0 0 0 0.124995,0.375 5.0004849,5.0006001 0 0 0 0.03126,0.09375 5.0004849,5.0006001 0 0 0 0.124995,0.218754 5.0004849,5.0006001 0 0 0 0.03126,0.09375 l 9.749775,18.906252 a 5.01047,5.0105854 0 0 0 8.906047,-4.59375 L 40.618516,39.942239 49.274567,23.19224 a 5.0004849,5.0006001 0 0 0 -4.624894,-7.375 z"
+     style="font-size:medium;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-indent:0;text-align:start;text-decoration:none;line-height:normal;letter-spacing:normal;word-spacing:normal;text-transform:none;direction:ltr;block-progression:tb;writing-mode:lr-tb;text-anchor:start;baseline-shift:baseline;color:#000000;fill:#1a171b;fill-opacity:1;stroke:none;stroke-width:16.66699982;marker:none;visibility:visible;display:inline;overflow:visible;enable-background:accumulate;font-family:Sans;-inkscape-font-specification:Sans" />
+  </symbol>
+  <use xlink:href="#lock_gate" x="0" y="0" />
+</svg>

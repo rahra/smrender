@@ -1,0 +1,16 @@
+<svg
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:xlink="http://www.w3.org/1999/xlink"  
+   version="1.1"
+   width="60"
+   height="60">
+  <symbol id="line_anchor" width="60" height="60">
+    <path d="M 15,30 L 55,30" style="fill:none;stroke:#c480ff;stroke-width:5" />
+    <path d="M 18,20 L 18,40" style="fill:none;stroke:#c480ff;stroke-width:5" />
+    <circle cx="10" cy="30" r="5" style="fill:none;stroke:#c480ff;stroke-width:3" />
+    <path d="M 40,10 A30,30 0 0 1 40,50" style="fill:none;stroke:#c480ff;stroke-width:5" />
+    <path d="M 35,4 L 46,8 L 37,15 z" style="fill:#c480ff;stroke:none" />
+    <path d="M 35,56 L 46,52 L 37,45 z" style="fill:#c480ff;stroke:none" />
+  </symbol>
+  <use xlink:href="#line_anchor" x="0" y="0" />
+</svg>

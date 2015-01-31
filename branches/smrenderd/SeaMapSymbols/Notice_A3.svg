@@ -1,0 +1,12 @@
+<svg
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:xlink="http://www.w3.org/1999/xlink"  
+   version="1.1"
+   width="60"
+   height="60">
+ <symbol id="notice_a3" width="60" height="60">
+    <path d="m 17.5,22 -6.5,8 4,0 0,8 -4,5 4,0 0,10 5,0 0,-10 4,0 -4,-5 0,-8 4,0 -6.5,-8 z" style="fill:#000000;fill-opacity:1;stroke:none" />
+    <path d="m 42.5,7 -6.5,8 4,0 0,8 -4,5 4,0 0,10 5,0 0,-10 4,0 L 45,23 45,15 49,15 42.5,7 z" style="fill:#000000;fill-opacity:1;stroke:none" />
+  </symbol>
+  <use xlink:href="#notice_a3" x="0" y="0" />
+</svg>

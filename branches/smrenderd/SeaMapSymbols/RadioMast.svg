@@ -1,0 +1,18 @@
+<svg
+  xmlns="http://www.w3.org/2000/svg"
+  xmlns:xlink="http://www.w3.org/1999/xlink"  
+  version="1.1"
+  width="300"
+  height="400">
+  <symbol id="radio_mast" width="300" height="400" style="fill:none;stroke:#000000;stroke-width:5">
+    <path d="m 125,200 25,-129 25,129 m -62.5,0 25,0 m 25,0 25,0 m -25,0 c 0,6.90356 -5.59644,12.5 -12.5,12.5 -6.90356,0 -12.5,-5.59644 -12.5,-12.5 0,-6.90356 5.59644,-12.5 12.5,-12.5 6.90356,0 12.5,5.59644 12.5,12.5 z"
+      style="stroke-width:5" />
+    <g style="stroke-width:5;stroke-linecap:round">
+      <path d="M 182.69,40.093 C 190.32,48.155 195,59.027 195,71 c 0,11.973 -4.685,22.845 -12.31,30.907" style="stroke-width:5" />
+      <path d="M 117.31,40.093 C 109.68,48.155 105,59.027 105,71 c 0,11.973 4.685,22.845 12.31,30.907" style="stroke-width:5" />
+      <path d="m 173.61,93.322 c 5.51,-5.823 8.89,-13.675 8.89,-22.322 0,-8.647 -3.384,-16.499 -8.891,-22.321" style="stroke-width:5" />
+      <path d="m 126.39,48.678 c -5.51,5.823 -8.89,13.675 -8.89,22.322 0,8.647 3.383,16.499 8.891,22.322" style="stroke-width:5" />
+    </g>
+  </symbol>
+  <use xlink:href="#radio_mast" x="0" y="0" />
+</svg>

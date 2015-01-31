@@ -1,0 +1,13 @@
+<svg
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:xlink="http://www.w3.org/1999/xlink"  
+   version="1.1"
+   width="60"
+   height="60">
+  <symbol id="rock_c" width="60" height="60">
+    <ellipse cx="30" cy="30" rx="29" ry="29"
+      style="stroke:#000000;stroke-width:2px;stroke-opacity:1;stroke-dasharray:5,5;fill:#80c0ff;fill-opacity:1" />
+    <path d="M 20,47.3 L 40,12.7 M 20,12.7 L 40,47.3 M 10,30 L 50,30" style="stroke:#000000;stroke-width:5px;stroke-opacity:1" />
+  </symbol>
+  <use xlink:href="#rock_c" x="0" y="0" />
+</svg>

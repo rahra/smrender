@@ -1,0 +1,16 @@
+<svg
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:xlink="http://www.w3.org/1999/xlink"  
+   version="1.1"
+   width="60"
+   height="60">
+  <symbol id="sailing_club" width="60" height="60">
+    <rect width="58" height="58" rx="10" ry="10" x="1" y="1"
+     style="fill:#ffffff;fill-opacity:0.5;stroke:#a30075;stroke-width:2" />
+    <line x1="25" y1="10" x2="25" y2="50"
+     style="fill:none;stroke:#a30075;stroke-width:2" />
+    <path d="M 25,30 L 50,20 L 25,10 z"
+     style="fill:#a30075;stroke:none" />
+   </symbol>
+   <use xlink:href="#sailing_club" x="0" y="0"/>
+</svg>

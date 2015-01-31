@@ -1,0 +1,14 @@
+<svg
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:xlink="http://www.w3.org/1999/xlink"  
+   version="1.1"
+   width="60"
+   height="60">
+  <symbol id="notice_pwlarl" width="60" height="60">
+    <rect width="58" height="58" rx="4" ry="4" x="1" y="1" style="fill:none;stroke:#000000;stroke-width:2" />
+    <path d="M 2,58 L 30,2 L 58,58 z" style="stroke:none;fill:#000000" />
+    <path d="M 26,58 L 34,58 L 34,45 L 40,27 L 37.5,27 L 32.5,40 L 27.5,27 L 20,27 L 26,45 z" style="fill:#ffff00" />
+  </symbol>
+  <use xlink:href="#notice_pwlarl" x="0" y="0" />
+</svg>
+            

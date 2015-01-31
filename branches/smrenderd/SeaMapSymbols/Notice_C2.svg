@@ -1,0 +1,11 @@
+<svg
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:xlink="http://www.w3.org/1999/xlink"  
+   version="1.1"
+   width="60"
+   height="60">
+  <symbol id="notice_c2" width="60" height="60">
+    <path d="M 30.05,25.7 13.3,8.95 H 46.8 L 30.05,25.7 z" />
+  </symbol>
+  <use xlink:href="#notice_c2" x="0" y="0" />
+</svg>

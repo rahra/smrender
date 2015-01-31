@@ -1,0 +1,12 @@
+<svg
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:xlink="http://www.w3.org/1999/xlink"  
+   version="1.1"
+   width="60"
+   height="60">
+  <symbol id="notice_e1" width="60" height="60">
+    <rect width="58" height="58" rx="4" ry="4" x="1" y="1" style="fill:#00e800;stroke:#000000;stroke-width:2" />
+    <rect width="20" height="56" x="20" y="2" style="fill:#ffffff;stroke:none" />
+  </symbol>
+  <use xlink:href="#notice_e1" x="0" y="0" />
+</svg>
