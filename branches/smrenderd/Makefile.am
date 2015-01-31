@@ -2,17 +2,18 @@ SUBDIRS = libsmrender src smrenderd libsmfilter libskel
 ACLOCAL_AMFLAGS = -I m4
 dist_smrender_data_DATA = rules/rules.osm rules/rulesbig.osm rules/rules_land.osm
 available_rulesdir = $(smrender_datadir)/available
-dist_available_rules_DATA = rules/available/basemap.osm \
-									 rules/available/basemap_col.osm \
+dist_available_rules_DATA = rules/available/basemap_col.osm \
+								  	 rules/available/lightsectors_bw.osm \
+								  	 rules/available/seamark_buoy.osm \
+									 rules/available/basemap.osm \
+							 		 rules/available/lightsectors_col.osm \
+									 rules/available/seamark_compass.osm \
 									 rules/available/landfeatures.osm \
-									 rules/available/legend.osm \
 									 rules/available/route.osm \
-									 rules/available/seamark.osm \
-									 rules/available/lightsectors_bw.osm \
-									 rules/available/lightsectors_col.osm \
-									 rules/available/seamark_all.osm \
-									 rules/available/seamark_buoy.osm \
-									 rules/available/translation.osm
+					 				 rules/available/seamark_topmark.osm \
+									 rules/available/legend.osm \
+									 rules/available/seamark_beacon.osm \
+								 	 rules/available/translation.osm
 
 rules_100000dir = $(smrender_datadir)/rules_100000
 r100k_yedir = $(smrender_datadir)/r100k_ye
@@ -28,10 +29,10 @@ install-data-hook:
 		$(LN_S) ../available/translation.osm 001translation.osm && \
 		$(LN_S) ../available/landfeatures.osm 010landfeatures.osm && \
 		$(LN_S) ../available/route.osm 020route.osm && \
-		$(LN_S) ../available/seamark_buoy.osm 029seamark.osm && \
-		$(LN_S) ../available/seamark_all.osm 030seamark.osm && \
-		$(LN_S) ../available/seamark.osm 031seamark.osm && \
-		$(LN_S) ../available/lightsectors_bw.osm 032sectors.osm && \
+		$(LN_S) ../available/lightsectors_bw.osm 028sectors.osm && \
+		$(LN_S) ../available/seamark_buoy.osm 029buoy.osm && \
+		$(LN_S) ../available/seamark_beacon.osm 030beacon.osm && \
+		$(LN_S) ../available/seamark_topmark.osm 031topmark.osm && \
 		$(LN_S) ../available/legend.osm 900legend.osm
 	if test -e $(DESTDIR)$(rules_100000dir) ; then \
 		rm -r $(DESTDIR)$(rules_100000dir) ; \
@@ -46,12 +47,12 @@ install-data-hook:
 		$(LN_S) ../available/translation.osm 001translation.osm && \
 		$(LN_S) ../available/landfeatures.osm 010landfeatures.osm && \
 		$(LN_S) ../available/route.osm 020route.osm && \
-		$(LN_S) ../available/seamark_buoy.osm 029seamark.osm && \
-		$(LN_S) ../available/seamark_all.osm 030seamark.osm && \
-		$(LN_S) ../available/seamark.osm 031seamark.osm && \
-		$(LN_S) ../available/lightsectors_col.osm 032sectors.osm && \
+		$(LN_S) ../available/lightsectors_col.osm 028sectors.osm && \
+		$(LN_S) ../available/seamark_buoy.osm 029buoy.osm && \
+		$(LN_S) ../available/seamark_beacon.osm 030beacon.osm && \
+		$(LN_S) ../available/seamark_topmark.osm 031topmark.osm && \
 		$(LN_S) ../available/legend.osm 900legend.osm
-
+	
 nodist_bin_SCRIPTS = tools/smfilter2
 dist_noinst_SCRIPTS = tools/smfilter2.in
 

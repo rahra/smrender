@@ -4,32 +4,9 @@
       <tag k='seamark:type' v=''/>
       <tag k='_action_' v='vsector@libsmfilter.so'/>
    </node>
-   <!--
-   <node version="5">
-      <tag k='/^seamark:light:.*colour/' v='red'/>
-      <tag k='_action_' v='img:angle=auto;weight=1;file=icons/Light_Red_120.png'/>
-   </node>
-   <node version="5">
-      <tag k='/^seamark:light:.*colour/' v='white'/>
-      <tag k='_action_' v='img:angle=auto;weight=1;file=icons/Light_White_240.png'/>
-   </node>
-   <node version="5">
-      <tag k='/^seamark:light:.*colour/' v='green'/>
-      <tag k='_action_' v='img:angle=auto;weight=1;file=icons/Light_Green_120.png'/>
-   </node>
-   <node version="5">
-      <tag k='/^seamark:light:.*colour/' v='!/red|green|white/!'/>
-      <tag k='_action_' v='img:angle=auto;weight=1;file=icons/Light_Magenta_120.png'/>
-   </node>
    <node version="5">
       <tag k='/seamark:light:.*/' v=''/>
-      <tag k='~/^seamark:light:.*colour/~' v=''/>
-      <tag k='_action_' v='img:angle=auto;weight=1;file=icons/Light_Magenta_120.png'/>
-   </node>
-   -->
-   <node version="5">
-      <tag k='/seamark:light:.*/' v=''/>
-      <tag k='_action_' v='img:angle=auto;weight=1;file=icons/Light_Magenta_120.png'/>
+      <tag k='_action_' v='img:angle=auto;weight=1;file=SeaMapSymbols/Light_Magenta_120.svg'/>
    </node>
    <way>
       <tag k='seamark:light_radial' v=''/>

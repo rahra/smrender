@@ -1,0 +1,40 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<osm version='0.6'>
+
+   <node>
+      <tag k='seamark:type' v='/buoy.*/'/>
+      <tag k='seamark:topmark:shape' v='sphere'/>
+      <tag k='seamark:topmark:colour' v='red'/>
+      <tag k='_action_' v='img:file=SeaMapSymbols/Top_Sphere_Red_Buoy.svg'/>
+   </node>
+
+   <node>
+      <tag k='seamark:topmark:shape' v='x-shape'/>
+      <tag k='seamark:type' v='/buoy/'/>
+      <tag k='_action_' v='img:file=SeaMapSymbols/Top_X_Buoy.svg'/>
+   </node>
+
+   <node>
+      <tag k='seamark:topmark:shape' v='x-shape'/>
+      <tag k='seamark:type' v='/beacon/'/>
+      <tag k='_action_' v='img:file=SeaMapSymbols/Top_X_Beacon.svg'/>
+   </node>
+   <node>
+      <tag k='seamark:topmark:shape' v='sphere'/>
+      <tag k='seamark:type' v='/float/'/>
+      <tag k='_action_' v='img:file=SeaMapSymbols/Top_Sphere_Float.svg'/>
+   </node>
+   <node>
+      <tag k='seamark:topmark:shape' v='sphere'/>
+      <tag k='seamark:type' v='/beacon/'/>
+      <tag k='_action_' v='img:file=SeaMapSymbols/Top_Sphere_Beacon.svg'/>
+   </node>
+
+   <node>
+      <tag k='seamark:type' v='beacon_safe_water'/>
+      <tag k='seamark:topmark:shape' v='sphere'/>
+      <tag k='_action_' v='img:file=SeaMapSymbols/Top_Sphere_Red_Beacon.svg'/>
+   </node>
+
+</osm>
+

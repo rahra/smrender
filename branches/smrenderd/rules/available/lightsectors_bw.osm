@@ -6,7 +6,7 @@
    </node>
    <node version="5">
       <tag k='/^seamark:light:.*/' v=''/>
-      <tag k='_action_' v='img:angle=auto;weight=1;file=icons/Light_Magenta_120.png'/>
+      <tag k='_action_' v='img:angle=auto;weight=1;file=SeaMapSymbols/Light_Magenta_120.svg'/>
    </node>
    <way>
       <tag k='seamark:light_radial' v=''/>
