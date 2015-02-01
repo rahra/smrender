@@ -23,15 +23,38 @@
       <tag k='violett' v='Lj'/>
    </node>
 
+   <!-- translation table for German lights -->
+   <node id='1001'>
+      <tag k='Fl' v='Blz.'/>
+      <tag k='LFl' v='Blk.'/>
+      <tag k='Oc' v='Ubr.'/>
+      <tag k='F' v='F.'/>
+      <tag k='Iso' v='Glt.'/>
+      <tag k='Q' v='Fkl.'/>
+      <tag k='IQ' v='Fkl.unt.'/>
+      <tag k='VQ' v='SFkl.'/>
+      <tag k='IVQ' v='SFkl.unt.'/>
+      <tag k='UQ' v='UFkl.'/>
+      <tag k='IUQ' v='UFkl.unt.'/>
+      <tag k='FFl' v='F.Blz.'/>
+      <tag k='white' v='w.'/>
+      <tag k='red' v='r.'/>
+      <tag k='green' v='gn.'/>
+      <tag k='yellow' v='g.'/>
+      <tag k='black' v='s.'/>
+      <tag k='violett' v='viol.'/>
+   </node>
+
+
    <!-- translation rule for light character -->
    <node version='-100'>
       <tag k='/seamark:light:.*character/' v=''/>
-      <tag k='_action_' v='translate:id=1000;key=/seamark:light:.*character/'/>
+      <tag k='_action_' v='translate:id=1001;key=/seamark:light:.*character/'/>
    </node>
    <!-- translation rule for light colour -->
    <node version='-100'>
       <tag k='/seamark:light:.*character/' v=''/>
-      <tag k='_action_' v='translate:id=1000;key=/seamark:light:.*character/'/>
+      <tag k='_action_' v='translate:id=1001;key=/seamark:light:.*character/'/>
    </node>
 
 </osm>

@@ -163,18 +163,5 @@
       <tag k='_action_' v='cap:font=sans-serif;size=1.2;halign=east;xoff=1.0;valign=south;yoff=0;key=seamark:sounding:frac'/>
    </node>
 
-   <way>
-      <tag k='man_made' v='pier'/>
-      <tag k='_action_' v='draw:color=navajowhite;ignore_open=1'/>
-   </way>
-   <way>
-      <tag k='man_made' v='pier'/>
-      <tag k='_action_' v='draw:bcolor=black'/>
-   </way>
-
-   <way>
-      <tag k='man_made' v='breakwater'/>
-      <tag k='_action_' v='draw:color=black'/>
-   </way>
 </osm>
 
