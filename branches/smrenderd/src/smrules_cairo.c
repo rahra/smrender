@@ -2030,6 +2030,12 @@ int act_img_ini(smrule_t *r)
    }
 
    parse_auto_rot(r->act, &img.angle, &img.rot);
+   img.akey = get_param("anglekey", NULL, r->act);
+   if (img.akey != NULL && isnan(img.angle))
+   {
+      log_msg(LOG_NOTICE, "ignoring angle=auto");
+      img.angle = 0;
+   }
 
    if (r->oo->type == OSM_NODE)
    {
@@ -2084,7 +2090,7 @@ int img_fill(struct actImage *img, osm_way_t *w)
 }
 
 
-int img_place(struct actImage *img, osm_node_t *n)
+int img_place(const struct actImage *img, const osm_node_t *n)
 {
    double x, y, a;
    struct coord c;
@@ -2118,7 +2124,11 @@ int img_place(struct actImage *img, osm_node_t *n)
    }
    else
    {
-      a = DEG2RAD(360 - img->angle);
+      int m;
+      a = 0;
+      if (img->akey != NULL && (m = match_attr(&n->obj, img->akey, NULL)) >= 0)
+         a = DEG2RAD(bs_tod(n->obj.otag[m].v));
+      a += DEG2RAD(360 - img->angle);
    }
 
    cairo_rotate(img->ctx, a);

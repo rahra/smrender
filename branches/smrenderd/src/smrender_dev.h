@@ -140,6 +140,7 @@ struct actImage
    double angle;
    struct auto_rot rot;
    double scale;
+   char *akey;       // angle is defined in a tag
 #ifdef HAVE_CAIRO
    cairo_surface_t *img;
    cairo_pattern_t *pat;
