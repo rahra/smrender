@@ -49,7 +49,8 @@ AC_DEFINE([image_t], [void], [default type of image_t])
 
 AS_IF([test "x$with_rsvg" != xno], [
 PKG_CHECK_MODULES([RSVG], [librsvg-2.0],
-                  [AC_DEFINE([HAVE_RSVG], [1], [compile with support for librsvg.])]
+                  [AC_DEFINE([HAVE_RSVG], [1], [compile with support for librsvg.])],
+                  [AC_MSG_NOTICE([img() is compiled without SVG support])]
                   )
 ])
 
