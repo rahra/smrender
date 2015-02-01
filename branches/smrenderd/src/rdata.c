@@ -201,6 +201,7 @@ static void __attribute__((constructor)) init_rdata(void)
    memset(&rd_, 0, sizeof(rd_));
    rd_.dpi = 300;
    rd_.title = "";
+   rd_.img_scale = 1;
    //set_static_obj_tree(&rd_.obj);
 }
 

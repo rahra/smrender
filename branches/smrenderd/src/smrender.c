@@ -469,6 +469,7 @@ void usage(const char *s)
          "   -N <offset> ......... Add numerical <offset> to all IDs in output data.\n"
          "   -n .................. Output IDs as positive values only.\n"
          "   -r <rules file> ..... Rules file ('rules.osm' is default).\n"
+         "   -s <img scale> ...... Set global image scale (default = 1).\n"
          "   -t <title> .......... Set descriptional chart title.\n"
          "   -T <tile_info> ...... Create tiles.\n"
          "      <tile_info> := <zoom_lo> [ '-' <zoom_hi> ] ':' <tile_path> [ ':' <file_type> ]\n"
@@ -730,7 +731,7 @@ int main(int argc, char *argv[])
    if (setlocale(LC_CTYPE, "") == NULL)
       log_msg(LOG_WARN, "setlocale() failed");
 
-   while ((n = getopt(argc, argv, "ab:Dd:fg:Ghi:k:K:lMmN:no:O:P:r:R:t:T:uVvw:")) != -1)
+   while ((n = getopt(argc, argv, "ab:Dd:fg:Ghi:k:K:lMmN:no:O:P:r:R:s:t:T:uVvw:")) != -1)
       switch (n)
       {
          case 'a':
@@ -866,6 +867,16 @@ int main(int argc, char *argv[])
 
          case 'R':
             osm_rfile = optarg;
+            break;
+
+         case 's':
+            errno = 0;
+            rd->img_scale = strtod(optarg, NULL);
+            if (errno)
+            {
+               log_msg(LOG_ERR, "illegal image scaling: %s", strerror(errno));
+               rd->img_scale = 1;
+            }
             break;
 
          case 't':

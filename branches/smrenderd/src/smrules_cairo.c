@@ -1955,6 +1955,7 @@ int act_img_ini(smrule_t *r)
 
    if (get_param("scale", &img.scale, r->act) == NULL)
       img.scale = 1;
+   img.scale *= get_rdata()->img_scale;
 
 #ifdef HAVE_RSVG
    if (strlen(name) >= 4 && !strcasecmp(name + strlen(name) - 4, ".svg"))

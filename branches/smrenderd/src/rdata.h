@@ -96,6 +96,8 @@ struct rdata
    int flags;
    //! offset of output ids
    int64_t id_off;
+   //! default image scale
+   double img_scale;
 };
 
 
