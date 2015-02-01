@@ -82,5 +82,10 @@
       <tag k='_action_' v='img:file=SeaMapSymbols/Top_Sphere_Red_Beacon.svg'/>
    </node>
 
+   <node>
+      <tag k="seamark:radar_reflector" v="yes"/>
+      <tag k='_action_' v='img:file=SeaMapSymbols/Radar_Reflector.svg'/>
+   </node>
+
 </osm>
 

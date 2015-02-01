@@ -109,15 +109,34 @@
       <tag k='seamark:type' v='landmark' />
    </node>
    <node>
-      <tag k='seamark:beacon_lateral:colour' v='~green~'/>
+      <tag k='~seamark:beacon_lateral:shape~' v=''/>
       <tag k='seamark:type' v='beacon_lateral'/>
       <tag k='_action_' v='img:file=SeaMapSymbols/Beacon.svg'/>
    </node>
+
    <node>
-      <tag k='seamark:beacon_lateral:colour' v='green'/>
+      <tag k='seamark:beacon_lateral:shape' v='perch'/>
+      <tag k='seamark:beacon_lateral:category' v='port'/>
       <tag k='seamark:type' v='beacon_lateral'/>
-      <!--tag k='_action_' v='img:file=SeaMapSymbols/Beacon_Black.svg'/-->
-      <tag k='_action_' v='img:file=SeaMapSymbols/Beacon.svg'/>
+      <tag k='_action_' v='img:file=SeaMapSymbols/Perch_Port.svg'/>
+   </node>
+   <node>
+      <tag k='seamark:beacon_lateral:shape' v='perch'/>
+      <tag k='seamark:beacon_lateral:category' v='starboard'/>
+      <tag k='seamark:type' v='beacon_lateral'/>
+      <tag k='_action_' v='img:file=SeaMapSymbols/Perch_Starboard.svg'/>
+   </node>
+   <node>
+      <tag k='seamark:beacon_lateral:shape' v='withy'/>
+      <tag k='seamark:beacon_lateral:category' v='port'/>
+      <tag k='seamark:type' v='beacon_lateral'/>
+      <tag k='_action_' v='img:file=SeaMapSymbols/Withy_Port.svg'/>
+   </node>
+   <node>
+      <tag k='seamark:beacon_lateral:shape' v='withy'/>
+      <tag k='seamark:beacon_lateral:category' v='starboard'/>
+      <tag k='seamark:type' v='beacon_lateral'/>
+      <tag k='_action_' v='img:file=SeaMapSymbols/Withy_Starboard.svg'/>
    </node>
 
    <node>
