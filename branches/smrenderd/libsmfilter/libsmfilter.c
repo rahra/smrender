@@ -36,6 +36,7 @@ struct vsec_data
    double arc_max;         // param 'a'
    double sec_radius;      // param 'r'
    double dir_arc;         // param 'b'
+   double radius_f;        // radius multiplier
 };
 
 static char *smstrdup(const char *);
@@ -247,18 +248,6 @@ int act_pchar_main(smrule_t *r, osm_obj_t *o)
 }
 
 
-int set_on_match(const char *s, const char *k, const char *v, double *a)
-{
-   int r;
-
-   if ((r = strcmp(s, k)) != 0)
-      return r;
-
-   *a = atof(v);
-   return 0;
-}
-
-
 int act_vsector_ini(smrule_t *r)
 {
    struct vsec_data *vd;
@@ -280,16 +269,18 @@ int act_vsector_ini(smrule_t *r)
    vd->dir_arc = DIR_ARC;
    vd->arc_div = ARC_DIV;
    vd->sec_radius = SEC_RADIUS;
+   vd->radius_f = 1;
 
    get_param("a", &vd->arc_max, r->act);
    get_param("b", &vd->dir_arc, r->act);
    get_param("d", &vd->arc_div, r->act);
    get_param("r", &vd->sec_radius, r->act);
+   get_param("f", &vd->radius_f, r->act);
 
    r->data = vd;
 
-   log_msg(LOG_INFO, "arc_max_(a) = %.2f, dir_arc_(b) = %.2f, arc_div_(d) = %.2f, sec_radius_(r) = %.2f",
-         vd->arc_max, vd->dir_arc, vd->arc_div, vd->sec_radius);
+   log_msg(LOG_INFO, "arc_max(a) = %.2f, dir_arc(b) = %.2f, arc_div(d) = %.2f, sec_radius(r) = %.2f, radius_f(f) = %.2f",
+         vd->arc_max, vd->dir_arc, vd->arc_div, vd->sec_radius, vd->radius_f);
    return 0;
 }
 
@@ -1145,6 +1136,8 @@ static int proc_sfrac(struct sector *sec, struct vsec_data *vd)
    // creating tapering segments
    for (i = 0; i < sec->fused; i++)
    {
+      sec->sf[i].r *= vd->radius_f;
+
       if ((sec->sf[i].type != ARC_TAPER_UP) && (sec->sf[i].type != ARC_TAPER_DOWN))
          continue;
       // check array overflow
