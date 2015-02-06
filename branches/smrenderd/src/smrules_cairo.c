@@ -1,4 +1,4 @@
-/* Copyright 2011 Bernhard R. Fischer, 2048R/5C5FFD47 <bf@abenteuerland.at>
+/* Copyright 2011-2015 Bernhard R. Fischer, 2048R/5C5FFD47 <bf@abenteuerland.at>
  *
  * This file is part of smrender.
  *
@@ -100,6 +100,14 @@
 #define MAJORAXIS 720.0
 #define AUTOROT NAN
 
+#define CAIRO_SMR_STATS
+#ifdef CAIRO_SMR_STATS
+enum {CSS_LINE, CSS_CURVE, CSS_STROKE, CSS_FILL, CSS_PAINT, CSS_PUSH, CSS_POP, CSS_MAX};
+static int css_stats_[CSS_MAX];
+#define CSS_INC(x) (css_stats_[x]++)
+#else
+#define CSS_INC(x)
+#endif
 
 typedef struct diffvec
 {
@@ -203,7 +211,12 @@ static cairo_surface_t *cairo_smr_surface(void)
    cairo_surface_t *sfc;
    cairo_status_t e;
 
+//#define RECORD_TO_PDF
+#ifndef RECORD_TO_PDF
    sfc = cairo_recording_surface_create(CAIRO_CONTENT_COLOR_ALPHA, &ext_);
+#else
+   sfc = cairo_pdf_surface_create("tmp.pdf", ext_.width, ext_.height);
+#endif
    if ((e = cairo_surface_status(sfc)) != CAIRO_STATUS_SUCCESS)
    {
       log_msg(LOG_ERR, "failed to create cairo surface: %s", cairo_status_to_string(e));
@@ -211,6 +224,16 @@ static cairo_surface_t *cairo_smr_surface(void)
    }
    cairo_surface_set_fallback_resolution(sfc, rdata_dpi(), rdata_dpi());
    return sfc;
+}
+
+
+void __attribute__((destructor)) cairo_smr_fini(void)
+{
+   cairo_surface_destroy(sfc_);
+#ifdef CAIRO_SMR_STATS
+   for (int i = 0; i < CSS_MAX; i++)
+      log_debug("css_stats_[%d] = %d", i, css_stats_[i]);
+#endif
 }
 
 
@@ -232,6 +255,7 @@ void cairo_smr_init_main_image(const char *bg)
    ctx = cairo_create(sfc_);
    cairo_smr_set_source_color(ctx, parse_color("bgcolor"));
    cairo_paint(ctx);
+   CSS_INC(CSS_PAINT);
    cairo_destroy(ctx);
 
    log_msg(LOG_DEBUG, "background color is set to 0x%08x", parse_color("bgcolor"));
@@ -255,6 +279,7 @@ void *cairo_smr_image_surface_from_bg(cairo_format_t fmt)
    cairo_scale(dst, (double) rdata_dpi() / 72, (double) rdata_dpi() / 72);
    cairo_set_source_surface(dst, sfc_, 0, 0);
    cairo_paint(dst);
+   CSS_INC(CSS_PAINT);
    cairo_destroy(dst);
    cairo_smr_log_surface_data(sfc);
    return sfc;
@@ -280,9 +305,10 @@ void save_main_image(FILE *f, int ftype)
 
       case FTYPE_PDF:
 #ifdef CAIRO_HAS_PDF_SURFACE
-         log_debug("width = %.2f pt, height = %.2f pt", rdata_width(U_PT), rdata_height(U_PT));
+         log_debug("PDF: width = %.2f pt (%.2f mm), height = %.2f pt (%.2f mm)",
+               rdata_width(U_PT), rdata_width(U_MM), rdata_height(U_PT), rdata_height(U_MM));
          sfc = cairo_pdf_surface_create_for_stream(cairo_smr_write_func, f, rdata_width(U_PT), rdata_height(U_PT));
-         cairo_pdf_surface_restrict_to_version(sfc, CAIRO_PDF_VERSION_1_4);
+         //cairo_pdf_surface_restrict_to_version(sfc, CAIRO_PDF_VERSION_1_4);
          dst = cairo_create(sfc);
          cairo_smr_log_status(dst);
          cairo_set_source_surface(dst, sfc_, 0, 0);
@@ -293,6 +319,7 @@ void save_main_image(FILE *f, int ftype)
 #else
          log_msg(LOG_NOTICE, "cannot create PDF, cairo was compiled without PDF support");
 #endif
+         return;
 #ifdef CAIRO_HAS_SVG_SURFACE
       case FTYPE_SVG:
          log_debug("width = %.2f pt, height = %.2f pt", rdata_width(U_PT), rdata_height(U_PT));
@@ -539,6 +566,7 @@ int act_draw_ini(smrule_t *r)
       return -1;
    }
    cairo_push_group(d->ctx);
+   CSS_INC(CSS_PUSH);
 
    sm_threaded(r);
 
@@ -670,6 +698,7 @@ static int cairo_smr_poly_curve(const osm_way_t *w, cairo_t *ctx, double f)
       }
 
       cairo_curve_to(ctx, c1.x, c1.y, c2.x, c2.y, pt[i].x, pt[i].y);
+      CSS_INC(CSS_CURVE);
       //log_debug("%f %f %f %f %f %f", c1.x, c1.y, c2.x, c2.y, pt[i].x, pt[i].y);
    }
 
@@ -697,6 +726,7 @@ static void cairo_smr_poly_line(const osm_way_t *w, cairo_t *ctx)
 
       geo2pt(n->lon, n->lat, &x, &y);
       cairo_line_to(ctx, x, y);
+      CSS_INC(CSS_LINE);
    }
 }
 
@@ -776,6 +806,7 @@ static void render_poly_line(cairo_t *ctx, const struct actDraw *d, const osm_wa
       else
          cairo_smr_poly_curve(w, ctx, d->curve_fact);
       cairo_stroke(ctx);
+      CSS_INC(CSS_STROKE);
    }
 
    if (d->fill.used)
@@ -790,6 +821,7 @@ static void render_poly_line(cairo_t *ctx, const struct actDraw *d, const osm_wa
          cairo_save(ctx);
          cairo_set_operator(ctx, CAIRO_OPERATOR_CLEAR);
          cairo_fill(ctx);
+         CSS_INC(CSS_FILL);
          cairo_restore(ctx);
       }
       else
@@ -797,12 +829,16 @@ static void render_poly_line(cairo_t *ctx, const struct actDraw *d, const osm_wa
          //log_debug("ccw: filling with #%08x", d->fill.col);
          cairo_smr_set_source_color(ctx, d->fill.col);
          if (is_closed_poly(w))
+         {
             cairo_fill(ctx);
+            CSS_INC(CSS_FILL);
+         }
          else
          {
             cairo_set_line_width(ctx, cairo_smr_fill_width(d));
             cairo_smr_dash(ctx, d->fill.style);
             cairo_stroke(ctx);
+            CSS_INC(CSS_STROKE);
          }
       }
    }
@@ -872,7 +908,9 @@ int act_draw_fini(smrule_t *r)
    int i;
 
    cairo_pop_group_to_source(d->ctx);
+   CSS_INC(CSS_POP);
    cairo_paint(d->ctx);
+   CSS_INC(CSS_PAINT);
 
    if (d->directional)
    {
@@ -892,6 +930,7 @@ int act_draw_fini(smrule_t *r)
       qsort(d->wl->ref, d->wl->ref_cnt, sizeof(struct poly), (int(*)(const void *, const void *)) compare_poly_area);
 
       cairo_push_group(d->ctx);
+      CSS_INC(CSS_PUSH);
       // check if largest polygon is clockwise
       if (d->wl->ref_cnt && d->wl->ref[0].cw)
       {
@@ -906,7 +945,9 @@ int act_draw_fini(smrule_t *r)
 
       }
       cairo_pop_group_to_source(d->ctx);
+      CSS_INC(CSS_POP);
       cairo_paint(d->ctx);
+      CSS_INC(CSS_PAINT);
    }
 
    cairo_destroy(d->ctx);
@@ -1084,6 +1125,7 @@ int act_cap_ini(smrule_t *r)
 
    cairo_smr_set_source_color(cap.ctx, cap.col);
    cairo_push_group(cap.ctx);
+   CSS_INC(CSS_PUSH);
 
    if ((r->data = malloc(sizeof(cap))) == NULL)
    {
@@ -1253,6 +1295,7 @@ static cairo_surface_t *cairo_smr_plane(int w, int h, int x, int col)
    cairo_smr_set_source_color(ctx, col);
    cairo_rectangle(ctx, x, 0, w - x, h);
    cairo_fill(ctx);
+   //CSS_INC(CSS_FILL);
    cairo_destroy(ctx);
 
    return sfc;
@@ -1921,7 +1964,9 @@ int act_cap_fini(smrule_t *r)
    struct actCaption *cap = r->data;
 
    cairo_pop_group_to_source(cap->ctx);
+   CSS_INC(CSS_POP);
    cairo_paint(cap->ctx);
+   CSS_INC(CSS_PAINT);
    cairo_destroy(cap->ctx);
 
    free(cap);
@@ -2064,6 +2109,7 @@ int act_img_ini(smrule_t *r)
    }
 
    cairo_push_group(img.ctx);
+   CSS_INC(CSS_PUSH);
   
    if ((r->data = malloc(sizeof(img))) == NULL)
    {
@@ -2087,6 +2133,7 @@ int img_fill(struct actImage *img, osm_way_t *w)
 
    cairo_smr_poly_line(w, img->ctx);
    cairo_fill(img->ctx);
+   CSS_INC(CSS_FILL);
    return 0;
 }
 
@@ -2111,10 +2158,15 @@ int img_place(const struct actImage *img, const osm_node_t *n)
       if (cairo_surface_get_type(img->img) != CAIRO_SURFACE_TYPE_IMAGE)
       {
          log_debug("create temporary image surface");
+#ifdef HAVE_CAIRO_SURFACE_CREATE_SIMILAR_IMAGE
          fg = cairo_surface_create_similar_image(img->img, CAIRO_FORMAT_ARGB32, img->w, img->h);
+#else
+         fg = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, img->w, img->h);
+#endif
          cairo_t *fgx = cairo_create(fg);
          cairo_set_source_surface(fgx, img->img, 0, 0);
          cairo_paint(fgx);
+         CSS_INC(CSS_PAINT);
          cairo_destroy(fgx);
       }
 
@@ -2135,6 +2187,7 @@ int img_place(const struct actImage *img, const osm_node_t *n)
    cairo_rotate(img->ctx, a);
    cairo_set_source_surface(img->ctx, img->img, img->w / -2.0, img->h / -2.0);
    cairo_paint(img->ctx);
+   CSS_INC(CSS_PAINT);
    cairo_restore(img->ctx);
 
    return 0;
@@ -2158,7 +2211,9 @@ int act_img_fini(smrule_t *r)
    struct actImage *img = r->data;
 
    cairo_pop_group_to_source(img->ctx);
+   CSS_INC(CSS_POP);
    cairo_paint(img->ctx);
+   CSS_INC(CSS_PAINT);
 
    if (img->pat)
       cairo_pattern_destroy(img->pat);
