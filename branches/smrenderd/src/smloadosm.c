@@ -552,7 +552,7 @@ int read_osm_file(hpx_ctrl_t *ctl, bx_node_t **tree, const struct filter *fi, st
       if (t != obj->type)
       {
          t = obj->type;
-         log_debug("new object section: type = %d", t);
+         //log_debug("new object section: type = %d", t);
       }
 
       if (obj != NULL)
