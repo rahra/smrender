@@ -1,5 +1,5 @@
 <?xml version='1.0' encoding='UTF-8'?>
-<osm version='0.6'>
+<osm version='0.6' generator='Bernhard R. Fischer'>
 
    <node>
       <tag k='seamark:type' v='wreck'/>
@@ -168,6 +168,19 @@
       <tag k='seamark:buoy_lateral:shape' v='spar' />
       <tag k='seamark:type' v='buoy_lateral' />
    </node>
+
+   <node>
+      <tag k='_action_' v='img:file=SeaMapSymbols/Pillar_Red_Green_Red.svg'/>
+      <tag k='seamark:buoy_lateral:category' v='preferred_channel_starboard' />
+      <tag k='seamark:buoy_lateral:shape' v='pillar' />
+      <tag k='seamark:type' v='buoy_lateral' />
+   </node>
+   <node>
+      <tag k='_action_' v='img:file=SeaMapSymbols/Cone_Red_Green_Red.svg'/>
+      <tag k='seamark:buoy_lateral:category' v='preferred_channel_starboard' />
+      <tag k='seamark:buoy_lateral:shape' v='conical' />
+      <tag k='seamark:type' v='buoy_lateral' />
+   </node>
    <node>
       <tag k='_action_' v='img:file=SeaMapSymbols/Pillar_Green_Red_Green.svg'/>
       <!--tag k='_action_' v='img:file=SeaMapSymbols/Pillar_Black.svg'/-->
@@ -175,6 +188,25 @@
       <tag k='seamark:buoy_lateral:shape' v='pillar' />
       <tag k='seamark:type' v='buoy_lateral' />
    </node>
+   <node>
+      <tag k='_action_' v='img:file=SeaMapSymbols/Cone_Green_Red_Green.svg'/>
+      <tag k='seamark:buoy_lateral:category' v='preferred_channel_port' />
+      <tag k='seamark:buoy_lateral:shape' v='conical' />
+      <tag k='seamark:type' v='buoy_lateral' />
+   </node>
+   <node>
+      <tag k='_action_' v='img:file=SeaMapSymbols/Spar_Green_Red_Green.svg'/>
+      <tag k='seamark:buoy_lateral:category' v='preferred_channel_port' />
+      <tag k='seamark:buoy_lateral:shape' v='spar' />
+      <tag k='seamark:type' v='buoy_lateral' />
+   </node>
+   <node>
+      <tag k='_action_' v='img:file=SeaMapSymbols/Spar_Green_Red_Green.svg'/>
+      <tag k='seamark:buoy_lateral:category' v='preferred_channel_port' />
+      <tag k='seamark:buoy_lateral:shape' v='spar' />
+      <tag k='seamark:type' v='buoy_lateral' />
+   </node>
+
 
    <node>
       <tag k='seamark:type' v='buoy_special_purpose'/>
@@ -208,7 +240,11 @@
       <tag k='_action_' v='img:file=SeaMapSymbols/Super.svg'/>
    </node>
 
-
+   <node>
+      <tag k='seamark:type' v='buoy_isolated_danger'/>
+      <tag k='seamark:buoy_isolated_danger:shape' v='spar'/>
+      <tag k='_action_' v='img:file=SeaMapSymbols/Spar_Black_Red_Black.svg'/>
+   </node>
    <node>
       <tag k='seamark:type' v='buoy_isolated_danger'/>
       <tag k='seamark:buoy_isolated_danger:shape' v='pillar'/>

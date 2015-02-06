@@ -1,5 +1,5 @@
 <?xml version='1.0' encoding='UTF-8'?>
-<osm version='0.6'>
+<osm version='0.6' generator='Bernhard R. Fischer'>
 
    <!-- Add center node for compass, 5 cm western and southern of the upper right page corner. -->
    <node lat="-50" lon="-50" version="-10">

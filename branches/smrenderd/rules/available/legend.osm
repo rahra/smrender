@@ -1,5 +1,5 @@
 <?xml version='1.0' encoding='UTF-8'?>
-<osm version='0.6'>
+<osm version='0.6' generator='Bernhard R. Fischer'>
    <node>
       <tag k='_action_' v='cap:font=sans-serif:bold;size=4;key=name;angle=90;valign=north'/>
       <tag k='grid' v='text'/>

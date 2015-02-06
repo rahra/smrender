@@ -1,5 +1,5 @@
 <?xml version='1.0' encoding='UTF-8'?>
-<osm version='0.6'>
+<osm version='0.6' generator='Bernhard R. Fischer'>
    <way version='-10'>
       <tag k='way' v='route'/>
       <tag k='_action_' v='ins_eqdist:distance=5'/>
