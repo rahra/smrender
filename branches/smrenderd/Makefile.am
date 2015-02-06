@@ -31,7 +31,7 @@ install-data-hook:
 		$(LN_S) ../available/translation.osm 001translation.osm && \
 		$(LN_S) ../available/landfeatures.osm 010landfeatures.osm && \
 		$(LN_S) ../available/route.osm 020route.osm && \
-		$(LN_S) ../available/lightsectors_bw.osm 028sectors.osm && \
+		$(LN_S) ../available/lightsectors_col.osm 028sectors.osm && \
 		$(LN_S) ../available/seamark_area.osm 027area.osm && \
 		$(LN_S) ../available/seamark_buoy.osm 029buoy.osm && \
 		$(LN_S) ../available/seamark_beacon.osm 030beacon.osm && \
