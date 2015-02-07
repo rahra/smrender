@@ -11,10 +11,6 @@
       <tag k='_action_' v='sounding@libsmfilter.so'/>
    </node>
    <node>
-      <tag k='seamark:type' v=''/>
-      <tag k='_action_' v='pchar@libsmfilter.so'/>
-   </node>
-   <node>
       <tag k='seamark:type' v='light_minor'/>
       <tag k='_action_' v='img:file=SeaMapSymbols/Light_Minor.svg'/>
    </node>
