@@ -1,4 +1,4 @@
-/* Copyright 2011 Bernhard R. Fischer, 2048R/5C5FFD47 <bf@abenteuerland.at>
+/* Copyright 2011-2015 Bernhard R. Fischer, 2048R/5C5FFD47 <bf@abenteuerland.at>
  *
  * This file is part of smrender.
  *
@@ -86,6 +86,7 @@ struct inherit_data
 struct trans_data
 {
    osm_obj_t *o;
+   int newtag;
    int tag_cnt;
    struct stag *st;
    struct otag *ot;
@@ -2277,6 +2278,7 @@ int act_translate_ini(smrule_t *r)
       return -1;
    }
 
+   td->newtag = get_param_bool("newtag", r->act);
    td->o = or->oo;
    td->tag_cnt = i;
    td->st = (struct stag*) (td + 1);
@@ -2317,13 +2319,14 @@ int act_translate_main(smrule_t *r, osm_obj_t *o)
 {
    struct trans_data *td = r->data;
    struct stag st;
-   struct otag ot;
-   int i, n, m;
+   struct otag ot, *tmp_ot;
+   int i, n, m, ocnt;
 
    memset(&st, 0, sizeof(st));
    memset(&ot, 0, sizeof(ot));
 
-   for (i = 0; i < td->tag_cnt; i++)
+   ocnt = td->tag_cnt;
+   for (i = 0; i < ocnt; i++)
    {
       // test if object has such a key
       if ((n = bs_match_attr(o, &td->ot[i], &td->st[i])) < 0)
@@ -2335,6 +2338,28 @@ int act_translate_main(smrule_t *r, osm_obj_t *o)
       // lookup if translation table object (in r->data) contains such key
       if ((m = bs_match_attr(td->o, &ot, &st)) < 0)
          continue;
+
+      // add new tag if newtag is true
+      if (td->newtag)
+      {
+         if ((tmp_ot = realloc(o->otag, sizeof(struct otag) * (o->tag_cnt + 1))) == NULL)
+         {
+            log_msg(LOG_DEBUG, "could not realloc tag list: %s", strerror(errno));
+            return 0;
+         }
+         o->otag = tmp_ot;
+         //o->otag[o->tag_cnt].v = td->o->otag[m].v;
+         o->otag[o->tag_cnt].k.len = o->otag[n].k.len + 6;
+         if ((o->otag[o->tag_cnt].k.buf = malloc(o->otag[o->tag_cnt].k.len)) == NULL)
+         {
+            log_msg(LOG_ERR, "malloc() failed: %s", strerror(errno));
+            return -1;
+         }
+         memcpy(o->otag[o->tag_cnt].k.buf, o->otag[n].k.buf, o->otag[n].k.len);
+         memcpy(o->otag[o->tag_cnt].k.buf + o->otag[n].k.len, ":local", 6);
+         n = o->tag_cnt;
+         o->tag_cnt++;
+      }
 
       // translate, i.e. set object value to value of translation object
       o->otag[n].v = td->o->otag[m].v;
