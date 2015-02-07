@@ -1,4 +1,4 @@
-/* Copyright 2011 Bernhard R. Fischer, 2048R/5C5FFD47 <bf@abenteuerland.at>
+/* Copyright 2011-2015 Bernhard R. Fischer, 2048R/5C5FFD47 <bf@abenteuerland.at>
  *
  * This file is part of smrender.
  *
@@ -427,7 +427,7 @@ void init_rd_paper(struct rdata *rd, const char *paper)
 
 static void print_version(void)
 {
-   printf("Seamark renderer V" PACKAGE_VERSION ", (c) 2011-2012, Bernhard R. Fischer, <bf@abenteuerland.at>.\n"
+   printf("Seamark renderer V" PACKAGE_VERSION ", (c) 2011-2015, Bernhard R. Fischer, <bf@abenteuerland.at>.\n"
           "See http://www.abenteuerland.at/smrender/ for more information.\n");
 #ifdef HAVE_CAIRO
    printf("Using libcairo %s.\n", cairo_version_string());
@@ -469,6 +469,7 @@ void usage(const char *s)
          "   -N <offset> ......... Add numerical <offset> to all IDs in output data.\n"
          "   -n .................. Output IDs as positive values only.\n"
          "   -r <rules file> ..... Rules file ('rules.osm' is default).\n"
+         "   -R <file> ........... Output all rules to <file>.\n"
          "   -s <img scale> ...... Set global image scale (default = 1).\n"
          "   -t <title> .......... Set descriptional chart title.\n"
          "   -T <tile_info> ...... Create tiles.\n"
