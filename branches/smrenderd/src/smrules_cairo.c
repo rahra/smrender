@@ -100,6 +100,9 @@
 #define MAJORAXIS 720.0
 #define AUTOROT NAN
 
+#define RENDER_IMMEDIATE 0
+#define CREATE_PATH 1
+
 #define CAIRO_SMR_STATS
 #ifdef CAIRO_SMR_STATS
 enum {CSS_LINE, CSS_CURVE, CSS_STROKE, CSS_FILL, CSS_PAINT, CSS_PUSH, CSS_POP, CSS_MAX};
@@ -715,7 +718,7 @@ static void cairo_smr_poly_line(const osm_way_t *w, cairo_t *ctx)
    double x, y;
    int i;
 
-   cairo_new_path(ctx);
+   cairo_new_sub_path(ctx);
    for (i = 0; i < w->ref_cnt; i++)
    {
       if ((n = get_object(OSM_NODE, w->ref[i])) == NULL)
@@ -789,7 +792,29 @@ static void cairo_smr_dash(cairo_t *ctx, int style)
 }
 
 
-/*! Render the way properly to the cairo context.
+static inline int cairo_smr_poly(cairo_t *ctx, const struct actDraw *d, const osm_way_t *w)
+{
+   if (d->curve)
+      return cairo_smr_poly_curve(w, ctx, d->curve_fact);
+
+   cairo_smr_poly_line(w, ctx);
+   return 0;
+}
+
+ 
+/*! Render the way properly to the cairo context (version 2, 2015/0207).
+ * The border is always stroked immediately, independently if it is an open or
+ * closed polygon and fill is carried out immediately on open polygons. On
+ * closed polygons the fill operation is carried out only if cw = 0.
+ * If cw != 0 it does not fill but just creates a sub-paths within the cairo
+ * context. Thus, fill must be called after, explicitly. Please note that it is
+ * not allowed to mix calls which stroke/fill and those who don't because
+ * stroke/fill will always clear all previous paths.
+ * @param ctx Pointer to the cairo context.
+ * @param d Pointer to the drawing parameters of Smrender.
+ * @param w Pointer to the OSM way.
+ * @param cw If 0 stroke/fill immediately, otherwise just create sub-path but
+ * do not stroke/fill.
  */
 static void render_poly_line(cairo_t *ctx, const struct actDraw *d, const osm_way_t *w, int cw)
 {
@@ -801,45 +826,26 @@ static void render_poly_line(cairo_t *ctx, const struct actDraw *d, const osm_wa
       cairo_smr_set_source_color(ctx, d->border.col);
       cairo_set_line_width(ctx, cairo_smr_border_width(d, is_closed_poly(w)));
       cairo_smr_dash(ctx, d->border.style);
-      if (!d->curve)
-         cairo_smr_poly_line(w, ctx);
-      else
-         cairo_smr_poly_curve(w, ctx, d->curve_fact);
+      cairo_smr_poly(ctx, d, w);
       cairo_stroke(ctx);
       CSS_INC(CSS_STROKE);
    }
 
    if (d->fill.used)
    {
-      if (!d->curve)
-         cairo_smr_poly_line(w, ctx);
-      else
-         cairo_smr_poly_curve(w, ctx, d->curve_fact);
-      if (cw)  // this should only be allowed if it is a closed polygon
+      cairo_smr_poly(ctx, d, w);
+      cairo_smr_set_source_color(ctx, d->fill.col);
+      if (!is_closed_poly(w))
       {
-         //log_debug("cw: clearing");
-         cairo_save(ctx);
-         cairo_set_operator(ctx, CAIRO_OPERATOR_CLEAR);
+         cairo_set_line_width(ctx, cairo_smr_fill_width(d));
+         cairo_smr_dash(ctx, d->fill.style);
+         cairo_stroke(ctx);
+         CSS_INC(CSS_STROKE);
+      }
+      else if (!cw)
+      {
          cairo_fill(ctx);
          CSS_INC(CSS_FILL);
-         cairo_restore(ctx);
-      }
-      else
-      {
-         //log_debug("ccw: filling with #%08x", d->fill.col);
-         cairo_smr_set_source_color(ctx, d->fill.col);
-         if (is_closed_poly(w))
-         {
-            cairo_fill(ctx);
-            CSS_INC(CSS_FILL);
-         }
-         else
-         {
-            cairo_set_line_width(ctx, cairo_smr_fill_width(d));
-            cairo_smr_dash(ctx, d->fill.style);
-            cairo_stroke(ctx);
-            CSS_INC(CSS_STROKE);
-         }
       }
    }
 }
@@ -861,13 +867,13 @@ int act_draw_main(smrule_t *r, osm_obj_t *o)
          if (!d->collect_open)
             return 0;
 
-         render_poly_line(d->ctx, d, (osm_way_t*) o, 0);
+         render_poly_line(d->ctx, d, (osm_way_t*) o, RENDER_IMMEDIATE);
          return 0;
       }
 
       if (!d->directional)
       {
-         render_poly_line(d->ctx, d, (osm_way_t*) o, 0);
+         render_poly_line(d->ctx, d, (osm_way_t*) o, RENDER_IMMEDIATE);
          return 0;
       }
 
@@ -936,14 +942,15 @@ int act_draw_fini(smrule_t *r)
       {
          // ...and render larger (page size) filled polygon
          log_debug("inserting artifical background");
-         render_poly_line(d->ctx, d, page_way(), 0);
+         render_poly_line(d->ctx, d, page_way(), CREATE_PATH);
       }
       for (i = 0; i < d->wl->ref_cnt; i++)
       {
-         log_debug("cw = %d, area = %f", d->wl->ref[i].cw, d->wl->ref[i].area);
-         render_poly_line(d->ctx, d, d->wl->ref[i].w, d->wl->ref[i].cw);
-
+         log_debug("id = %"PRId64", cw = %d, area = %f", d->wl->ref[i].w->obj.id, d->wl->ref[i].cw, d->wl->ref[i].area);
+         render_poly_line(d->ctx, d, d->wl->ref[i].w, CREATE_PATH);
       }
+      cairo_smr_set_source_color(d->ctx, d->fill.col);
+      cairo_fill(d->ctx);
       cairo_pop_group_to_source(d->ctx);
       CSS_INC(CSS_POP);
       cairo_paint(d->ctx);
