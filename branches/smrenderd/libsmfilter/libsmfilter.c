@@ -1026,10 +1026,11 @@ static int proc_sfrac(struct sector *sec, struct vsec_data *vd)
       sec->sf[0].r = isnan(sec->r) ? vd->sec_radius : sec->r;
    if (sec->sf[0].r < 0)
       sec->sf[0].r = vd->sec_radius;
+   sec->sf[0].r *= vd->radius_f;
 
    if (!sec->fused && isnan(sec->dir))
    {
-      sec->sf[0].r = vd->sec_radius;
+      sec->sf[0].r = vd->sec_radius * vd->radius_f;
       sec->sf[0].start = sec->start;
       sec->sf[0].end = sec->end;
       sec->sf[0].col = sec->col[0];
@@ -1136,8 +1137,6 @@ static int proc_sfrac(struct sector *sec, struct vsec_data *vd)
    // creating tapering segments
    for (i = 0; i < sec->fused; i++)
    {
-      sec->sf[i].r *= vd->radius_f;
-
       if ((sec->sf[i].type != ARC_TAPER_UP) && (sec->sf[i].type != ARC_TAPER_DOWN))
          continue;
       // check array overflow
