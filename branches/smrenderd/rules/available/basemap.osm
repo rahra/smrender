@@ -50,6 +50,7 @@
    <way>
       <tag k='seamark:type' v='depth_contour'/>
       <tag k='seamark:depth_contour:depth' v='10'/>
+      <tag k='generator' v='smrender'/>
       <tag k='~distance~' v=''/>
       <tag k='_action_' v='draw:color=skyblue;ignore_open=1;directional=1;curve=1'/>
    </way>
