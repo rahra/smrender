@@ -102,6 +102,7 @@
 
 #define RENDER_IMMEDIATE 0
 #define CREATE_PATH 1
+#define PUSH_GROUP
 
 #define CAIRO_SMR_STATS
 #ifdef CAIRO_SMR_STATS
@@ -568,8 +569,10 @@ int act_draw_ini(smrule_t *r)
       r->data = NULL;
       return -1;
    }
+#ifdef PUSH_GROUP
    cairo_push_group(d->ctx);
    CSS_INC(CSS_PUSH);
+#endif
 
    sm_threaded(r);
 
@@ -913,10 +916,12 @@ int act_draw_fini(smrule_t *r)
    struct actDraw *d = r->data;
    int i;
 
+#ifdef PUSH_GROUP
    cairo_pop_group_to_source(d->ctx);
    CSS_INC(CSS_POP);
    cairo_paint(d->ctx);
    CSS_INC(CSS_PAINT);
+#endif
 
    if (d->directional)
    {
@@ -1112,6 +1117,20 @@ int act_cap_ini(smrule_t *r)
    }
 
    cap.pos = parse_alignment(r->act);
+   if ((cap.halignkey = get_param("alignkey", NULL, r->act)) != NULL)
+   {
+      cap.valignkey = cap.halignkey;
+      cap.pos &= ~POS_DIR_MSK;
+   }
+   else
+   {
+      if ((cap.halignkey = get_param("halignkey", NULL, r->act)) != NULL)
+         cap.pos &= ~(POS_E | POS_W);
+      if ((cap.valignkey = get_param("valignkey", NULL, r->act)) != NULL)
+         cap.pos &= ~(POS_N | POS_S);
+   }
+   log_debug("halignkey = %s, valignkey = %s", cap.halignkey != NULL ? cap.halignkey : "NULL", cap.valignkey != NULL ? cap.valignkey : "NULL");
+
    cap.ctx = cairo_create(sfc_);
    if (cairo_smr_log_status(cap.ctx) != CAIRO_STATUS_SUCCESS)
       return -1;
@@ -1131,8 +1150,10 @@ int act_cap_ini(smrule_t *r)
 #endif
 
    cairo_smr_set_source_color(cap.ctx, cap.col);
+#ifdef PUSH_GROUP
    cairo_push_group(cap.ctx);
    CSS_INC(CSS_PUSH);
+#endif
 
    if ((r->data = malloc(sizeof(cap))) == NULL)
    {
@@ -1806,7 +1827,52 @@ static double find_angle(const struct coord *c, const struct auto_rot *rot, cair
 }
 
 
-static int cap_coord(const struct actCaption *cap, const struct coord *c, const bstring_t *str, const osm_obj_t *o)
+static const char *pos_to_str(int pos)
+{
+   if (pos & POS_E)
+      return "east";
+   if (pos & POS_W)
+      return "west";
+   return "center";
+}
+
+
+/*! This function looks up the tag with the key 'key' in the object o and
+ * interpretes its value as alignment parameter (north, east,...).
+ * @param o Pointer to object.
+ * @param key Name of key.
+ * @return Returns an integer containg POS_N, POS_S, POS_E, POS_W locically
+ * or'd together. If an error occurs, 0 is returned (which is the center
+ * position) and errno is set to EINVAL if the key contains an invalid value.
+ * If the object has no such key, errno is set to ENOKEY;
+ */
+static int retr_align_key_pos(const osm_obj_t *o, const char *key)
+{
+   char align[10];
+   int n, pos = 0;
+
+   if ((n = match_attr(o, key, NULL)) >= 0)
+   {
+      if (o->otag[n].v.len <= 9)
+      {
+         memcpy(align, o->otag[n].v.buf, o->otag[n].v.len);
+         align[o->otag[n].v.len] = '\0';
+         pos = parse_alignment_str(align);
+      }
+      else
+      {
+         log_msg(LOG_WARN, "key %.*s contains ill tag value", o->otag[n].k.len, o->otag[n].k.buf);
+         errno = EINVAL;
+      }
+   }
+   else
+      errno = ENOKEY;
+
+   return pos;
+}
+
+
+static int cap_coord(const struct actCaption *cap, const struct coord *c, const bstring_t *str, osm_obj_t *o)
 {
    cairo_text_extents_t tx;
    cairo_font_extents_t fe;
@@ -1829,6 +1895,23 @@ static int cap_coord(const struct actCaption *cap, const struct coord *c, const 
    if (cap->pos & POS_UC)
       strupper(buf);
 
+   pos = cap->pos;
+   // parse alignkey if specified in ruleset
+   if (cap->halignkey != NULL || cap->valignkey != NULL)
+   {
+      log_debug("detecting alignkey, pos = 0x%04x", pos);
+      if (cap->halignkey == cap->valignkey)
+         pos = retr_align_key_pos(o, cap->halignkey);
+      else 
+      {
+         if (cap->halignkey != NULL)
+            pos = (pos & ~(POS_E | POS_W)) | (retr_align_key_pos(o, cap->halignkey) & (POS_E | POS_W));
+         if (cap->valignkey != NULL)
+            pos = (pos & ~(POS_N | POS_S)) | (retr_align_key_pos(o, cap->valignkey) & (POS_N | POS_S));
+      }
+      log_debug("new pos = 0x%04x", pos);
+   }
+ 
    cairo_set_font_size(cap->ctx, mm2unit(cap->size));
    cairo_font_extents(cap->ctx, &fe);
    cairo_text_extents(cap->ctx, buf, &tx);
@@ -1841,8 +1924,10 @@ static int cap_coord(const struct actCaption *cap, const struct coord *c, const 
       else
          pos = cap->pos;
 
-      r = hypot(tx.width + tx.x_bearing, fe.ascent / 2) + POS_OFFSET;
-      width = tx.width + tx.x_bearing + POS_OFFSET;
+      //r = hypot(tx.width + tx.x_bearing, fe.ascent / 2) + POS_OFFSET;
+      // FIXME: not sure if this is correct (POS_OFFSET --> xoff/yoff)
+      r = hypot(tx.width + tx.x_bearing + cap->xoff, fe.ascent / 2 + cap->yoff);
+      width = tx.width + tx.x_bearing + cap->xoff;
       height = fe.ascent;
       if (cap->pos & 0xc)
       {
@@ -1868,6 +1953,63 @@ static int cap_coord(const struct actCaption *cap, const struct coord *c, const 
             //log_debug("flip east/west");
          }
       }
+
+#define AUTO_SUBTAGS
+#ifdef AUTO_SUBTAGS
+#define AUTOANGLE_SUBTAG "autoangle"
+#define AUTOALIGN_SUBTAG "autoalign"
+      // add "autoangle"
+      if (realloc_tags(o, o->tag_cnt + 1) != -1)
+      {
+         o->otag[o->tag_cnt - 1].k.len = strlen(cap->key) + strlen(AUTOANGLE_SUBTAG) + 2;
+         o->otag[o->tag_cnt - 1].v.len = 8;
+         if ((o->otag[o->tag_cnt - 1].k.buf = malloc(o->otag[o->tag_cnt - 1].k.len)) == NULL)
+         {
+            log_msg(LOG_ERR, "malloc() failed: %s", strerror(errno));
+            o->tag_cnt--;
+         }
+         else if ((o->otag[o->tag_cnt - 1].v.buf = malloc(o->otag[o->tag_cnt - 1].v.len)) == NULL)
+         {
+            log_msg(LOG_ERR, "malloc() failed: %s", strerror(errno));
+            free(o->otag[o->tag_cnt - 1].k.buf);
+            o->tag_cnt--;
+         }
+         else
+         {
+            o->otag[o->tag_cnt - 1].k.len = snprintf(o->otag[o->tag_cnt - 1].k.buf,
+                  o->otag[o->tag_cnt - 1].k.len,
+                  "%s:"AUTOANGLE_SUBTAG, cap->key);
+            o->otag[o->tag_cnt - 1].v.len = snprintf(o->otag[o->tag_cnt - 1].v.buf,
+                  o->otag[o->tag_cnt - 1].v.len, "%.1f", RAD2DEG(a));
+         }
+      }
+
+      // autoalign
+      if (realloc_tags(o, o->tag_cnt + 1) != -1)
+      {
+         o->otag[o->tag_cnt - 1].k.len = strlen(cap->key) + strlen(AUTOALIGN_SUBTAG) + 2;
+         o->otag[o->tag_cnt - 1].v.len = 8;
+         if ((o->otag[o->tag_cnt - 1].k.buf = malloc(o->otag[o->tag_cnt - 1].k.len)) == NULL)
+         {
+            log_msg(LOG_ERR, "malloc() failed: %s", strerror(errno));
+            o->tag_cnt--;
+         }
+         else if ((o->otag[o->tag_cnt - 1].v.buf = malloc(o->otag[o->tag_cnt - 1].v.len)) == NULL)
+         {
+            log_msg(LOG_ERR, "malloc() failed: %s", strerror(errno));
+            free(o->otag[o->tag_cnt - 1].k.buf);
+            o->tag_cnt--;
+         }
+         else
+         {
+            o->otag[o->tag_cnt - 1].k.len = snprintf(o->otag[o->tag_cnt - 1].k.buf,
+                  o->otag[o->tag_cnt - 1].k.len,
+                  "%s:"AUTOALIGN_SUBTAG, cap->key);
+            o->otag[o->tag_cnt - 1].v.len = snprintf(o->otag[o->tag_cnt - 1].v.buf,
+                  o->otag[o->tag_cnt - 1].v.len, "%s", pos_to_str(pos));
+         }
+      }
+#endif
    }
    else
    {
@@ -1875,7 +2017,6 @@ static int cap_coord(const struct actCaption *cap, const struct coord *c, const 
       if (cap->akey != NULL && (n = match_attr(o, cap->akey, NULL)) >= 0)
          a = DEG2RAD(bs_tod(o->otag[n].v));
       a += DEG2RAD(360 - cap->angle);
-      pos = cap->pos;
    }
 
    cairo_rotate(cap->ctx, a);
@@ -1970,10 +2111,12 @@ int act_cap_fini(smrule_t *r)
 {
    struct actCaption *cap = r->data;
 
+#ifdef PUSH_GROUP
    cairo_pop_group_to_source(cap->ctx);
    CSS_INC(CSS_POP);
    cairo_paint(cap->ctx);
    CSS_INC(CSS_PAINT);
+#endif
    cairo_destroy(cap->ctx);
 
    free(cap);
@@ -2115,8 +2258,10 @@ int act_img_ini(smrule_t *r)
       cairo_set_source(img.ctx, img.pat);
    }
 
+#ifdef PUSH_GROUP
    cairo_push_group(img.ctx);
    CSS_INC(CSS_PUSH);
+#endif
   
    if ((r->data = malloc(sizeof(img))) == NULL)
    {
@@ -2217,10 +2362,12 @@ int act_img_fini(smrule_t *r)
 {
    struct actImage *img = r->data;
 
+#ifdef PUSH_GROUP
    cairo_pop_group_to_source(img->ctx);
    CSS_INC(CSS_POP);
    cairo_paint(img->ctx);
    CSS_INC(CSS_PAINT);
+#endif
 
    if (img->pat)
       cairo_pattern_destroy(img->pat);

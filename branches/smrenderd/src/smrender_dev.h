@@ -53,6 +53,7 @@
 #define POS_E 4
 #define POS_W 8
 #define POS_UC 16
+#define POS_DIR_MSK (POS_N | POS_S | POS_E | POS_W)
 
 // macro to convert minutes to degrees
 #define MIN2DEG(x) ((double) (x) / 60.0)
@@ -170,6 +171,8 @@ struct actCaption
    double angle;     // angle to rotate caption. 0 degress equals east,
                      // counterclockwise. NAN means auto-rotate
    char *akey;       // angle is defined in a tag
+   char *halignkey;  // keys defining alignment for tag-dependent alignment
+   char *valignkey;
    double xoff, yoff;   //!< x/y offset from origin
    struct auto_rot rot;
 #ifdef HAVE_CAIRO
@@ -276,6 +279,7 @@ int init_rules(osm_obj_t*, void*);
 fparam_t **parse_fparam(char*);
 void free_fparam(fparam_t **);
 int parse_alignment(const action_t *act);
+int parse_alignment_str(const char *);
 
 /* smkap.c */
 int save_kap(FILE *, struct rdata *);
