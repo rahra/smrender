@@ -630,29 +630,50 @@ fparam_t **parse_fparam(char *parm)
 }
 
 
+int parse_alignment_str(const char *s)
+{
+   int pos = 0;
+
+   if (!strcasecmp(s, "east"))
+      pos |= POS_E;
+   else if (!strcasecmp(s, "west"))
+      pos |= POS_W;
+   else if (!strcasecmp(s, "north"))
+      pos |= POS_N;
+   else if (!strcasecmp(s, "south"))
+      pos |= POS_S;
+   else if (!strcasecmp(s, "northeast"))
+      pos |= POS_E | POS_N;
+   else if (!strcasecmp(s, "northwest"))
+      pos |= POS_W | POS_N;
+   else if (!strcasecmp(s, "southeast"))
+      pos |= POS_E | POS_S;
+   else if (!strcasecmp(s, "southwest"))
+      pos |= POS_W | POS_S;
+   else
+   {
+      log_msg(LOG_WARN, "unknown alignment '%s'", s);
+      errno = EINVAL;
+   }
+
+   return pos;
+}
+ 
+
 int parse_alignment(const action_t *act)
 {
    int pos = 0;
    char *s;
 
+   // 'align' has priority over 'halign'/'valign'
+   if ((s = get_param("align", NULL, act)) != NULL)
+      return parse_alignment_str(s);
+ 
    if ((s = get_param("halign", NULL, act)) != NULL)
-   {
-      if (!strcmp(s, "east"))
-         pos |= POS_E;
-      else if (!strcmp(s, "west"))
-         pos |= POS_W;
-      else
-         log_msg(LOG_WARN, "unknown alignment '%s'", s);
-   }
+      pos |= parse_alignment_str(s) & (POS_E | POS_W);
+
    if ((s = get_param("valign", NULL, act)) != NULL)
-   {
-      if (!strcmp(s, "north"))
-         pos |= POS_N;
-      else if (!strcmp(s, "south"))
-         pos |= POS_S;
-      else
-         log_msg(LOG_WARN, "unknown alignment '%s'", s);
-   }
+      pos |= parse_alignment_str(s) & (POS_N | POS_S);
 
    return pos;
 }
