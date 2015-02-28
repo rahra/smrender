@@ -56,6 +56,28 @@ bx_node_t **get_objtree(void)
 }
 
 
+/*! Reallocate tag memory for cnt number of tags. The newly added tags (if cnt
+ * > o->tag_cnt) or NOT initialized!
+ * @param o Pointer to OSM object.
+ * @param cnt Total number of tags.
+ * @return The function returns the number of tags before the reallocation. The
+ * member o->tag_cnt is set to cnt. On error -1 is returned. See realloc(3) for
+ * possible errors.
+ */
+int realloc_tags(osm_obj_t *o, int cnt)
+{
+   struct otag *new_tags;
+   int ocnt;
+
+   if ((new_tags = realloc(o->otag, cnt * sizeof(*o->otag))) == NULL)
+      return -1;
+   o->otag = new_tags;
+   ocnt = o->tag_cnt;
+   o->tag_cnt = cnt;
+   return ocnt;
+}
+
+
 void set_const_tag(struct otag *tag, char *k, char *v)
 {
    tag->k.buf = k;

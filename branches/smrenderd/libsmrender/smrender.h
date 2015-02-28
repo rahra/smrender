@@ -90,6 +90,7 @@ int put_object0(bx_node_t**, int64_t, void*, int);
 void *get_object0(bx_node_t*, int64_t, int);
 int coord_str(double, int, char*, int);
 int strcnt(const char*, int);
+int realloc_tags(osm_obj_t *, int );
 
 /* smlog.c */
 int log_msg(int, const char*, ...) __attribute__((format (printf, 2, 3)));
