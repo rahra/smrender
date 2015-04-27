@@ -39,6 +39,14 @@ struct vsec_data
    double radius_f;        // radius multiplier
 };
 
+struct pchar_data
+{
+   regex_t regex;
+   int lang;
+};
+
+enum {LANG_DEFAULT, LANG_DE, LANG_HR};
+
 static char *smstrdup(const char *);
 static int get_sectors(const osm_obj_t*, struct sector *sec, int nmax);
 static void node_calc(const struct osm_node *nd, double r, double a, double *lat, double *lon);
@@ -62,6 +70,8 @@ static int untagged_circle_ = 0;
 static const double altr_[] = {0.003, 0.0035, 0.009, 0.005};
 
 static const char *col_[] = {"white", "red", "green", "yellow", "orange", "blue", "violet", "amber", NULL};
+static const char *col_abbr_hr_[] = {"B", "C", "Z", "Ž", "Or", "Pl", "Lj", "Am", NULL};
+static const char *col_abbr_de_[] = {"w", "r", "gn", "g", "or", "bl", "viol", "or", NULL};
 static const char *col_abbr_[] = {"W", "R", "G", "Y", "Or", "Bu", "Vi", "Am", NULL};
 static const char *atype_[] = {"undef", "solid", "suppress", "dashed", NULL};
 static const char *tag_[] = { "seamark:light_character",
@@ -134,7 +144,9 @@ void __attribute__ ((destructor)) fini_libsmfilter(void)
 
 int act_pchar_ini(smrule_t *r)
 {
+   struct pchar_data *pd;
    regex_t regex;
+   char *s;
    int e;
 
    if ((e = regcomp(&regex, "seamark:light:([0-9]+:)?colour", REG_EXTENDED | REG_NOSUB)))
@@ -143,13 +155,24 @@ int act_pchar_ini(smrule_t *r)
       return -1;
    }
 
-   if ((r->data = malloc(sizeof(regex))) == NULL)
+   if ((pd = malloc(sizeof(*pd))) == NULL)
    {
       log_msg(LOG_ERR, "cannot malloc: %s", strerror(errno));
       return -1;
    }
 
-   memcpy(r->data, &regex, sizeof(regex));
+   memcpy(&pd->regex, &regex, sizeof(regex));
+   pd->lang = 0;
+
+   if ((s = get_param("lang", NULL, r->act)) != NULL)
+   {
+      if (!strcasecmp(s, "hr"))
+         pd->lang = LANG_HR;
+      else if (!strcasecmp(s, "de"))
+         pd->lang = LANG_DE;
+   }
+
+   r->data = pd;
    return 0;
 }
 
@@ -159,7 +182,7 @@ int act_pchar_fini(smrule_t *r)
    if (r->data == NULL)
       return 0;
 
-   regfree(r->data);
+   regfree(&((struct pchar_data*) r->data)->regex);
    free(r->data);
    r->data = NULL;
    return 0;
@@ -185,6 +208,7 @@ char *bs_dup(const bstring_t *b)
  */
 int act_pchar_main(smrule_t *r, osm_obj_t *o)
 {
+   struct pchar_data *pd = r->data;
    char lchar[8] = "", group[8] = "", period[8] = "", range[8] = "", col[32] = "", buf[256];
    int col_mask[COL_CNT];
    struct otag *ot;
@@ -202,13 +226,22 @@ int act_pchar_main(smrule_t *r, osm_obj_t *o)
       snprintf(range, sizeof(range), " %.*sM", o->otag[n].v.len, o->otag[n].v.buf);
    if ((n = match_attr(o, "seamark:light:character", NULL)) != -1 ||
          (n = match_attr(o, "seamark:light:1:character", NULL)) != -1)
-      snprintf(lchar, sizeof(lchar), "%.*s%s", o->otag[n].v.len, o->otag[n].v.buf, group[0] == '\0' ? "." : "");
+   {
+      switch (((struct pchar_data*) r->data)->lang)
+      {
+         case LANG_HR:
+            snprintf(lchar, sizeof(lchar), "%.*s", o->otag[n].v.len, o->otag[n].v.buf);
+            break;
+         default:
+            snprintf(lchar, sizeof(lchar), "%.*s%s", o->otag[n].v.len, o->otag[n].v.buf, group[0] == '\0' ? "." : "");
+      }
+   }
 
    memset(&col_mask, 0, sizeof(col_mask));
    for (i = 0; i < o->tag_cnt; i++)
    {
       s = bs_dup(&o->otag[i].k);
-      if (!regexec(r->data, s, 0, NULL, 0))
+      if (!regexec(&pd->regex, s, 0, NULL, 0))
       {
          if ((n = parse_seamark_color(o->otag[i].v)) != -1)
             col_mask[n]++;
@@ -219,14 +252,31 @@ int act_pchar_main(smrule_t *r, osm_obj_t *o)
    for (i = 0; i < COL_CNT; i++)
       if (col_mask[i])
       {
-         snprintf(buf, sizeof(buf), "%s.", col_abbr_[i]);
+         switch (((struct pchar_data*) r->data)->lang)
+         {
+            case LANG_HR:
+               snprintf(buf, sizeof(buf), "%s ", col_abbr_hr_[i]);
+               break;
+            case LANG_DE:
+               snprintf(buf, sizeof(buf), "%s ", col_abbr_de_[i]);
+               break;
+            default:
+               snprintf(buf, sizeof(buf), "%s.", col_abbr_[i]);
+         }
          //FIXME: strcat
          strcat(col, buf);
       }
+   switch (((struct pchar_data*) r->data)->lang)
+   {
+      case LANG_HR:
+         if (!snprintf(buf, sizeof(buf), "%s%s%s%s%s", col, lchar, group, period, range))
+            return 0;
+         break;
+      default:
+         if (!snprintf(buf, sizeof(buf), "%s%s%s%s%s", lchar, group, col, period, range))
+            return 0;
+   }
 
-   if (!snprintf(buf, sizeof(buf), "%s%s%s%s%s", lchar, group, col, period, range))
-      return 0;
-    
    if ((ot = realloc(o->otag, sizeof(struct otag) * (o->tag_cnt + 1))) == NULL)
    {
       log_msg(LOG_ERR, "could not realloc new node: %s", strerror(errno));
