@@ -148,6 +148,11 @@ static cairo_rectangle_t ext_;
 void __attribute__((constructor)) cairo_smr_init(void)
 {
    log_debug("using libcairo %s", cairo_version_string());
+#ifdef PUSH_GROUP
+   log_debug("using push()/pop()");
+#else
+   log_debug("push()/pop() disabled (thus, rendering is slower)");
+#endif
 }
 
 
@@ -1076,7 +1081,7 @@ int act_cap_ini(smrule_t *r)
    cap.scl.max_auto_size = MAX_AUTO_SIZE;
    cap.scl.min_area_size = MIN_AREA_SIZE;
    cap.scl.auto_scale = AUTO_SCALE;
-   cap.xoff = cap.yoff = POS_OFFSET;
+   //cap.xoff = cap.yoff = POS_OFFSET;
 
    if ((cap.font = get_param("font", NULL, r->act)) == NULL)
    {
@@ -1088,6 +1093,7 @@ int act_cap_ini(smrule_t *r)
       log_msg(LOG_WARN, "parameter 'size' missing");
       return 1;
    }
+   cap.xoff = cap.yoff = mm2ptf(cap.size) / 2;
    if ((cap.key = get_param("key", NULL, r->act)) == NULL)
    {
       log_msg(LOG_WARN, "parameter 'key' missing");
