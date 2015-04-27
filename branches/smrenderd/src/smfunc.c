@@ -93,6 +93,17 @@ struct trans_data
 };
 
 
+#define NODE_MIN_DIST (1.0 / 60)
+#define MASK_NODE -1.0
+#define INC_MAX_NL 64
+typedef struct node_list
+{
+   int node_cnt, max_cnt;
+   osm_node_t **node;
+   double min_dist;
+} node_list_t;
+
+
 static struct out_handle *oh_ = NULL;
 
 
@@ -1567,6 +1578,8 @@ int act_inherit_tags_ini(smrule_t *r)
       }
    }
 
+   // force Smrender to create reverse pointers
+   id->rdata->need_index++;
    r->data = id;
    return 0;
 }
@@ -1728,6 +1741,8 @@ int act_inherit_tags_fini(smrule_t *r)
 
 int act_zeroway_ini(smrule_t *r)
 {
+   // force Smrender to create reverse pointers
+   get_rdata()->need_index++;
    r->data = &get_rdata()->index;
    return 0;
 }
@@ -1895,6 +1910,8 @@ int act_zeroway_main(smrule_t *r, osm_node_t *n)
 
 int act_split_ini(smrule_t *r)
 {
+   // force Smrender to create reverse pointers
+   get_rdata()->need_index++;
    r->data = get_rdata();
    return 0;
 }
@@ -2372,6 +2389,177 @@ int act_translate_main(smrule_t *r, osm_obj_t *o)
 int act_translate_fini(smrule_t *r)
 {
    free(r->data);
+   r->data = NULL;
+   return 0;
+}
+
+
+/*! This function adds the node n to the node list nl. The memory within nl is
+ * increased dynamically with realloc().
+ * @param n Pointer to OSM node.
+ * @param nl Pointer to valid node_list_t structure. If the list is empty the
+ * contents of nl must be initialized to 0 before calling gather_node().
+ * @return The function returns the number of nodes within nl after adding n.
+ * On error, -1 is returned.
+ */
+static int gather_node(osm_node_t *n, node_list_t *nl)
+{
+   if (nl->node_cnt >= nl->max_cnt)
+   {
+      osm_node_t **tnl = realloc(nl->node, (nl->max_cnt + INC_MAX_NL) * sizeof(*nl->node));
+      if (tnl == NULL)
+      {
+         log_msg(LOG_ERR, "realloc() failed: %s", strerror(errno));
+         return -1;
+      }
+      nl->node = tnl;
+      nl->max_cnt = nl->max_cnt + INC_MAX_NL;
+   }
+
+   nl->node[nl->node_cnt++] = n;
+   return nl->node_cnt;
+}
+
+
+static struct pcoord *node_mtx(node_list_t *nl)
+{
+   struct pcoord *nmx;
+   struct coord src, dst;
+
+   log_debug("calculating node distance matrix");
+   if ((nmx = malloc(sizeof(*nmx) * (nl->node_cnt * nl->node_cnt))) == NULL)
+   {
+      log_msg(LOG_ERR, "malloc(%ld kB) for matrix failed: %s", sizeof(*nmx) * nl->node_cnt * nl->node_cnt >> 10, strerror(errno));
+      return NULL;
+   }
+
+   for (int i = 0; i < nl->node_cnt; i++)
+   {
+      src.lon = nl->node[i]->lon;
+      src.lat = nl->node[i]->lat;
+      memset(&nmx[i * nl->node_cnt], 0, sizeof(*nmx));
+      for (int j = i + 1; j < nl->node_cnt; j++)
+      {
+         dst.lon = nl->node[j]->lon;
+         dst.lat = nl->node[j]->lat;
+         nmx[i * nl->node_cnt + j] = coord_diff(&src, &dst);
+      }
+   }
+
+   return nmx;
+}
+
+
+static void rate_nmx(struct pcoord *nmx, int n, double dist)
+{
+   for (int i = 0; i < n; i++)
+      for (int j = i + 1; j < n; j++)
+      {
+         // ignore nodes which have been masked
+         if (nmx[i * n].dist < 0)
+            continue;
+
+         if (nmx[i * n + j].dist < dist)
+            nmx[j * n].dist = MASK_NODE;
+      }
+}
+
+
+static void mod_node(struct pcoord *nmx, node_list_t *nl)
+{
+   struct otag *ot;
+
+   for (int i = 0; i < nl->node_cnt; i++)
+   {
+      if (nmx[i * nl->node_cnt].dist < 0)
+      {
+         if ((ot = realloc(nl->node[i]->obj.otag, sizeof(*nl->node[i]->obj.otag) * (nl->node[i]->obj.tag_cnt + 1))) == NULL)
+         {
+            log_msg(LOG_ERR, "realloc() failed: %s", strerror(errno));
+            continue;
+         }
+         nl->node[i]->obj.otag = ot;
+         set_const_tag(&nl->node[i]->obj.otag[nl->node[i]->obj.tag_cnt], "smrender:mask", "yes");
+         nl->node[i]->obj.tag_cnt++;
+      }
+   }
+}
+
+
+int act_mask_ini(smrule_t *r)
+{
+   node_list_t *nl;
+   
+   if (r->oo->type != OSM_NODE)
+   {
+      log_msg(LOG_NOTICE, "mask() is implemented for nodes only, yet.");
+      return 1;
+   }
+
+   if ((nl = malloc(sizeof(*nl))) == NULL)
+   {
+      log_msg(LOG_ERR, "malloc() failed: %s", strerror(errno));
+      return -1;
+   }
+   memset(nl, 0, sizeof(*nl));
+
+   nl->min_dist = NODE_MIN_DIST;
+   if (get_param("distance", &nl->min_dist, r->act) != NULL)
+   {
+      if (nl->min_dist <= 0)
+      {
+         log_msg(LOG_NOTICE, "Distance must be positive value. Setting to default.");
+         nl->min_dist = NODE_MIN_DIST;
+      }
+      else
+         nl->min_dist /= 60;
+   }
+
+   r->data = nl;
+   return 0;
+}
+
+
+int act_mask_main(smrule_t *r, osm_obj_t *o)
+{
+   gather_node((osm_node_t*) o, r->data);
+   return 0;
+}
+
+
+void output_nmx(const struct pcoord *nmx, int n)
+{
+   for (int i = 0; i < n; i++)
+   {
+      fprintf(stderr, "%d: ", i);
+      for (int j = 0; j < n; j++)
+      {
+         if (j && j < i)
+            fprintf(stderr, "-/-, ");
+         else
+            fprintf(stderr, "%.1f/%.1f, ", nmx[i * n + j].dist * 60, nmx[i * n + j].bearing);
+      }
+      fprintf(stderr, "\n");
+   }
+}
+
+
+int act_mask_fini(smrule_t *r)
+{
+   struct pcoord *nmx;
+   node_list_t *nl = r->data;
+
+   log_debug("gathered %d nodes", nl->node_cnt);
+   if ((nmx = node_mtx(nl)) != NULL)
+   {
+      rate_nmx(nmx, nl->node_cnt, nl->min_dist);
+      //output_nmx(nmx, nl->node_cnt);
+      mod_node(nmx, nl);
+      free(nmx);
+   }
+
+   free(nl->node);
+   free(nl);
    r->data = NULL;
    return 0;
 }

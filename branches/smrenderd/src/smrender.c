@@ -1017,10 +1017,14 @@ int main(int argc, char *argv[])
    log_msg(LOG_INFO, "stripping filtered way nodes");
    traverse(*get_objtree(), 0, IDX_WAY, (tree_func_t) strip_ways, NULL);
 
-   log_msg(LOG_INFO, "creating reverse pointers from nodes to ways");
-   traverse(*get_objtree(), 0, IDX_WAY, (tree_func_t) rev_index_way_nodes, &rd->index);
-   log_msg(LOG_INFO, "creating reverse pointers from relation members to relations");
-   traverse(*get_objtree(), 0, IDX_REL, (tree_func_t) rev_index_rel_nodes, &rd->index);
+   // reverse pointers are only created if requested by some action
+   if (rd->need_index)
+   {
+      log_msg(LOG_INFO, "creating reverse pointers from nodes to ways");
+      traverse(*get_objtree(), 0, IDX_WAY, (tree_func_t) rev_index_way_nodes, &rd->index);
+      log_msg(LOG_INFO, "creating reverse pointers from relation members to relations");
+      traverse(*get_objtree(), 0, IDX_REL, (tree_func_t) rev_index_rel_nodes, &rd->index);
+   }
 
    switch (gen_grid)
    {

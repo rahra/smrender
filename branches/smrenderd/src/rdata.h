@@ -67,6 +67,9 @@ struct rdata
 {
    //! root node of node rules and way rules
    bx_node_t *rules;
+   //! If need_index is set to 1, Smrender will create the reverse pointers
+   //(index). Otherwise no index is created which is less memory consuming.
+   int need_index;
    //! root node of reverse pointers for OSM objects
    bx_node_t *index;
    //! bounding box (left lower and right upper coordinates)
