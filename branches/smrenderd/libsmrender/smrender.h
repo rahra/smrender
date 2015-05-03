@@ -78,6 +78,7 @@ void set_const_tag(struct otag*, char*, char*);
 int bs_match_attr(const osm_obj_t*, const struct otag *, const struct stag*);
 int bs_match(const bstring_t *, const bstring_t *, const struct specialTag *);
 int match_attr(const osm_obj_t*, const char *, const char *);
+char *get_param_err(const char *, double *, const action_t *, int *);
 char *get_param(const char*, double*, const action_t*);
 char *get_parami(const char*, int*, const action_t*);
 int get_param_bool(const char*, const action_t*);
@@ -91,6 +92,7 @@ void *get_object0(bx_node_t*, int64_t, int);
 int coord_str(double, int, char*, int);
 int strcnt(const char*, int);
 int realloc_tags(osm_obj_t *, int );
+const char *safe_null_str(const char *);
 
 /* smlog.c */
 int log_msg(int, const char*, ...) __attribute__((format (printf, 2, 3)));

@@ -374,7 +374,7 @@ int strcnt(const char *s, int c)
 }
 
 
-char *get_param(const char *attr, double *dval, const action_t *act)
+char *get_param_err(const char *attr, double *dval, const action_t *act, int *err)
 {
    fparam_t **fp;
 
@@ -387,10 +387,18 @@ char *get_param(const char *attr, double *dval, const action_t *act)
       {
          if (dval != NULL)
             *dval = (*fp)->dval;
+         if (err != NULL)
+            *err = (*fp)->conv_error;
          return (*fp)->val;
       }
    }
    return NULL;
+}
+
+
+char *get_param(const char *attr, double *dval, const action_t *act)
+{
+   return get_param_err(attr, dval, act, NULL);
 }
 
 
@@ -480,4 +488,16 @@ int sm_thread_id(void)
 }
 
 #endif
+
+
+/*! Check if character pointer is NULL pointer and return pointer to constant
+ * string "NULL" in that case.
+ * @param s Pointer to string.
+ * @return If s is NULL pointer, a pointer to the constant string "NULL" is
+ * returned, otherwise it returns s.
+ */
+const char *safe_null_str(const char *s)
+{
+   return s == NULL ? "NULL" : s;
+}
 

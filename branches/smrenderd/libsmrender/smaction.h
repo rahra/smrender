@@ -52,6 +52,7 @@ typedef struct fparam
    char *attr;
    char *val;
    double dval;
+   int conv_error;   //!< contains conversion errors from strtod(3), 0 || ERANGE || EDOM
 } fparam_t;
 
 struct specialTag
