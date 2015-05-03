@@ -635,7 +635,7 @@ int read_osm_file(hpx_ctrl_t *ctl, bx_node_t **tree, const struct filter *fi, st
    if (dup_cnt)
       log_msg(LOG_WARN, "%d duplicate elements found! This may cause unexpected results!", dup_cnt);
 
-   log_msg(LOG_INFO, "onode_memory: %ld kByte, line %ld, %.2f MByte/s",
+   log_msg(LOG_NOTICE, "onode_memory: %ld kByte, line %ld, %.2f MByte/s",
          (long) onode_mem() / 1024, oline_, ((double) ctl->len / (double) (time(NULL) - tim)) / (double) (1024 * 1024));
  
    hpx_tm_free_tree(tlist);

@@ -584,8 +584,8 @@ static char *parse_string(char **src, const char *delim, char *nextchar)
  *  @param parm A pointer to the original string. Please note that the string
  *  is tokenized similar to strtok_r(), thus '\0' characters are inserted. If
  *  the original string is needed for something else it should be strdup()'ed
- *  before.  @return A pointer to a fparam_t* list or NULL in case of error.
- *  The
+ *  before.
+ *  @return A pointer to a fparam_t* list or NULL in case of error. The
  *  fparam_t* list always contains one additional element which points to NULL.
  */
 fparam_t **parse_fparam(char *parm)
@@ -609,6 +609,7 @@ fparam_t **parse_fparam(char *parm)
 
       fp[n + 1] = NULL;
       fp[n]->attr = s;
+      fp[n]->conv_error = 0;
 
       switch (c)
       {
@@ -619,7 +620,15 @@ fparam_t **parse_fparam(char *parm)
 
          case '=':
             if ((fp[n]->val = parse_string(&parm, ";", &c)) != NULL)
-               fp[n]->dval = atof(fp[n]->val);
+            {
+               char *endptr;
+               errno = 0;
+               fp[n]->dval = strtod(fp[n]->val, &endptr);
+               if (endptr == fp[n]->val)
+                  fp[n]->conv_error = EDOM;
+               else
+                  fp[n]->conv_error = errno;
+            }
             else
                fp[n]->dval = 0;
             break;

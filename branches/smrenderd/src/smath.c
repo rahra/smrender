@@ -61,3 +61,10 @@ struct coord dest_coord(const struct coord *src, const struct pcoord *pc)
    return cd;
 }
 
+
+double fmod2(double a, double n)
+{
+   a = fmod(a, n);
+   return a < 0 ? a + n : a;
+}
+

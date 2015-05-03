@@ -455,7 +455,7 @@ void usage(const char *s)
          "   -a .................. Render all nodes, otherwise only nodes which are\n"
          "                         on the page are rendered.\n"
          "   -b <color> .......... Choose background color ('white' is default).\n"
-         "   -D .................. Print debug messages.\n"
+         "   -D .................. Increase verbosity (can be specified multiple times).\n"
          "   -d <density> ........ Set image density (300 is default).\n"
          "   -f .................. Use loading filter.\n"
          "   -g <grd>[:<t>[:<s>]]  Distance of grid/ticks/subticks in minutes.\n"
@@ -720,8 +720,10 @@ int main(int argc, char *argv[])
    struct grid grd;
    char *s;
    struct tile_info ti;
+   int level = 5;    // default log level: 5 = LOG_NOTICE
 
    (void) gettimeofday(&tv_start, NULL);
+   init_log("stderr", level);
    rd = get_rdata();
    init_grid(&grd);
    rd->cmdline = mk_cmd_line((const char**) argv);
@@ -744,7 +746,11 @@ int main(int argc, char *argv[])
             break;
 
          case 'D':
-            init_log("stderr", LOG_DEBUG);
+            if (level < 7)
+            {
+               level++;
+               init_log("stderr", level);
+            }
             break;
 
          case 'd':
@@ -935,7 +941,7 @@ int main(int argc, char *argv[])
    if ((cfctl = open_osm_source(cf, 0)) == NULL)
       exit(EXIT_FAILURE);
 
-   log_msg(LOG_INFO, "reading rules (file size %ld kb)", (long) cfctl->len / 1024);
+   log_msg(LOG_NOTICE, "reading rules (file size %ld kb)", (long) cfctl->len / 1024);
    (void) read_osm_file(cfctl, &rd->rules, NULL, &rstats);
    (void) close(cfctl->fd);
 
@@ -985,7 +991,7 @@ int main(int argc, char *argv[])
    if ((ctl = hpx_init(fd, st.st_size)) == NULL)
       perror("hpx_init_simple"), exit(EXIT_FAILURE);
 
-   log_msg(LOG_INFO, "reading osm data (file size %ld kb, memory at %p)",
+   log_msg(LOG_NOTICE, "reading osm data (file size %ld kb, memory at %p)",
          (long) labs(st.st_size) / 1024, ctl->buf.buf);
 
    if (load_filter)
@@ -1045,7 +1051,7 @@ int main(int argc, char *argv[])
 
    for (n = 0; (n < rstats.ver_cnt) && !int_ && (rstats.ver[n] < SUBROUTINE_VERSION); n++)
    {
-      log_msg(LOG_INFO, "rendering pass %d (ver = %d)", n, rstats.ver[n]);
+      log_msg(LOG_NOTICE, "rendering pass %d (ver = %d)", n, rstats.ver[n]);
       execute_rules(rd->rules, rstats.ver[n]);
    }
 
@@ -1154,8 +1160,8 @@ int main(int argc, char *argv[])
       tv_end.tv_usec += 1000000;
    }
 
-   log_msg(LOG_INFO, "%d.%03d seconds elapsed. exiting", (unsigned) tv_end.tv_sec, (unsigned) tv_end.tv_usec / 1000);
-   log_msg(LOG_INFO, "Thanks for using smrender!");
+   log_msg(LOG_NOTICE, "%d.%03d seconds elapsed. exiting", (unsigned) tv_end.tv_sec, (unsigned) tv_end.tv_usec / 1000);
+   log_msg(LOG_NOTICE, "Thanks for using smrender!");
    return EXIT_SUCCESS;
 }
 

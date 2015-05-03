@@ -119,6 +119,7 @@
 //enum {WHITE, YELLOW, BLACK, BLUE, MAGENTA, BROWN, TRANSPARENT, BGCOLOR, MAXCOLOR};
 enum {LAT, LON};
 enum {DRAW_SOLID, DRAW_DASHED, DRAW_DOTTED, DRAW_TRANSPARENT};
+enum {SHAPE_REGULAR, SHAPE_SECTORED, SHAPE_STARED};
 
 struct auto_rot
 {
@@ -210,6 +211,10 @@ struct act_shape
    double weight;
    double phase;
    char *key;
+   double start, end;
+   char *startkey, *endkey;
+   int type;
+   double r2;
 };
 
 struct grid

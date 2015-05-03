@@ -242,19 +242,19 @@ int apply_smrules(smrule_t *r, long ver)
 int execute_rules(bx_node_t *rules, int version)
 {
    // FIXME: order rel -> way -> node?
-   log_msg(LOG_INFO, " relations...");
+   log_msg(LOG_NOTICE, " relations...");
    traverse(rules, 0, IDX_REL, (tree_func_t) apply_smrules, (void*) (long) version);
 #ifdef THREADED_RULES
    sm_wait_threads();
    dequeue_fini();
 #endif
-   log_msg(LOG_INFO, " ways...");
+   log_msg(LOG_NOTICE, " ways...");
    traverse(rules, 0, IDX_WAY, (tree_func_t) apply_smrules, (void*) (long) version);
 #ifdef THREADED_RULES
    sm_wait_threads();
    dequeue_fini();
 #endif
-   log_msg(LOG_INFO, " nodes...");
+   log_msg(LOG_NOTICE, " nodes...");
    traverse(rules, 0, IDX_NODE, (tree_func_t) apply_smrules, (void*) (long) version);
 #ifdef THREADED_RULES
    sm_wait_threads();

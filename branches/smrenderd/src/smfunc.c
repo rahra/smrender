@@ -493,7 +493,8 @@ int act_shape_ini(smrule_t *r)
 {
    struct act_shape *as;
    double pcount = 0.0;
-   char *s = "";
+   char *s = "", *s2;
+   int e;
 
    if ((get_param("nodes", &pcount, r->act) == NULL) && ((s = get_param("style", NULL, r->act)) == NULL))
    {
@@ -511,6 +512,25 @@ int act_shape_ini(smrule_t *r)
       as->weight = 1.0;
    (void) get_param("phase", &as->phase, r->act);
    as->phase *= M_PI / 180.0;
+
+   as->startkey = get_param_err("start", &as->start, r->act, &e);
+   if (e)
+      as->start = NAN;
+   as->endkey = get_param_err("end", &as->end, r->act, &e);
+   if (e)
+      as->end = NAN;
+
+   if ((s2 = get_param("subtype", NULL, r->act)) != NULL)
+   {
+      if (!strcasecmp(s2, "sectored"))
+         as->type = SHAPE_SECTORED;
+      else if (!strcasecmp(s2, "stared"))
+         as->type = SHAPE_STARED;
+      else
+         log_msg(LOG_WARN, "unknown subtype '%s'", s2);
+   }
+
+   get_param("r2", &as->r2, r->act);
 
    if (pcount == 0.0)
    {
@@ -567,58 +587,148 @@ int act_shape_ini(smrule_t *r)
    (void) get_param("angle", &as->angle, r->act);
    as->key = get_param("key", NULL, r->act);
 
-   log_debug("nodes = %d, radius = %.2f, angle = %.2f, key = '%s'", as->pcount, as->size, as->angle, as->key != NULL ? as->key : "(NULL)");
+   log_debug("nodes = %d, radius = %.2f, angle = %.2f, key = '%s', start = %f, startkey = %s, end = %f, endkey = %s, subtype = %d, r2 = %f",
+         as->pcount, as->size, as->angle, safe_null_str(as->key), as->start, safe_null_str(as->startkey), as->end, safe_null_str(as->endkey), as->type, as->r2);
 
    r->data = as;
    return 0;
 }
 
 
+int attr_tod(const osm_obj_t *o, const char *attr, double *val)
+{
+   int i;
+
+   if ((i = match_attr(o, attr, NULL)) >= 0)
+   {
+      if (val != NULL)
+      {
+         *val = bs_tod(o->otag[i].v);
+         log_debug("bearing %f", *val);
+      }
+      return 0;
+   }
+
+   log_msg(LOG_INFO, "node %"PRId64" has no tag '%s=*'", o->id, attr);
+   return -1;
+}
+
+
 void shape_node(const struct act_shape *as, const osm_node_t *n)
 {
    struct rdata *rd = get_rdata();
-   osm_node_t *nd[as->pcount];
-   double radius, angle, angle_step, a, b;
-   osm_way_t *w;
-   int i;
+   osm_node_t *nd[as->pcount], *m;
+   double radius, angle, angle_step, a, b, start, end;
+   osm_way_t *w, *v;
+   int i, j;
 
    angle = M_PI_2;
    if (as->key != NULL)
    {
-      if ((i = match_attr((osm_obj_t*) n, as->key, NULL)) >= 0)
+      if (!attr_tod(&n->obj, as->key, &angle))
+         angle = DEG2RAD(90.0 - angle);
+   }
+
+   if (as->startkey != NULL)
+   {
+      if (as->start == NAN)
       {
-         angle = DEG2RAD(90.0 - bs_tod(n->obj.otag[i].v));
-         log_debug("shape bearing %.1f", 90 - RAD2DEG(angle));
+         if (!attr_tod(&n->obj, as->startkey, &start))
+            start = DEG2RAD(start);
       }
       else
-      {
-         log_msg(LOG_INFO, "node %ld has no tag '%s=*'", (long) n->obj.id, as->key);
-      }
+         start = DEG2RAD(as->start);
    }
+   else
+      start = 0;
+
+   if (as->endkey != NULL)
+   {
+      if (as->end == NAN)
+      {
+         if (!attr_tod(&n->obj, as->endkey, &end))
+            end = DEG2RAD(end);
+      }
+      else
+         end = DEG2RAD(as->end);
+   }
+   else
+      end = 2 * M_PI;
+
+   start = fmod2(start + M_PI_2, 2 * M_PI);
+   end = fmod2(end + M_PI_2, 2 * M_PI);
 
    radius = MM2LAT(as->size);
    angle += DEG2RAD(as->angle);
    angle_step = 2 * M_PI / as->pcount;
 
-   w = malloc_way(n->obj.tag_cnt + 1, as->pcount + 1);
+   w = malloc_way(n->obj.tag_cnt + 1, as->pcount + 2);
    osm_way_default(w);
    memcpy(&w->obj.otag[1], n->obj.otag, sizeof(struct otag) * n->obj.tag_cnt);
 
-   log_debug("generating shape way %ld with %d nodes", (long) w->obj.id, as->pcount);
+   log_debug("generating shape way %"PRId64" with <=%d nodes", (long) w->obj.id, as->pcount);
 
    a = radius;
    b = radius * as->weight;
-   for (i = 0; i < as->pcount; i++)
+   for (i = 0, j = 0; i < as->pcount; i++)
    {
-         nd[i] = malloc_node(1);
-         osm_node_default(nd[i]);
-         nd[i]->lat = n->lat + a * cos(angle_step * i - as->phase) * cos(-angle) - b * sin(angle_step * i - as->phase) * sin(-angle);
-         nd[i]->lon = n->lon + (a * cos(angle_step * i - as->phase) * sin(-angle) + b * sin(angle_step * i - as->phase) * cos(-angle)) / cos(DEG2RAD(n->lat));
-         w->ref[i] = nd[i]->obj.id;
-         put_object((osm_obj_t*) nd[i]);
+      if (as->startkey != NULL && start > angle_step * i - as->phase)
+         continue;
+      if (as->endkey != NULL && angle_step * i - as->phase > end)
+         break;
+
+      nd[j] = malloc_node(1);
+      osm_node_default(nd[j]);
+      nd[j]->lat = n->lat + a * cos(angle_step * i - as->phase) * cos(-angle) - b * sin(angle_step * i - as->phase) * sin(-angle);
+      nd[j]->lon = n->lon + (a * cos(angle_step * i - as->phase) * sin(-angle) + b * sin(angle_step * i - as->phase) * cos(-angle)) / cos(DEG2RAD(n->lat));
+      w->ref[j] = nd[j]->obj.id;
+      put_object(&nd[j]->obj);
+
+      if (as->type == SHAPE_STARED)
+      {
+         v = malloc_way(n->obj.tag_cnt + 1, 2);
+         osm_way_default(v);
+         memcpy(&v->obj.otag[1], n->obj.otag, sizeof(struct otag) * n->obj.tag_cnt);
+         if (as->r2 > 0)
+         {
+            m = malloc_node(1);
+            osm_node_default(m);
+
+            m->lat = n->lat + MM2LAT(as->r2) * cos(angle_step * i - as->phase) * cos(-angle) - MM2LAT(as->r2) * as->weight * sin(angle_step * i - as->phase) * sin(-angle);
+            m->lon = n->lon + (MM2LAT(as->r2) * cos(angle_step * i - as->phase) * sin(-angle) + MM2LAT(as->r2) * as->weight * sin(angle_step * i - as->phase) * cos(-angle)) / cos(DEG2RAD(n->lat));
+
+            v->ref[0] = m->obj.id;
+            put_object(&m->obj);
+         }
+         else
+            v->ref[0] = n->obj.id;
+         v->ref[1] = nd[j]->obj.id;
+         put_object(&v->obj);
+      }
+
+      j++;
    }
-   w->ref[i] = nd[0]->obj.id;
-   put_object((osm_obj_t*) w);
+
+   log_debug("%d nodes added", j);
+   if (j && as->type != SHAPE_STARED)
+   {
+      w->ref_cnt = j;
+      if (as->startkey == NULL && as->endkey == NULL)
+      {
+         w->ref[j] = nd[0]->obj.id;
+         w->ref_cnt++;
+      }
+      else if (as->type == SHAPE_SECTORED)
+      {
+         w->ref[j++] = n->obj.id;
+         w->ref[j] = nd[0]->obj.id;
+         w->ref_cnt += 2;
+      }
+      put_object(&w->obj);
+   }
+   
+   if (as->type == SHAPE_STARED)
+      free_obj(&w->obj);
 }
 
 
@@ -1312,7 +1422,7 @@ static int mk_fmt_str(char *buf, int len, const char *fmt, fparam_t **fp, const 
 
             case 'r':
                v = fmod(bs_tod(o->otag[n].v), 1.0) * pow(10, prec);
-               n = snprintf(buf, len, "%ld", (long) v);
+               n = snprintf(buf, len, "%ld", (long) round(v));
                break;
 
             default:

@@ -147,7 +147,11 @@ static cairo_rectangle_t ext_;
 
 void __attribute__((constructor)) cairo_smr_init(void)
 {
-   log_debug("using libcairo %s", cairo_version_string());
+   log_debug("using libcairo %s, using GLIB %d.%d", cairo_version_string(), glib_major_version, glib_minor_version);
+#if ! GLIB_CHECK_VERSION(2,36,0)
+   log_debug("calling g_type_init()");
+   g_type_init();
+#endif
 #ifdef PUSH_GROUP
    log_debug("using push()/pop()");
 #else
@@ -301,7 +305,7 @@ void save_main_image(FILE *f, int ftype)
    cairo_status_t e;
    cairo_t *dst;
 
-   log_msg(LOG_INFO, "saving image (ftype = %d)", ftype);
+   log_msg(LOG_NOTICE, "saving image (ftype = %d)", ftype);
 
    switch (ftype)
    {
@@ -1135,7 +1139,7 @@ int act_cap_ini(smrule_t *r)
       if ((cap.valignkey = get_param("valignkey", NULL, r->act)) != NULL)
          cap.pos &= ~(POS_N | POS_S);
    }
-   log_debug("halignkey = %s, valignkey = %s", cap.halignkey != NULL ? cap.halignkey : "NULL", cap.valignkey != NULL ? cap.valignkey : "NULL");
+   log_debug("halignkey = %s, valignkey = %s", safe_null_str(cap.halignkey), safe_null_str(cap.valignkey));
 
    cap.ctx = cairo_create(sfc_);
    if (cairo_smr_log_status(cap.ctx) != CAIRO_STATUS_SUCCESS)
@@ -1577,13 +1581,6 @@ static int cmp_dp(const diffpeak_t *src, const diffpeak_t *dst)
 }
 
 
-static double fmod2(double a, double n)
-{
-   a = fmod(a, n);
-   return a < 0 ? a + n : a;
-}
-
-
 static void dv_mkarea(const struct coord *cnode, double r, const diffvec_t *dv, int cnt)
 {
    osm_node_t *n;
@@ -1850,7 +1847,7 @@ static const char *pos_to_str(int pos)
  * @return Returns an integer containg POS_N, POS_S, POS_E, POS_W locically
  * or'd together. If an error occurs, 0 is returned (which is the center
  * position) and errno is set to EINVAL if the key contains an invalid value.
- * If the object has no such key, errno is set to ENOKEY;
+ * If the object has no such key, errno is set to ENOMSG.
  */
 static int retr_align_key_pos(const osm_obj_t *o, const char *key)
 {
@@ -1872,7 +1869,7 @@ static int retr_align_key_pos(const osm_obj_t *o, const char *key)
       }
    }
    else
-      errno = ENOKEY;
+      errno = ENOMSG;
 
    return pos;
 }
