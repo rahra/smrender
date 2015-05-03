@@ -14,6 +14,7 @@ dist_available_rules_DATA = \
 	rules/available/seamark_beacon.osm \
 	rules/available/seamark_buoy.osm \
 	rules/available/seamark_compass.osm \
+	rules/available/seamark_rocks.osm \
 	rules/available/seamark_topmark.osm \
 	rules/available/translation.osm
 
@@ -33,6 +34,7 @@ install-data-hook:
 		$(LN_S) ../available/route.osm 020route.osm && \
 		$(LN_S) ../available/lightsectors_col.osm 028sectors.osm && \
 		$(LN_S) ../available/seamark_area.osm 027area.osm && \
+		$(LN_S) ../available/seamark_rocks.osm 026rocks.osm && \
 		$(LN_S) ../available/seamark_buoy.osm 029buoy.osm && \
 		$(LN_S) ../available/seamark_beacon.osm 030beacon.osm && \
 		$(LN_S) ../available/seamark_topmark.osm 031topmark.osm && \
@@ -52,6 +54,7 @@ install-data-hook:
 		$(LN_S) ../available/route.osm 020route.osm && \
 		$(LN_S) ../available/lightsectors_col.osm 028sectors.osm && \
 		$(LN_S) ../available/seamark_area.osm 027area.osm && \
+		$(LN_S) ../available/seamark_rocks.osm 026rocks.osm && \
 		$(LN_S) ../available/seamark_buoy.osm 029buoy.osm && \
 		$(LN_S) ../available/seamark_beacon.osm 030beacon.osm && \
 		$(LN_S) ../available/seamark_topmark.osm 031topmark.osm && \
