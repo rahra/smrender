@@ -45,7 +45,9 @@ struct pchar_data
    int lang;
 };
 
-enum {LANG_DEFAULT, LANG_DE, LANG_HR};
+enum {LANG_EN, LANG_DE, LANG_HR, LANG_GR};
+#define LANG_DEFAULT LANG_EN
+
 
 static char *smstrdup(const char *);
 static int get_sectors(const osm_obj_t*, struct sector *sec, int nmax);
@@ -72,6 +74,7 @@ static const double altr_[] = {0.003, 0.0035, 0.009, 0.005};
 static const char *col_[] = {"white", "red", "green", "yellow", "orange", "blue", "violet", "amber", NULL};
 static const char *col_abbr_hr_[] = {"B", "C", "Z", "Ž", "Or", "Pl", "Lj", "Am", NULL};
 static const char *col_abbr_de_[] = {"w", "r", "gn", "g", "or", "bl", "viol", "or", NULL};
+static const char *col_abbr_gr_[] = {"Λ", "Ερ", "Πρ", "Κτ", "or", "bl", "viol", "or", NULL};
 static const char *col_abbr_[] = {"W", "R", "G", "Y", "Or", "Bu", "Vi", "Am", NULL};
 static const char *atype_[] = {"undef", "solid", "suppress", "dashed", NULL};
 static const char *tag_[] = { "seamark:light_character",
@@ -162,7 +165,7 @@ int act_pchar_ini(smrule_t *r)
    }
 
    memcpy(&pd->regex, &regex, sizeof(regex));
-   pd->lang = 0;
+   pd->lang = LANG_DEFAULT;
 
    if ((s = get_param("lang", NULL, r->act)) != NULL)
    {
@@ -170,6 +173,8 @@ int act_pchar_ini(smrule_t *r)
          pd->lang = LANG_HR;
       else if (!strcasecmp(s, "de"))
          pd->lang = LANG_DE;
+      else if (!strcasecmp(s, "gr"))
+         pd->lang = LANG_GR;
    }
 
    r->data = pd;
@@ -220,7 +225,12 @@ int act_pchar_main(smrule_t *r, osm_obj_t *o)
       snprintf(group, sizeof(group), "(%.*s)", o->otag[n].v.len, o->otag[n].v.buf);
    if ((n = match_attr(o, "seamark:light:period", NULL)) != -1 ||
          (n = match_attr(o, "seamark:light:1:period", NULL)) != -1)
-      snprintf(period, sizeof(period), " %.*ss", o->otag[n].v.len, o->otag[n].v.buf);
+   {
+      if (((struct pchar_data*) r->data)->lang == LANG_GR)
+         snprintf(period, sizeof(period), " %.*sδ", o->otag[n].v.len, o->otag[n].v.buf);
+      else
+         snprintf(period, sizeof(period), " %.*ss", o->otag[n].v.len, o->otag[n].v.buf);
+   }
    if ((n = match_attr(o, "seamark:light:range", NULL)) != -1 || 
          (n = match_attr(o, "seamark:light:1:range", NULL)) != -1)
       snprintf(range, sizeof(range), " %.*sM", o->otag[n].v.len, o->otag[n].v.buf);
@@ -229,6 +239,9 @@ int act_pchar_main(smrule_t *r, osm_obj_t *o)
    {
       switch (((struct pchar_data*) r->data)->lang)
       {
+         case LANG_GR:
+            snprintf(lchar, sizeof(lchar), "%.*s ", o->otag[n].v.len, o->otag[n].v.buf);
+            break;
          case LANG_HR:
             snprintf(lchar, sizeof(lchar), "%.*s", o->otag[n].v.len, o->otag[n].v.buf);
             break;
@@ -254,26 +267,38 @@ int act_pchar_main(smrule_t *r, osm_obj_t *o)
       {
          switch (((struct pchar_data*) r->data)->lang)
          {
+            case LANG_GR:
+               snprintf(buf, sizeof(buf), "%s ", col_abbr_gr_[i]);
+               break;
             case LANG_HR:
                snprintf(buf, sizeof(buf), "%s ", col_abbr_hr_[i]);
                break;
             case LANG_DE:
-               snprintf(buf, sizeof(buf), "%s ", col_abbr_de_[i]);
+               snprintf(buf, sizeof(buf), "%s/", col_abbr_de_[i]);
                break;
             default:
-               snprintf(buf, sizeof(buf), "%s.", col_abbr_[i]);
+               snprintf(buf, sizeof(buf), "%s", col_abbr_[i]);
          }
          //FIXME: strcat
          strcat(col, buf);
       }
+
+   // remove trailing '/'
+   if (((struct pchar_data*) r->data)->lang == LANG_DE && strlen(col))
+      col[strlen(col) - 1] = '\0';
+
    switch (((struct pchar_data*) r->data)->lang)
    {
       case LANG_HR:
          if (!snprintf(buf, sizeof(buf), "%s%s%s%s%s", col, lchar, group, period, range))
             return 0;
          break;
+      case LANG_GR:
+         if (!snprintf(buf, sizeof(buf), "%s %s%s%s %s", lchar, group, col, period, range))
+            return 0;
+         break;
       default:
-         if (!snprintf(buf, sizeof(buf), "%s%s%s%s%s", lchar, group, col, period, range))
+         if (!snprintf(buf, sizeof(buf), "%s%s%s.%s%s", lchar, group, col, period, range))
             return 0;
    }
 
