@@ -1,0 +1,103 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<osm version='0.6' upload='true' generator='JOSM'>
+  <node id='-72' action='modify' visible='true' lat='43.72988458932' lon='15.57368717947' />
+  <node id='-70' action='modify' visible='true' lat='43.73040388998' lon='15.57772959825' />
+  <node id='-68' action='modify' visible='true' lat='43.73196176494' lon='15.57889740812' />
+  <node id='-66' action='modify' visible='true' lat='43.73338978139' lon='15.58069403869' />
+  <node id='-64' action='modify' visible='true' lat='43.73520720763' lon='15.58258050079' />
+  <node id='-62' action='modify' visible='true' lat='43.73611590006' lon='15.58195168009' />
+  <node id='-60' action='modify' visible='true' lat='43.73767362643' lon='15.58114319633' />
+  <node id='-58' action='modify' visible='true' lat='43.73793324356' lon='15.57889740812' />
+  <node id='-56' action='modify' visible='true' lat='43.73760872198' lon='15.5762922938' />
+  <node id='-54' action='modify' visible='true' lat='43.73695967354' lon='15.57476515782' />
+  <node id='-52' action='modify' visible='true' lat='43.73540192859' lon='15.57287869572' />
+  <node id='-50' action='modify' visible='true' lat='43.73430191862' lon='15.57368445026' />
+  <node id='-48' action='modify' visible='true' lat='43.73351959938' lon='15.57260920113' />
+  <node id='-46' action='modify' visible='true' lat='43.73384414312' lon='15.57395667406' />
+  <node id='-44' action='modify' visible='true' lat='43.73347091767' lon='15.5732829376' />
+  <node id='-42' action='modify' visible='true' lat='43.73374678018' lon='15.57216004349' />
+  <node id='-40' action='modify' visible='true' lat='43.7339415059' lon='15.5716435122' />
+  <node id='-38' action='modify' visible='true' lat='43.73395773301' lon='15.57112698091' />
+  <node id='-36' action='modify' visible='true' lat='43.73376300735' lon='15.57040832869' />
+  <node id='-34' action='modify' visible='true' lat='43.7331463719' lon='15.56984688163' />
+  <node id='-32' action='modify' visible='true' lat='43.73173457737' lon='15.56982442375' />
+  <node id='-30' action='modify' visible='true' lat='43.73103678157' lon='15.57011637622' />
+  <node id='-28' action='modify' visible='true' lat='43.73027406524' lon='15.57099223362' />
+  <node id='-26' action='modify' visible='true' lat='43.73022538089' lon='15.57126172821' />
+  <node id='-24' action='modify' visible='true' lat='43.72993327395' lon='15.57303590089' />
+  <node id='-22' action='modify' visible='true' lat='43.73440612652' lon='15.5735462129' />
+  <node id='-20' action='modify' visible='true' lat='43.73510254603' lon='15.57282108753' />
+  <node id='-18' action='modify' visible='true' lat='43.73471955856' lon='15.57349170073' />
+  <node id='-16' action='modify' visible='true' lat='43.7349704699' lon='15.57319482832' />
+  <node id='-14' action='modify' visible='true' lat='43.7341357795' lon='15.57328600684' />
+  <node id='-12' action='modify' visible='true' lat='43.73425719491' lon='15.57318903674' />
+  <node id='-10' action='modify' visible='true' lat='43.73424555546' lon='15.57324748947'>
+    <tag k='man_made' v='lighthouse' />
+    <tag k='seamark:construction' v='metal' />
+    <tag k='seamark:light:1:character' v='Fl' />
+    <tag k='seamark:light:1:colour' v='red' />
+    <tag k='seamark:light:1:height' v='11' />
+    <tag k='seamark:light:1:period' v='3' />
+    <tag k='seamark:light:1:range' v='5' />
+    <tag k='seamark:light:1:sector_end' v='160' />
+    <tag k='seamark:light:1:sector_start' v='78' />
+    <tag k='seamark:light:1:sequence' v='0.5+(2.5)' />
+    <tag k='seamark:light:reference' v='E 4275' />
+    <tag k='seamark:name' v='Anafi' />
+    <tag k='seamark:type' v='light_minor' />
+  </node>
+  <node id='-8' action='modify' visible='true' lat='43.73435514755' lon='15.5724537597'>
+    <tag k='end' v='45' />
+    <tag k='name' v='Westbay' />
+    <tag k='natural' v='bay' />
+    <tag k='seamark:sounding' v='6.1' />
+    <tag k='seamark:type' v='sounding' />
+    <tag k='start' v='270' />
+  </node>
+  <way id='-76' action='modify' visible='true'>
+    <nd ref='-50' />
+    <nd ref='-46' />
+    <nd ref='-44' />
+    <nd ref='-48' />
+    <nd ref='-42' />
+    <nd ref='-40' />
+    <nd ref='-38' />
+    <nd ref='-36' />
+    <nd ref='-34' />
+    <nd ref='-32' />
+    <nd ref='-30' />
+    <nd ref='-28' />
+    <nd ref='-26' />
+    <nd ref='-24' />
+    <nd ref='-72' />
+    <nd ref='-70' />
+    <nd ref='-68' />
+    <nd ref='-66' />
+    <nd ref='-64' />
+    <nd ref='-62' />
+    <nd ref='-60' />
+    <nd ref='-58' />
+    <nd ref='-56' />
+    <nd ref='-54' />
+    <nd ref='-52' />
+    <nd ref='-20' />
+    <nd ref='-16' />
+    <nd ref='-18' />
+    <nd ref='-22' />
+    <tag k='natural' v='coastline' />
+  </way>
+  <way id='-74' action='modify' visible='true'>
+    <nd ref='-22' />
+    <nd ref='-12' />
+    <nd ref='-14' />
+    <nd ref='-50' />
+    <tag k='natural' v='coastline' />
+  </way>
+  <relation id='-518' action='modify' visible='true'>
+    <member type='way' ref='-76' role='' />
+    <member type='way' ref='-74' role='' />
+    <tag k='name' v='Treasure Island' />
+    <tag k='place' v='island' />
+    <tag k='type' v='multipolygon' />
+  </relation>
+</osm>

@@ -1,0 +1,9 @@
+#!/bin/sh
+
+for FRULE in rules/*.osm
+do
+
+   smrender -DD -P 30x30 -i testdata.osm -r $FRULE -G -o $(basename ${FRULE%%.osm}.png) -w out.osm 15E34.35:43N44.06:50000
+
+done
+

@@ -1,0 +1,12 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<osm version='0.6' generator='Bernhard R. Fischer'>
+   <node version='1'>
+      <tag k='seamark:type' v='sounding'/>
+      <tag k='_action_' v='shape:style=circle;radius=5;start=45;end=180;subtype=sectored'/>
+   </node>
+   <way version='2'>
+      <tag k='seamark:type' v='sounding'/>
+      <tag k='_action_' v='draw:color=red;width=.25;bcolor=black;bwidth=.3'/>
+   </way>
+</osm>
+
