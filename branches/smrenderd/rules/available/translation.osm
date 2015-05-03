@@ -45,6 +45,28 @@
       <tag k='violett' v='viol.'/>
    </node>
 
+   <!-- translation table for Greek lights -->
+   <node id='1002'>
+      <tag k='Fl' v='Αν'/>
+      <tag k='LFl' v='Μ Αν'/>
+      <!--tag k='Oc' v='Ubr'/>
+      <tag k='F' v=''/>
+      <tag k='Iso' v=''/>
+      <tag k='Q' v=''/>
+      <tag k='IQ' v=''/>
+      <tag k='VQ' v=''/>
+      <tag k='IVQ' v=''/>
+      <tag k='UQ' v=''/>
+      <tag k='IUQ' v=''/>
+      <tag k='FFl' v=''/-->
+      <tag k='white' v='Λ'/>
+      <tag k='red' v='Ερ'/>
+      <tag k='green' v='Πρ'/>
+      <tag k='yellow' v='Κτ'/>
+      <!--tag k='black' v=''/>
+      <tag k='violett' v=''/-->
+   </node>
+
 
    <!-- translation rule for light character -->
    <node version='-100'>
