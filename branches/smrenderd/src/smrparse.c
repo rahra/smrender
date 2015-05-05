@@ -268,6 +268,8 @@ int parse_style(const char *s)
    }
    if (!strcmp(s, "dotted")) return DRAW_DOTTED;
    if (!strcmp(s, "transparent")) return DRAW_TRANSPARENT;
+   if (!strcmp(s, "pipe")) return DRAW_PIPE;
+   if (!strcmp(s, "rounddot")) return DRAW_ROUNDDOT;
 
    return DRAW_SOLID;
 }

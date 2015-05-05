@@ -778,7 +778,7 @@ static double cairo_smr_fill_width(const struct actDraw *d)
 }
 
 
-static void cairo_smr_dash(cairo_t *ctx, int style)
+static void cairo_smr_dash(cairo_t *ctx, int style, double bwidth)
 {
    double dash[2];
    int n = 0;
@@ -786,15 +786,30 @@ static void cairo_smr_dash(cairo_t *ctx, int style)
    switch (style)
    {
       case DRAW_DASHED:
-         dash[0] = mm2unit(2);
-         dash[1] = mm2unit(0.5);
+         dash[0] = mm2wu(bwidth) * 7;
+         dash[1] = mm2wu(bwidth) * 3;
          n = 2;
          break;
 
       case DRAW_DOTTED:
-         dash[0] = mm2unit(0.3);
+         dash[0] = mm2wu(bwidth);
          n = 1;
          break;
+
+      case DRAW_ROUNDDOT:
+         cairo_set_line_cap(ctx, CAIRO_LINE_CAP_ROUND);
+         dash[0] = 0;
+         dash[1] = mm2wu(bwidth) * 2;
+         n = 2;
+         break;
+
+      case DRAW_PIPE:
+         cairo_set_line_cap(ctx, CAIRO_LINE_CAP_ROUND);
+         dash[0] = 0;
+         dash[1] = mm2wu(bwidth) * 10;
+         n = 2;
+         break;
+
 /*
       case DRAW_SOLID:
       default:
@@ -836,11 +851,30 @@ static void render_poly_line(cairo_t *ctx, const struct actDraw *d, const osm_wa
    if (d->border.used)
    {
       cairo_smr_set_source_color(ctx, d->border.col);
-      cairo_set_line_width(ctx, cairo_smr_border_width(d, is_closed_poly(w)));
-      cairo_smr_dash(ctx, d->border.style);
-      cairo_smr_poly(ctx, d, w);
-      cairo_stroke(ctx);
-      CSS_INC(CSS_STROKE);
+      // The pipe is a special case: it is a combination of a dashed and a
+      // dotted line, the dots are place at the beginning of each dash.
+      if (d->border.style == DRAW_PIPE)
+      {
+         cairo_set_line_width(ctx, cairo_smr_border_width(d, is_closed_poly(w)));
+         cairo_smr_dash(ctx, DRAW_DASHED, d->border.width);
+         cairo_smr_poly(ctx, d, w);
+         cairo_stroke(ctx);
+         CSS_INC(CSS_STROKE);
+  
+         cairo_set_line_width(ctx, cairo_get_line_width(ctx) * 2);
+         cairo_smr_dash(ctx, DRAW_PIPE, d->border.width);
+         cairo_smr_poly(ctx, d, w);
+         cairo_stroke(ctx);
+         CSS_INC(CSS_STROKE);
+      }
+      else
+      {
+         cairo_set_line_width(ctx, cairo_smr_border_width(d, is_closed_poly(w)));
+         cairo_smr_dash(ctx, d->border.style, d->border.width);
+         cairo_smr_poly(ctx, d, w);
+         cairo_stroke(ctx);
+         CSS_INC(CSS_STROKE);
+      }
    }
 
    if (d->fill.used)
@@ -850,7 +884,7 @@ static void render_poly_line(cairo_t *ctx, const struct actDraw *d, const osm_wa
       if (!is_closed_poly(w))
       {
          cairo_set_line_width(ctx, cairo_smr_fill_width(d));
-         cairo_smr_dash(ctx, d->fill.style);
+         cairo_smr_dash(ctx, d->fill.style, d->border.width);
          cairo_stroke(ctx);
          CSS_INC(CSS_STROKE);
       }
