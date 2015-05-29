@@ -1,5 +1,8 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <osm version='0.6' generator='Bernhard R. Fischer'>
+<!-- Test rendering data
+WINDOW='15E34.35:43N44.06:50000'
+-->
    <node version='1'>
       <tag k='seamark:type' v='sounding'/>
       <tag k='_action_' v='shape:style=square;radius=5;weight=0.7;angle=30'/>

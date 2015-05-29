@@ -3,7 +3,8 @@
 for FRULE in rules/*.osm
 do
 
-   smrender -DD -P 30x30 -i testdata.osm -r $FRULE -G -o $(basename ${FRULE%%.osm}.png) -w out.osm 15E34.35:43N44.06:50000
+   echo "smrender -P A4 -i testdata.osm -r $FRULE -G -o $(basename ${FRULE%%.osm}.png) 15E34.35:43N44.06:50000"
+   smrender -DD -P 50x50 -i testdata.osm -r $FRULE -G -o $(basename ${FRULE%%.osm}.png) 15E34.35:43N44.06:50000
 
 done
 
