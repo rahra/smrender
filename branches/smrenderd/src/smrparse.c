@@ -689,3 +689,50 @@ int parse_alignment(const action_t *act)
    return pos;
 }
 
+
+int parse_length(const char *s, value_t *v)
+{
+   char *eptr;
+
+   errno = 0;
+   v->val = strtod(s, &eptr);
+
+   if (eptr == s)
+      errno = EINVAL;
+
+   if (errno)
+      return -1;
+
+   // skip leading spaces
+   for (; isspace(*eptr); eptr++);
+
+   if (*eptr == '\0')
+      v->u = U_1;
+   else if (!strcasecmp(eptr, "nm") || !strcasecmp(eptr, "sm"))
+      v->u = U_NM;
+   else if (!strcasecmp(eptr, "kbl"))
+      v->u = U_KBL;
+   else if (!strcasecmp(eptr, "ft"))
+      v->u = U_FT;
+   else if (!strcasecmp(eptr, "mm"))
+      v->u = U_MM;
+   else if (!strcasecmp(eptr, "°"))
+      v->u = U_DEG;
+   else if (!strcasecmp(eptr, "'"))
+      v->u = U_MIN;
+   else if (!strcasecmp(eptr, "m"))
+      v->u = U_M;
+   else if (!strcasecmp(eptr, "km"))
+      v->u = U_KM;
+   else if (!strcasecmp(eptr, "in"))
+      v->u = U_IN;
+   else if (!strcasecmp(eptr, "cm"))
+      v->u = U_CM;
+   else if (!strcasecmp(eptr, "px"))
+      v->u = U_PX;
+   else if (!strcasecmp(eptr, "pt"))
+      v->u = U_PT;
+
+   return 0;
+}
+
