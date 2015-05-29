@@ -86,15 +86,6 @@
 
 #define MAX_SHAPE_PCOUNT 2000
 
-// convert mm to pixels
-#define MM2PX(x) mm2pxi(x)
-// convert mm to pdf points (pt)
-#define MM2PT(x) round((double) (x) * 72.0 / 25.4)
-// convert pixels to mm
-#define PX2MM(x) px2mm(x)
-// convert mm to degrees
-#define MM2LAT(x) ((x) * (rd->bb.ru.lat - rd->bb.ll.lat) / PX2MM(rd->h))
-#define MM2LON(x) ((x) * (rd->bb.ru.lon - rd->bb.ll.lon) / PX2MM(rd->w))
 // default oversampling factor
 #ifdef HAVE_CAIRO
 #define DEFAULT_OVS 1
@@ -233,7 +224,6 @@ struct file
    int fd;
 };
 
-
 /* smrender.c */
 int print_onode(FILE *, const osm_obj_t*);
 int col_freq(struct rdata *, int, int, int, int, double, int);
@@ -285,6 +275,7 @@ fparam_t **parse_fparam(char*);
 void free_fparam(fparam_t **);
 int parse_alignment(const action_t *act);
 int parse_alignment_str(const char *);
+int parse_length(const char *, value_t *);
 
 /* smkap.c */
 int save_kap(FILE *, struct rdata *);

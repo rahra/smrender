@@ -36,12 +36,30 @@
 #define RD_LANDSCAPE 2
 #define RD_UIDS 4          //<! output IDs unsigned
 
+// convert mm to pixels
+#define MM2PX(x) mm2pxi(x)
+// convert pixels to mm
+#define PX2MM(x) px2mm(x)
+// convert mm to degrees
+#define MM2LAT(x) ((x) * (rd->bb.ru.lat - rd->bb.ll.lat) / PX2MM(rd->h))
+#define MM2LON(x) ((x) * (rd->bb.ru.lon - rd->bb.ll.lon) / PX2MM(rd->w))
+
 
 typedef enum
 {
-   U_MM, U_PX, U_PT, U_IN
+   // unit "1"
+   U_1,
+   // units in respect to the page
+   U_MM, U_CM, U_PX, U_PT, U_IN,
+   // units in respect to reality
+   U_NM, U_KM, U_M, U_KBL, U_FT, U_DEG, U_MIN
 } unit_t;
 
+typedef struct value
+{
+   unit_t u;
+   double val;
+} value_t;
 
 struct bbox
 {
@@ -113,8 +131,6 @@ void geo2pt(double, double, double*, double*);
 void geo2pxf(double, double, double*, double*);
 void geo2pxi(double, double, int*, int*);
 #define mk_paper_coords(p0, p1, p2, p3, p4) geo2pxi(p1, p0, p3, p4)
-double mm2lat(double);
-double mm2lon(double);
 
 
 struct rdata *rdata_get(void);

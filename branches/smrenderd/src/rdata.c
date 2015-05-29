@@ -44,18 +44,6 @@ struct rdata *rdata_get(void)
 }
 
 
-double mm2lat(double x)
-{
-   return x * (rd_.bb.ru.lat - rd_.bb.ll.lat) / rdata_px_unit(rd_.h, U_MM);
-}
-
-
-double mm2lon(double x)
-{
-   return x * (rd_.bb.ru.lon - rd_.bb.ll.lon) / rdata_px_unit(rd_.w, U_MM);
-}
-
-
 double mm2ptf(double x)
 {
    return x * 72 / 25.4;
@@ -141,20 +129,24 @@ void rdata_log(void)
 }
 
 
+/* Convert pixel to desired unit. */
 double rdata_px_unit(double x, unit_t type)
 {
    switch (type)
    {
       case U_PX:
          return x;
+      case U_CM:
+         x *= 10;
       case U_MM:
          return x * 25.4 / rd_.dpi;
       case U_PT:
          return x * 72 / rd_.dpi;
       case U_IN:
          return x / rd_.dpi;
+      default:
+         return NAN;
    }
-   return NAN;
 }
 
 
@@ -211,5 +203,11 @@ int is_on_page(const struct coord *c)
    if (c->lon < rd_.bb.ll.lon || c->lon > rd_.bb.ru.lon || c->lat < rd_.bb.ll.lat || c->lat > rd_.bb.ru.lat)
       return 0;
    return 1;
+}
+
+
+int conv_unit(value_t *v, unit_t dst_u)
+{
+   return 0;
 }
 
