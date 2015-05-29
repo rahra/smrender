@@ -74,7 +74,7 @@
 //#define COL_STRETCH_BW
 #define COL_STRETCH_F 1.0
 
-#define POS_OFFSET mm2ptf(1.4)
+#define POS_OFFSET mm2unit(1.4)
 
 #define COL_COMP(x, y) ((x) >> (y) & 0xff)
 #define COL_COMPD(x, y) ((double) COL_COMP(x, y) / 255.0)
@@ -96,6 +96,10 @@
 #define TILE_SIZE 256
 #define TRANSPIX 0x7fffffff
 #define sqr(x) pow(x, 2)
+
+#define CURVE 1
+#define WAVY 2
+#define WAVY_LENGTH 0.0015
 
 #define MAJORAXIS 720.0
 #define AUTOROT NAN
@@ -561,9 +565,13 @@ int act_draw_ini(smrule_t *r)
       d->border.width = 0;
    d->border.style = parse_style(get_param("bstyle", NULL, r->act));
 
-   d->curve = get_param_bool("curve", r->act);
+   if (get_param_bool("curve", r->act))
+      d->curve = CURVE;
    if (get_param("curve_factor", &d->curve_fact, r->act) == NULL)
       d->curve_fact = DIV_PART;
+
+   if (get_param_bool("wavy", r->act))
+      d->curve = WAVY;
 
    // honor direction of ways
    d->directional = get_param_bool("directional", r->act);
@@ -722,6 +730,97 @@ static int cairo_smr_poly_curve(const osm_way_t *w, cairo_t *ctx, double f)
 }
 
 
+static void wavy(const struct coord *src, const struct coord *dst, cairo_t *ctx)
+{
+   struct pcoord pc;
+   double lat, lon, x1, x2, x3, y1, y2, y3;
+
+   // end point
+   geo2pt(dst->lon, dst->lat, &x3, &y3);
+
+   coord_diffp(src, dst, &pc);
+
+   pc.bearing -= 45.0;
+   lat = src->lat + pc.dist * M_SQRT1_2 * cos(DEG2RAD(pc.bearing));
+   lon = src->lon + pc.dist * M_SQRT1_2 * sin(DEG2RAD(pc.bearing)) / cos(DEG2RAD((lat + src->lat) / 2));
+   geo2pt(lon, lat, &x1, &y1);
+
+   pc.bearing += 90.0;
+   lat = src->lat + pc.dist * M_SQRT1_2 * cos(DEG2RAD(pc.bearing));
+   lon = src->lon + pc.dist * M_SQRT1_2 * sin(DEG2RAD(pc.bearing)) / cos(DEG2RAD((lat + src->lat) / 2));
+   geo2pt(lon, lat, &x2, &y2);
+
+   cairo_curve_to(ctx, x1, y1, x2, y2, x3, y3);
+   CSS_INC(CSS_CURVE);
+}
+
+
+static int cairo_smr_wavy(const osm_way_t *w, cairo_t *ctx, double dist)
+{
+   struct pcoord pc;
+   struct coord sc, dc, ic;
+   osm_node_t *n;
+   double d, x, y;
+   int i, j;
+
+   if (w->ref == NULL)
+   {
+      log_msg(LOG_EMERG, "w(%"PRId64")->ref == NULL...this should never happen!", w->obj.id);
+      return -1;
+   }
+
+   if ((n = get_object(OSM_NODE, w->ref[0])) == NULL)
+   {
+      log_msg(LOG_ERR, "node %"PRId64" of way %"PRId64" das not exit", w->ref[0], w->obj.id);
+      return -1;
+   }
+
+   sc.lat = n->lat;
+   sc.lon = n->lon;
+   geo2pt(n->lon, n->lat, &x, &y);
+   cairo_move_to(ctx, x, y);
+
+   for (i = 1, pc.dist = 0, j = 0;; j++)
+   {
+      if (pc.dist <= 0)
+      {
+         if (i >= w->ref_cnt)
+            break;
+
+         if ((n = get_object(OSM_NODE, w->ref[i])) == NULL)
+         {
+            log_msg(LOG_ERR, "node %"PRId64" of way %"PRId64" das not exit", w->ref[i], w->obj.id);
+            return -1;
+         }
+         i++;
+
+         dc.lat = n->lat;
+         dc.lon = n->lon;
+
+         d = pc.dist;
+         coord_diffp(&sc, &dc, &pc);
+         pc.dist += d;
+      }
+
+      if (pc.dist > dist)
+      {
+         ic.lat = sc.lat + dist * cos(DEG2RAD(pc.bearing));
+         ic.lon = sc.lon + dist * sin(DEG2RAD(pc.bearing)) / cos(DEG2RAD((ic.lat + sc.lat) / 2));
+
+         wavy(&sc, &ic, ctx);
+         sc = ic;
+      }
+      pc.dist -= dist;
+   }
+
+   log_debug("%d virtual points inserted", j ); 
+
+
+
+   return 0;
+}
+
+
 /*! Create a cairo path from a way.
  */
 static void cairo_smr_poly_line(const osm_way_t *w, cairo_t *ctx)
@@ -730,7 +829,6 @@ static void cairo_smr_poly_line(const osm_way_t *w, cairo_t *ctx)
    double x, y;
    int i;
 
-   cairo_new_sub_path(ctx);
    for (i = 0; i < w->ref_cnt; i++)
    {
       if ((n = get_object(OSM_NODE, w->ref[i])) == NULL)
@@ -821,8 +919,12 @@ static void cairo_smr_dash(cairo_t *ctx, int style, double bwidth)
 
 static inline int cairo_smr_poly(cairo_t *ctx, const struct actDraw *d, const osm_way_t *w)
 {
-   if (d->curve)
+   cairo_new_sub_path(ctx);
+
+   if (d->curve == CURVE)
       return cairo_smr_poly_curve(w, ctx, d->curve_fact);
+   if (d->curve == WAVY)
+      return cairo_smr_wavy(w, ctx, WAVY_LENGTH);
 
    cairo_smr_poly_line(w, ctx);
    return 0;
@@ -833,7 +935,7 @@ static inline int cairo_smr_poly(cairo_t *ctx, const struct actDraw *d, const os
  * The border is always stroked immediately, independently if it is an open or
  * closed polygon and fill is carried out immediately on open polygons. On
  * closed polygons the fill operation is carried out only if cw = 0.
- * If cw != 0 it does not fill but just creates a sub-paths within the cairo
+ * If cw != 0 it does not fill but just creates a sub-path within the cairo
  * context. Thus, fill must be called after, explicitly. Please note that it is
  * not allowed to mix calls which stroke/fill and those who don't because
  * stroke/fill will always clear all previous paths.
@@ -853,24 +955,16 @@ static void render_poly_line(cairo_t *ctx, const struct actDraw *d, const osm_wa
       cairo_smr_set_source_color(ctx, d->border.col);
       // The pipe is a special case: it is a combination of a dashed and a
       // dotted line, the dots are place at the beginning of each dash.
+      cairo_set_line_width(ctx, cairo_smr_border_width(d, is_closed_poly(w)));
+      cairo_smr_dash(ctx, d->border.style == DRAW_PIPE ? DRAW_DASHED : d->border.style, d->border.width);
+      cairo_smr_poly(ctx, d, w);
+      cairo_stroke(ctx);
+      CSS_INC(CSS_STROKE);
+
       if (d->border.style == DRAW_PIPE)
       {
-         cairo_set_line_width(ctx, cairo_smr_border_width(d, is_closed_poly(w)));
-         cairo_smr_dash(ctx, DRAW_DASHED, d->border.width);
-         cairo_smr_poly(ctx, d, w);
-         cairo_stroke(ctx);
-         CSS_INC(CSS_STROKE);
-  
          cairo_set_line_width(ctx, cairo_get_line_width(ctx) * 2);
          cairo_smr_dash(ctx, DRAW_PIPE, d->border.width);
-         cairo_smr_poly(ctx, d, w);
-         cairo_stroke(ctx);
-         CSS_INC(CSS_STROKE);
-      }
-      else
-      {
-         cairo_set_line_width(ctx, cairo_smr_border_width(d, is_closed_poly(w)));
-         cairo_smr_dash(ctx, d->border.style, d->border.width);
          cairo_smr_poly(ctx, d, w);
          cairo_stroke(ctx);
          CSS_INC(CSS_STROKE);
@@ -1131,7 +1225,7 @@ int act_cap_ini(smrule_t *r)
       log_msg(LOG_WARN, "parameter 'size' missing");
       return 1;
    }
-   cap.xoff = cap.yoff = mm2ptf(cap.size) / 2;
+   cap.xoff = cap.yoff = mm2unit(cap.size) / 2;
    if ((cap.key = get_param("key", NULL, r->act)) == NULL)
    {
       log_msg(LOG_WARN, "parameter 'key' missing");
