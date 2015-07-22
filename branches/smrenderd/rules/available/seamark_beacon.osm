@@ -150,14 +150,14 @@
       <tag k='seamark:type' v=''/>
       <tag k='_action_' v='img:file=SeaMapSymbols/Fog_Signal.svg'/>
    </node>
-   
-   <node>
-      <tag k='seamark:type' v='light_major'/>
-      <tag k='_action_' v='cap:font=sans-serif;size=1.4;key=seamark:name'/>
-   </node>
-   <node version="6">
+
+    <node version="6">
       <tag k='_action_' v='cap:font=sans-serif;size=1.4;halign=east;key=seamark:light_character;angle=auto;weight=0.7'/>
       <tag k='seamark:light_character' v=''/>
+   </node>
+   <node version="6">
+      <tag k='seamark:type' v='/light_minor|light_major/'/>
+      <tag k='_action_' v='cap:font=sans-serif;size=1.4;key=seamark:name;anglekey=seamark:light_character:autoangle;valign=south;halignkey=seamark:light_character:autoalign'/>
    </node>
    <node version='1'>
       <tag k='seamark:type' v='sounding'/>

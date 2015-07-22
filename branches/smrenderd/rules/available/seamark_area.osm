@@ -20,6 +20,10 @@
       <tag k='_action_' v='draw:color=#40FF00FF'/>
    </way>
    
+   <way>
+      <tag k='seamark:type' v='cable_submarine'/>
+      <tag k='_action_' v='draw:color=magenta;wavy=yes'/>
+   </way>
    
    <way version="-10">
       <tag k='seamark:type' v='anchorage'/>
