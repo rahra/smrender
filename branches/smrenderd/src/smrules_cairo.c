@@ -2510,5 +2510,92 @@ int act_img_fini(smrule_t *r)
    return 0;
 }
 
+
+int act_clip_ini(smrule_t *r)
+{
+   char *s, *nptr, *eptr;
+   double *bc;
+   int i;
+
+   if ((bc = malloc(sizeof(*bc) * 4)) == NULL)
+   {
+      log_errno(LOG_ERR, "malloc() failed");
+      return 1;
+   }
+
+   if ((s = get_param("border", NULL, r->act)) == NULL)
+   {
+      for (i = 0; i < 4; i++)
+         bc[i] = G_MARGIN + G_TW + G_STW;
+      log_debug("setting border to default = %.1f mm", bc[0]);
+   }
+   else
+   {
+      for (s = strtok_r(s, ",", &nptr), i = 0; s != NULL && i < 4; s = strtok_r(NULL, ",", &nptr), i++)
+      {
+         errno = 0;
+         bc[i] = strtod(s, &eptr); 
+         if (errno)
+         {
+            log_msg(LOG_WARN, "parameter '%s' out of range", s);
+            free(bc);
+            return 1;
+         }
+         if (s == eptr)
+         {
+            log_msg(LOG_WARN, "cannot convert '%s'", s);
+            free(bc);
+            return 1;
+         }
+      }
+
+      if (i < 4)
+      {
+         log_msg(LOG_WARN, "border requires 4 values");
+         free(bc);
+         return 1;
+      }
+   }
+
+   r->data = bc;
+   return 0;
+}
+
+
+/*! Install a clipping region.
+ * FIXME: This does not yet work because clipping works only within a cairo
+ * context but not across, from one to another.
+ */
+int act_clip_fini(smrule_t *r)
+{
+   double *bc = r->data;
+   cairo_t *ctx;
+
+   log_msg(LOG_DEBUG, "%.1f, %.1f, %.1f, %.1f", bc[0], bc[1], bc[2], bc[3]);
+
+   ctx = cairo_create(sfc_);
+
+   cairo_move_to(ctx, 0, 0);
+   cairo_line_to(ctx, rdata_width(U_PT), 0);
+   cairo_line_to(ctx, rdata_width(U_PT), rdata_height(U_PT));
+   cairo_line_to(ctx, 0, rdata_height(U_PT));
+   cairo_line_to(ctx, 0, 0);
+ 
+   cairo_move_to(ctx, mm2unit(bc[3]), mm2unit(bc[0]));
+   cairo_line_to(ctx, mm2unit(bc[3]), rdata_height(U_PT) - mm2unit(bc[2]));
+   cairo_line_to(ctx, rdata_width(U_PT) - mm2unit(bc[1]), rdata_height(U_PT) - mm2unit(bc[2]));
+   cairo_line_to(ctx, rdata_width(U_PT) - mm2unit(bc[1]), mm2unit(bc[0]));
+   cairo_line_to(ctx, mm2unit(bc[3]), mm2unit(bc[0]));
+
+   cairo_smr_set_source_color(ctx, parse_color("bgcolor"));
+   cairo_fill(ctx);
+   CSS_INC(CSS_FILL);
+ 
+   cairo_destroy(ctx);
+
+   return 0;
+}
+
+
 #endif
 
