@@ -187,7 +187,7 @@ static int get_depth(int hcnt)
 
 int save_kap(FILE *f, struct rdata *rd)
 {
-   int d, i, x, y, hcnt, off, w = rd->fh;
+   int d, i, x, y, hcnt, off, w = rd->fw;
    uint8_t buf_out[w + 4], buf_in[w];
    int32_t offp[rd->fh + 1];
    void *img;
