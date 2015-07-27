@@ -1,0 +1,49 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<osm version='0.6' generator='Bernhard R. Fischer'>
+
+   <!-- Add center node for compass, 5 cm western and southern of the upper right page corner. -->
+   <node lat="-50" lon="-50" version="-10">
+      <tag k="compass" v="rightupper"/>
+      <tag k="name" v="4°15'w 2003 (5'E)"/>
+      <tag k="bearing" v="-4.9"/>
+      <tag k="_action_" v="add:reference=relative;halign=east;valign=north;units=mm"/>
+   </node>
+   <!-- Add center node for compass, 5 cm eastern and northern of the lower left page corner. -->
+   <node lat="70" lon="70" version="-10">
+      <tag k="compass" v="leftlower"/>
+      <tag k="name" v="2°05'E 2003 (5'E)"/>
+      <tag k="bearing" v="2.0833"/>
+      <tag k="_action_" v="add:reference=relative;halign=west;valign=south;units=mm"/>
+   </node>
+   <!-- Create OSM data for the two different compass roses. -->
+   <node version="-10">
+      <tag k="compass" v="rightupper"/>
+      <tag k="_action_" 
+v="compass@libsmfilter.so:radius=0.03;variation=-4.9"/>
+   </node>
+   <node version="-10">
+      <tag k="compass" v="leftlower"/>
+      <tag k="_action_" 
+v="compass@libsmfilter.so:radius=0.03;variation=2.0833"/>
+   </node>
+   <!-- Render the compass captions. -->
+   <node>
+      <tag k="compass" v=""/>
+      <tag k='_action_' v='cap:font=sans-
+         serif;color=magenta;size=2;key=name;
+         anglekey=bearing;angle=-270;valign=north'/>
+   </node>
+   <!-- Render the bearing captions. -->
+   <node>
+      <tag k="smrender:compass:description" v=""/>
+      <tag k='_action_' v='cap:font=sans-serif;color=magenta;size=2;
+         key=smrender:compass:description;
+         anglekey=smrender:compass;angle=0;valign=north'/>
+   </node>
+   <!-- Render the lines. -->
+   <way>
+      <tag k="smrender:compass" v=""/>
+      <tag k="_action_" v="draw:bcolor=magenta;width=0.2"/>
+   </way>
+</osm>
+

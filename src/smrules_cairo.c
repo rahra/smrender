@@ -1,4 +1,4 @@
-/* Copyright 2011 Bernhard R. Fischer, 2048R/5C5FFD47 <bf@abenteuerland.at>
+/* Copyright 2011-2015 Bernhard R. Fischer, 2048R/5C5FFD47 <bf@abenteuerland.at>
  *
  * This file is part of smrender.
  *
@@ -15,8 +15,8 @@
  * along with smrender. If not, see <http://www.gnu.org/licenses/>.
  */
 
-/*! This file contains the code of the rule parser and main loop of the render
- * as well as the code for traversing the object (nodes/ways) tree.
+/*! \file smrules_cairo.c
+ * This file contains all graphical rendering functions using libcairo.
  *
  *  @author Bernhard R. Fischer
  */
@@ -45,6 +45,12 @@
 #ifdef CAIRO_HAS_PDF_SURFACE
 #include <cairo-pdf.h>
 #endif
+#ifdef CAIRO_HAS_SVG_SURFACE
+#include <cairo-svg.h>
+#endif
+#ifdef HAVE_RSVG
+#include <librsvg/rsvg.h>
+#endif
 
 // this format was defined in version 1.12
 #ifndef CAIRO_FORMAT_RGB30
@@ -68,7 +74,7 @@
 //#define COL_STRETCH_BW
 #define COL_STRETCH_F 1.0
 
-#define POS_OFFSET mm2ptf(1.4)
+#define POS_OFFSET mm2unit(1.4)
 
 #define COL_COMP(x, y) ((x) >> (y) & 0xff)
 #define COL_COMPD(x, y) ((double) COL_COMP(x, y) / 255.0)
@@ -91,9 +97,25 @@
 #define TRANSPIX 0x7fffffff
 #define sqr(x) pow(x, 2)
 
+#define CURVE 1
+#define WAVY 2
+#define WAVY_LENGTH 0.0015
+
 #define MAJORAXIS 720.0
 #define AUTOROT NAN
 
+#define RENDER_IMMEDIATE 0
+#define CREATE_PATH 1
+#define PUSH_GROUP
+
+#define CAIRO_SMR_STATS
+#ifdef CAIRO_SMR_STATS
+enum {CSS_LINE, CSS_CURVE, CSS_STROKE, CSS_FILL, CSS_PAINT, CSS_PUSH, CSS_POP, CSS_MAX};
+static int css_stats_[CSS_MAX];
+#define CSS_INC(x) (css_stats_[x]++)
+#else
+#define CSS_INC(x)
+#endif
 
 typedef struct diffvec
 {
@@ -129,7 +151,16 @@ static cairo_rectangle_t ext_;
 
 void __attribute__((constructor)) cairo_smr_init(void)
 {
-   log_debug("using libcairo %s", cairo_version_string());
+   log_debug("using libcairo %s, using GLIB %d.%d", cairo_version_string(), glib_major_version, glib_minor_version);
+#if ! GLIB_CHECK_VERSION(2,36,0)
+   log_debug("calling g_type_init()");
+   g_type_init();
+#endif
+#ifdef PUSH_GROUP
+   log_debug("using push()/pop()");
+#else
+   log_debug("push()/pop() disabled (thus, rendering is slower)");
+#endif
 }
 
 
@@ -197,7 +228,12 @@ static cairo_surface_t *cairo_smr_surface(void)
    cairo_surface_t *sfc;
    cairo_status_t e;
 
+//#define RECORD_TO_PDF
+#ifndef RECORD_TO_PDF
    sfc = cairo_recording_surface_create(CAIRO_CONTENT_COLOR_ALPHA, &ext_);
+#else
+   sfc = cairo_pdf_surface_create("tmp.pdf", ext_.width, ext_.height);
+#endif
    if ((e = cairo_surface_status(sfc)) != CAIRO_STATUS_SUCCESS)
    {
       log_msg(LOG_ERR, "failed to create cairo surface: %s", cairo_status_to_string(e));
@@ -205,6 +241,16 @@ static cairo_surface_t *cairo_smr_surface(void)
    }
    cairo_surface_set_fallback_resolution(sfc, rdata_dpi(), rdata_dpi());
    return sfc;
+}
+
+
+void __attribute__((destructor)) cairo_smr_fini(void)
+{
+   cairo_surface_destroy(sfc_);
+#ifdef CAIRO_SMR_STATS
+   for (int i = 0; i < CSS_MAX; i++)
+      log_debug("css_stats_[%d] = %d", i, css_stats_[i]);
+#endif
 }
 
 
@@ -226,6 +272,7 @@ void cairo_smr_init_main_image(const char *bg)
    ctx = cairo_create(sfc_);
    cairo_smr_set_source_color(ctx, parse_color("bgcolor"));
    cairo_paint(ctx);
+   CSS_INC(CSS_PAINT);
    cairo_destroy(ctx);
 
    log_msg(LOG_DEBUG, "background color is set to 0x%08x", parse_color("bgcolor"));
@@ -249,6 +296,7 @@ void *cairo_smr_image_surface_from_bg(cairo_format_t fmt)
    cairo_scale(dst, (double) rdata_dpi() / 72, (double) rdata_dpi() / 72);
    cairo_set_source_surface(dst, sfc_, 0, 0);
    cairo_paint(dst);
+   CSS_INC(CSS_PAINT);
    cairo_destroy(dst);
    cairo_smr_log_surface_data(sfc);
    return sfc;
@@ -261,7 +309,7 @@ void save_main_image(FILE *f, int ftype)
    cairo_status_t e;
    cairo_t *dst;
 
-   log_msg(LOG_INFO, "saving image (ftype = %d)", ftype);
+   log_msg(LOG_NOTICE, "saving image (ftype = %d)", ftype);
 
    switch (ftype)
    {
@@ -274,9 +322,10 @@ void save_main_image(FILE *f, int ftype)
 
       case FTYPE_PDF:
 #ifdef CAIRO_HAS_PDF_SURFACE
-         log_debug("width = %.2f pt, height = %.2f pt", rdata_width(U_PT), rdata_height(U_PT));
+         log_debug("PDF: width = %.2f pt (%.2f mm), height = %.2f pt (%.2f mm)",
+               rdata_width(U_PT), rdata_width(U_MM), rdata_height(U_PT), rdata_height(U_MM));
          sfc = cairo_pdf_surface_create_for_stream(cairo_smr_write_func, f, rdata_width(U_PT), rdata_height(U_PT));
-         cairo_pdf_surface_restrict_to_version(sfc, CAIRO_PDF_VERSION_1_4);
+         //cairo_pdf_surface_restrict_to_version(sfc, CAIRO_PDF_VERSION_1_4);
          dst = cairo_create(sfc);
          cairo_smr_log_status(dst);
          cairo_set_source_surface(dst, sfc_, 0, 0);
@@ -286,6 +335,24 @@ void save_main_image(FILE *f, int ftype)
          cairo_surface_destroy(sfc);
 #else
          log_msg(LOG_NOTICE, "cannot create PDF, cairo was compiled without PDF support");
+#endif
+         return;
+#ifdef CAIRO_HAS_SVG_SURFACE
+      case FTYPE_SVG:
+         log_debug("width = %.2f pt, height = %.2f pt", rdata_width(U_PT), rdata_height(U_PT));
+         sfc = cairo_svg_surface_create_for_stream(cairo_smr_write_func, f, rdata_width(U_PT), rdata_height(U_PT));
+         //sfc = cairo_svg_surface_create("out.svg", rdata_width(U_PT), rdata_height(U_PT));
+         cairo_svg_surface_restrict_to_version (sfc, CAIRO_SVG_VERSION_1_2);
+         dst = cairo_create(sfc);
+         cairo_smr_log_status(dst);
+         cairo_set_source_surface(dst, sfc_, 0, 0);
+         cairo_paint(dst);
+         //cairo_show_page(dst);
+         cairo_destroy(dst);
+         cairo_surface_destroy(sfc);
+
+#else
+         log_msg(LOG_NOTICE, "cannot create SVG, cairo was compiled without SVG support");
 #endif
          return;
    }
@@ -498,6 +565,14 @@ int act_draw_ini(smrule_t *r)
       d->border.width = 0;
    d->border.style = parse_style(get_param("bstyle", NULL, r->act));
 
+   if (get_param_bool("curve", r->act))
+      d->curve = CURVE;
+   if (get_param("curve_factor", &d->curve_fact, r->act) == NULL)
+      d->curve_fact = DIV_PART;
+
+   if (get_param_bool("wavy", r->act))
+      d->curve = WAVY;
+
    // honor direction of ways
    d->directional = get_param_bool("directional", r->act);
    d->collect_open = !get_param_bool("ignore_open", r->act);
@@ -511,7 +586,10 @@ int act_draw_ini(smrule_t *r)
       r->data = NULL;
       return -1;
    }
+#ifdef PUSH_GROUP
    cairo_push_group(d->ctx);
+   CSS_INC(CSS_PUSH);
+#endif
 
    sm_threaded(r);
 
@@ -525,6 +603,224 @@ int act_draw_ini(smrule_t *r)
 }
 
 
+typedef struct point
+{
+   double x, y;
+} point_t;
+
+typedef struct line
+{
+   point_t A, B;
+} line_t;
+
+
+static inline double angle(const line_t *g) { return atan2(g->B.y - g->A.y, g->B.x - g->A.x); }
+static inline double length(const line_t *g) { return sqrt(pow(g->B.x - g->A.x, 2) + pow(g->B.y - g->A.y, 2)); }
+
+
+static double tri_area(const point_t **p, int n)
+{
+   double a = 0;
+
+   for (int i = 0; i < n; i++)
+      a += p[i]->x * p[(i + 1) % n]->y - p[(i + 1) % n]->x * p[i]->y;
+
+   return a / 2;
+}
+
+
+void control_points(const line_t *g, const line_t *l, point_t *p1, point_t *p2, double f)
+{
+   const point_t *p[3];
+   double lgt, a1, a2;
+   line_t h;
+
+   lgt = sqrt(pow(g->B.x - l->A.x, 2) + pow(g->B.y - l->A.y, 2));
+
+   h.B = g->B;
+#define ISOSCELES_TRIANGLE
+#ifdef ISOSCELES_TRIANGLE
+   h.A.x = (g->B.x - lgt * cos(angle(g)) + l->A.x) * 0.5;
+   h.A.y = (g->B.y - lgt * sin(angle(g)) + l->A.y) * 0.5;
+#else
+   h.A.x = (g->A.x + l->A.x) * 0.5;
+   h.A.y = (g->A.y + l->A.y) * 0.5;
+#endif
+
+   a1 = angle(&h);
+   p[0] = &g->A;
+   p[1] = &g->B;
+   p[2] = &l->A;
+   a1 += tri_area(p, 3) < 0 ? -M_PI_2 : M_PI_2;
+
+   p1->x = g->B.x + lgt * cos(a1) * f;
+   p1->y = g->B.y + lgt * sin(a1) * f;
+
+   h.B = l->A;
+#ifdef ISOSCELES_TRIANGLE
+   h.A.x = (g->B.x + l->A.x + lgt * cos(angle(l))) * 0.5;
+   h.A.y = (g->B.y + l->A.y + lgt * sin(angle(l))) * 0.5;
+#else
+   h.A.x = (g->B.x + l->B.x) * 0.5;
+   h.A.y = (g->B.y + l->B.y) * 0.5;
+#endif
+   a2 = angle(&h);
+   p[0] = &g->B;
+   p[1] = &l->A;
+   p[2] = &l->B;
+   a2 += tri_area(p, 3) < 0 ? -M_PI_2 : M_PI_2;
+
+   p2->x = l->A.x - lgt * cos(a2) * f;
+   p2->y = l->A.y - lgt * sin(a2) * f;
+}
+
+
+static int cairo_smr_poly_curve(const osm_way_t *w, cairo_t *ctx, double f)
+{
+   osm_node_t *n;
+   int i, cnt, start;
+   line_t g, l;
+   point_t c1, c2, *pt;
+
+   cnt = w->ref_cnt;
+   start = !is_closed_poly(w);
+   if (!start)
+      cnt--;
+
+   log_debug("w->ref_cnt = %d, cnt = %d, start = %d", w->ref_cnt, cnt, start);
+   if ((pt = malloc(cnt * sizeof(*pt))) == NULL)
+   {
+      log_errno(LOG_ERR, "malloc() failed in cairo_smr_poly_curve()");
+      return -1;
+   }
+
+   for (i = 0; i < cnt; i++)
+   {
+      if ((n = get_object(OSM_NODE, w->ref[i])) == NULL)
+      {
+         log_msg(LOG_EMERG, "node %ld of way %ld at pos %d does not exist", (long) w->ref[i], (long) w->obj.id, i);
+         free(pt);
+         return -1;
+      }
+      geo2pt(n->lon, n->lat, &pt[i].x, &pt[i].y);
+   }
+
+   cairo_move_to(ctx, pt[(start - 1 + cnt) % cnt].x, pt[(start - 1 + cnt) % cnt].y);
+   for (i = start; i < cnt; i++)
+   {
+      g.A = pt[(i + cnt - 2) % cnt];
+      g.B = pt[(i + cnt - 1) % cnt];
+      l.A = pt[(i + cnt + 0) % cnt];
+      l.B = pt[(i + cnt + 1) % cnt];
+    
+      control_points(&g, &l, &c1, &c2, f);
+      if (start)
+      {
+         if (i == 1) c1 = g.B;
+         if (i == cnt - 1) c2 = l.A;
+      }
+
+      cairo_curve_to(ctx, c1.x, c1.y, c2.x, c2.y, pt[i].x, pt[i].y);
+      CSS_INC(CSS_CURVE);
+      //log_debug("%f %f %f %f %f %f", c1.x, c1.y, c2.x, c2.y, pt[i].x, pt[i].y);
+   }
+
+   free(pt);
+   return 0;
+}
+
+
+static void wavy(const struct coord *src, const struct coord *dst, cairo_t *ctx)
+{
+   struct pcoord pc;
+   double lat, lon, x1, x2, x3, y1, y2, y3;
+
+   // end point
+   geo2pt(dst->lon, dst->lat, &x3, &y3);
+
+   coord_diffp(src, dst, &pc);
+
+   pc.bearing -= 45.0;
+   lat = src->lat + pc.dist * M_SQRT1_2 * cos(DEG2RAD(pc.bearing));
+   lon = src->lon + pc.dist * M_SQRT1_2 * sin(DEG2RAD(pc.bearing)) / cos(DEG2RAD((lat + src->lat) / 2));
+   geo2pt(lon, lat, &x1, &y1);
+
+   pc.bearing += 90.0;
+   lat = src->lat + pc.dist * M_SQRT1_2 * cos(DEG2RAD(pc.bearing));
+   lon = src->lon + pc.dist * M_SQRT1_2 * sin(DEG2RAD(pc.bearing)) / cos(DEG2RAD((lat + src->lat) / 2));
+   geo2pt(lon, lat, &x2, &y2);
+
+   cairo_curve_to(ctx, x1, y1, x2, y2, x3, y3);
+   CSS_INC(CSS_CURVE);
+}
+
+
+static int cairo_smr_wavy(const osm_way_t *w, cairo_t *ctx, double dist)
+{
+   struct pcoord pc;
+   struct coord sc, dc, ic;
+   osm_node_t *n;
+   double d, x, y;
+   int i, j;
+
+   if (w->ref == NULL)
+   {
+      log_msg(LOG_EMERG, "w(%"PRId64")->ref == NULL...this should never happen!", w->obj.id);
+      return -1;
+   }
+
+   if ((n = get_object(OSM_NODE, w->ref[0])) == NULL)
+   {
+      log_msg(LOG_ERR, "node %"PRId64" of way %"PRId64" das not exit", w->ref[0], w->obj.id);
+      return -1;
+   }
+
+   sc.lat = n->lat;
+   sc.lon = n->lon;
+   geo2pt(n->lon, n->lat, &x, &y);
+   cairo_move_to(ctx, x, y);
+
+   for (i = 1, pc.dist = 0, j = 0;; j++)
+   {
+      if (pc.dist <= 0)
+      {
+         if (i >= w->ref_cnt)
+            break;
+
+         if ((n = get_object(OSM_NODE, w->ref[i])) == NULL)
+         {
+            log_msg(LOG_ERR, "node %"PRId64" of way %"PRId64" das not exit", w->ref[i], w->obj.id);
+            return -1;
+         }
+         i++;
+
+         dc.lat = n->lat;
+         dc.lon = n->lon;
+
+         d = pc.dist;
+         coord_diffp(&sc, &dc, &pc);
+         pc.dist += d;
+      }
+
+      if (pc.dist > dist)
+      {
+         ic.lat = sc.lat + dist * cos(DEG2RAD(pc.bearing));
+         ic.lon = sc.lon + dist * sin(DEG2RAD(pc.bearing)) / cos(DEG2RAD((ic.lat + sc.lat) / 2));
+
+         wavy(&sc, &ic, ctx);
+         sc = ic;
+      }
+      pc.dist -= dist;
+   }
+
+   log_debug("%d virtual points inserted", j ); 
+
+
+
+   return 0;
+}
+
+
 /*! Create a cairo path from a way.
  */
 static void cairo_smr_poly_line(const osm_way_t *w, cairo_t *ctx)
@@ -533,7 +829,6 @@ static void cairo_smr_poly_line(const osm_way_t *w, cairo_t *ctx)
    double x, y;
    int i;
 
-   cairo_new_path(ctx);
    for (i = 0; i < w->ref_cnt; i++)
    {
       if ((n = get_object(OSM_NODE, w->ref[i])) == NULL)
@@ -544,6 +839,7 @@ static void cairo_smr_poly_line(const osm_way_t *w, cairo_t *ctx)
 
       geo2pt(n->lon, n->lat, &x, &y);
       cairo_line_to(ctx, x, y);
+      CSS_INC(CSS_LINE);
    }
 }
 
@@ -580,7 +876,7 @@ static double cairo_smr_fill_width(const struct actDraw *d)
 }
 
 
-static void cairo_smr_dash(cairo_t *ctx, int style)
+static void cairo_smr_dash(cairo_t *ctx, int style, double bwidth)
 {
    double dash[2];
    int n = 0;
@@ -588,15 +884,30 @@ static void cairo_smr_dash(cairo_t *ctx, int style)
    switch (style)
    {
       case DRAW_DASHED:
-         dash[0] = mm2unit(2);
-         dash[1] = mm2unit(0.5);
+         dash[0] = mm2wu(bwidth) * 7;
+         dash[1] = mm2wu(bwidth) * 3;
          n = 2;
          break;
 
       case DRAW_DOTTED:
-         dash[0] = mm2unit(0.3);
+         dash[0] = mm2wu(bwidth);
          n = 1;
          break;
+
+      case DRAW_ROUNDDOT:
+         cairo_set_line_cap(ctx, CAIRO_LINE_CAP_ROUND);
+         dash[0] = 0;
+         dash[1] = mm2wu(bwidth) * 2;
+         n = 2;
+         break;
+
+      case DRAW_PIPE:
+         cairo_set_line_cap(ctx, CAIRO_LINE_CAP_ROUND);
+         dash[0] = 0;
+         dash[1] = mm2wu(bwidth) * 10;
+         n = 2;
+         break;
+
 /*
       case DRAW_SOLID:
       default:
@@ -606,42 +917,75 @@ static void cairo_smr_dash(cairo_t *ctx, int style)
 }
 
 
-/*! Render the way properly to the cairo context.
+static inline int cairo_smr_poly(cairo_t *ctx, const struct actDraw *d, const osm_way_t *w)
+{
+   cairo_new_sub_path(ctx);
+
+   if (d->curve == CURVE)
+      return cairo_smr_poly_curve(w, ctx, d->curve_fact);
+   if (d->curve == WAVY)
+      return cairo_smr_wavy(w, ctx, WAVY_LENGTH);
+
+   cairo_smr_poly_line(w, ctx);
+   return 0;
+}
+
+ 
+/*! Render the way properly to the cairo context (version 2, 2015/0207).
+ * The border is always stroked immediately, independently if it is an open or
+ * closed polygon and fill is carried out immediately on open polygons. On
+ * closed polygons the fill operation is carried out only if cw = 0.
+ * If cw != 0 it does not fill but just creates a sub-path within the cairo
+ * context. Thus, fill must be called after, explicitly. Please note that it is
+ * not allowed to mix calls which stroke/fill and those who don't because
+ * stroke/fill will always clear all previous paths.
+ * @param ctx Pointer to the cairo context.
+ * @param d Pointer to the drawing parameters of Smrender.
+ * @param w Pointer to the OSM way.
+ * @param cw If 0 stroke/fill immediately, otherwise just create sub-path but
+ * do not stroke/fill.
  */
 static void render_poly_line(cairo_t *ctx, const struct actDraw *d, const osm_way_t *w, int cw)
 {
+   // safety check
+   if (w == NULL) { log_msg(LOG_ERR, "NULL pointer to way"); return; }
+
    if (d->border.used)
    {
       cairo_smr_set_source_color(ctx, d->border.col);
+      // The pipe is a special case: it is a combination of a dashed and a
+      // dotted line, the dots are place at the beginning of each dash.
       cairo_set_line_width(ctx, cairo_smr_border_width(d, is_closed_poly(w)));
-      cairo_smr_dash(ctx, d->border.style);
-      cairo_smr_poly_line(w, ctx);
+      cairo_smr_dash(ctx, d->border.style == DRAW_PIPE ? DRAW_DASHED : d->border.style, d->border.width);
+      cairo_smr_poly(ctx, d, w);
       cairo_stroke(ctx);
+      CSS_INC(CSS_STROKE);
+
+      if (d->border.style == DRAW_PIPE)
+      {
+         cairo_set_line_width(ctx, cairo_get_line_width(ctx) * 2);
+         cairo_smr_dash(ctx, DRAW_PIPE, d->border.width);
+         cairo_smr_poly(ctx, d, w);
+         cairo_stroke(ctx);
+         CSS_INC(CSS_STROKE);
+      }
    }
 
    if (d->fill.used)
    {
-      cairo_smr_poly_line(w, ctx);
-      if (cw)  // this should only be allowed if it is a closed polygon
+      cairo_smr_poly(ctx, d, w);
+      cairo_smr_set_source_color(ctx, d->fill.col);
+      if (!is_closed_poly(w))
       {
-         //log_debug("cw: clearing");
-         cairo_save(ctx);
-         cairo_set_operator(ctx, CAIRO_OPERATOR_CLEAR);
-         cairo_fill(ctx);
-         cairo_restore(ctx);
+         cairo_set_line_width(ctx, cairo_smr_fill_width(d));
+         cairo_smr_dash(ctx, d->fill.style, d->border.width);
+         cairo_stroke(ctx);
+         CSS_INC(CSS_STROKE);
       }
-      else
+      else if (!cw)
       {
-         //log_debug("ccw: filling with #%08x", d->fill.col);
-         cairo_smr_set_source_color(ctx, d->fill.col);
-         if (is_closed_poly(w))
-            cairo_fill(ctx);
-         else
-         {
-            cairo_set_line_width(ctx, cairo_smr_fill_width(d));
-            cairo_smr_dash(ctx, d->fill.style);
-            cairo_stroke(ctx);
-         }
+         cairo_fill(ctx);
+         CSS_INC(CSS_FILL);
       }
    }
 }
@@ -663,13 +1007,13 @@ int act_draw_main(smrule_t *r, osm_obj_t *o)
          if (!d->collect_open)
             return 0;
 
-         render_poly_line(d->ctx, d, (osm_way_t*) o, 0);
+         render_poly_line(d->ctx, d, (osm_way_t*) o, RENDER_IMMEDIATE);
          return 0;
       }
 
       if (!d->directional)
       {
-         render_poly_line(d->ctx, d, (osm_way_t*) o, 0);
+         render_poly_line(d->ctx, d, (osm_way_t*) o, RENDER_IMMEDIATE);
          return 0;
       }
 
@@ -709,8 +1053,12 @@ int act_draw_fini(smrule_t *r)
    struct actDraw *d = r->data;
    int i;
 
+#ifdef PUSH_GROUP
    cairo_pop_group_to_source(d->ctx);
+   CSS_INC(CSS_POP);
    cairo_paint(d->ctx);
+   CSS_INC(CSS_PAINT);
+#endif
 
    if (d->directional)
    {
@@ -730,14 +1078,25 @@ int act_draw_fini(smrule_t *r)
       qsort(d->wl->ref, d->wl->ref_cnt, sizeof(struct poly), (int(*)(const void *, const void *)) compare_poly_area);
 
       cairo_push_group(d->ctx);
+      CSS_INC(CSS_PUSH);
+      // check if largest polygon is clockwise
+      if (d->wl->ref_cnt && d->wl->ref[0].cw)
+      {
+         // ...and render larger (page size) filled polygon
+         log_debug("inserting artifical background");
+         render_poly_line(d->ctx, d, page_way(), CREATE_PATH);
+      }
       for (i = 0; i < d->wl->ref_cnt; i++)
       {
-         log_debug("cw = %d, area = %f", d->wl->ref[i].cw, d->wl->ref[i].area);
-         render_poly_line(d->ctx, d, d->wl->ref[i].w, d->wl->ref[i].cw);
-
+         log_debug("id = %"PRId64", cw = %d, area = %f", d->wl->ref[i].w->obj.id, d->wl->ref[i].cw, d->wl->ref[i].area);
+         render_poly_line(d->ctx, d, d->wl->ref[i].w, CREATE_PATH);
       }
+      cairo_smr_set_source_color(d->ctx, d->fill.col);
+      cairo_fill(d->ctx);
       cairo_pop_group_to_source(d->ctx);
+      CSS_INC(CSS_POP);
       cairo_paint(d->ctx);
+      CSS_INC(CSS_PAINT);
    }
 
    cairo_destroy(d->ctx);
@@ -854,6 +1213,7 @@ int act_cap_ini(smrule_t *r)
    cap.scl.max_auto_size = MAX_AUTO_SIZE;
    cap.scl.min_area_size = MIN_AREA_SIZE;
    cap.scl.auto_scale = AUTO_SCALE;
+   //cap.xoff = cap.yoff = POS_OFFSET;
 
    if ((cap.font = get_param("font", NULL, r->act)) == NULL)
    {
@@ -865,6 +1225,7 @@ int act_cap_ini(smrule_t *r)
       log_msg(LOG_WARN, "parameter 'size' missing");
       return 1;
    }
+   cap.xoff = cap.yoff = mm2unit(cap.size) / 2;
    if ((cap.key = get_param("key", NULL, r->act)) == NULL)
    {
       log_msg(LOG_WARN, "parameter 'key' missing");
@@ -883,6 +1244,9 @@ int act_cap_ini(smrule_t *r)
    (void) get_param("min_area", &cap.scl.min_area_size, r->act);
    (void) get_param("auto_scale", &cap.scl.auto_scale, r->act);
 
+   (void) get_param("xoff", &cap.xoff, r->act);
+   (void) get_param("yoff", &cap.yoff, r->act);
+
    parse_auto_rot(r->act, &cap.angle, &cap.rot);
    if ((cap.akey = get_param("anglekey", NULL, r->act)) != NULL && isnan(cap.angle))
    {
@@ -890,24 +1254,20 @@ int act_cap_ini(smrule_t *r)
       cap.angle = 0;
    }
 
-   if ((s = get_param("halign", NULL, r->act)) != NULL)
+   cap.pos = parse_alignment(r->act);
+   if ((cap.halignkey = get_param("alignkey", NULL, r->act)) != NULL)
    {
-      if (!strcmp(s, "east"))
-         cap.pos |= POS_E;
-      else if (!strcmp(s, "west"))
-         cap.pos |= POS_W;
-      else
-         log_msg(LOG_WARN, "unknown alignment '%s'", s);
+      cap.valignkey = cap.halignkey;
+      cap.pos &= ~POS_DIR_MSK;
    }
-   if ((s = get_param("valign", NULL, r->act)) != NULL)
+   else
    {
-      if (!strcmp(s, "north"))
-         cap.pos |= POS_N;
-      else if (!strcmp(s, "south"))
-         cap.pos |= POS_S;
-      else
-         log_msg(LOG_WARN, "unknown alignment '%s'", s);
+      if ((cap.halignkey = get_param("halignkey", NULL, r->act)) != NULL)
+         cap.pos &= ~(POS_E | POS_W);
+      if ((cap.valignkey = get_param("valignkey", NULL, r->act)) != NULL)
+         cap.pos &= ~(POS_N | POS_S);
    }
+   log_debug("halignkey = %s, valignkey = %s", safe_null_str(cap.halignkey), safe_null_str(cap.valignkey));
 
    cap.ctx = cairo_create(sfc_);
    if (cairo_smr_log_status(cap.ctx) != CAIRO_STATUS_SUCCESS)
@@ -928,7 +1288,10 @@ int act_cap_ini(smrule_t *r)
 #endif
 
    cairo_smr_set_source_color(cap.ctx, cap.col);
+#ifdef PUSH_GROUP
    cairo_push_group(cap.ctx);
+   CSS_INC(CSS_PUSH);
+#endif
 
    if ((r->data = malloc(sizeof(cap))) == NULL)
    {
@@ -940,10 +1303,10 @@ int act_cap_ini(smrule_t *r)
    if (!isnan(cap.angle))
       sm_threaded(r);
 
-   log_debug("%04x, %08x, '%s', '%s', %.1f, {%.1f, %.1f, %.1f, %.2f}, %.1f, {%.1f, %08x, %.1f}",
+   log_debug("%04x, %08x, '%s', '%s', %.1f, {%.1f, %.1f, %.1f, %.2f}, %.1f, %.1f, %.1f, {%.1f, %08x, %.1f}",
          cap.pos, cap.col, cap.font, cap.key, cap.size,
          cap.scl.max_auto_size, cap.scl.min_auto_size, cap.scl.min_area_size, cap.scl.auto_scale,
-         cap.angle,
+         cap.angle, cap.xoff, cap.yoff,
          cap.rot.phase, cap.rot.autocol, cap.rot.weight);
    memcpy(r->data, &cap, sizeof(cap));
    return 0;
@@ -1010,16 +1373,28 @@ static int strupper(char *s)
 #endif
 
 
-static void pos_offset(int pos, double width, double height, double *ox, double *oy)
+/*! This function calculates the relative origin for a given bounding box
+ * (width, height) dependent on the position definition pos (N, S, E, W) in
+ * respect to the origin 0/0.
+ * @param pos Position definition which is a bitwise OR'ed combination of
+ * POS_N, POS_S, POS_E, and POS_W.
+ * @param width Width of the bounding box.
+ * @param height Height of the bounding box.
+ * @param xoff Offset in x direction from origin.
+ * @param yoff Offset in y direction from origin.
+ * @param ox Pointer to a double which will receive the horizontal result.
+ * @param oy Ponter to a double which will receive the vertical result.
+ */
+static void pos_offset(int pos, double width, double height, double xoff, double yoff, double *ox, double *oy)
 {
    switch (pos & 0x3)
    {
       case POS_N:
-         *oy = 0 - POS_OFFSET;
+         *oy = 0 - yoff;
          break;
 
       case POS_S:
-         *oy = height + POS_OFFSET;
+         *oy = height + yoff;
          break;
 
       default:
@@ -1029,11 +1404,11 @@ static void pos_offset(int pos, double width, double height, double *ox, double 
    switch (pos & 0xc)
    {
       case POS_E:
-         *ox = 0 + POS_OFFSET;
+         *ox = 0 + xoff;
          break;
 
       case POS_W:
-         *ox = -width - POS_OFFSET;
+         *ox = -width - xoff;
          break;
 
       default:
@@ -1086,6 +1461,7 @@ static cairo_surface_t *cairo_smr_plane(int w, int h, int x, int col)
    cairo_smr_set_source_color(ctx, col);
    cairo_rectangle(ctx, x, 0, w - x, h);
    cairo_fill(ctx);
+   //CSS_INC(CSS_FILL);
    cairo_destroy(ctx);
 
    return sfc;
@@ -1333,13 +1709,6 @@ static int cmp_dp(const diffpeak_t *src, const diffpeak_t *dst)
 }
 
 
-static double fmod2(double a, double n)
-{
-   a = fmod(a, n);
-   return a < 0 ? a + n : a;
-}
-
-
 static void dv_mkarea(const struct coord *cnode, double r, const diffvec_t *dv, int cnt)
 {
    osm_node_t *n;
@@ -1534,6 +1903,13 @@ static double find_angle(const struct coord *c, const struct auto_rot *rot, cair
    double x, y, a, r;
    int i, num_steps;
 
+   // safety check...code works only with image surfaces
+   if (cairo_surface_get_type(fg) != CAIRO_SURFACE_TYPE_IMAGE)
+   {
+      log_msg(LOG_WARN, "this works only with image surfaces");
+      return 0;
+   }
+
    geo2pt(c->lon, c->lat, &x, &y);
    r = rdata_px_unit(hypot(cairo_image_surface_get_width(fg), cairo_image_surface_get_height(fg)), U_PT);
 
@@ -1582,7 +1958,52 @@ static double find_angle(const struct coord *c, const struct auto_rot *rot, cair
 }
 
 
-static int cap_coord(const struct actCaption *cap, const struct coord *c, const bstring_t *str, const osm_obj_t *o)
+static const char *pos_to_str(int pos)
+{
+   if (pos & POS_E)
+      return "east";
+   if (pos & POS_W)
+      return "west";
+   return "center";
+}
+
+
+/*! This function looks up the tag with the key 'key' in the object o and
+ * interpretes its value as alignment parameter (north, east,...).
+ * @param o Pointer to object.
+ * @param key Name of key.
+ * @return Returns an integer containg POS_N, POS_S, POS_E, POS_W locically
+ * or'd together. If an error occurs, 0 is returned (which is the center
+ * position) and errno is set to EINVAL if the key contains an invalid value.
+ * If the object has no such key, errno is set to ENOMSG.
+ */
+static int retr_align_key_pos(const osm_obj_t *o, const char *key)
+{
+   char align[10];
+   int n, pos = 0;
+
+   if ((n = match_attr(o, key, NULL)) >= 0)
+   {
+      if (o->otag[n].v.len <= 9)
+      {
+         memcpy(align, o->otag[n].v.buf, o->otag[n].v.len);
+         align[o->otag[n].v.len] = '\0';
+         pos = parse_alignment_str(align);
+      }
+      else
+      {
+         log_msg(LOG_WARN, "key %.*s contains ill tag value", o->otag[n].k.len, o->otag[n].k.buf);
+         errno = EINVAL;
+      }
+   }
+   else
+      errno = ENOMSG;
+
+   return pos;
+}
+
+
+static int cap_coord(const struct actCaption *cap, const struct coord *c, const bstring_t *str, osm_obj_t *o)
 {
    cairo_text_extents_t tx;
    cairo_font_extents_t fe;
@@ -1605,6 +2026,23 @@ static int cap_coord(const struct actCaption *cap, const struct coord *c, const 
    if (cap->pos & POS_UC)
       strupper(buf);
 
+   pos = cap->pos;
+   // parse alignkey if specified in ruleset
+   if (cap->halignkey != NULL || cap->valignkey != NULL)
+   {
+      log_debug("detecting alignkey, pos = 0x%04x", pos);
+      if (cap->halignkey == cap->valignkey)
+         pos = retr_align_key_pos(o, cap->halignkey);
+      else 
+      {
+         if (cap->halignkey != NULL)
+            pos = (pos & ~(POS_E | POS_W)) | (retr_align_key_pos(o, cap->halignkey) & (POS_E | POS_W));
+         if (cap->valignkey != NULL)
+            pos = (pos & ~(POS_N | POS_S)) | (retr_align_key_pos(o, cap->valignkey) & (POS_N | POS_S));
+      }
+      log_debug("new pos = 0x%04x", pos);
+   }
+ 
    cairo_set_font_size(cap->ctx, mm2unit(cap->size));
    cairo_font_extents(cap->ctx, &fe);
    cairo_text_extents(cap->ctx, buf, &tx);
@@ -1617,8 +2055,10 @@ static int cap_coord(const struct actCaption *cap, const struct coord *c, const 
       else
          pos = cap->pos;
 
-      r = hypot(tx.width + tx.x_bearing, fe.ascent / 2) + POS_OFFSET;
-      width = tx.width + tx.x_bearing + POS_OFFSET;
+      //r = hypot(tx.width + tx.x_bearing, fe.ascent / 2) + POS_OFFSET;
+      // FIXME: not sure if this is correct (POS_OFFSET --> xoff/yoff)
+      r = hypot(tx.width + tx.x_bearing + cap->xoff, fe.ascent / 2 + cap->yoff);
+      width = tx.width + tx.x_bearing + cap->xoff;
       height = fe.ascent;
       if (cap->pos & 0xc)
       {
@@ -1644,6 +2084,63 @@ static int cap_coord(const struct actCaption *cap, const struct coord *c, const 
             //log_debug("flip east/west");
          }
       }
+
+#define AUTO_SUBTAGS
+#ifdef AUTO_SUBTAGS
+#define AUTOANGLE_SUBTAG "autoangle"
+#define AUTOALIGN_SUBTAG "autoalign"
+      // add "autoangle"
+      if (realloc_tags(o, o->tag_cnt + 1) != -1)
+      {
+         o->otag[o->tag_cnt - 1].k.len = strlen(cap->key) + strlen(AUTOANGLE_SUBTAG) + 2;
+         o->otag[o->tag_cnt - 1].v.len = 8;
+         if ((o->otag[o->tag_cnt - 1].k.buf = malloc(o->otag[o->tag_cnt - 1].k.len)) == NULL)
+         {
+            log_msg(LOG_ERR, "malloc() failed: %s", strerror(errno));
+            o->tag_cnt--;
+         }
+         else if ((o->otag[o->tag_cnt - 1].v.buf = malloc(o->otag[o->tag_cnt - 1].v.len)) == NULL)
+         {
+            log_msg(LOG_ERR, "malloc() failed: %s", strerror(errno));
+            free(o->otag[o->tag_cnt - 1].k.buf);
+            o->tag_cnt--;
+         }
+         else
+         {
+            o->otag[o->tag_cnt - 1].k.len = snprintf(o->otag[o->tag_cnt - 1].k.buf,
+                  o->otag[o->tag_cnt - 1].k.len,
+                  "%s:"AUTOANGLE_SUBTAG, cap->key);
+            o->otag[o->tag_cnt - 1].v.len = snprintf(o->otag[o->tag_cnt - 1].v.buf,
+                  o->otag[o->tag_cnt - 1].v.len, "%.1f", RAD2DEG(a));
+         }
+      }
+
+      // autoalign
+      if (realloc_tags(o, o->tag_cnt + 1) != -1)
+      {
+         o->otag[o->tag_cnt - 1].k.len = strlen(cap->key) + strlen(AUTOALIGN_SUBTAG) + 2;
+         o->otag[o->tag_cnt - 1].v.len = 8;
+         if ((o->otag[o->tag_cnt - 1].k.buf = malloc(o->otag[o->tag_cnt - 1].k.len)) == NULL)
+         {
+            log_msg(LOG_ERR, "malloc() failed: %s", strerror(errno));
+            o->tag_cnt--;
+         }
+         else if ((o->otag[o->tag_cnt - 1].v.buf = malloc(o->otag[o->tag_cnt - 1].v.len)) == NULL)
+         {
+            log_msg(LOG_ERR, "malloc() failed: %s", strerror(errno));
+            free(o->otag[o->tag_cnt - 1].k.buf);
+            o->tag_cnt--;
+         }
+         else
+         {
+            o->otag[o->tag_cnt - 1].k.len = snprintf(o->otag[o->tag_cnt - 1].k.buf,
+                  o->otag[o->tag_cnt - 1].k.len,
+                  "%s:"AUTOALIGN_SUBTAG, cap->key);
+            o->otag[o->tag_cnt - 1].v.len = snprintf(o->otag[o->tag_cnt - 1].v.buf,
+                  o->otag[o->tag_cnt - 1].v.len, "%s", pos_to_str(pos));
+         }
+      }
+#endif
    }
    else
    {
@@ -1651,11 +2148,10 @@ static int cap_coord(const struct actCaption *cap, const struct coord *c, const 
       if (cap->akey != NULL && (n = match_attr(o, cap->akey, NULL)) >= 0)
          a = DEG2RAD(bs_tod(o->otag[n].v));
       a += DEG2RAD(360 - cap->angle);
-      pos = cap->pos;
    }
 
    cairo_rotate(cap->ctx, a);
-   pos_offset(pos, tx.width + tx.x_bearing, fe.ascent, &x, &y);
+   pos_offset(pos, tx.width + tx.x_bearing, fe.ascent, cap->xoff, cap->yoff, &x, &y);
    cairo_move_to(cap->ctx, x, y);
    cairo_show_text(cap->ctx, buf);
    cairo_restore(cap->ctx);
@@ -1746,8 +2242,12 @@ int act_cap_fini(smrule_t *r)
 {
    struct actCaption *cap = r->data;
 
+#ifdef PUSH_GROUP
    cairo_pop_group_to_source(cap->ctx);
+   CSS_INC(CSS_POP);
    cairo_paint(cap->ctx);
+   CSS_INC(CSS_PAINT);
+#endif
    cairo_destroy(cap->ctx);
 
    free(cap);
@@ -1781,29 +2281,72 @@ int act_img_ini(smrule_t *r)
 
    if (get_param("scale", &img.scale, r->act) == NULL)
       img.scale = 1;
+   img.scale *= get_rdata()->img_scale;
 
-   sfc = cairo_image_surface_create_from_png(name);
-   if ((e = cairo_surface_status(sfc)) != CAIRO_STATUS_SUCCESS)
+#ifdef HAVE_RSVG
+   if (strlen(name) >= 4 && !strcasecmp(name + strlen(name) - 4, ".svg"))
    {
-      log_msg(LOG_ERR, "cannot open file %s: %s", name, cairo_status_to_string(e));
-      return -1;
-   }
+      log_debug("opening SVG '%s'", name);
 
-   img.w = cairo_image_surface_get_width(sfc) * img.scale;
-   img.h = cairo_image_surface_get_height(sfc) * img.scale;
-   img.img = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, img.w, img.h);
-   if ((e = cairo_surface_status(img.img)) != CAIRO_STATUS_SUCCESS)
-   {
-      log_msg(LOG_ERR, "cannot open file %s: %s", name, cairo_status_to_string(e));
-      //cairo_surface_destroy(img.img);
-      return -1;
+      cairo_rectangle_t rect;
+      RsvgDimensionData dd;
+      RsvgHandle *rh;
+
+      if ((rh = rsvg_handle_new_from_file(name, NULL)) == NULL)
+      {
+         log_msg(LOG_ERR, "error opening file %s", name);
+         return -1;
+      }
+
+      //rsvg_handle_set_dpi(rh, 72);
+      rsvg_handle_get_dimensions(rh, &dd);
+      log_debug("svg dimension: w = %d, h = %d", dd.width, dd.height);
+
+      img.w = dd.width * img.scale;
+      img.h = dd.height * img.scale;
+      rect.x = 0;
+      rect.y = 0;
+      rect.width = img.w;
+      rect.height = img.h;
+      img.img = cairo_recording_surface_create(CAIRO_CONTENT_COLOR_ALPHA, &rect);
+      ctx = cairo_create(img.img);
+      cairo_scale(ctx, img.scale, img.scale);
+      if (!rsvg_handle_render_cairo(rh, ctx))
+      {
+         log_msg(LOG_ERR, "rsvg_handle_render_cairo() failed");
+         return -1;
+      }
+      cairo_destroy(ctx);
+
+      g_object_unref(rh);
    }
-   ctx = cairo_create(img.img);
-   cairo_scale(ctx, img.scale, img.scale);
-   cairo_set_source_surface(ctx, sfc, 0, 0);
-   cairo_paint(ctx);
-   cairo_destroy(ctx);
-   cairo_surface_destroy(sfc);
+   else
+#endif
+   {
+      log_debug("opening PNG '%s'", name);
+      sfc = cairo_image_surface_create_from_png(name);
+      if ((e = cairo_surface_status(sfc)) != CAIRO_STATUS_SUCCESS)
+      {
+         log_msg(LOG_ERR, "cannot open file %s: %s", name, cairo_status_to_string(e));
+         return -1;
+      }
+
+      img.w = cairo_image_surface_get_width(sfc) * img.scale;
+      img.h = cairo_image_surface_get_height(sfc) * img.scale;
+      img.img = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, img.w, img.h);
+      if ((e = cairo_surface_status(img.img)) != CAIRO_STATUS_SUCCESS)
+      {
+         log_msg(LOG_ERR, "cannot open file %s: %s", name, cairo_status_to_string(e));
+         //cairo_surface_destroy(img.img);
+         return -1;
+      }
+      ctx = cairo_create(img.img);
+      cairo_scale(ctx, img.scale, img.scale);
+      cairo_set_source_surface(ctx, sfc, 0, 0);
+      cairo_paint(ctx);
+      cairo_destroy(ctx);
+      cairo_surface_destroy(sfc);
+   }
 
    img.ctx = cairo_create(sfc_);
    if ((e = cairo_status(img.ctx)) != CAIRO_STATUS_SUCCESS)
@@ -1814,6 +2357,12 @@ int act_img_ini(smrule_t *r)
    }
 
    parse_auto_rot(r->act, &img.angle, &img.rot);
+   img.akey = get_param("anglekey", NULL, r->act);
+   if (img.akey != NULL && isnan(img.angle))
+   {
+      log_msg(LOG_NOTICE, "ignoring angle=auto");
+      img.angle = 0;
+   }
 
    if (r->oo->type == OSM_NODE)
    {
@@ -1840,7 +2389,10 @@ int act_img_ini(smrule_t *r)
       cairo_set_source(img.ctx, img.pat);
    }
 
+#ifdef PUSH_GROUP
    cairo_push_group(img.ctx);
+   CSS_INC(CSS_PUSH);
+#endif
   
    if ((r->data = malloc(sizeof(img))) == NULL)
    {
@@ -1864,11 +2416,12 @@ int img_fill(struct actImage *img, osm_way_t *w)
 
    cairo_smr_poly_line(w, img->ctx);
    cairo_fill(img->ctx);
+   CSS_INC(CSS_FILL);
    return 0;
 }
 
 
-int img_place(struct actImage *img, osm_node_t *n)
+int img_place(const struct actImage *img, const osm_node_t *n)
 {
    double x, y, a;
    struct coord c;
@@ -1883,20 +2436,41 @@ int img_place(struct actImage *img, osm_node_t *n)
       c.lat = n->lat;
       c.lon = n->lon;
 
-      x = cairo_image_surface_get_width(img->img);
-      y = cairo_image_surface_get_height(img->img);
-      cairo_device_to_user(img->ctx, &x, &y);
+      cairo_surface_t *fg = img->img;
+      int nimg = 0;
+      if (cairo_surface_get_type(img->img) != CAIRO_SURFACE_TYPE_IMAGE)
+      {
+         log_debug("create temporary image surface");
+#ifdef HAVE_CAIRO_SURFACE_CREATE_SIMILAR_IMAGE
+         fg = cairo_surface_create_similar_image(img->img, CAIRO_FORMAT_ARGB32, img->w, img->h);
+#else
+         fg = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, img->w, img->h);
+#endif
+         cairo_t *fgx = cairo_create(fg);
+         cairo_set_source_surface(fgx, img->img, 0, 0);
+         cairo_paint(fgx);
+         CSS_INC(CSS_PAINT);
+         cairo_destroy(fgx);
+      }
 
-      a = find_angle(&c, &img->rot, img->img);
+      a = find_angle(&c, &img->rot, fg);
+
+      if (nimg)
+         cairo_surface_destroy(fg);
    }
    else
    {
-      a = DEG2RAD(360 - img->angle);
+      int m;
+      a = 0;
+      if (img->akey != NULL && (m = match_attr(&n->obj, img->akey, NULL)) >= 0)
+         a = DEG2RAD(bs_tod(n->obj.otag[m].v));
+      a += DEG2RAD(360 - img->angle);
    }
 
    cairo_rotate(img->ctx, a);
    cairo_set_source_surface(img->ctx, img->img, img->w / -2.0, img->h / -2.0);
    cairo_paint(img->ctx);
+   CSS_INC(CSS_PAINT);
    cairo_restore(img->ctx);
 
    return 0;
@@ -1919,8 +2493,12 @@ int act_img_fini(smrule_t *r)
 {
    struct actImage *img = r->data;
 
+#ifdef PUSH_GROUP
    cairo_pop_group_to_source(img->ctx);
+   CSS_INC(CSS_POP);
    cairo_paint(img->ctx);
+   CSS_INC(CSS_PAINT);
+#endif
 
    if (img->pat)
       cairo_pattern_destroy(img->pat);
@@ -1931,6 +2509,93 @@ int act_img_fini(smrule_t *r)
    r->data = NULL;
    return 0;
 }
+
+
+int act_clip_ini(smrule_t *r)
+{
+   char *s, *nptr, *eptr;
+   double *bc;
+   int i;
+
+   if ((bc = malloc(sizeof(*bc) * 4)) == NULL)
+   {
+      log_errno(LOG_ERR, "malloc() failed");
+      return 1;
+   }
+
+   if ((s = get_param("border", NULL, r->act)) == NULL)
+   {
+      for (i = 0; i < 4; i++)
+         bc[i] = G_MARGIN + G_TW + G_STW;
+      log_debug("setting border to default = %.1f mm", bc[0]);
+   }
+   else
+   {
+      for (s = strtok_r(s, ",", &nptr), i = 0; s != NULL && i < 4; s = strtok_r(NULL, ",", &nptr), i++)
+      {
+         errno = 0;
+         bc[i] = strtod(s, &eptr); 
+         if (errno)
+         {
+            log_msg(LOG_WARN, "parameter '%s' out of range", s);
+            free(bc);
+            return 1;
+         }
+         if (s == eptr)
+         {
+            log_msg(LOG_WARN, "cannot convert '%s'", s);
+            free(bc);
+            return 1;
+         }
+      }
+
+      if (i < 4)
+      {
+         log_msg(LOG_WARN, "border requires 4 values");
+         free(bc);
+         return 1;
+      }
+   }
+
+   r->data = bc;
+   return 0;
+}
+
+
+/*! Install a clipping region.
+ * FIXME: This does not yet work because clipping works only within a cairo
+ * context but not across, from one to another.
+ */
+int act_clip_fini(smrule_t *r)
+{
+   double *bc = r->data;
+   cairo_t *ctx;
+
+   log_msg(LOG_DEBUG, "%.1f, %.1f, %.1f, %.1f", bc[0], bc[1], bc[2], bc[3]);
+
+   ctx = cairo_create(sfc_);
+
+   cairo_move_to(ctx, 0, 0);
+   cairo_line_to(ctx, rdata_width(U_PT), 0);
+   cairo_line_to(ctx, rdata_width(U_PT), rdata_height(U_PT));
+   cairo_line_to(ctx, 0, rdata_height(U_PT));
+   cairo_line_to(ctx, 0, 0);
+ 
+   cairo_move_to(ctx, mm2unit(bc[3]), mm2unit(bc[0]));
+   cairo_line_to(ctx, mm2unit(bc[3]), rdata_height(U_PT) - mm2unit(bc[2]));
+   cairo_line_to(ctx, rdata_width(U_PT) - mm2unit(bc[1]), rdata_height(U_PT) - mm2unit(bc[2]));
+   cairo_line_to(ctx, rdata_width(U_PT) - mm2unit(bc[1]), mm2unit(bc[0]));
+   cairo_line_to(ctx, mm2unit(bc[3]), mm2unit(bc[0]));
+
+   cairo_smr_set_source_color(ctx, parse_color("bgcolor"));
+   cairo_fill(ctx);
+   CSS_INC(CSS_FILL);
+ 
+   cairo_destroy(ctx);
+
+   return 0;
+}
+
 
 #endif
 

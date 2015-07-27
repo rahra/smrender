@@ -1,0 +1,14 @@
+<svg
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:xlink="http://www.w3.org/1999/xlink"  
+   version="1.1"
+   width="300"
+   height="400">
+  <symbol id="dome" width="300" height="400">
+    <path d="m 155,201.07 a 4.82145,5.1786537 0 1 1 -9.6429,0 4.82145,5.1786537 0 1 1 9.6429,0 z"
+       transform="matrix(0.62222,0,0,0.57931,56.556,83.517)"/>
+    <path d="m 220.72,199.99 a 70.711,70.711 0 1 1 -141.42,0 70.711,70.711 0 1 1 141.42,0 z"
+       transform="matrix(0.50912,0,0,0.50912,73.629,98.182)" style="color:#000000;fill:none;stroke:#000000;stroke-width:7.85669994;stroke-linejoin:round" />
+  </symbol>
+  <use xlink:href="#dome" x="0" y="0" />
+</svg>

@@ -1,0 +1,11 @@
+<svg
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:xlink="http://www.w3.org/1999/xlink"  
+   version="1.0"
+   width="300"
+   height="400">
+  <symbol id="radar_station" width="300" height="400">
+    <circle cx="150" cy="200" r="125" stroke="#d400d4" stroke-width="2.5" fill="none"/>
+  </symbol>
+  <use xlink:href="#radar_station" x="0" y="0" />
+</svg>

@@ -15,10 +15,11 @@
  * along with smrender. If not, see <http://www.gnu.org/licenses/>.
  */
 
-/*! This file contains the code of the rule parser and main loop of the render
- * as well as the code for traversing the object (nodes/ways) tree.
+/*! \file rdata.c
+ * This file contains functions for rendering initialization, such as unit
+ * conversions and paper and coordinate initialization.
  *
- *  @author Bernhard R. Fischer
+ * @author Bernhard R. Fischer
  */
 
 #ifdef HAVE_CONFIG_H
@@ -29,7 +30,6 @@
 #include <math.h>
 #include <string.h>
 
-//#include "bxtree.h"
 #include "rdata.h"
 #include "smrender.h"
 #include "smrender_dev.h"
@@ -41,18 +41,6 @@ static struct rdata rd_;
 struct rdata *rdata_get(void)
 {
    return &rd_;
-}
-
-
-double mm2lat(double x)
-{
-   return x * (rd_.bb.ru.lat - rd_.bb.ll.lat) / rdata_px_unit(rd_.h, U_MM);
-}
-
-
-double mm2lon(double x)
-{
-   return x * (rd_.bb.ru.lon - rd_.bb.ll.lon) / rdata_px_unit(rd_.w, U_MM);
 }
 
 
@@ -141,20 +129,24 @@ void rdata_log(void)
 }
 
 
+/* Convert pixel to desired unit. */
 double rdata_px_unit(double x, unit_t type)
 {
    switch (type)
    {
       case U_PX:
          return x;
+      case U_CM:
+         x *= 10;
       case U_MM:
          return x * 25.4 / rd_.dpi;
       case U_PT:
          return x * 72 / rd_.dpi;
       case U_IN:
          return x / rd_.dpi;
+      default:
+         return NAN;
    }
-   return NAN;
 }
 
 
@@ -201,6 +193,7 @@ static void __attribute__((constructor)) init_rdata(void)
    memset(&rd_, 0, sizeof(rd_));
    rd_.dpi = 300;
    rd_.title = "";
+   rd_.img_scale = 1;
    //set_static_obj_tree(&rd_.obj);
 }
 
@@ -210,5 +203,11 @@ int is_on_page(const struct coord *c)
    if (c->lon < rd_.bb.ll.lon || c->lon > rd_.bb.ru.lon || c->lat < rd_.bb.ll.lat || c->lat > rd_.bb.ru.lat)
       return 0;
    return 1;
+}
+
+
+int conv_unit(value_t *v, unit_t dst_u)
+{
+   return 0;
 }
 

@@ -1,0 +1,12 @@
+<svg
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:xlink="http://www.w3.org/1999/xlink"  
+   version="1.1"
+   width="30"
+   height="30">
+  <symbol id="restricted_line" width="30" height="30">
+    <path d="M 15,0 L 15,30 M 17,15 L 30,15"
+      style="fill:none;stroke:#c480ff;stroke-width:4" />
+  </symbol>
+  <use xlink:href="#restricted_line" x="0" y="0" />
+</svg>

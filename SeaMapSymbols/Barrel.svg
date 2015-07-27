@@ -1,0 +1,15 @@
+<svg
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:xlink="http://www.w3.org/1999/xlink"  
+   version="1.0"
+   width="300"
+   height="400">
+  <symbol id="barrel" width="300" height="400">
+    <circle cx="150" cy="200" r="10" style="fill:none;stroke:#000000;stroke-width:5" />
+    <line x1="90" y1="200" x2="140" y2="200" style="fill:none;stroke:#000000;stroke-width:5" />
+    <line x1="160" y1="200" x2="203" y2="200" style="fill:none;stroke:#000000;stroke-width:5" />
+    <path d="M 100,200 A 20,40 0,0,1 118,164 A 50,15 0,0,1 176,164 A 20,40 0,0,1 193,200 M 118,164 A 20,40 0,0,1 129,200"
+      style="fill:none;stroke:#000000;stroke-width:5" />
+  </symbol>
+  <use xlink:href="#barrel" x="0" y="0" />
+</svg>

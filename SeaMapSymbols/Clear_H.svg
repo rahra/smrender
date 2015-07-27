@@ -1,0 +1,13 @@
+<svg
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:xlink="http://www.w3.org/1999/xlink"  
+   version="1.1"
+   width="80"
+   height="80">
+  <symbol id="clear_h" width="80" height="80">
+    <circle r="40" cx="40" cy="40" style="fill:#ffffff;stroke:none" />
+    <path d="M 5,30 L 5,50 M 5,40 L 15,40 M 75,30 L 75,50 M 75,40 L 65,40"
+      style="stroke:#000000;stroke-width:4"/>
+  </symbol>
+  <use xlink:href="#clear_h" x="0" y="0" />
+</svg>

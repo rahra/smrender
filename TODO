@@ -1,13 +1,14 @@
 * captions along ways (open polygons) not supported yet
 * border width of closed polygons seams to have a bug. (already fixed?)
 * Negative OSM IDs may colide, read_osm() does not assign IDs properly. (low prio)
-* Bug refine_poly() if lat[0] == lat[1]
-* Probable other bugs in refine_poly(), should be deprecated, anyway. (and replaced with b-splines of cairographics)
-* free objects sometimes segfaults in threaded mode
+* minor Bug refine_poly() if lat[0] == lat[1] (function deprecated)
+* Bug: free objects sometimes segfaults in threaded mode
 * multi-line text output
 * incomplete() several rules, one filename (like out())
 * automatic bay/cape font size
 * color diff function improvement (black/white stretching in spherical coordinate system)
-* missing safety check for latitudes > 85.05
-* several cat_poly() rules may cause problems if there are elements with overlapping tags.
+* bug: missing safety check for latitudes > 85.05
+* cat_poly() should add specific tag. There should also be an option for those ways which are already closed to either be ignore, duplicated and just a tag added.
+* Bug: reverse pointers are not updated for all put_objects(), hence, e.g. split() does not work in all cases.
+* Bug: it is not (always) checked that a tag does already exist when adding tags internally
 

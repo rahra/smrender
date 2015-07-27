@@ -1,3 +1,4 @@
+DEFS = @DEFS@ -DDATADIR=\"${smrender_datadir}\"
 AM_CPPFLAGS = -I$(srcdir)/../libsmrender
 lib_LTLIBRARIES = libsmfilter.la
 libsmfilter_la_SOURCES = libsmfilter.c

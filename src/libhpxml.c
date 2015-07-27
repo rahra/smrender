@@ -15,6 +15,12 @@
  * along with libhpxml. If not, see <http://www.gnu.org/licenses/>.
  */
 
+/*! \file libhpxml.c
+ * This file contains all functions for the XML input parser.
+ *
+ * @author Bernhard R. Fischer
+ */
+
 #ifdef HAVE_CONFIG_H
 #include "config.h"
 #endif
@@ -57,6 +63,26 @@ int skip_bblank(bstring_t *b)
 void hpx_tm_free(hpx_tag_t *t)
 {
    free(t);
+}
+
+
+/*! This function recursively frees a tree with all its subtrees and tags.
+ *  @param tlist Pointer to tree which should be freed.
+ */
+void hpx_tm_free_tree(hpx_tree_t *tlist)
+{
+   // break recursion
+   if (tlist == NULL)
+      return;
+
+   // recursively free all subtrees
+   for (int i = 0; i < tlist->msub; i++)
+      hpx_tm_free_tree(tlist->subtag[i]);
+
+   // free tag element of tree
+   hpx_tm_free(tlist->tag);
+   // free tree itself
+   free(tlist);
 }
 
 
@@ -483,6 +509,23 @@ hpx_ctrl_t *hpx_init(int fd, long len)
 }
 
 
+/*! This function initializes a hpx_ctrl_t structure to be used for input from
+ * a memory buffer (instead of a file).
+ * @param ctl Pointer to hpx_ctrl_t structure which will be initialized
+ *    properly.
+ * @param buf Pointer to memory buffer.
+ * @param len Number of bytes within memory buffer.
+ */
+void hpx_init_membuf(hpx_ctrl_t *ctl, void *buf, int len)
+{
+   memset(ctl, 0, sizeof(*ctl));
+   ctl->buf.len = len;
+   ctl->buf.buf = buf;
+   ctl->fd = -1;
+   ctl->len = len;
+}
+
+
 void hpx_free(hpx_ctrl_t *ctl)
 {
 #ifdef WITH_MMAP
@@ -554,8 +597,8 @@ long hpx_get_eleml(hpx_ctrl_t *ctl, bstringl_t *b, int *in_tag, long *lno)
             memmove(ctl->buf.buf, ctl->buf.buf + ctl->pos, ctl->buf.len);
             ctl->pos = 0;
 
-            // read new data from file
-            for (;;)
+            // read new data from file (but not the mem buffer, i.e. fd == -1)
+            for (s = 0; ctl->fd != -1;)
             {
                if ((s = read(ctl->fd, ctl->buf.buf + ctl->buf.len, ctl->len - ctl->buf.len)) != -1)
                   break;

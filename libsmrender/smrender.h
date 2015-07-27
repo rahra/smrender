@@ -23,7 +23,7 @@
 
 #include "osm_inplace.h"
 #include "bxtree.h"
-//#include "smath.h"
+#include "smaction.h"
 
 #if __STDC_VERSION__ < 199901L
 #if __GNUC__ >= 2
@@ -56,7 +56,6 @@
 
 
 typedef struct smrule smrule_t;
-typedef struct action action_t;
 
 struct coord
 {
@@ -76,7 +75,10 @@ void *get_object(int, int64_t);
 int64_t unique_node_id(void);
 int64_t unique_way_id(void);
 void set_const_tag(struct otag*, char*, char*);
+int bs_match_attr(const osm_obj_t*, const struct otag *, const struct stag*);
+int bs_match(const bstring_t *, const bstring_t *, const struct specialTag *);
 int match_attr(const osm_obj_t*, const char *, const char *);
+char *get_param_err(const char *, double *, const action_t *, int *);
 char *get_param(const char*, double*, const action_t*);
 char *get_parami(const char*, int*, const action_t*);
 int get_param_bool(const char*, const action_t*);
@@ -84,9 +86,17 @@ int get_param_bool(const char*, const action_t*);
 //struct rdata *get_rdata(void);
 bx_node_t **get_objtree(void);
 int coord_str(double , int , char *, int );
+int func_name(char *, int , void *);
+int put_object0(bx_node_t**, int64_t, void*, int);
+void *get_object0(bx_node_t*, int64_t, int);
+int coord_str(double, int, char*, int);
+int strcnt(const char*, int);
+int realloc_tags(osm_obj_t *, int );
+const char *safe_null_str(const char *);
 
 /* smlog.c */
-void log_msg(int, const char*, ...) __attribute__((format (printf, 2, 3)));
+int log_msg(int, const char*, ...) __attribute__((format (printf, 2, 3)));
+int log_errno(int , const char *);
 
 /* smthread.c */
 void sm_threaded(smrule_t*);

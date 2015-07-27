@@ -29,24 +29,34 @@
  *  @param src Source coodinates (struct coord).
  *  @param dst Destination coordinates (struct coord).
  *  @return Returns a struct pcoord. Pcoord contains the orthodrome distance in
- *  degrees and the bearing, 0 degress north, clockwise.
+ *  degrees and the bearing in degrees, 0 degress north, clockwise.
  */
-struct pcoord coord_diff(const struct coord *src, const struct coord *dst)
+void coord_diffp(const struct coord *src, const struct coord *dst, struct pcoord *pc)
 {
-   struct pcoord pc;
    double dlat, dlon;
 
    dlat = dst->lat - src->lat;
    dlon = (dst->lon - src->lon) * cos(DEG2RAD((src->lat + dst->lat) / 2.0));
 
-   pc.bearing = RAD2DEG(atan2(dlon, dlat));
-   pc.dist = RAD2DEG(acos(
+   pc->bearing = RAD2DEG(atan2(dlon, dlat));
+   pc->dist = RAD2DEG(acos(
       sin(DEG2RAD(src->lat)) * sin(DEG2RAD(dst->lat)) + 
       cos(DEG2RAD(src->lat)) * cos(DEG2RAD(dst->lat)) * cos(DEG2RAD(dst->lon - src->lon))));
 
-   if (pc.bearing  < 0)
-      pc.bearing += 360.0;
+   pc->bearing = fmod2(pc->bearing, 360.0);
+   /*
+   if (pc->bearing  < 0)
+      pc->bearing += 360.0;
 
+   return pc;*/
+}
+
+
+struct pcoord coord_diff(const struct coord *src, const struct coord *dst)
+{
+   struct pcoord pc;
+
+   coord_diffp(src, dst, &pc);
    return pc;
 }
 
@@ -59,5 +69,15 @@ struct coord dest_coord(const struct coord *src, const struct pcoord *pc)
    cd.lon = pc->dist * sin(DEG2RAD(pc->bearing)) / cos(DEG2RAD((src->lat + cd.lat) / 2.0)) + src->lon;
 
    return cd;
+}
+
+
+/*! This function works exactly like fmod(3) except that it always returns a
+ * positive value.
+ */
+double fmod2(double a, double n)
+{
+   a = fmod(a, n);
+   return a < 0 ? a + n : a;
 }
 

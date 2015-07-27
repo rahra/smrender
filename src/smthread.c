@@ -21,13 +21,14 @@
  */
 
 #include "smrender_dev.h"
+#include "smcore.h"
 
 #include <string.h>
 #include <pthread.h>
 #include <signal.h>
 
 
-#ifdef WITH_THREADS
+#ifdef THREADED_RULES
 
 
 #ifndef SM_THREADS

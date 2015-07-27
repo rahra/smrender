@@ -1,0 +1,11 @@
+<svg
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:xlink="http://www.w3.org/1999/xlink"  
+   version="1.0"
+   width="300"
+   height="400">
+  <symbol id="light_minor" width="300" height="400">
+    <path d="m 134,222 6.0126,-18.412 -15.938,-11.338 19.488,-0.37499 6.3749,-18.412 6.025,18.412 19.488,0.37499 -15.587,11.338 6.0249,18.412 -15.95,-11.325 -15.938,11.325 z"/>
+  </symbol>
+  <use xlink:href="#light_minor" x="0" y="0" />
+</svg>

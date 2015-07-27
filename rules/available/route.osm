@@ -1,12 +1,8 @@
 <?xml version='1.0' encoding='UTF-8'?>
-<osm version='0.6'>
+<osm version='0.6' generator='Bernhard R. Fischer'>
    <way version='-10'>
       <tag k='way' v='route'/>
       <tag k='_action_' v='ins_eqdist:distance=5'/>
-   </way>
-   <way version='-10'>
-      <tag k='way' v='route'/>
-      <tag k='_action_' v='refine_poly'/>
    </way>
    <node version='-10'>
       <tag k='way' v='route'/>
@@ -15,7 +11,7 @@
    </node>
    <way>
       <tag k='way' v='route'/>
-      <tag k='_action_' v='draw:color=#00600000;width=0.3'/>
+      <tag k='_action_' v='draw:color=#00600000;width=0.3;curve=1'/>
    </way>
    <way>
       <tag k='o' v='b'/>

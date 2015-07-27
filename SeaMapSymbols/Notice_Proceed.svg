@@ -1,0 +1,11 @@
+<svg
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:xlink="http://www.w3.org/1999/xlink"  
+   version="1.1"
+   width="60"
+   height="60">
+  <symbol id="notice_proceed" width="60" height="60">
+    <path d="M 51,30 35,17.5 35,25 9,25 l 0,10 26,0 0,7.5 z"/>
+  </symbol>
+  <use xlink:href="#notice_proceed" x="0" y="0" />
+</svg>

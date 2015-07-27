@@ -275,7 +275,7 @@ static uint32_t mc_point_to_cairo_color(const mc_point_t *pt)
 }
 
 
-int cairo_image_surface_color_reduce(cairo_surface_t *src, int ncol, uint32_t *palette)
+int cairo_smr_image_surface_color_reduce(cairo_surface_t *src, int ncol, uint32_t *palette)
 {
    unsigned char *pix;
    mc_block_t *blk;
@@ -379,7 +379,7 @@ int main(int argc, char **argv)
          return 1;
    }
 
-   cairo_image_surface_color_reduce(sfc, 127);
+   cairo_smr_image_surface_color_reduce(sfc, 127);
    cairo_surface_write_to_png(sfc, argv[2]);
    cairo_surface_destroy(sfc);
 

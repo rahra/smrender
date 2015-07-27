@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg id="body" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns="http://www.w3.org/2000/svg" height="86" viewBox="0 0 1 1" width="86" version="1.0" preserveAspectRatio="none" xmlns:cc="http://creativecommons.org/ns#" xmlns:dc="http://purl.org/dc/elements/1.1/">
+ <metadata id="metadata100">
+  <rdf:RDF>
+   <cc:Work rdf:about="">
+    <dc:format>image/svg+xml</dc:format>
+    <dc:type rdf:resource="http://purl.org/dc/dcmitype/StillImage"/>
+    <dc:title>SVG drawing</dc:title>
+   </cc:Work>
+  </rdf:RDF>
+ </metadata>
+ <title id="title3">SVG drawing</title>
+ <desc id="desc5">This was produced by version 4.2 of GNU libplot, a free library for exporting 2-D vector graphics.</desc>
+ <g id="content" fill-rule="even-odd" xml:space="preserve" transform="matrix(.0017361 0 0 -.0017361 -.48919 .76070)" stroke="#000" stroke-miterlimit="10.433" fill="none">
+<g id="g3" transform="matrix(-4.6322 -.000040982 .000040982 -4.6322 859.24 432.45)">
+	<path id="path5" fill="#231f20" d="m90.625 107c-5.172 0-9.703-4.25-9.703-9.098v-36.14c0-1.648-1.344-2.992-2.992-2.992h-7.188l-0.039 47.99-38.07-0.63v-82.15c0-4.289 3.5-7.781 7.797-7.781h22.477c4.297 0 7.797 3.492 7.797 7.781v0.93c0 5.031-0.023 28.734-0.562 28.766h7.703c4.406 0 7.984 3.578 7.984 7.984l-0.047 36.242c0 2.388 2.602 4.238 4.844 4.238 2.422 0 5.492-2 5.352-5.355l-3.836-20.68-0.852-7.008 0.609-20.438-1.711-0.023c-3.812 0-6.898-3.078-6.898-6.875l0.188-10.695s-6.336-6.289-6.336-7.172c0 0 2.438-2.43 3.32-2.43l12.766 12.703c2 2.016 2.969 4.414 2.969 7.367v27.562s0.789 5.969 0.789 6.016c0 0 3.904 21.586 3.994 22.789 0 5.219-5.472 9.099-10.355 9.099zm18.465-107.78h-94.028c-8.148 0-14.766 6.617-14.766 14.773v94.004c0 8.16 6.617 14.78 14.766 14.78h94.018c8.15 0 14.77-6.62 14.77-14.78v-94.004c0-8.156-6.62-14.773-14.76-14.773z"/>
+	<path id="path7" fill="#fff" d="m15.062 1.723c-6.766 0-12.266 5.508-12.266 12.273v94.004c0 6.78 5.5 12.28 12.266 12.28h94.018c6.78 0 12.27-5.5 12.27-12.28v-94.004c0-6.766-5.49-12.273-12.27-12.273h-94.018z"/>
+</g><line id="line21" stroke-width="0" y2="2.5508" x2="81.301" y1="2.5508" x1="25.5"/>
+<path id="path39" stroke-width="0" fill="#fff" d="m596.65 246.76h-1.97l-1.93 0.21-1.92 0.21-1.88 0.31-1.84 0.43-1.83 0.52-1.77 0.53-1.75 0.63-1.7 0.74-1.66 0.84-1.61 0.95-1.56 0.94-1.5 0.95-1.47 1.16-1.39 1.16-1.34 1.26-1.28 1.26-1.21 1.37-1.14 1.37-1.09 1.47-1 1.48-0.94 1.58-0.85 1.57-0.77 1.69-0.69 1.68-0.61 1.79-0.53 1.79-0.43 1.79-0.34 1.89-0.25 1.9-0.15 1.89-0.05 2c0 20.53 17.4 37.9 38.45 37.9 20.52 0 37.33-17.37 37.33-37.9 0-21.05-16.81-37.36-37.33-37.36z"/>
+<g id="g3239" transform="matrix(13.984 0 0 -13.984 352.08 372.62)" stroke="#000" stroke-miterlimit="4"><path id="path3175" d="m1.2174 25.487 29.566-0.023" stroke-width="1.5" fill="none"/><path id="path3177" d="m16.046 1.2808-0.092 22.72" stroke-width="1.5" fill="none"/><path id="path2403" d="m16.25 14.768c0 2.4162-1.9588 4.375-4.375 4.375s-4.375-1.9588-4.375-4.375 1.9588-4.375 4.375-4.375 4.375 1.9588 4.375 4.375z" fill-rule="evenodd" transform="matrix(1.0066 -.0064222 .0064222 1.0066 3.9518 11.15)" stroke-width="1.4901" fill="#fff"/><path id="path3201" d="m10.356 19.358 11.287-0.05658" stroke-width="1.5" fill="none"/><path id="path3203" d="m10.356 7.8568 11.288-0.0566" stroke-width="1.5" fill="none"/><path id="path3205" d="m9 13.602 14-0.04641" stroke-width="1.5" fill="none"/></g></g>
+</svg>
