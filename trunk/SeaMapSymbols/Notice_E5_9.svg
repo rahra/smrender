@@ -1,0 +1,11 @@
+<svg
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:xlink="http://www.w3.org/1999/xlink"  
+   version="1.1"
+   width="60"
+   height="60">
+  <symbol id="notice_e5_9" width="60" height="60">
+    <path d="M 8.9374998,11.7625 8.90625,11.79375 29.968625,48.2 51.06225,11.7625 l -42.1247502,0 z m 12.4686762,7.84375 16.84365,0 c 0.0019,0.0031 0.02938,-0.0037 0.03125,0 l -8.4687,14.59375 -8.4062,-14.5625 0,-0.03125 z" />
+  </symbol>
+  <use xlink:href="#notice_e5_9" x="0" y="0" />
+</svg>

@@ -1,4 +1,4 @@
-/* Copyright 2011 Bernhard R. Fischer, 2048R/5C5FFD47 <bf@abenteuerland.at>
+/* Copyright 2011-2015 Bernhard R. Fischer, 2048R/5C5FFD47 <bf@abenteuerland.at>
  *
  * This file is part of smrender.
  *
@@ -15,8 +15,8 @@
  * along with smrender. If not, see <http://www.gnu.org/licenses/>.
  */
 
-/*! This file contains the code of the rule parser and main loop of the render
- * as well as the code for traversing the object (nodes/ways) tree.
+/*! \file smrender.c
+ * This file contains the main() function and main initialization functions.
  *
  *  @author Bernhard R. Fischer
  */
@@ -43,6 +43,8 @@
 #include <locale.h>
 
 #include "smrender_dev.h"
+#include "smcore.h"
+#include "smloadosm.h"
 #include "rdata.h"
 #include "lists.h"
 
@@ -65,9 +67,9 @@ struct tile_info
    int ftype;     // 0 ... png, 1 ... jpg, 2 ... pdf
 };
 
-static volatile sig_atomic_t int_ = 0;
+volatile sig_atomic_t int_ = 0;
 static volatile sig_atomic_t pipe_ = 0;
-static int render_all_nodes_ = 0;
+int render_all_nodes_ = 0;
 
 
 /*! This function parse a coordinate string of format "[-]dd.ddd[NESW]" or
@@ -190,229 +192,6 @@ void install_sigint(void)
 }
 
 
-/*! Match and apply ruleset to object if it is visible.
- *  @param o Object which should be rendered (to which to action is applied).
- *  @param r Rule.
- *  @param ret This variable receives the return value of the rule's
- *  act_XXX_main() function. It may be set to NULL.
- *  @return If the act_XXX_main() function was called 0 is returned and its
- *  return value will be stored to ret. If the rule's main function was not
- *  called, a positive integer is returned which defines the reason for
- *  act_XXX_main() not being called. These reasons are defined as cpp macros
- *  named ERULE_xxx.
- */
-int apply_rule(osm_obj_t *o, smrule_t *r, int *ret)
-{
-   int i;
-
-   // render only nodes which are on the page
-   if (!render_all_nodes_ && o->type == OSM_NODE)
-   {
-      struct coord c;
-      c.lon = ((osm_node_t*) o)->lon;
-      c.lat = ((osm_node_t*) o)->lat;
-      if (!is_on_page(&c))
-         return ERULE_OUTOFBBOX;
-   }
-
-   // check if way rule applies to either areas (closed ways) or lines (open
-   // ways)
-   if (r->oo->type == OSM_WAY)
-      switch (r->act->way_type)
-      {
-         // test if it applies to areas only but way is open
-         case ACTION_CLOSED_WAY:
-            if (((osm_way_t*) o)->ref_cnt && ((osm_way_t*) o)->ref[0] != ((osm_way_t*) o)->ref[((osm_way_t*) o)->ref_cnt - 1])
-               return ERULE_WAYOPEN;
-            break;
-         // test if it applies to lines only but way is closed
-         case ACTION_OPEN_WAY:
-            if (((osm_way_t*) o)->ref_cnt && ((osm_way_t*) o)->ref[0] == ((osm_way_t*) o)->ref[((osm_way_t*) o)->ref_cnt - 1])
-               return ERULE_WAYCLOSED;
-            break;
-      }
-
-   for (i = 0; i < r->oo->tag_cnt; i++)
-      if (bs_match_attr(o, &r->oo->otag[i], &r->act->stag[i]) == -1)
-         return ERULE_NOMATCH;
-
-   if (!o->vis)
-      return ERULE_INVISIBLE;
-
-   i = r->act->main.func(r, o);
-   if (ret != NULL)
-      *ret = i;
-   return 0;
-}
-
-
-int apply_smrules0(osm_obj_t *o, smrule_t *r)
-{
-   int ret = 0;
-
-   (void) apply_rule(o, r, &ret);
-   return ret;
-}
-
-
-int call_fini(smrule_t *r)
-{
-   int e = 0;
-
-   // call de-initialization rule of function rule if available
-   if (r->act->fini.func != NULL && !r->act->finished)
-   {
-      log_msg(LOG_INFO, "calling rule %016lx, %s_fini", (long) r->oo->id, r->act->func_name);
-      if ((e = r->act->fini.func(r)))
-         log_debug("_fini returned %d", e);
-      r->act->finished = 1;
-   }
-
-   return e;
-}
-
-
-#ifdef WITH_THREADS
-
-static list_t *li_fini_;
-
-
-static void __attribute__((constructor)) init_fini_list(void)
-{
-   if ((li_fini_ = li_new()) == NULL)
-      perror("li_new()"), exit(EXIT_FAILURE);
-}
-
-
-static void __attribute__((destructor)) del_fini_list(void)
-{
-   li_destroy(li_fini_, NULL);
-}
-
-
-int queue_fini(smrule_t *r)
-{
-   if ((li_add(li_fini_, r)) == NULL)
-   {
-      log_msg(LOG_ERR, "li_add() failed: %s", strerror(errno));
-      return -1;
-   }
-   return 0;
-}
-
-
-int dequeue_fini(void)
-{
-   list_t *elem, *prev;
-
-   log_msg(LOG_INFO, "calling pending _finis");
-   for (elem = li_last(li_fini_); elem != li_head(li_fini_); elem = prev)
-   {
-      li_unlink(elem);
-      call_fini(elem->data);
-      prev = elem->prev;
-      li_del(elem, NULL);
-   }
-
-   return 0;
-}
-
-
-#endif
-
-
-int apply_smrules(smrule_t *r, long ver)
-{
-   int e = 0;
-
-   if (r == NULL)
-   {
-      log_msg(LOG_EMERG, "NULL pointer to rule, ignoring");
-      return 1;
-   }
-
-   if (!r->oo->vis)
-   {
-      log_msg(LOG_INFO, "ignoring invisible rule %016lx", (long) r->oo->id);
-      return 0;
-   }
-
-   if (r->oo->ver != (int) ver)
-      return 0;
-
-   // FIXME: wtf is this?
-   if (r->act->func_name == NULL)
-   {
-      log_debug("function has no name");
-      return 0;
-   }
-
-#ifdef WITH_THREADS
-   // if rule is not threaded
-   if (!sm_is_threaded(r))
-   {
-      // wait for all threads (previous rules) to finish
-      sm_wait_threads();
-      // call finalization functions in the appropriate order
-      dequeue_fini();
-   }
-#endif
-
-   log_msg(LOG_INFO, "applying rule id 0x%"PRIx64" '%s'", r->oo->id, r->act->func_name);
-
-   if (r->act->main.func != NULL)
-   {
-#ifdef WITH_THREADS
-      if (sm_is_threaded(r))
-         e = traverse_queue(*get_objtree(), r->oo->type - 1, (tree_func_t) apply_smrules0, r);
-      else
-#endif
-         e = traverse(*get_objtree(), 0, r->oo->type - 1, (tree_func_t) apply_smrules0, r);
-   }
-   else
-      log_debug("   -> no main function");
-
-   if (e) log_debug("traverse(apply_smrules0) returned %d", e);
-
-   if (e >= 0)
-   {
-      e = 0;
-#ifdef WITH_THREADS
-      queue_fini(r);
-#else
-      call_fini(r);
-#endif
-   }
-
-   return e;
-}
-
-
-static int execute_rules(bx_node_t *rules, int version)
-{
-   // FIXME: order rel -> way -> node?
-   log_msg(LOG_INFO, " relations...");
-   traverse(rules, 0, IDX_REL, (tree_func_t) apply_smrules, (void*) (long) version);
-#ifdef WITH_THREADS
-   sm_wait_threads();
-   dequeue_fini();
-#endif
-   log_msg(LOG_INFO, " ways...");
-   traverse(rules, 0, IDX_WAY, (tree_func_t) apply_smrules, (void*) (long) version);
-#ifdef WITH_THREADS
-   sm_wait_threads();
-   dequeue_fini();
-#endif
-   log_msg(LOG_INFO, " nodes...");
-   traverse(rules, 0, IDX_NODE, (tree_func_t) apply_smrules, (void*) (long) version);
-#ifdef WITH_THREADS
-   sm_wait_threads();
-   dequeue_fini();
-#endif
-   return 0;
-}
-
- 
 int norm_rule_node(osm_obj_t *o, void * UNUSED(p))
 {
 #define RULE_LON_DIFF 1.0/600.0
@@ -464,13 +243,6 @@ int norm_rule_way(osm_obj_t *o, void *p)
 }
 
 
-int print_tree(osm_obj_t *o, void *p)
-{
-   print_onode(p, o);
-   return 0;
-}
-
-
 int strip_ways(osm_way_t *w, void * UNUSED(p))
 {
    struct onode *n;
@@ -490,77 +262,6 @@ int strip_ways(osm_way_t *w, void * UNUSED(p))
    {
       log_debug("way %ld has no nodes", w->obj.id);
    }
-
-   return 0;
-}
-
-
-int traverse(const bx_node_t *nt, int d, int idx, tree_func_t dhandler, void *p)
-{
-   int i, e, sidx, eidx;
-   static int sig_msg = 0;
-   char buf[32];
-
-   if (int_)
-   {
-      if (!sig_msg)
-      {
-         sig_msg = 1;
-         log_msg(LOG_NOTICE, "SIGINT catched, breaking rendering recursion");
-      }
-      return 0;
-   }
-
-   if (nt == NULL)
-   {
-      log_msg(LOG_WARN, "null pointer catched...breaking recursion");
-      return -1;
-   }
-
-   if ((idx < -1) || (idx >= (1 << BX_RES)))
-   {
-      log_msg(LOG_CRIT, "traverse(): idx (%d) out of range", idx);
-      return -1;
-   }
-
-   if (d == sizeof(bx_hash_t) * 8 / BX_RES)
-   {
-      if (idx == -1)
-      {
-         sidx = 0;
-         eidx = 1 << BX_RES;
-      }
-      else
-      {
-         sidx = idx;
-         eidx = sidx + 1;
-      }
-
-      for (i = sidx, e = 0; i < eidx; i++)
-      {
-         if (nt->next[i] != NULL)
-         {
-            if ((e = dhandler(nt->next[i], p)))
-            {
-               (void) func_name(buf, sizeof(buf), dhandler);
-               log_msg(LOG_WARNING, "dhandler(), sym = '%s', addr = '%p' returned %d", buf, dhandler, e);
-               if (e)
-               {
-                  log_msg(LOG_INFO, "breaking recursion");
-                  return e;
-               }
-            }
-         }
-      }
-      return e;
-   }
-
-   for (i = 0; i < 1 << BX_RES; i++)
-      if (nt->next[i])
-      {
-         if ((e = traverse(nt->next[i], d + 1, idx, dhandler, p)))
-            return e;
-      }
 
    return 0;
 }
@@ -589,155 +290,43 @@ void print_url(struct bbox bb)
 }
 
 
+/*! This function initializes the projection parameters. This is the final
+ * geographic bounding box, the hyperpolic North-South stretching, and the
+ * chart scale.
+ * @param rd Pointer to the rdata structure. The following members of the
+ * structure have to be set correctly before calling init_bbox_mll():
+ * mean_lat, mean_lat_len, mean_lon, w, h, dpi
+ */
 void init_bbox_mll(struct rdata *rd)
 {
+   double lat, lon;
+
+   // calculate scale which depends on the mean latitude
+   rd->scale = (rd->mean_lat_len * 60.0 * 1852 * 100 / 2.54) / ((double) rd->w / (double) rd->dpi);
+   // calculate meridians on left and right border of the chart
    rd->wc = rd->mean_lat_len / cos(rd->mean_lat * M_PI / 180);
    rd->bb.ll.lon = rd->mean_lon - rd->wc / 2;
    rd->bb.ru.lon = rd->mean_lon + rd->wc / 2;
+
+   // estimate latitudes on upper on lower border of the chart
    rd->hc = rd->mean_lat_len * rd->h / rd->w;
    rd->bb.ru.lat = rd->mean_lat + rd->hc / 2.0;
    rd->bb.ll.lat = rd->mean_lat - rd->hc / 2.0;
-   rd->scale = (rd->mean_lat_len * 60.0 * 1852 * 100 / 2.54) / ((double) rd->w / (double) rd->dpi);
-   rd->lath = asinh(tan(DEG2RAD(rd->mean_lat)));
-   rd->lath_len = asinh(tan(DEG2RAD(rd->bb.ru.lat))) - asinh(tan(DEG2RAD(rd->bb.ll.lat)));
-}
 
-
-int bs_safe_put_xml(FILE *f, const bstring_t *b)
-{
-   int i, c;
-
-   for (i = 0, c = 0; i < b->len; i++)
-      switch (b->buf[i])
-      {
-         case '"':
-            c += fputs("&quot;", f);
-            break;
-         case '<':
-            c += fputs("&lt;", f);
-            break;
-         default:
-            c += fputc(b->buf[i], f);
-      }
-   return c;
-}
-
-
-static int64_t out_id(int64_t id, int type)
-{
-   struct rdata *rd = get_rdata();
-   int64_t mask;
-
-   if ((id > 0) || !(rd->flags & RD_UIDS))
-      return id;
-
-   switch (type)
+   // iteratively approximate latitudes
+   for (int i = 0; i < 3; i++)
    {
-      case OSM_NODE:
-         mask = rd->ds.nid_mask;
-         break;
-      case OSM_WAY:
-         mask = rd->ds.wid_mask;
-         break;
-      case OSM_REL:
-         // FIXME: artificial limit!
-         mask = INT64_C(30);
-         break;
-      default:
-         log_msg(LOG_EMERG, "unknown object type %d", type);
-         return 0;
+      // calculate hyperbolic distoration factors
+      rd->lath = asinh(tan(DEG2RAD(rd->mean_lat)));
+      rd->lath_len = asinh(tan(DEG2RAD(rd->bb.ru.lat))) - asinh(tan(DEG2RAD(rd->bb.ll.lat)));
+
+      // recalculate northern and southern latitude
+      pxf2geo(0.0, 0.0, &lon, &lat);
+      rd->bb.ru.lat = lat;
+      pxf2geo(0.0, rd->h, &lon, &lat);
+      rd->bb.ll.lat = lat;
+      rd->hc = rd->bb.ru.lat - rd->bb.ll.lat;
    }
-
-   //log_debug("mask = %"PRIx64, mask);
-
-   return (id & mask) | (mask + 1);
-}
-
-
-static int fprint_defattr(FILE *f, const osm_obj_t *o, const char *ostr)
-{
-#define TBUFLEN 24
-   char ts[TBUFLEN] = "0000-00-00T00:00:00Z";
-   struct tm *tm;
-
-   if ((tm = gmtime(&o->tim)) != NULL)
-      strftime(ts, sizeof(ts), "%Y-%m-%dT%H:%M:%SZ", tm);
-
-   return fprintf(f, "<%s id=\"%"PRId64"\" version=\"%d\" timestamp=\"%s\" uid=\"%d\" visible=\"%s\"", 
-         ostr, out_id(o->id, o->type), o->ver ? o->ver : 1, ts, o->uid, o->vis ? "true" : "false");
-}
-
-
-int print_onode(FILE *f, const osm_obj_t *o)
-{
-   int i;
-
-   if (o == NULL)
-   {
-      log_warn("NULL pointer catched in print_onode()");
-      return -1;
-   }
-
-   switch (o->type)
-   {
-      case OSM_NODE:
-         fprint_defattr(f, o, "node");
-         if (o->tag_cnt)
-            fprintf(f, " lat=\"%.7f\" lon=\"%.7f\">\n", ((osm_node_t*) o)->lat, ((osm_node_t*) o)->lon);
-         else
-            fprintf(f, " lat=\"%.7f\" lon=\"%.7f\"/>\n", ((osm_node_t*) o)->lat, ((osm_node_t*) o)->lon);
-         break;
-
-      case OSM_WAY:
-         fprint_defattr(f, o, "way");
-         fprintf(f, ">\n");
-         break;
-
-      case OSM_REL:
-         fprint_defattr(f, o, "relation");
-         fprintf(f, ">\n");
-         break;
-
-      default:
-         fprintf(f, "<!-- unknown node type: %d -->\n", o->type);
-         return -1;
-   }
-
-   for (i = 0; i < o->tag_cnt; i++)
-   {
-      fputs("<tag k=\"", f);
-      bs_safe_put_xml(f, &o->otag[i].k);
-      fputs("\" v=\"", f);
-      bs_safe_put_xml(f, &o->otag[i].v);
-      fputs("\"/>\n", f);
-      /*fprintf(f, "<tag k=\"%.*s\" v=\"%.*s\"/>\n",
-            (int) o->otag[i].k.len, o->otag[i].k.buf, (int) o->otag[i].v.len, o->otag[i].v.buf);*/
-   }
-
-  switch (o->type)
-   {
-      case OSM_NODE:
-         if (o->tag_cnt)
-            fprintf(f, "</node>\n");
-         break;
-
-      case OSM_WAY:
-         for (i = 0; i < ((osm_way_t*) o)->ref_cnt; i++)
-            fprintf(f, "<nd ref=\"%"PRId64"\"/>\n", out_id(((osm_way_t*) o)->ref[i], OSM_NODE));
-         fprintf(f, "</way>\n");
-         break;
-
-      case OSM_REL:
-         for (i = 0; i < ((osm_rel_t*) o)->mem_cnt; i++)
-            fprintf(f, "<member type=\"%s\" ref=\"%"PRIu64"\" role=\"%s\"/>\n",
-                  ((osm_rel_t*) o)->mem[i].type == OSM_NODE ? "node" : "way",
-                  out_id(((osm_rel_t*) o)->mem[i].id, ((osm_rel_t*) o)->mem[i].type),
-                  role_str(((osm_rel_t*) o)->mem[i].role));
-         fprintf(f, "</relation>\n");
-         break;
-   }
-
-   return 0;
 }
 
 
@@ -758,45 +347,11 @@ int free_objects(osm_obj_t *o, void * UNUSED(p))
 }
 
 
-/*! Save OSM data of tree to file s.
- *  @param s Filename of output file.
- *  @param Pointer to bxtree containing the information.
- *  @param bb Optional bounding box (written to tag <bounds>).
- *  @param info Optional information written to the header as comment (<!-- info -->).
- *  @return The function returns 0, or -1 in case of error.
- */
-int save_osm(const char *s, bx_node_t *tree, const struct bbox *bb, const char *info)
-{
-   FILE *f;
-
-   if (s == NULL)
-      return -1;
-
-   log_msg(LOG_INFO, "saving osm output to '%s'", s);
-   if ((f = fopen(s, "w")) != NULL)
-   {
-      fprintf(f, "<?xml version='1.0' encoding='UTF-8'?>\n"
-                 "<osm version='0.6' generator='smrender'>\n");
-      if (info != NULL)
-         fprintf(f, "<!--\n%s\n-->\n", info);
-      if (bb != NULL)
-         fprintf(f, "<bounds minlat='%f' minlon='%f' maxlat='%f' maxlon='%f'/>\n",
-               bb->ll.lat, bb->ll.lon, bb->ru.lat, bb->ru.lon);
-      traverse(tree, 0, IDX_NODE, print_tree, f);
-      traverse(tree, 0, IDX_WAY, print_tree, f);
-      traverse(tree, 0, IDX_REL, print_tree, f);
-      fprintf(f, "</osm>\n");
-      fclose(f);
-   }
-   else
-      log_msg(LOG_WARN, "could not open '%s': %s", s, strerror(errno));
-
-   return 0;
-}
-
-
-/*! Initializes data about paper (image) size.
- *  rd->dpi must be pre-initialized!
+/*! This function initializes the pixel width (w) and height (h) of the rdata
+ * structure. rd->dpi must be pre-initialized!
+ * @param rd Pointer to the rdata structure.
+ * @param paper Pointer to a string containing page dimension information, i.e.
+ * "A4", "A3",..., or "<width>x<height>" in millimeters.
  */
 void init_rd_paper(struct rdata *rd, const char *paper)
 {
@@ -804,7 +359,7 @@ void init_rd_paper(struct rdata *rd, const char *paper)
    double a4_w, a4_h;
 
    a4_w = MM2PX(210);
-   a4_h = MM2PX(296.9848);
+   a4_h = MM2PX(297);
 
    if (strchr(paper, 'x'))
    {
@@ -872,7 +427,7 @@ void init_rd_paper(struct rdata *rd, const char *paper)
 
 static void print_version(void)
 {
-   printf("Seamark renderer V" PACKAGE_VERSION ", (c) 2011-2012, Bernhard R. Fischer, <bf@abenteuerland.at>.\n"
+   printf("Seamark renderer V" PACKAGE_VERSION ", (c) 2011-2015, Bernhard R. Fischer, <bf@abenteuerland.at>.\n"
           "See http://www.abenteuerland.at/smrender/ for more information.\n");
 #ifdef HAVE_CAIRO
    printf("Using libcairo %s.\n", cairo_version_string());
@@ -900,7 +455,7 @@ void usage(const char *s)
          "   -a .................. Render all nodes, otherwise only nodes which are\n"
          "                         on the page are rendered.\n"
          "   -b <color> .......... Choose background color ('white' is default).\n"
-         "   -D .................. Print debug messages.\n"
+         "   -D .................. Increase verbosity (can be specified multiple times).\n"
          "   -d <density> ........ Set image density (300 is default).\n"
          "   -f .................. Use loading filter.\n"
          "   -g <grd>[:<t>[:<s>]]  Distance of grid/ticks/subticks in minutes.\n"
@@ -911,15 +466,18 @@ void usage(const char *s)
          "   -l .................. Select landscape output. Only useful with option -P.\n"
          "   -M .................. Input file is memory mapped (default).\n"
          "   -m .................. Input file is read into heap memory.\n"
+         "   -N <offset> ......... Add numerical <offset> to all IDs in output data.\n"
          "   -n .................. Output IDs as positive values only.\n"
          "   -r <rules file> ..... Rules file ('rules.osm' is default).\n"
-         "   -s <ovs> ............ Deprecated, kept for backwards compatibility.\n"
+         "   -R <file> ........... Output all rules to <file>.\n"
+         "   -s <img scale> ...... Set global image scale (default = 1).\n"
          "   -t <title> .......... Set descriptional chart title.\n"
          "   -T <tile_info> ...... Create tiles.\n"
          "      <tile_info> := <zoom_lo> [ '-' <zoom_hi> ] ':' <tile_path> [ ':' <file_type> ]\n"
          "      <file_type> := 'png' | 'jpg'\n"
-         "   -o <image file> ..... Filename of output PNG image.\n"
-         "   -O <pdf file> ....... Filename of output PDF file.\n"
+         "   -o <image file> ..... Name of output file. The extensions determines the output format.\n"
+         "                         Currently supported formats: .PDF, .PNG, .SVG.\n"
+         "   -O <pdf file> ....... Filename of output PDF file (DEPRECATED).\n"
          "   -P <page format> .... Select output page format.\n"
          "   -u .................. Output URLs suitable for OSM data download and\n"
          "                         exit.\n"
@@ -933,11 +491,7 @@ void usage(const char *s)
 
 int cmp_int(const int *a, const int *b)
 {
-   if (*a < *b)
-      return -1;
-   if (*a > *b)
-      return 1;
-   return 0;
+   return *a - *b;
 }
 
 
@@ -1029,101 +583,15 @@ int parse_tile_info(char *tstr, struct tile_info *ti)
 }
 
 
-/*! Find OSM object in object list and return index.
- *  @param optr Pointer to NULL-terminated object list.
- *  @param o Pointer to object.
- *  @return Index greater or equal 0 of object within list. If the list has no
- *  such object the index of the last element (which is a NULL pointer) is
- *  returned. If optr itself is a NULL pointer -1 is returned.
+/*! This function initializes all parameters for rendering in dependence of the
+ * command line arguments. This is the page dimension, projection parameters
+ * and chart scale.
+ * @param rd Pointer to the rdata structure.
+ * @param win Pointer to the string which specifies the geograhic rendering
+ * window.
+ * @param paper Pointer to the string which specifies the page dimension.
  */
-int get_rev_index(osm_obj_t **optr, const osm_obj_t *o)
-{
-   int i;
-
-   if (optr == NULL)
-      return -1;
-   for (i = 0; *optr != NULL; optr++, i++)
-      if (o == *optr)
-         break;
-   return i;
-}
-
-
-static int add_rev_ptr(bx_node_t **idx_root, int64_t id, int idx, osm_obj_t *o)
-{
-   osm_obj_t **optr;
-   int n;
-
-   // get index pointer
-   if ((optr = get_object0(*idx_root, id, idx)) == NULL)
-   {
-      n = 0;
-   }
-   else
-   {
-      n = get_rev_index(optr, o);
-      // check if index exists
-      if (optr[n] != NULL)
-         return 1;
-   }
-
-   if ((optr = realloc(optr, sizeof(*optr) * (n + 2))) == NULL)
-   {
-      log_msg(LOG_ERR, "could not realloc() in rev_index_way_nodes(): %s", strerror(errno));
-      return -1;
-   }
-   optr[n] = o;
-   optr[n + 1] = NULL;
-   put_object0(idx_root, id, optr, idx);
-   return 0;
-}
-
- 
-static int rev_index_way_nodes(osm_way_t *w, bx_node_t **idx_root)
-{
-   int i;
-
-   for (i = 0; i < w->ref_cnt; i++)
-   {
-      if (get_object(OSM_NODE, w->ref[i]) == NULL)
-      {
-         log_msg(LOG_ERR, "node %ld in way %ld does not exist", (long) w->ref[i], (long) w->obj.id);
-         continue;
-      }
-
-      if (add_rev_ptr(idx_root, w->ref[i], IDX_NODE, (osm_obj_t*) w) == -1)
-         return -1;
-   }
-   return 0;
-}
-
-
-static int rev_index_rel_nodes(osm_rel_t *r, bx_node_t **idx_root)
-{
-   int i, incomplete = 0;
-   osm_obj_t *o;
-
-   for (i = 0; i < r->mem_cnt; i++)
-   {
-      if ((o = get_object(r->mem[i].type, r->mem[i].id)) == NULL)
-      {
-         //log_msg(LOG_ERR, "object %ld in relation %ld does not exist", (long) r->mem[i].id, (long) r->obj.id);
-         incomplete++;
-         continue;
-      }
-
-      if (add_rev_ptr(idx_root, r->mem[i].id, r->mem[i].type - 1, (osm_obj_t*) r) == -1)
-         return -1;
-   }
-
-   if (incomplete)
-      log_msg(LOG_NOTICE, "relation %ld incomplete, %d objects missing", (long) r->obj.id, incomplete);
-
-   return 0;
-}
-
-
-int init_rendering_window(struct rdata *rd, char *win, const char *paper)
+void init_rendering_window(struct rdata *rd, char *win, const char *paper)
 {
    char *s;
    int n;
@@ -1232,8 +700,6 @@ int init_rendering_window(struct rdata *rd, char *win, const char *paper)
    rd->fh = rd->h;
 
    init_bbox_mll(rd);
-
-   return 0;
 }
 
 
@@ -1244,7 +710,7 @@ int main(int argc, char *argv[])
    struct stat st;
    FILE *f;
    char *cf = "rules.osm", *img_file = NULL, *osm_ifile = NULL, *osm_ofile =
-      NULL, *osm_rfile = NULL, *kap_file = NULL, *kap_hfile = NULL, *pdf_file = NULL;
+      NULL, *osm_rfile = NULL, *kap_file = NULL, *kap_hfile = NULL, *pdf_file = NULL, *svg_file = NULL;
    struct rdata *rd;
    struct timeval tv_start, tv_end;
    int w_mmap = 1, load_filter = 0, init_exit = 0, gen_grid = AUTO_GRID, prt_url = 0;
@@ -1254,8 +720,10 @@ int main(int argc, char *argv[])
    struct grid grd;
    char *s;
    struct tile_info ti;
+   int level = 5;    // default log level: 5 = LOG_NOTICE
 
    (void) gettimeofday(&tv_start, NULL);
+   init_log("stderr", level);
    rd = get_rdata();
    init_grid(&grd);
    rd->cmdline = mk_cmd_line((const char**) argv);
@@ -1266,7 +734,7 @@ int main(int argc, char *argv[])
    if (setlocale(LC_CTYPE, "") == NULL)
       log_msg(LOG_WARN, "setlocale() failed");
 
-   while ((n = getopt(argc, argv, "ab:Dd:fg:Ghi:k:K:lMmno:O:P:r:R:s:t:T:uVvw:")) != -1)
+   while ((n = getopt(argc, argv, "ab:Dd:fg:Ghi:k:K:lMmN:no:O:P:r:R:s:t:T:uVvw:")) != -1)
       switch (n)
       {
          case 'a':
@@ -1278,7 +746,11 @@ int main(int argc, char *argv[])
             break;
 
          case 'D':
-            init_log("stderr", LOG_DEBUG);
+            if (level < 7)
+            {
+               level++;
+               init_log("stderr", level);
+            }
             break;
 
          case 'd':
@@ -1345,6 +817,15 @@ int main(int argc, char *argv[])
             w_mmap = 0;
             break;
 
+         case 'N':
+            errno = 0;
+            rd->id_off = strtoll(optarg, NULL, 0);
+            if (errno)
+               log_msg(LOG_ERR, "could not convert '%s': %s", optarg, strerror(errno)),
+                  exit(EXIT_FAILURE);
+            log_debug("id_off = %"PRId64, rd->id_off);
+            break;
+
          case 'n':
             rd->flags |= RD_UIDS;
             break;
@@ -1354,7 +835,29 @@ int main(int argc, char *argv[])
             break;
 
          case 'o':
-            img_file = optarg;
+            log_debug("parsing '-o %s'", optarg);
+            if (strlen(optarg) >= 4)
+            {
+               if (!strcasecmp(optarg + strlen(optarg) - 4, ".png"))
+               {
+                  img_file = optarg;
+               }
+               else if (!strcasecmp(optarg + strlen(optarg) - 4, ".pdf"))
+               {
+                  pdf_file = optarg;
+               }
+               else if (!strcasecmp(optarg + strlen(optarg) - 4, ".svg"))
+               {
+                  svg_file = optarg;
+               }
+               else
+               {
+                  log_msg(LOG_NOTICE, "output file type for %s defaults to PNG", optarg);
+                  img_file = optarg;
+               }
+            }
+            else
+               img_file = optarg;
             break;
 
          case 'O':
@@ -1369,12 +872,18 @@ int main(int argc, char *argv[])
             cf = optarg;
             break;
 
-         case 's':
-            log_msg(LOG_NOTICE, "Option -s is deprecated with libcairo support!");
-            break;
-
          case 'R':
             osm_rfile = optarg;
+            break;
+
+         case 's':
+            errno = 0;
+            rd->img_scale = strtod(optarg, NULL);
+            if (errno)
+            {
+               log_msg(LOG_ERR, "illegal image scaling: %s", strerror(errno));
+               rd->img_scale = 1;
+            }
             break;
 
          case 't':
@@ -1432,7 +941,7 @@ int main(int argc, char *argv[])
    if ((cfctl = open_osm_source(cf, 0)) == NULL)
       exit(EXIT_FAILURE);
 
-   log_msg(LOG_INFO, "reading rules (file size %ld kb)", (long) cfctl->len / 1024);
+   log_msg(LOG_NOTICE, "reading rules (file size %ld kb)", (long) cfctl->len / 1024);
    (void) read_osm_file(cfctl, &rd->rules, NULL, &rstats);
    (void) close(cfctl->fd);
 
@@ -1455,15 +964,15 @@ int main(int argc, char *argv[])
    }
 
    log_msg(LOG_INFO, "preparing node rules");
-   if (traverse(rd->rules, 0, IDX_NODE, (tree_func_t) init_rules, rd) < 0)
+   if (traverse(rd->rules, 0, IDX_NODE, (tree_func_t) init_rules, rd->rules) < 0)
       log_msg(LOG_ERR, "rule parser failed"),
          exit(EXIT_FAILURE);
    log_msg(LOG_INFO, "preparing way rules");
-   if (traverse(rd->rules, 0, IDX_WAY, (tree_func_t) init_rules, rd) < 0)
+   if (traverse(rd->rules, 0, IDX_WAY, (tree_func_t) init_rules, rd->rules) < 0)
       log_msg(LOG_ERR, "rule parser failed"),
          exit(EXIT_FAILURE);
    log_msg(LOG_INFO, "preparing relation rules");
-   if (traverse(rd->rules, 0, IDX_REL, (tree_func_t) init_rules, rd) < 0)
+   if (traverse(rd->rules, 0, IDX_REL, (tree_func_t) init_rules, rd->rules) < 0)
       log_msg(LOG_ERR, "rule parser failed"),
          exit(EXIT_FAILURE);
 
@@ -1482,7 +991,7 @@ int main(int argc, char *argv[])
    if ((ctl = hpx_init(fd, st.st_size)) == NULL)
       perror("hpx_init_simple"), exit(EXIT_FAILURE);
 
-   log_msg(LOG_INFO, "reading osm data (file size %ld kb, memory at %p)",
+   log_msg(LOG_NOTICE, "reading osm data (file size %ld kb, memory at %p)",
          (long) labs(st.st_size) / 1024, ctl->buf.buf);
 
    if (load_filter)
@@ -1514,10 +1023,14 @@ int main(int argc, char *argv[])
    log_msg(LOG_INFO, "stripping filtered way nodes");
    traverse(*get_objtree(), 0, IDX_WAY, (tree_func_t) strip_ways, NULL);
 
-   log_msg(LOG_INFO, "creating reverse pointers from nodes to ways");
-   traverse(*get_objtree(), 0, IDX_WAY, (tree_func_t) rev_index_way_nodes, &rd->index);
-   log_msg(LOG_INFO, "creating reverse pointers from relation members to relations");
-   traverse(*get_objtree(), 0, IDX_REL, (tree_func_t) rev_index_rel_nodes, &rd->index);
+   // reverse pointers are only created if requested by some action
+   if (rd->need_index)
+   {
+      log_msg(LOG_INFO, "creating reverse pointers from nodes to ways");
+      traverse(*get_objtree(), 0, IDX_WAY, (tree_func_t) rev_index_way_nodes, &rd->index);
+      log_msg(LOG_INFO, "creating reverse pointers from relation members to relations");
+      traverse(*get_objtree(), 0, IDX_REL, (tree_func_t) rev_index_rel_nodes, &rd->index);
+   }
 
    switch (gen_grid)
    {
@@ -1538,7 +1051,7 @@ int main(int argc, char *argv[])
 
    for (n = 0; (n < rstats.ver_cnt) && !int_ && (rstats.ver[n] < SUBROUTINE_VERSION); n++)
    {
-      log_msg(LOG_INFO, "rendering pass %d (ver = %d)", n, rstats.ver[n]);
+      log_msg(LOG_NOTICE, "rendering pass %d (ver = %d)", n, rstats.ver[n]);
       execute_rules(rd->rules, rstats.ver[n]);
    }
 
@@ -1599,6 +1112,17 @@ int main(int argc, char *argv[])
          log_msg(LOG_ERR, "error opening file %s: %s", pdf_file, strerror(errno));
    }
 
+   if (svg_file != NULL)
+   {
+      if ((f = fopen(svg_file, "w")) != NULL)
+      {
+         save_main_image(f, FTYPE_SVG);
+         fclose(f);
+      }
+      else
+         log_msg(LOG_ERR, "error opening file %s: %s", svg_file, strerror(errno));
+   }
+
    if (kap_file != NULL)
    {
       log_msg(LOG_INFO, "generating KAP file %s", kap_file);
@@ -1636,8 +1160,8 @@ int main(int argc, char *argv[])
       tv_end.tv_usec += 1000000;
    }
 
-   log_msg(LOG_INFO, "%d.%03d seconds elapsed. exiting", (unsigned) tv_end.tv_sec, (unsigned) tv_end.tv_usec / 1000);
-   log_msg(LOG_INFO, "Thanks for using smrender!");
+   log_msg(LOG_NOTICE, "%d.%03d seconds elapsed. exiting", (unsigned) tv_end.tv_sec, (unsigned) tv_end.tv_usec / 1000);
+   log_msg(LOG_NOTICE, "Thanks for using smrender!");
    return EXIT_SUCCESS;
 }
 

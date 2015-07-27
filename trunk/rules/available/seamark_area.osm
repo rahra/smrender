@@ -1,0 +1,44 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<osm version='0.6' generator="Bernhard R. Fischer">
+
+   <way>
+      <tag k='man_made' v='pier'/>
+      <tag k='_action_' v='draw:color=navajowhite;ignore_open=1'/>
+   </way>
+   <way>
+      <tag k='man_made' v='pier'/>
+      <tag k='_action_' v='draw:bcolor=black'/>
+   </way>
+
+   <way>
+      <tag k='man_made' v='breakwater'/>
+      <tag k='_action_' v='draw:color=black'/>
+   </way>
+
+   <way>
+      <tag k='seamark:type' v='separation_zone'/>
+      <tag k='_action_' v='draw:color=#40FF00FF'/>
+   </way>
+   
+   <way>
+      <tag k='seamark:type' v='cable_submarine'/>
+      <tag k='_action_' v='draw:color=magenta;wavy=yes'/>
+   </way>
+   
+   <way version="-10">
+      <tag k='seamark:type' v='anchorage'/>
+      <tag k='_action_' v='ins_eqdist:distance=1.5'/>
+   </way>
+   <node>
+      <tag k='seamark:type' v='anchorage'/>
+      <tag k='generator' v='smrender'/>
+      <tag k='_action_' v='img:file=SeaMapSymbols/Anchorage.svg;anglekey=bearing;angle=-90'/>
+   </node>
+   <way>
+      <tag k='seamark:type' v='/separation_lane|anchorage/'/>
+      <tag k='_action_' v='draw:bcolor=#40FF00FF;bwidth=0.5;bstyle=dashed'/>
+   </way>
+
+
+</osm>
+

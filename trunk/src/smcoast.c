@@ -15,7 +15,8 @@
  * along with smrender. If not, see <http://www.gnu.org/licenses/>.
  */
 
-/*! This file contains the code which is used to close open polygons. Open
+/*! \file smcoast.c
+ * This file contains the code which is used to close open polygons. Open
  * polygons obviously cannot be filled, thus the must be closed before. Open
  * polygons occure at the edges of the boundbox which is used to select data out
  * of the OSM database. This is one of the most difficult parts at all.
@@ -65,10 +66,16 @@ static int node_brg(struct pcoord*, const struct coord*, int64_t);
 
 static struct corner_point co_pt_[4];
 static struct coord center_;
+static osm_way_t *page_way_;
 
 
+const osm_way_t *page_way(void)
+{
+   return page_way_;
+}
 
-/*! Check if way is a closed polygon and is an area (i.e. it has at least 4 points)
+
+/*! Check if way is a closed polygon and is an area (i.e. it has at least 4 points).
  *  @param w Pointer to way.
  *  @return 1 if it is a closed area, 0 otherwise.
  */
@@ -687,6 +694,7 @@ static void init_corner_brg(const struct rdata *rd, const struct coord *src, str
    w->ref_cnt = 5;
    set_const_tag(&w->obj.otag[1], "border", "page");
    put_object((osm_obj_t*) w);
+   page_way_ = w;
 }
 
 
@@ -726,7 +734,7 @@ static int connect_open(struct pdef *pd, struct wlist *wl, int ocnt, short no_co
 {
    int i, j, k, l;
    int64_t *ref;
-   struct corner_point *co_pt = co_pt_;
+   const struct corner_point *co_pt = co_pt_;
 
    for (i = 0; i < ocnt; i++)
    {
@@ -1222,6 +1230,7 @@ int act_refine_poly_ini(smrule_t *r)
    struct refine *rf;
    double it;
 
+   log_msg(LOG_WARN, "DEPRECATED. Use draw(curve=1) instead.");
    if ((rf = malloc(sizeof(*rf))) == NULL)
    {
       log_msg(LOG_ERR, "cannot malloc: %s", strerror(errno));

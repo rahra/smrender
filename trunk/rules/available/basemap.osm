@@ -1,5 +1,5 @@
 <?xml version='1.0' encoding='UTF-8'?>
-<osm version='0.6'>
+<osm version='0.6' generator='Bernhard R. Fischer'>
    <node>
       <tag k='_action_' v='cap:font=sans-serif:italic;size=1.4;angle=auto;halign=east;key=name'/>
       <tag k='natural' v='bay'/>
@@ -23,10 +23,6 @@
       <tag k='_action_' v='set_tags:id=115'/>
    </way>
  
-   <way>
-      <tag k='natural' v='coastline'/>
-      <tag k='_action_' v='refine_poly'/>
-   </way>
    <way version="-10">
       <tag k='seamark:type' v='depth_contour'/>
       <tag k='_action_' v='ins_eqdist:distance=3'/>
@@ -42,9 +38,8 @@
       <tag k='_action_' v='cap:font=sans-serif;size=1.6;angle=90;anglekey=bearing;key=seamark:depth_contour:depth'/>
    </node>
    <way>
-      <tag k='seamark:type' v='depth_contour'/>
-      <tag k='~distance~' v=''/>
-      <tag k='_action_' v='refine_poly'/>
+      <tag k='natural' v='wetland'/>
+      <tag k='_action_' v='cat_poly'/>
    </way>
    <way>
       <tag k='seamark:type' v='depth_contour'/>
@@ -55,22 +50,27 @@
    <way>
       <tag k='seamark:type' v='depth_contour'/>
       <tag k='seamark:depth_contour:depth' v='10'/>
+      <tag k='generator' v='smrender'/>
       <tag k='~distance~' v=''/>
-      <tag k='_action_' v='draw:color=skyblue;ignore_open=1;directional=1'/>
+      <tag k='_action_' v='draw:color=skyblue;ignore_open=1;directional=1;curve=1'/>
    </way>
    <way>
       <tag k='seamark:type' v='depth_contour'/>
       <tag k='~distance~' v=''/>
-      <tag k='_action_' v='draw:bcolor=black'/>
+      <tag k='_action_' v='draw:bcolor=black;curve=1'/>
    </way>
    <way>
       <tag k='tidal' v='yes'/>
       <tag k='_action_' v='draw:color=darkseagreen'/>
    </way>
    <way>
+      <tag k='natural' v='wetland'/>
+      <tag k='_action_' v='draw:color=darkseagreen'/>
+   </way>
+   <way>
       <tag k='seamark:type' v='depth_contour'/>
       <tag k='distance' v=''/>
-      <tag k='_action_' v='draw:color=white'/>
+      <tag k='_action_' v='draw:color=white;curve=1'/>
    </way>
    <way>
       <tag k='natural' v='coastline'/>
@@ -89,7 +89,7 @@
    </way>
    <way>
       <tag k='natural' v='coastline'/>
-      <tag k='_action_' v='draw:color=navajowhite;bcolor=black'/>
+      <tag k='_action_' v='draw:color=navajowhite;bcolor=black;curve=1'/>
    </way>
    <way>
       <tag k='contour' v='elevation'/>

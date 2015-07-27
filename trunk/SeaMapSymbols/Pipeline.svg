@@ -1,0 +1,12 @@
+<svg
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:xlink="http://www.w3.org/1999/xlink"  
+   version="1.1"
+   width="30"
+   height="60">
+  <symbol id="pipeline" width="30" height="60">
+    <path d="M 15,0 L 15,60" style="fill:none;stroke:#c480ff;stroke-width:8" />
+    <circle r="10" cx="15" cy="10" style="stroke:none;fill:#c480ff" />
+  </symbol>
+  <use xlink:href="#pipeline" x="0" y="0" />
+</svg>

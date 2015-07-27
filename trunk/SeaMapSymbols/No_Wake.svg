@@ -1,0 +1,14 @@
+<svg
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:xlink="http://www.w3.org/1999/xlink"  
+   version="1.1"
+   width="120"
+   height="120">
+  <symbol id="no_wake" width="120" height="120">
+    <path d="M 0,60 A 50,50 0,0,0, 30,50 A 50,50 0,0,1 90,50 A 50,50 0,0,0, 120,60" style="stroke:#a30075;stroke-width:12;fill:none" />
+    <path d="M 0,80 A 50,50 0,0,0, 30,70 A 50,50 0,0,1 90,70 A 50,50 0,0,0, 120,80" style="stroke:#a30075;stroke-width:12;fill:none" />
+    <line x1="0" y1="0" x2="120" y2="120" style="stroke:#a30075;stroke-width:4;fill:none" />
+    <line x1="0" y1="120" x2="120" y2="0" style="stroke:#a30075;stroke-width:4;fill:none" />
+  </symbol>
+  <use xlink:href="#no_wake" x="0" y="0" />
+</svg>

@@ -1,0 +1,12 @@
+<svg
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:xlink="http://www.w3.org/1999/xlink"  
+   version="1.0"
+   width="40"
+   height="40">
+  <symbol id="dolphin" width="40" height="40">
+    <path d="M 23.8,10.8 29.2,16.2 29.2,23.8 23.8,29.2 16.2,29.2 10.8,23.8 10.8,16.2 16.2,10.8 z"
+     style="fill:#ffd400;fill-opacity:1;stroke:#000000;stroke-width:2;stroke-opacity:1" />
+  </symbol>
+  <use xlink:href="#dolphin" x="0" y="0" />
+</svg>

@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<osm version="0.6" generator="Bernhard R. Fischer">
+
+   <!-- translation table for Croatian lights -->
+   <node id='1000'>
+      <tag k='Fl' v='Bl'/>
+      <tag k='LFl' v='DBl'/>
+      <tag k='Oc' v='Pk'/>
+      <tag k='F' v=' '/> <!-- FIXME... -->
+      <tag k='Iso' v='Izo'/>
+      <tag k='Q' v='K'/>
+      <tag k='IQ' v='KPk'/>
+      <tag k='VQ' v='VK'/>
+      <tag k='IVQ' v='VKPk'/>
+      <tag k='UQ' v='UK'/>
+      <tag k='IUQ' v='UKPk'/>
+      <tag k='FFl' v='Sj'/>
+      <tag k='white' v='B'/>
+      <tag k='red' v='C'/>
+      <tag k='green' v='Z'/>
+      <tag k='yellow' v='Ž'/>
+      <tag k='black' v='Cr'/>
+      <tag k='violett' v='Lj'/>
+   </node>
+
+   <!-- translation table for German lights -->
+   <node id='1001'>
+      <tag k='Fl' v='Blz'/>
+      <tag k='LFl' v='Blk'/>
+      <tag k='Oc' v='Ubr'/>
+      <tag k='F' v='F'/>
+      <tag k='Iso' v='Glt'/>
+      <tag k='Q' v='Fkl'/>
+      <tag k='IQ' v='Fkl.unt'/>
+      <tag k='VQ' v='SFkl'/>
+      <tag k='IVQ' v='SFkl.unt'/>
+      <tag k='UQ' v='UFkl'/>
+      <tag k='IUQ' v='UFkl.unt'/>
+      <tag k='FFl' v='F.Blz'/>
+      <tag k='white' v='w.'/>
+      <tag k='red' v='r.'/>
+      <tag k='green' v='gn.'/>
+      <tag k='yellow' v='g.'/>
+      <tag k='black' v='s.'/>
+      <tag k='violett' v='viol.'/>
+   </node>
+
+   <!-- translation table for Greek lights -->
+   <node id='1002'>
+      <tag k='Fl' v='Αν'/>
+      <tag k='LFl' v='Μ Αν'/>
+      <!--tag k='Oc' v='Ubr'/>
+      <tag k='F' v=''/>
+      <tag k='Iso' v=''/>
+      <tag k='Q' v=''/>
+      <tag k='IQ' v=''/>
+      <tag k='VQ' v=''/>
+      <tag k='IVQ' v=''/>
+      <tag k='UQ' v=''/>
+      <tag k='IUQ' v=''/>
+      <tag k='FFl' v=''/-->
+      <tag k='white' v='Λ'/>
+      <tag k='red' v='Ερ'/>
+      <tag k='green' v='Πρ'/>
+      <tag k='yellow' v='Κτ'/>
+      <!--tag k='black' v=''/>
+      <tag k='violett' v=''/-->
+   </node>
+
+
+   <!-- translation rule for light character -->
+   <node version='-100'>
+      <tag k='/seamark:light:.*character/' v=''/>
+      <tag k='_action_' v='translate:id=1001;key=/seamark:light:.*character/'/>
+   </node>
+   <!-- translation rule for light colour -->
+   <node version='-100'>
+      <tag k='/seamark:light:.*character/' v=''/>
+      <tag k='_action_' v='translate:id=1001;key=/seamark:light:.*character/'/>
+   </node>
+
+</osm>
+

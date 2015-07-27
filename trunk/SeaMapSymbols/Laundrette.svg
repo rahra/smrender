@@ -1,0 +1,20 @@
+<svg
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:xlink="http://www.w3.org/1999/xlink"  
+   version="1.1"
+   width="60"
+   height="60">
+  <symbol id="laundrette" width="60" height="60">
+    <rect width="58" height="58" rx="10" ry="10" x="1" y="1"
+     style="fill:#ffffff;fill-opacity:0.5;stroke:#a30075;stroke-width:2" />
+    <rect width="30" height="30" x="15" y="15"
+     style="stroke:#a30075;stroke-width:1.5;fill:none" />
+    <rect width="20" height="5" x="20" y="45"
+     style="stroke:#a30075;stroke-width:1.5;fill:none" />
+    <rect width="30" height="5" x="15" y="10"
+     style="stroke:#a30075;stroke-width:1.5;fill:none" />
+    <circle r="10" cx="30" cy="30"
+     style="stroke:#a30075;stroke-width:1.5;fill:none" />
+   </symbol>
+   <use xlink:href="#laundrette" x="0" y="0"/>
+</svg>

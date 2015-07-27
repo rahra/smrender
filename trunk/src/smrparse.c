@@ -15,7 +15,8 @@
  * along with smrender. If not, see <http://www.gnu.org/licenses/>.
  */
 
-/*! This file contains the code of the rule parser and main loop of the render
+/*! \file smrparse.c
+ * This file contains the code of the rule parser and main loop of the render
  * as well as the code for traversing the object (nodes/ways) tree.
  *
  *  @author Bernhard R. Fischer
@@ -40,7 +41,16 @@ static char *skipb(const char *s)
 }
 
 
-int parse_matchtype(bstring_t *b, struct specialTag *t)
+/*! Parse a literal match condition into a struct specialTag.
+ *  @param b Pointer to bstring_t with match definition.
+ *  @param t Pointer to struct specialTag.
+ *  @return The function returns 0 if everything is ok. If a condition could
+ *  not be properly parsed, a negative value is returned and it will be
+ *  interpreted as simple string compare. Thus, it could still be used as
+ *  conditon. -1 means that the regex failed to compile and -2 means that the
+ *  value of a GT or LT condition could not be interpreted.
+ */
+static int parse_matchtype(bstring_t *b, struct specialTag *t)
 {
    t->type = 0;
 
@@ -60,7 +70,6 @@ int parse_matchtype(bstring_t *b, struct specialTag *t)
          b->len -= 2;
          t->type |= SPECIAL_NOT;
       }
- 
    }
 
    if (b->len > 2)
@@ -74,10 +83,11 @@ int parse_matchtype(bstring_t *b, struct specialTag *t)
 
          if (regcomp(&t->re, b->buf, REG_EXTENDED | REG_NOSUB))
          {
-            log_msg(LOG_WARN, "failed to compile regex '%s'", b->buf);
+            log_msg(LOG_ERR, "failed to compile regex '%s'", b->buf);
             return -1;
          }
-         t->type |= SPECIAL_REGEX;
+         else
+            t->type |= SPECIAL_REGEX;
       }
       else if ((b->buf[0] == ']') && (b->buf[b->len - 1] == '['))
       {
@@ -88,7 +98,10 @@ int parse_matchtype(bstring_t *b, struct specialTag *t)
          errno = 0;
          t->val = strtod(b->buf, NULL);
          if (errno)
+         {
             log_msg(LOG_ERR, "failed to convert value of GT rule: %s", strerror(errno));
+            return -2;
+         }
          else
             t->type |= SPECIAL_GT;
       }
@@ -101,7 +114,10 @@ int parse_matchtype(bstring_t *b, struct specialTag *t)
          errno = 0;
          t->val = strtod(b->buf, NULL);
          if (errno)
+         {
             log_msg(LOG_ERR, "failed to convert value of LT rule: %s", strerror(errno));
+            return -2;
+         }
          else
             t->type |= SPECIAL_LT;
       }
@@ -110,6 +126,26 @@ int parse_matchtype(bstring_t *b, struct specialTag *t)
    return 0;
 }
 
+
+/*! This function parses the match tags in ot and fills the special tag
+ * structure st accordingly. The bstrings in ot are modified. This function
+ * actually calls parse_matchtype().
+ * @param ot Pointer to a struct otag.
+ * @param st Pointer to a struct stag.
+ * @return On success, the function returns 0. On failure a negative value is
+ * returned (see parse_matchtype()).
+ */
+int parse_matchtag(struct otag *ot, struct stag *st)
+{
+   int e;
+
+   if ((e = parse_matchtype(&ot->k, &st->stk)) < 0)
+      return e;
+   if ((e = parse_matchtype(&ot->v, &st->stv)) < 0)
+      return e;
+   return 0;
+}
+ 
 
 short ppos(const char *s)
 {
@@ -232,6 +268,8 @@ int parse_style(const char *s)
    }
    if (!strcmp(s, "dotted")) return DRAW_DOTTED;
    if (!strcmp(s, "transparent")) return DRAW_TRANSPARENT;
+   if (!strcmp(s, "pipe")) return DRAW_PIPE;
+   if (!strcmp(s, "rounddot")) return DRAW_ROUNDDOT;
 
    return DRAW_SOLID;
 }
@@ -254,24 +292,17 @@ int get_structor(void *lhandle, void **stor, const char *sym, const char *trail)
 }
 
 
-smrule_t *alloc_rule(struct rdata *rd, osm_obj_t *o)
+static smrule_t *alloc_rule(osm_obj_t *o)
 {
-   bx_node_t *bn;
    smrule_t *rl;
 
    if ((rl = malloc(sizeof(smrule_t) + sizeof(action_t) + sizeof(struct stag) * o->tag_cnt)) == NULL)
-      log_msg(LOG_ERR, "alloc_rule failed: %s", strerror(errno)),
-         exit(EXIT_FAILURE);
+   {
+      log_msg(LOG_ERR, "alloc_rule failed: %s", strerror(errno));
+      return NULL; 
+   }
+
    rl->act = (action_t*) (rl + 1);
-   //memset(&rl->act, 0, sizeof(action_t));
-   //rl->oo = o;
-   //rl->act->tag_cnt = o->tag_cnt;
-
-   if ((bn = bx_get_node(rd->rules, o->id)) == NULL)
-      log_msg(LOG_EMERG, "bx_get_node() returned NULL in rule_alloc()"),
-         exit(EXIT_FAILURE);
-
-   bn->next[o->type - 1] = rl;
    return rl;
 }
 
@@ -290,16 +321,29 @@ void check_way_type(smrule_t *r)
 }
 
 
-int init_rules(osm_obj_t *o, void *p)
+/*! This function parses a rule defined within the object o into the smrule_t
+ * structure r. The memory is reserved by a call to alloc_rule() and must be
+ * freed again with free(). If the _action_ tag was parsed properly, it is
+ * removed from that object's list of tags.
+ * @param o Pointer to object.
+ * @param r Pointer to rule pointer. It will receive the pointer to the newly
+ * allocated memory or NULL in case of error.
+ * @return 0 if everything is ok. In case of a fatal error a negative value is
+ * returned and *r is set to NULL. In case of a minor error a positive number
+ * is returned and *r is set to a valid memory.
+ */
+int init_rule(osm_obj_t *o, smrule_t **r)
 {
    char *s, *t, *func, buf[1024];
    smrule_t *rl;
-   //action_t act;
    int e, i;
 
    log_debug("initializing rule 0x%016lx", o->id);
 
-   rl = alloc_rule(p, o);
+   if ((*r = alloc_rule(o)) == NULL)
+      return -1;
+
+   rl = *r;
    rl->oo = o;
    rl->data = NULL;
    memset(rl->act, 0, sizeof(*rl->act));
@@ -308,18 +352,21 @@ int init_rules(osm_obj_t *o, void *p)
    rl->act->tag_cnt = o->tag_cnt;
    for (i = 0; i < o->tag_cnt; i++)
    {
-      if (parse_matchtype(&o->otag[i].k, &rl->act->stag[i].stk) == -1)
+      if (parse_matchtag(&o->otag[i], &rl->act->stag[i]) < 0)
          return 0;
-      if (parse_matchtype(&o->otag[i].v, &rl->act->stag[i].stv) == -1)
+#if 0
+      if (parse_matchtype(&o->otag[i].k, &rl->act->stag[i].stk) < 0)
          return 0;
+      if (parse_matchtype(&o->otag[i].v, &rl->act->stag[i].stv) < 0)
+         return 0;
+#endif
    }
 
    if ((i = match_attr(o, "_action_", NULL)) == -1)
    {
+      // FIXME: don't understand next fixme
       // FIXME need to be added to btree
       log_msg(LOG_DEBUG, "rule %ld has no action, it may be used as template", o->id);
-      //rl->act->func_name = "templ";
-      //rl->act->main.func = act_templ;
       return 0;
    }
 
@@ -365,7 +412,7 @@ int init_rules(osm_obj_t *o, void *p)
       if ((func = strtok(buf, "@")) == NULL)
       {
          log_msg(LOG_CRIT, "strtok() returned NULL");
-         return 1;
+         return -1;
       }
    }
    else
@@ -410,6 +457,30 @@ int init_rules(osm_obj_t *o, void *p)
    return 0;
 }
  
+
+int init_rules(osm_obj_t *o, void *p)
+{
+   bx_node_t *bn;
+   smrule_t *rl;
+   int e;
+
+   if ((e = init_rule(o, &rl)) < 0)
+      return e;
+
+   if (rl == NULL)
+   {
+      log_msg(LOG_EMERG, "init_rule() fatally failed");
+      return -1;
+   }
+
+   if ((bn = bx_get_node(p, o->id)) == NULL)
+      log_msg(LOG_EMERG, "bx_get_node() returned NULL in rule_alloc()"),
+         exit(EXIT_FAILURE);
+
+   bn->next[o->type - 1] = rl;
+   return 0;
+}
+
 
 void free_fparam(fparam_t **fp)
 {
@@ -515,8 +586,8 @@ static char *parse_string(char **src, const char *delim, char *nextchar)
  *  @param parm A pointer to the original string. Please note that the string
  *  is tokenized similar to strtok_r(), thus '\0' characters are inserted. If
  *  the original string is needed for something else it should be strdup()'ed
- *  before.  @return A pointer to a fparam_t* list or NULL in case of error.
- *  The
+ *  before.
+ *  @return A pointer to a fparam_t* list or NULL in case of error. The
  *  fparam_t* list always contains one additional element which points to NULL.
  */
 fparam_t **parse_fparam(char *parm)
@@ -540,6 +611,7 @@ fparam_t **parse_fparam(char *parm)
 
       fp[n + 1] = NULL;
       fp[n]->attr = s;
+      fp[n]->conv_error = 0;
 
       switch (c)
       {
@@ -550,7 +622,15 @@ fparam_t **parse_fparam(char *parm)
 
          case '=':
             if ((fp[n]->val = parse_string(&parm, ";", &c)) != NULL)
-               fp[n]->dval = atof(fp[n]->val);
+            {
+               char *endptr;
+               errno = 0;
+               fp[n]->dval = strtod(fp[n]->val, &endptr);
+               if (endptr == fp[n]->val)
+                  fp[n]->conv_error = EDOM;
+               else
+                  fp[n]->conv_error = errno;
+            }
             else
                fp[n]->dval = 0;
             break;
@@ -558,5 +638,101 @@ fparam_t **parse_fparam(char *parm)
    }
 
    return fp;
+}
+
+
+int parse_alignment_str(const char *s)
+{
+   int pos = 0;
+
+   if (!strcasecmp(s, "east"))
+      pos |= POS_E;
+   else if (!strcasecmp(s, "west"))
+      pos |= POS_W;
+   else if (!strcasecmp(s, "north"))
+      pos |= POS_N;
+   else if (!strcasecmp(s, "south"))
+      pos |= POS_S;
+   else if (!strcasecmp(s, "northeast"))
+      pos |= POS_E | POS_N;
+   else if (!strcasecmp(s, "northwest"))
+      pos |= POS_W | POS_N;
+   else if (!strcasecmp(s, "southeast"))
+      pos |= POS_E | POS_S;
+   else if (!strcasecmp(s, "southwest"))
+      pos |= POS_W | POS_S;
+   else
+   {
+      log_msg(LOG_WARN, "unknown alignment '%s'", s);
+      errno = EINVAL;
+   }
+
+   return pos;
+}
+ 
+
+int parse_alignment(const action_t *act)
+{
+   int pos = 0;
+   char *s;
+
+   // 'align' has priority over 'halign'/'valign'
+   if ((s = get_param("align", NULL, act)) != NULL)
+      return parse_alignment_str(s);
+ 
+   if ((s = get_param("halign", NULL, act)) != NULL)
+      pos |= parse_alignment_str(s) & (POS_E | POS_W);
+
+   if ((s = get_param("valign", NULL, act)) != NULL)
+      pos |= parse_alignment_str(s) & (POS_N | POS_S);
+
+   return pos;
+}
+
+
+int parse_length(const char *s, value_t *v)
+{
+   char *eptr;
+
+   errno = 0;
+   v->val = strtod(s, &eptr);
+
+   if (eptr == s)
+      errno = EINVAL;
+
+   if (errno)
+      return -1;
+
+   // skip leading spaces
+   for (; isspace(*eptr); eptr++);
+
+   if (*eptr == '\0')
+      v->u = U_1;
+   else if (!strcasecmp(eptr, "nm") || !strcasecmp(eptr, "sm"))
+      v->u = U_NM;
+   else if (!strcasecmp(eptr, "kbl"))
+      v->u = U_KBL;
+   else if (!strcasecmp(eptr, "ft"))
+      v->u = U_FT;
+   else if (!strcasecmp(eptr, "mm"))
+      v->u = U_MM;
+   else if (!strcasecmp(eptr, "°"))
+      v->u = U_DEG;
+   else if (!strcasecmp(eptr, "'"))
+      v->u = U_MIN;
+   else if (!strcasecmp(eptr, "m"))
+      v->u = U_M;
+   else if (!strcasecmp(eptr, "km"))
+      v->u = U_KM;
+   else if (!strcasecmp(eptr, "in"))
+      v->u = U_IN;
+   else if (!strcasecmp(eptr, "cm"))
+      v->u = U_CM;
+   else if (!strcasecmp(eptr, "px"))
+      v->u = U_PX;
+   else if (!strcasecmp(eptr, "pt"))
+      v->u = U_PT;
+
+   return 0;
 }
 

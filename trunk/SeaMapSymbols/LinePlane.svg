@@ -1,0 +1,14 @@
+<svg
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:xlink="http://www.w3.org/1999/xlink"  
+   version="1.1"
+   width="50"
+   height="90">
+  <symbol id="line_plane" width="50" height="90">
+    <path d="M 40,64 L 40,16 L 32,8 z" style="fill:#c480ff;stroke:none" />
+    <path d="M 36,88 L 28,16 A 1.6,2.4 0 0 0 16,16 A 16,16 0 0 1 12,24 L 25.6,72 A 20,20 0 0 0 12,84 A 20,20 0 0 0 36,88z"
+     style="fill:#c480ff;stroke:none" />
+    <line x1="28" y1="40" x2="36" y2="36" style="fill:none;stroke:#c480ff;stroke-width:5" />
+  </symbol>
+  <use xlink:href="#line_plane" x="0" y="0" />
+</svg>

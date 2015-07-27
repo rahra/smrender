@@ -1,0 +1,11 @@
+<svg
+   xmlns="http://www.w3.org/2000/svg"
+   version="1.1"
+   width="300"
+   height="400">
+  <g>
+    <path
+       d="m 112.96875,176.03125 -2.03125,3.4375 12.9375,7.5625 0,25.90625 -13.125,7.6875 2,3.46875 12.625,-7.375 0.53125,0 48.34375,0 0.375,0 12.625,7.375 2,-3.46875 -13,-7.59375 0,-26.0625 12.8125,-7.5 -2.03125,-3.4375 -12.65625,7.40625 -0.125,0 -48.34375,0 -0.28125,0 -12.65625,-7.40625 z m 19.5625,11.4375 34.9375,0 L 150,197.6875 132.53125,187.46875 z m 39.71875,1.84375 0,21.375 L 153.96875,200 172.25,189.3125 z m -44.34375,0.0937 18.125,10.59375 -18.125,10.59375 0,-21.1875 z M 150,202.3125 l 17.8125,10.40625 -35.625,0 L 150,202.3125 z"
+       style="font-size:medium;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-indent:0;text-align:start;text-decoration:none;line-height:normal;letter-spacing:normal;word-spacing:normal;text-transform:none;direction:ltr;block-progression:tb;writing-mode:lr-tb;text-anchor:start;baseline-shift:baseline;color:#000000;fill:#000000;fill-opacity:1;stroke:none;stroke-width:6.28760004;marker:none;visibility:visible;display:inline;overflow:visible;enable-background:accumulate;font-family:Sans;-inkscape-font-specification:Sans" />
+  </g>
+</svg>

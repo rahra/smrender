@@ -15,11 +15,20 @@
 #define COL_ABBR_CNT COL_CNT
 #define ATYPE_CNT 4
 #define TAG_CNT 7
+#define SMFILTER_REV "$Rev$"
 
 
 enum { SEAMARK_LIGHT_CHARACTER, SEAMARK_LIGHT_OBJECT, SEAMARK_LIGHT_RADIAL,
    SEAMARK_LIGHT_SECTOR_NR, SEAMARK_ARC_STYLE, SEAMARK_LIGHT_ARC_AL,
    SEAMARK_LIGHT_ARC};
+
+struct compass_data
+{
+   double var;       //!< magnetic variation
+   double r1;        //!< radius in mm
+   double r2;
+   int ticks;        //!< number of ticks on circle
+};
 
 struct vsec_data
 {
@@ -27,7 +36,18 @@ struct vsec_data
    double arc_max;         // param 'a'
    double sec_radius;      // param 'r'
    double dir_arc;         // param 'b'
+   double radius_f;        // radius multiplier
 };
+
+struct pchar_data
+{
+   regex_t regex;
+   int lang;
+};
+
+enum {LANG_EN, LANG_DE, LANG_HR, LANG_GR};
+#define LANG_DEFAULT LANG_EN
+
 
 static char *smstrdup(const char *);
 static int get_sectors(const osm_obj_t*, struct sector *sec, int nmax);
@@ -52,6 +72,9 @@ static int untagged_circle_ = 0;
 static const double altr_[] = {0.003, 0.0035, 0.009, 0.005};
 
 static const char *col_[] = {"white", "red", "green", "yellow", "orange", "blue", "violet", "amber", NULL};
+static const char *col_abbr_hr_[] = {"B", "C", "Z", "Ž", "Or", "Pl", "Lj", "Am", NULL};
+static const char *col_abbr_de_[] = {"w", "r", "gn", "g", "or", "bl", "viol", "or", NULL};
+static const char *col_abbr_gr_[] = {"Λ", "Ερ", "Πρ", "Κτ", "or", "bl", "viol", "or", NULL};
 static const char *col_abbr_[] = {"W", "R", "G", "Y", "Or", "Bu", "Vi", "Am", NULL};
 static const char *atype_[] = {"undef", "solid", "suppress", "dashed", NULL};
 static const char *tag_[] = { "seamark:light_character",
@@ -94,7 +117,7 @@ void __attribute__ ((constructor)) init_libsmfilter(void)
    }
 #endif
 
-   log_msg(LOG_INFO, "libsmfilter initialized");
+   log_msg(LOG_INFO, "libsmfilter %s initialized", SMFILTER_REV);
 }
 
 
@@ -124,7 +147,9 @@ void __attribute__ ((destructor)) fini_libsmfilter(void)
 
 int act_pchar_ini(smrule_t *r)
 {
+   struct pchar_data *pd;
    regex_t regex;
+   char *s;
    int e;
 
    if ((e = regcomp(&regex, "seamark:light:([0-9]+:)?colour", REG_EXTENDED | REG_NOSUB)))
@@ -133,13 +158,26 @@ int act_pchar_ini(smrule_t *r)
       return -1;
    }
 
-   if ((r->data = malloc(sizeof(regex))) == NULL)
+   if ((pd = malloc(sizeof(*pd))) == NULL)
    {
       log_msg(LOG_ERR, "cannot malloc: %s", strerror(errno));
       return -1;
    }
 
-   memcpy(r->data, &regex, sizeof(regex));
+   memcpy(&pd->regex, &regex, sizeof(regex));
+   pd->lang = LANG_DEFAULT;
+
+   if ((s = get_param("lang", NULL, r->act)) != NULL)
+   {
+      if (!strcasecmp(s, "hr"))
+         pd->lang = LANG_HR;
+      else if (!strcasecmp(s, "de"))
+         pd->lang = LANG_DE;
+      else if (!strcasecmp(s, "gr"))
+         pd->lang = LANG_GR;
+   }
+
+   r->data = pd;
    return 0;
 }
 
@@ -149,7 +187,7 @@ int act_pchar_fini(smrule_t *r)
    if (r->data == NULL)
       return 0;
 
-   regfree(r->data);
+   regfree(&((struct pchar_data*) r->data)->regex);
    free(r->data);
    r->data = NULL;
    return 0;
@@ -175,26 +213,48 @@ char *bs_dup(const bstring_t *b)
  */
 int act_pchar_main(smrule_t *r, osm_obj_t *o)
 {
+   struct pchar_data *pd = r->data;
    char lchar[8] = "", group[8] = "", period[8] = "", range[8] = "", col[32] = "", buf[256];
    int col_mask[COL_CNT];
    struct otag *ot;
    char *s;
    int i, n;
 
-   if ((n = match_attr(o, "seamark:light:group", NULL)) != -1)
+   if ((n = match_attr(o, "seamark:light:group", NULL)) != -1 || 
+         (n = match_attr(o, "seamark:light:1:group", NULL)) != -1)
       snprintf(group, sizeof(group), "(%.*s)", o->otag[n].v.len, o->otag[n].v.buf);
-   if ((n = match_attr(o, "seamark:light:period", NULL)) != -1)
-      snprintf(period, sizeof(period), " %.*ss", o->otag[n].v.len, o->otag[n].v.buf);
-   if ((n = match_attr(o, "seamark:light:range", NULL)) != -1)
+   if ((n = match_attr(o, "seamark:light:period", NULL)) != -1 ||
+         (n = match_attr(o, "seamark:light:1:period", NULL)) != -1)
+   {
+      if (((struct pchar_data*) r->data)->lang == LANG_GR)
+         snprintf(period, sizeof(period), " %.*sδ", o->otag[n].v.len, o->otag[n].v.buf);
+      else
+         snprintf(period, sizeof(period), " %.*ss", o->otag[n].v.len, o->otag[n].v.buf);
+   }
+   if ((n = match_attr(o, "seamark:light:range", NULL)) != -1 || 
+         (n = match_attr(o, "seamark:light:1:range", NULL)) != -1)
       snprintf(range, sizeof(range), " %.*sM", o->otag[n].v.len, o->otag[n].v.buf);
-   if ((n = match_attr(o, "seamark:light:character", NULL)) != -1)
-      snprintf(lchar, sizeof(lchar), "%.*s%s", o->otag[n].v.len, o->otag[n].v.buf, group[0] == '\0' ? "." : "");
+   if ((n = match_attr(o, "seamark:light:character", NULL)) != -1 ||
+         (n = match_attr(o, "seamark:light:1:character", NULL)) != -1)
+   {
+      switch (((struct pchar_data*) r->data)->lang)
+      {
+         case LANG_GR:
+            snprintf(lchar, sizeof(lchar), "%.*s ", o->otag[n].v.len, o->otag[n].v.buf);
+            break;
+         case LANG_HR:
+            snprintf(lchar, sizeof(lchar), "%.*s", o->otag[n].v.len, o->otag[n].v.buf);
+            break;
+         default:
+            snprintf(lchar, sizeof(lchar), "%.*s%s", o->otag[n].v.len, o->otag[n].v.buf, group[0] == '\0' ? "." : "");
+      }
+   }
 
    memset(&col_mask, 0, sizeof(col_mask));
    for (i = 0; i < o->tag_cnt; i++)
    {
       s = bs_dup(&o->otag[i].k);
-      if (!regexec(r->data, s, 0, NULL, 0))
+      if (!regexec(&pd->regex, s, 0, NULL, 0))
       {
          if ((n = parse_seamark_color(o->otag[i].v)) != -1)
             col_mask[n]++;
@@ -205,14 +265,43 @@ int act_pchar_main(smrule_t *r, osm_obj_t *o)
    for (i = 0; i < COL_CNT; i++)
       if (col_mask[i])
       {
-         snprintf(buf, sizeof(buf), "%s.", col_abbr_[i]);
+         switch (((struct pchar_data*) r->data)->lang)
+         {
+            case LANG_GR:
+               snprintf(buf, sizeof(buf), "%s ", col_abbr_gr_[i]);
+               break;
+            case LANG_HR:
+               snprintf(buf, sizeof(buf), "%s ", col_abbr_hr_[i]);
+               break;
+            case LANG_DE:
+               snprintf(buf, sizeof(buf), "%s/", col_abbr_de_[i]);
+               break;
+            default:
+               snprintf(buf, sizeof(buf), "%s", col_abbr_[i]);
+         }
          //FIXME: strcat
          strcat(col, buf);
       }
 
-   if (!snprintf(buf, sizeof(buf), "%s%s%s%s%s", lchar, group, col, period, range))
-      return 0;
-    
+   // remove trailing '/'
+   if (((struct pchar_data*) r->data)->lang == LANG_DE && strlen(col))
+      col[strlen(col) - 1] = '\0';
+
+   switch (((struct pchar_data*) r->data)->lang)
+   {
+      case LANG_HR:
+         if (!snprintf(buf, sizeof(buf), "%s%s%s%s%s", col, lchar, group, period, range))
+            return 0;
+         break;
+      case LANG_GR:
+         if (!snprintf(buf, sizeof(buf), "%s %s%s%s %s", lchar, group, col, period, range))
+            return 0;
+         break;
+      default:
+         if (!snprintf(buf, sizeof(buf), "%s%s%s.%s%s", lchar, group, col, period, range))
+            return 0;
+   }
+
    if ((ot = realloc(o->otag, sizeof(struct otag) * (o->tag_cnt + 1))) == NULL)
    {
       log_msg(LOG_ERR, "could not realloc new node: %s", strerror(errno));
@@ -230,18 +319,6 @@ int act_pchar_main(smrule_t *r, osm_obj_t *o)
    o->otag[o->tag_cnt].k.len = strlen(tag_heap_[SEAMARK_LIGHT_CHARACTER]);
    o->tag_cnt++;
 
-   return 0;
-}
-
-
-int set_on_match(const char *s, const char *k, const char *v, double *a)
-{
-   int r;
-
-   if ((r = strcmp(s, k)) != 0)
-      return r;
-
-   *a = atof(v);
    return 0;
 }
 
@@ -267,16 +344,18 @@ int act_vsector_ini(smrule_t *r)
    vd->dir_arc = DIR_ARC;
    vd->arc_div = ARC_DIV;
    vd->sec_radius = SEC_RADIUS;
+   vd->radius_f = 1;
 
    get_param("a", &vd->arc_max, r->act);
    get_param("b", &vd->dir_arc, r->act);
    get_param("d", &vd->arc_div, r->act);
    get_param("r", &vd->sec_radius, r->act);
+   get_param("f", &vd->radius_f, r->act);
 
    r->data = vd;
 
-   log_msg(LOG_INFO, "arc_max_(a) = %.2f, dir_arc_(b) = %.2f, arc_div_(d) = %.2f, sec_radius_(r) = %.2f",
-         vd->arc_max, vd->dir_arc, vd->arc_div, vd->sec_radius);
+   log_msg(LOG_INFO, "arc_max(a) = %.2f, dir_arc(b) = %.2f, arc_div(d) = %.2f, sec_radius(r) = %.2f, radius_f(f) = %.2f",
+         vd->arc_max, vd->dir_arc, vd->arc_div, vd->sec_radius, vd->radius_f);
    return 0;
 }
 
@@ -1022,10 +1101,11 @@ static int proc_sfrac(struct sector *sec, struct vsec_data *vd)
       sec->sf[0].r = isnan(sec->r) ? vd->sec_radius : sec->r;
    if (sec->sf[0].r < 0)
       sec->sf[0].r = vd->sec_radius;
+   sec->sf[0].r *= vd->radius_f;
 
    if (!sec->fused && isnan(sec->dir))
    {
-      sec->sf[0].r = vd->sec_radius;
+      sec->sf[0].r = vd->sec_radius * vd->radius_f;
       sec->sf[0].start = sec->start;
       sec->sf[0].end = sec->end;
       sec->sf[0].col = sec->col[0];
@@ -1193,6 +1273,147 @@ int act_sounding_main(smrule_t * UNUSED(rl), osm_obj_t *o)
    w->ref[i] = w->ref[0];
    put_object((osm_obj_t*) w);
 
+   return 0;
+}
+
+
+int act_compass_ini(smrule_t *r)
+{
+   struct compass_data *cd;
+
+   if (r->oo->type != OSM_NODE)
+   {
+      log_msg(LOG_ERR, "compass() is only applicable to nodes");
+      return 1;
+   }
+
+   if ((cd = calloc(1, sizeof(*cd))) == NULL)
+   {
+      log_msg(LOG_ERR, "calloc() failed: %s", strerror(errno));
+      return -1;
+   }
+
+   if (get_parami("ticks", &cd->ticks, r->act) == NULL)
+      cd->ticks = 360;
+
+   (void) get_param("variation", &cd->var, r->act);
+
+   if (get_param("radius", &cd->r1, r->act) == NULL)
+   {
+      return 1;
+   }
+
+   cd->r2 = cd->r1 * 0.9;
+   cd->var = DEG2RAD(cd->var);
+   r->data = cd;
+
+   log_debug("var = %.2f, r1 = %f, ticks = %d", cd->var * 180.0 / M_PI, cd->r1, cd->ticks);
+   return 0;
+}
+
+
+static int64_t circle_node(const osm_node_t *cn, double radius, double angle, const char *ndesc)
+{
+   char buf[8], *s;
+   osm_node_t *n;
+   int tcnt;
+
+   tcnt = ndesc != NULL ? 3 : 2;
+   n = malloc_node(tcnt);
+   osm_node_default(n);
+   n->lat = cn->lat + radius * sin(angle);
+   n->lon = cn->lon + radius * cos(angle) / cos(DEG2RAD(n->lat));
+
+   // add bearing
+   snprintf(buf, sizeof(buf), "%.2f", RAD2DEG(M_PI_2 - angle));
+   if ((s = strdup(buf)) == NULL)
+   {
+      log_errno(LOG_ERR, "strdup() failed");
+      s = ""; //FIXME: error handling?
+   }
+   set_const_tag(&n->obj.otag[1], "smrender:compass", s);
+
+   if (ndesc != NULL)
+      set_const_tag(&n->obj.otag[2], "smrender:compass:description", (char*) ndesc); //FIXME: typecasting removes const
+   put_object(&n->obj);
+   return n->obj.id;
+}
+
+
+static int circle_line(const osm_node_t *cn, double angle, double r1, double r2, double phase, const char *ndesc)
+{
+   char buf[8], *s;
+
+   osm_way_t *w = malloc_way(2, 2);
+   osm_way_default(w);
+   snprintf(buf, sizeof(buf), "%.2f", RAD2DEG(angle));
+   if ((s = strdup(buf)) == NULL)
+   {
+      log_errno(LOG_ERR, "strdup() failed");
+      return 1;
+   }
+   set_const_tag(&w->obj.otag[1], "smrender:compass", s);
+
+   w->ref[0] = circle_node(cn, r1, M_PI_2 - angle, ndesc);
+   w->ref[1] = circle_node(cn, r2, M_PI_2 - angle + phase, NULL);
+   put_object(&w->obj);
+
+   return 0;
+}
+
+
+//FIXME: function not finished yet
+int act_compass_main(smrule_t *r, osm_obj_t *o)
+{
+   struct compass_data *cd = r->data;
+   double angle_step, angle, ri, ro;
+   char buf[8], *s;
+   int i;
+
+   // safety check
+   if (o->type != OSM_NODE)
+      return 1;
+
+   angle_step = 2 * M_PI / cd->ticks;
+   for (i = 0; i < cd->ticks; i++)
+   {
+      s = NULL;
+      angle = angle_step * i /*+ cd->var*/;
+      if (!((int) round(RAD2DEG(angle)) % 10))
+      {
+         ro = cd->r1 * 1.02;
+         ri = cd->r2 * 0.9;
+         snprintf(buf, sizeof(buf), "%03d", (int) round(RAD2DEG(angle)));
+         if ((s = strdup(buf)) == NULL)
+            log_errno(LOG_ERR, "strdup() failed");
+      }
+      else if (!((int) round(RAD2DEG(angle)) % 5))
+      {
+         ro = cd->r1;
+         ri = cd->r2 * 0.95;
+      }
+      else
+      {
+         ro = cd->r1;
+         ri = cd->r2;
+      }
+ 
+      circle_line((osm_node_t*) o, angle, ro, ri, 0, s);
+   }
+
+   // N - S axis
+   circle_line((osm_node_t*) o, cd->var, cd->r1 / 0.9, cd->r1 / 0.9, M_PI, NULL);
+   // E - W axis
+   circle_line((osm_node_t*) o, cd->var + M_PI_2, cd->r1 / 0.9, cd->r1 / 0.9, M_PI, NULL);
+
+   return 0;
+}
+
+
+int act_compass_fini(smrule_t *r)
+{
+   free(r->data);
+   r->data = NULL;
    return 0;
 }
 

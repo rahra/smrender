@@ -1,0 +1,13 @@
+<svg
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:xlink="http://www.w3.org/1999/xlink"  
+   version="1.1"
+   width="60"
+   height="60">
+  <symbol id="hospital" width="60" height="60">
+    <circle cx="30" cy="30" r="28" style="fill:none;stroke:#000000;stroke-width:4" />
+    <path d="M 3,22 L 22,22 L 22,3 M 38,3 L 38,22 L 57,22 M 3,38 L 22,38 L 22,57 M 38,57 L 38,38 L 57,38"
+      style="fill:none;stroke:#000000;stroke-width:4" />
+  </symbol>
+  <use xlink:href="#hospital" x="0" y="0" />
+</svg>

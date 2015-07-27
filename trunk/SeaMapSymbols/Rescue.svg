@@ -1,0 +1,13 @@
+<svg
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:xlink="http://www.w3.org/1999/xlink"  
+   version="1.0"
+   width="100"
+   height="100">
+  <symbol id="rescue" width="100" height="100">
+    <path d="m 50,7.1875 -10.71875,40.75 -4.25,0 0,4.03125 4.25,0 L 50,92.6875 60.71875,51.96875 l 4.28125,0 0,-4.03125 -4.28125,0 L 50,7.1875 z"
+      style="fill:#000000;stroke:none" />
+  </symbol>
+  <use xlink:href="#rescue" x="0" y="0" />
+</svg>
+

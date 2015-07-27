@@ -40,12 +40,12 @@
 #define get_pixel(x, y, z) cairo_smr_get_pixel(x, y, z)
 #define get_image() cairo_smr_image_surface_from_bg(CAIRO_FORMAT_RGB24)
 #define destroy_image(x) cairo_surface_destroy(x)
-int cairo_image_surface_color_reduce(cairo_surface_t *, int , uint32_t *);
+int cairo_smr_image_surface_color_reduce(cairo_surface_t *, int , uint32_t *);
 #else
 #define get_pixel(x, y, z) 0
 #define get_image() NULL
 #define destroy_image(x) 0
-#define cairo_image_surface_color_reduce(x, y, z) 0
+#define cairo_smr_image_surface_color_reduce(x, y, z) 0
 #endif
 
 
@@ -187,7 +187,7 @@ static int get_depth(int hcnt)
 
 int save_kap(FILE *f, struct rdata *rd)
 {
-   int d, i, x, y, hcnt, off, w = rd->fh;
+   int d, i, x, y, hcnt, off, w = rd->fw;
    uint8_t buf_out[w + 4], buf_in[w];
    int32_t offp[rd->fh + 1];
    void *img;
@@ -198,7 +198,7 @@ int save_kap(FILE *f, struct rdata *rd)
 
    img = get_image();
    log_debug("reducing colors");
-   if ((hcnt = cairo_image_surface_color_reduce(img, 127, palette)) <= 0)
+   if ((hcnt = cairo_smr_image_surface_color_reduce(img, 127, palette)) <= 0)
    {
       log_msg(LOG_ERR, "reducing colors failed");
       return -1;

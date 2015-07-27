@@ -53,6 +53,7 @@
 #define POS_E 4
 #define POS_W 8
 #define POS_UC 16
+#define POS_DIR_MSK (POS_N | POS_S | POS_E | POS_W)
 
 // macro to convert minutes to degrees
 #define MIN2DEG(x) ((double) (x) / 60.0)
@@ -78,20 +79,13 @@
 #define MAX_AUTO_SIZE 12.0
 #define MIN_AREA_SIZE 8.0
 #define AUTO_SCALE 0.2
+// default curve factor
+#define DIV_PART 0.2
 
 #define ANGLE_DIFF 10
 
 #define MAX_SHAPE_PCOUNT 2000
 
-// convert mm to pixels
-#define MM2PX(x) mm2pxi(x)
-// convert mm to pdf points (pt)
-#define MM2PT(x) round((double) (x) * 72.0 / 25.4)
-// convert pixels to mm
-#define PX2MM(x) px2mm(x)
-// convert mm to degrees
-#define MM2LAT(x) ((x) * (rd->bb.ru.lat - rd->bb.ll.lat) / PX2MM(rd->h))
-#define MM2LON(x) ((x) * (rd->bb.ru.lon - rd->bb.ll.lon) / PX2MM(rd->w))
 // default oversampling factor
 #ifdef HAVE_CAIRO
 #define DEFAULT_OVS 1
@@ -110,22 +104,13 @@
 #define FTYPE_PNG 0
 #define FTYPE_JPG 1
 #define FTYPE_PDF 2
-
-// return values of apply_rule()
-#define ERULE_OUTOFBBOX 1  //!< The node is outside of the area to render.
-#define ERULE_WAYOPEN 2    //!< The rule applies only to closed ways.
-#define ERULE_WAYCLOSED 3  //!< The rule applies only to open ways.
-#define ERULE_NOMATCH 4    //!< The tags of the rule do not match the object.
-#define ERULE_INVISIBLE 5  //!< The object is invisible.
+#define FTYPE_SVG 3
 
 
-typedef int (*tree_func_t)(osm_obj_t*, void*);
-
-// indexes to object tree
-enum {IDX_NODE, IDX_WAY, IDX_REL};
 //enum {WHITE, YELLOW, BLACK, BLUE, MAGENTA, BROWN, TRANSPARENT, BGCOLOR, MAXCOLOR};
 enum {LAT, LON};
-enum {DRAW_SOLID, DRAW_DASHED, DRAW_DOTTED, DRAW_TRANSPARENT};
+enum {DRAW_SOLID, DRAW_DASHED, DRAW_DOTTED, DRAW_TRANSPARENT, DRAW_PIPE, DRAW_ROUNDDOT};
+enum {SHAPE_REGULAR, SHAPE_SECTORED, SHAPE_STARED};
 
 struct auto_rot
 {
@@ -148,6 +133,7 @@ struct actImage
    double angle;
    struct auto_rot rot;
    double scale;
+   char *akey;       // angle is defined in a tag
 #ifdef HAVE_CAIRO
    cairo_surface_t *img;
    cairo_pattern_t *pat;
@@ -177,6 +163,9 @@ struct actCaption
    double angle;     // angle to rotate caption. 0 degress equals east,
                      // counterclockwise. NAN means auto-rotate
    char *akey;       // angle is defined in a tag
+   char *halignkey;  // keys defining alignment for tag-dependent alignment
+   char *valignkey;
+   double xoff, yoff;   //!< x/y offset from origin
    struct auto_rot rot;
 #ifdef HAVE_CAIRO
    cairo_t *ctx;
@@ -197,6 +186,8 @@ struct actDraw
    struct drawStyle border;
    int directional;
    int collect_open;
+   int curve;
+   double curve_fact;
    struct wlist *wl;
 #ifdef HAVE_CAIRO
    cairo_t *ctx;
@@ -211,6 +202,10 @@ struct act_shape
    double weight;
    double phase;
    char *key;
+   double start, end;
+   char *startkey, *endkey;
+   int type;
+   double r2;
 };
 
 struct grid
@@ -222,16 +217,6 @@ struct grid
    int copyright, cmdline;
 };
 
-struct filter
-{
-   // c1 = left upper corner, c2 = right lower corner of bounding box
-   struct coord c1, c2;
-   // set use_bbox to 1 if bbox should be honored
-   int use_bbox;
-   // pointer to rules tree (or NULL if it should be ignored)
-   bx_node_t *rules;
-};
-
 struct file
 {
    char *name;
@@ -239,9 +224,7 @@ struct file
    int fd;
 };
 
-
 /* smrender.c */
-int traverse(const bx_node_t*, int, int, tree_func_t, void*);
 int print_onode(FILE *, const osm_obj_t*);
 int col_freq(struct rdata *, int, int, int, int, double, int);
 int cf_dist(struct rdata *, int, int, int, int, double, int, int);
@@ -250,26 +233,10 @@ double color_frequency(struct rdata *, int, int, int, int, int);
 void mk_chart_coords(int, int, struct rdata*, double*, double*);
 int poly_area(const osm_way_t*, struct coord *, double *);
 struct rdata *get_rdata(void);
-int save_osm(const char *, bx_node_t *, const struct bbox *, const char *);
+size_t save_osm(const char *, bx_node_t *, const struct bbox *, const char *);
 int apply_smrules0(osm_obj_t*, smrule_t*);
 int apply_rule(osm_obj_t*, smrule_t*, int*);
 int call_fini(smrule_t*);
-int get_rev_index(osm_obj_t**, const osm_obj_t*);
-
-/* smutil.c */
-int bs_match_attr(const osm_obj_t*, const struct otag *, const struct stag*);
-int bs_match(const bstring_t *, const bstring_t *, const struct specialTag *);
-void set_util_rd(struct rdata*);
-int put_object0(bx_node_t**, int64_t, void*, int);
-void *get_object0(bx_node_t*, int64_t, int);
-int coord_str(double, int, char*, int);
-int func_name(char*, int, void*);
-int strcnt(const char*, int);
-
-/* smloadosm.c */
-void osm_read_exit(void);
-int read_osm_file(hpx_ctrl_t*, bx_node_t**, const struct filter*, struct dstats*);
-hpx_ctrl_t *open_osm_source(const char*, int);
 
 /* smcoast.c */
 int is_closed_poly(const osm_way_t*);
@@ -302,10 +269,13 @@ int set_color(const char *, int);
 int get_color(int);
 int parse_color(const char *);
 int parse_style(const char *s);
-int parse_matchtype(bstring_t*, struct specialTag*);
+int parse_matchtag(struct otag *, struct stag *);
 int init_rules(osm_obj_t*, void*);
 fparam_t **parse_fparam(char*);
 void free_fparam(fparam_t **);
+int parse_alignment(const action_t *act);
+int parse_alignment_str(const char *);
+int parse_length(const char *, value_t *);
 
 /* smkap.c */
 int save_kap(FILE *, struct rdata *);
@@ -322,11 +292,6 @@ void grid(struct rdata *, const struct grid *);
 
 /* smqr.c */
 image_t *smqr_image(void);
-
-/* smthread.c */
-void sm_wait_threads(void);
-int traverse_queue(const bx_node_t *, int , tree_func_t , void *);
-int sm_is_threaded(const smrule_t *);
 
 /* smtile.c */
 int create_tiles(const char *, const struct rdata *, int , int );

@@ -1,12 +1,12 @@
 <?xml version='1.0' encoding='UTF-8'?>
-<osm version='0.6'>
+<osm version='0.6' generator='Bernhard R. Fischer'>
    <node version="-10">
       <tag k='seamark:type' v=''/>
       <tag k='_action_' v='vsector@libsmfilter.so'/>
    </node>
    <node version="5">
       <tag k='/^seamark:light:.*/' v=''/>
-      <tag k='_action_' v='img:angle=auto;weight=1;file=icons/Light_Magenta_120.png'/>
+      <tag k='_action_' v='img:angle=auto;weight=1;file=SeaMapSymbols/Light_Magenta_120.svg'/>
    </node>
    <way>
       <tag k='seamark:light_radial' v=''/>

@@ -1,0 +1,11 @@
+<svg
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:xlink="http://www.w3.org/1999/xlink"  
+   version="1.0"
+   width="300"
+   height="400">
+  <symbol id="deviation_dolphin" width="300" height="400">
+    <path d="m 133.28,165.5 -0.25,1.6875 -5,32.5 3.9375,0.625 4.75,-30.812 h 26.562 l 4.75,30.812 3.9375,-0.625 -5,-32.5 -0.25,-1.6875 h -1.7188 -30 -1.7188 z M 148,158 v 40 h 4 v -40 h -4 z m -28,39.875 v 4 h 60.125 v -4 H 120 z"/>
+  </symbol>
+  <use xlink:href="#deviation_dolphin" x="0" y="0" />
+</svg>

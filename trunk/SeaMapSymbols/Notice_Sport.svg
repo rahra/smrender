@@ -1,0 +1,13 @@
+<svg
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:xlink="http://www.w3.org/1999/xlink"  
+   version="1.1"
+   width="60"
+   height="60">
+  <symbol id="notice_sport" width="60" height="60">
+    <text x="5.4558144" y="30.884804" transform="scale(0.81877591,1.2213354)"
+     style="font-size:18;font-weight:bold;font-family:Arial">
+     <tspan x="5.4558144" y="30.884804">SPORT</tspan></text>
+  </symbol>
+  <use xlink:href="#notice_sport" x="0" y="0" />
+</svg>

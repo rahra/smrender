@@ -1,4 +1,4 @@
-/* Copyright 2011 Bernhard R. Fischer, 2048R/5C5FFD47 <bf@abenteuerland.at>
+/* Copyright 2011-2015 Bernhard R. Fischer, 2048R/5C5FFD47 <bf@abenteuerland.at>
  *
  * This file is part of smrender.
  *
@@ -15,8 +15,8 @@
  * along with smrender. If not, see <http://www.gnu.org/licenses/>.
  */
 
-/*! 
- * 
+/*! \file smfunc.c
+ * This file contains all rule functions which do not create graphics output.
  *
  *  @author Bernhard R. Fischer
  */
@@ -31,6 +31,8 @@
 #include <inttypes.h>
 
 #include "smrender_dev.h"
+#include "smcore.h"
+#include "smloadosm.h"
 
 
 #define DIR_CW 0
@@ -75,7 +77,31 @@ struct inherit_data
    struct rdata *rdata;
    int force;
    int type;
+   int dir;
+#define UP 0
+#define DOWN 1
 };
+
+
+struct trans_data
+{
+   osm_obj_t *o;
+   int newtag;
+   int tag_cnt;
+   struct stag *st;
+   struct otag *ot;
+};
+
+
+#define NODE_MIN_DIST (1.0 / 60)
+#define MASK_NODE -1.0
+#define INC_MAX_NL 64
+typedef struct node_list
+{
+   int node_cnt, max_cnt;
+   osm_node_t **node;
+   double min_dist;
+} node_list_t;
 
 
 static struct out_handle *oh_ = NULL;
@@ -205,7 +231,8 @@ int act_out_fini(smrule_t *r)
 }
 
 
-/*! Calculate the area and the centroid of a closed polygon.
+/*! Calculate the area and the centroid of a closed polygon. The function
+ * implements Gauss's area formula aka shoelace formula.
  *  @param w Pointer to closed polygon.
  *  @param center Pointer to struct coord which will receive the coordinates of the
  *  centroid. It may be NULL.
@@ -466,7 +493,8 @@ int act_shape_ini(smrule_t *r)
 {
    struct act_shape *as;
    double pcount = 0.0;
-   char *s = "";
+   char *s = "", *s2;
+   int e;
 
    if ((get_param("nodes", &pcount, r->act) == NULL) && ((s = get_param("style", NULL, r->act)) == NULL))
    {
@@ -484,6 +512,25 @@ int act_shape_ini(smrule_t *r)
       as->weight = 1.0;
    (void) get_param("phase", &as->phase, r->act);
    as->phase *= M_PI / 180.0;
+
+   as->startkey = get_param_err("start", &as->start, r->act, &e);
+   if (e)
+      as->start = NAN;
+   as->endkey = get_param_err("end", &as->end, r->act, &e);
+   if (e)
+      as->end = NAN;
+
+   if ((s2 = get_param("subtype", NULL, r->act)) != NULL)
+   {
+      if (!strcasecmp(s2, "sectored"))
+         as->type = SHAPE_SECTORED;
+      else if (!strcasecmp(s2, "stared"))
+         as->type = SHAPE_STARED;
+      else
+         log_msg(LOG_WARN, "unknown subtype '%s'", s2);
+   }
+
+   get_param("r2", &as->r2, r->act);
 
    if (pcount == 0.0)
    {
@@ -540,58 +587,148 @@ int act_shape_ini(smrule_t *r)
    (void) get_param("angle", &as->angle, r->act);
    as->key = get_param("key", NULL, r->act);
 
-   log_debug("nodes = %d, radius = %.2f, angle = %.2f, key = '%s'", as->pcount, as->size, as->angle, as->key != NULL ? as->key : "(NULL)");
+   log_debug("nodes = %d, radius = %.2f, angle = %.2f, key = '%s', start = %f, startkey = %s, end = %f, endkey = %s, subtype = %d, r2 = %f",
+         as->pcount, as->size, as->angle, safe_null_str(as->key), as->start, safe_null_str(as->startkey), as->end, safe_null_str(as->endkey), as->type, as->r2);
 
    r->data = as;
    return 0;
 }
 
 
+int attr_tod(const osm_obj_t *o, const char *attr, double *val)
+{
+   int i;
+
+   if ((i = match_attr(o, attr, NULL)) >= 0)
+   {
+      if (val != NULL)
+      {
+         *val = bs_tod(o->otag[i].v);
+         log_debug("bearing %f", *val);
+      }
+      return 0;
+   }
+
+   log_msg(LOG_INFO, "node %"PRId64" has no tag '%s=*'", o->id, attr);
+   return -1;
+}
+
+
 void shape_node(const struct act_shape *as, const osm_node_t *n)
 {
    struct rdata *rd = get_rdata();
-   osm_node_t *nd[as->pcount];
-   double radius, angle, angle_step, a, b;
-   osm_way_t *w;
-   int i;
+   osm_node_t *nd[as->pcount], *m;
+   double radius, angle, angle_step, a, b, start, end;
+   osm_way_t *w, *v;
+   int i, j;
 
    angle = M_PI_2;
    if (as->key != NULL)
    {
-      if ((i = match_attr((osm_obj_t*) n, as->key, NULL)) >= 0)
+      if (!attr_tod(&n->obj, as->key, &angle))
+         angle = DEG2RAD(90.0 - angle);
+   }
+
+   if (as->startkey != NULL)
+   {
+      if (as->start == NAN)
       {
-         angle = DEG2RAD(90.0 - bs_tod(n->obj.otag[i].v));
-         log_debug("shape bearing %.1f", 90 - RAD2DEG(angle));
+         if (!attr_tod(&n->obj, as->startkey, &start))
+            start = DEG2RAD(start);
       }
       else
-      {
-         log_msg(LOG_INFO, "node %ld has no tag '%s=*'", (long) n->obj.id, as->key);
-      }
+         start = DEG2RAD(as->start);
    }
+   else
+      start = 0;
+
+   if (as->endkey != NULL)
+   {
+      if (as->end == NAN)
+      {
+         if (!attr_tod(&n->obj, as->endkey, &end))
+            end = DEG2RAD(end);
+      }
+      else
+         end = DEG2RAD(as->end);
+   }
+   else
+      end = 2 * M_PI;
+
+   start = fmod2(start + M_PI_2, 2 * M_PI);
+   end = fmod2(end + M_PI_2, 2 * M_PI);
 
    radius = MM2LAT(as->size);
    angle += DEG2RAD(as->angle);
    angle_step = 2 * M_PI / as->pcount;
 
-   w = malloc_way(n->obj.tag_cnt + 1, as->pcount + 1);
+   w = malloc_way(n->obj.tag_cnt + 1, as->pcount + 2);
    osm_way_default(w);
    memcpy(&w->obj.otag[1], n->obj.otag, sizeof(struct otag) * n->obj.tag_cnt);
 
-   log_debug("generating shape way %ld with %d nodes", (long) w->obj.id, as->pcount);
+   log_debug("generating shape way %"PRId64" with <=%d nodes", (long) w->obj.id, as->pcount);
 
    a = radius;
    b = radius * as->weight;
-   for (i = 0; i < as->pcount; i++)
+   for (i = 0, j = 0; i < as->pcount; i++)
    {
-         nd[i] = malloc_node(1);
-         osm_node_default(nd[i]);
-         nd[i]->lat = n->lat + a * cos(angle_step * i - as->phase) * cos(-angle) - b * sin(angle_step * i - as->phase) * sin(-angle);
-         nd[i]->lon = n->lon + (a * cos(angle_step * i - as->phase) * sin(-angle) + b * sin(angle_step * i - as->phase) * cos(-angle)) / cos(DEG2RAD(n->lat));
-         w->ref[i] = nd[i]->obj.id;
-         put_object((osm_obj_t*) nd[i]);
+      if (as->startkey != NULL && start > angle_step * i - as->phase)
+         continue;
+      if (as->endkey != NULL && angle_step * i - as->phase > end)
+         break;
+
+      nd[j] = malloc_node(1);
+      osm_node_default(nd[j]);
+      nd[j]->lat = n->lat + a * cos(angle_step * i - as->phase) * cos(-angle) - b * sin(angle_step * i - as->phase) * sin(-angle);
+      nd[j]->lon = n->lon + (a * cos(angle_step * i - as->phase) * sin(-angle) + b * sin(angle_step * i - as->phase) * cos(-angle)) / cos(DEG2RAD(n->lat));
+      w->ref[j] = nd[j]->obj.id;
+      put_object(&nd[j]->obj);
+
+      if (as->type == SHAPE_STARED)
+      {
+         v = malloc_way(n->obj.tag_cnt + 1, 2);
+         osm_way_default(v);
+         memcpy(&v->obj.otag[1], n->obj.otag, sizeof(struct otag) * n->obj.tag_cnt);
+         if (as->r2 > 0)
+         {
+            m = malloc_node(1);
+            osm_node_default(m);
+
+            m->lat = n->lat + MM2LAT(as->r2) * cos(angle_step * i - as->phase) * cos(-angle) - MM2LAT(as->r2) * as->weight * sin(angle_step * i - as->phase) * sin(-angle);
+            m->lon = n->lon + (MM2LAT(as->r2) * cos(angle_step * i - as->phase) * sin(-angle) + MM2LAT(as->r2) * as->weight * sin(angle_step * i - as->phase) * cos(-angle)) / cos(DEG2RAD(n->lat));
+
+            v->ref[0] = m->obj.id;
+            put_object(&m->obj);
+         }
+         else
+            v->ref[0] = n->obj.id;
+         v->ref[1] = nd[j]->obj.id;
+         put_object(&v->obj);
+      }
+
+      j++;
    }
-   w->ref[i] = nd[0]->obj.id;
-   put_object((osm_obj_t*) w);
+
+   log_debug("%d nodes added", j);
+   if (j && as->type != SHAPE_STARED)
+   {
+      w->ref_cnt = j;
+      if (as->startkey == NULL && as->endkey == NULL)
+      {
+         w->ref[j] = nd[0]->obj.id;
+         w->ref_cnt++;
+      }
+      else if (as->type == SHAPE_SECTORED)
+      {
+         w->ref[j++] = n->obj.id;
+         w->ref[j] = nd[0]->obj.id;
+         w->ref_cnt += 2;
+      }
+      put_object(&w->obj);
+   }
+   
+   if (as->type == SHAPE_STARED)
+      free_obj(&w->obj);
 }
 
 
@@ -1202,7 +1339,7 @@ int act_exit_main(smrule_t * UNUSED(r), osm_obj_t * UNUSED(o))
 
 static int mk_fmt_str(char *buf, int len, const char *fmt, fparam_t **fp, const osm_obj_t *o)
 {
-   int cnt, n;
+   int cnt, n, prec, zero;
    char *key;
    double v;
 
@@ -1210,21 +1347,14 @@ static int mk_fmt_str(char *buf, int len, const char *fmt, fparam_t **fp, const 
    if (fp == NULL)
       return 0;
 
-   for (len--, cnt = 0; *fmt != 0 && len > 0; fmt++)
+   for (len--, cnt = 0; *fmt != '\0' && len > 0; fmt++)
    {
       if (*fmt == '%')
       {
          fmt++;
+         prec = zero = 0;
          // special case if '%' is at the end of the format string
-         if (*fmt == 0)
-         {
-            *buf = '%';
-            len--;
-            buf++;
-            cnt++;
-            break;
-         }
-         else if (*fmt == '%')
+         if (*fmt == '\0' || *fmt == '%')
          {
             *buf = '%';
             len--;
@@ -1232,6 +1362,7 @@ static int mk_fmt_str(char *buf, int len, const char *fmt, fparam_t **fp, const 
             cnt++;
             continue;
          }
+         // FIXME: What's that?
          else if (*fmt == 'v')
          {
             *buf = ';';
@@ -1240,6 +1371,19 @@ static int mk_fmt_str(char *buf, int len, const char *fmt, fparam_t **fp, const 
             cnt++;
             continue;
          }
+         else if (*fmt == '0')
+         {
+            zero++;
+            fmt++;
+         }
+         else if (*fmt >= '1' && *fmt <= '9')
+         {
+            prec = *fmt - '0';
+            fmt++;
+         }
+         
+         if (!prec)
+            prec = 1;
 
          // find next tag in taglist
          for (key = NULL; *fp != NULL; fp++)
@@ -1274,6 +1418,11 @@ static int mk_fmt_str(char *buf, int len, const char *fmt, fparam_t **fp, const 
             case 'f':
                v = bs_tod(o->otag[n].v);
                n = snprintf(buf, len, "%f", v);
+               break;
+
+            case 'r':
+               v = fmod(bs_tod(o->otag[n].v), 1.0) * pow(10, prec);
+               n = snprintf(buf, len, "%ld", (long) round(v));
                break;
 
             default:
@@ -1494,8 +1643,7 @@ int act_inherit_tags_ini(smrule_t *r)
    }
 
    id->rdata = get_rdata();
-   if (get_param("force", NULL, r->act) != NULL)
-      id->force = 1;
+   id->force = get_param_bool("force", r->act);
 
    if ((type = get_param("object", NULL, r->act)) != NULL)
    {
@@ -1503,24 +1651,108 @@ int act_inherit_tags_ini(smrule_t *r)
          id->type = OSM_WAY;
       else if (!strcasecmp(type, "relation"))
          id->type = OSM_REL;
+      else if (!strcasecmp(type, "node"))
+         id->type = OSM_NODE;
       else
          log_msg(LOG_WARN, "unknown object type '%s'", type);
    }
 
+   if ((type = get_param("direction", NULL, r->act)) != NULL)
+   {
+      if (!strcasecmp(type, "up"))
+         id->dir = UP;
+      else if (!strcasecmp(type, "down"))
+         id->dir = DOWN;
+      else
+         log_msg(LOG_WARN, "unknown direction '%s', defaulting to UP", type);
+   }
+
+   if (id->type == OSM_NODE && id->dir == UP)
+   {
+      log_msg(LOG_WARN, "object type 'NODE' doesn't make sense together with direction 'UP'. Ignoring 'object'");
+      id->type = 0;
+   }
+
+   if (id->dir == DOWN)
+   {
+      if (r->oo->type == OSM_NODE)
+      {
+         log_msg(LOG_WARN, "direction DOWN doesn't make sense on NODE rules. Ignoring rule.");
+         free(id);
+         return 1;
+      }
+      if (r->oo->type == OSM_WAY && id->type && id->type != OSM_NODE)
+      {
+         log_msg(LOG_WARN, "ways always have just nodes as parents. Ignoring 'object'");
+         id->type = 0;
+      }
+   }
+
+   // force Smrender to create reverse pointers
+   id->rdata->need_index++;
    r->data = id;
    return 0;
 }
 
 
+/*! Copy a specific tag from OSM object src to object dst. It is tested if a
+ * tag with the key as specificed by the index si in the list of tags of src
+ * exists in dst. If not, it is added to dst, thereby increasing its tag count
+ * (tag_cnt) by 1. If there is already such a tag it will be overwritten if
+ * parameter force is not 0.
+ *  @param src Pointer to source OSM object.
+ *  @param dst Pointer to destination object.
+ *  @param si Index of tag in source.
+ *  @param force If force is not 0, already existing tags will be overwritten.
+ *  @return The function returns 1 if a tag was added to dst, 2 if a tag in dst
+ *  was overwritten, 0 if dst already has such a tag and it was not overwritten
+ *  (because force == 0), or -1 in case of error (realloc(3)).
+ */
+static int copy_tag_cond(const osm_obj_t *src, osm_obj_t *dst, int si, int force)
+{
+   char tag[src->otag[si].k.len + 1];
+   struct otag *ot;
+   int m;
+
+   memcpy(tag, src->otag[si].k.buf, src->otag[si].k.len);
+   tag[src->otag[si].k.len] = '\0';
+   // test if destination object has no such a key
+   if ((m = match_attr(dst, tag, NULL)) < 0)
+   {
+      if ((ot = realloc(dst->otag, sizeof(*dst->otag) * (dst->tag_cnt + 1))) == NULL)
+      {
+         log_msg(LOG_ERR, "failed to realloc() in copy_tag_cond(): %s", strerror(errno));
+         return -1;
+      }
+      dst->otag = ot;
+      // copy tag
+      dst->otag[dst->tag_cnt] = src->otag[si];
+      dst->tag_cnt++;
+      log_debug("adding tag %s to object(%d).id = %ld", tag, dst->type, (long) dst->id);
+      return 1;
+   }
+   // otherwise overwrite if 'force' is set
+   else if (force)
+   {
+      log_debug("overwriting tag %s to object(%d).id = %ld", tag, dst->type, (long) dst->id);
+      dst->otag[m].v = src->otag[si].v;
+      return 2;
+   }
+   return 0;
+}
+ 
+
 int act_inherit_tags_main(smrule_t *r, osm_obj_t *o)
 {
    struct inherit_data *id = r->data;
-   osm_obj_t **optr;
-   struct otag *ot;
+   osm_obj_t *dummy = NULL, **optr = &dummy, *dst;
+   //struct otag *ot;
    fparam_t **fp;
    int n, m;
 
-   if ((optr = get_object0(id->rdata->index, o->id, o->type - 1)) == NULL)
+   // reverse pointers are not use for upwards inheritance
+   if (id->dir == UP)
+     if ((optr = get_object0(id->rdata->index, o->id, o->type - 1)) == NULL)
       return 0;
 
    // safety check
@@ -1538,32 +1770,71 @@ int act_inherit_tags_main(smrule_t *r, osm_obj_t *o)
       if ((n = match_attr(o, (*fp)->val, NULL)) < 0)
          continue;
 
-      // loop over all reverse pointers
-      for (; *optr != NULL; optr++)
+      if (id->dir == UP)
       {
-         // test if if tags should be copied to ways/relations only
-         if (id->type && id->type != (*optr)->type)
-            continue;
+         // loop over all reverse pointers
+         for (; *optr != NULL; optr++)
+         {
+            // test if if tags should be copied to ways/relations only
+            if (id->type && id->type != (*optr)->type)
+               continue;
 
-         // test if reverse object (destination) already has no such a key
-         if ((m = match_attr(*optr, (*fp)->val, NULL)) < 0)
-         {
-            if ((ot = realloc((*optr)->otag, sizeof(*(*optr)->otag) * ((*optr)->tag_cnt + 1))) == NULL)
+            copy_tag_cond(o, *optr, n, id->force);
+#if 0
+            // test if reverse object (destination) already has no such a key
+            if ((m = match_attr(*optr, (*fp)->val, NULL)) < 0)
             {
-               log_msg(LOG_ERR, "failed to realloc() in inherit_tags(): %s", strerror(errno));
-               return -1;
+               if ((ot = realloc((*optr)->otag, sizeof(*(*optr)->otag) * ((*optr)->tag_cnt + 1))) == NULL)
+               {
+                  log_msg(LOG_ERR, "failed to realloc() in inherit_tags(): %s", strerror(errno));
+                  return -1;
+               }
+               (*optr)->otag = ot;
+               // copy tag
+               (*optr)->otag[(*optr)->tag_cnt] = o->otag[n];
+               (*optr)->tag_cnt++;
+               log_debug("adding tag %s to object(%d).id = %ld", (*fp)->val, (*optr)->type, (long) (*optr)->id);
             }
-            (*optr)->otag = ot;
-            // copy tag
-            (*optr)->otag[(*optr)->tag_cnt] = o->otag[n];
-            (*optr)->tag_cnt++;
-            log_debug("adding tag %s to object(%d).id = %ld", (*fp)->val, (*optr)->type, (long) (*optr)->id);
-         }
-         // otherwise overwrite if 'force' is set
-         else if (id->force)
+            // otherwise overwrite if 'force' is set
+            else if (id->force)
+            {
+               log_debug("overwriting tag %s to object(%d).id = %ld", (*fp)->val, (*optr)->type, (long) (*optr)->id);
+               (*optr)->otag[(*optr)->tag_cnt].v = o->otag[n].v;
+            }
+#endif
+         } //for (; *optr != NULL; optr++)
+      } //if (id->dir == UP)
+      else // if (id->dir == DOWN)
+      {
+         if (o->type == OSM_REL)
          {
-            log_debug("overwriting tag %s to object(%d).id = %ld", (*fp)->val, (*optr)->type, (long) (*optr)->id);
-            (*optr)->otag[(*optr)->tag_cnt].v = o->otag[n].v;
+            for (m = 0; m < ((osm_rel_t*) o)->mem_cnt; m++)
+            {
+               // use only objects of specific type, if specified (object=*)
+               if (id->type && id->type != ((osm_rel_t*) o)->mem[m].type)
+                  continue;
+               
+               if ((dst = get_object(((osm_rel_t*) o)->mem[m].type, ((osm_rel_t*) o)->mem[m].id)) == NULL)
+               {
+                  log_debug("no such object");
+                  continue;
+               }
+
+               copy_tag_cond(o, dst, n, id->force);
+            }
+         }
+         else if (o->type == OSM_WAY)
+         {
+            for (m = 0; m < ((osm_way_t*) o)->ref_cnt; m++)
+            {
+               if ((dst = get_object(OSM_NODE, ((osm_way_t*) o)->ref[m])) == NULL)
+               {
+                  log_debug("no such object");
+                  continue;
+               }
+
+               copy_tag_cond(o, dst, n, id->force);
+            }
          }
       }
    }
@@ -1580,6 +1851,8 @@ int act_inherit_tags_fini(smrule_t *r)
 
 int act_zeroway_ini(smrule_t *r)
 {
+   // force Smrender to create reverse pointers
+   get_rdata()->need_index++;
    r->data = &get_rdata()->index;
    return 0;
 }
@@ -1747,6 +2020,8 @@ int act_zeroway_main(smrule_t *r, osm_node_t *n)
 
 int act_split_ini(smrule_t *r)
 {
+   // force Smrender to create reverse pointers
+   get_rdata()->need_index++;
    r->data = get_rdata();
    return 0;
 }
@@ -1973,6 +2248,428 @@ int act_incomplete_main(smrule_t *r, osm_rel_t *rel)
 int act_incomplete_fini(smrule_t *r)
 {
    fclose(r->data);
+   r->data = NULL;
+   return 0;
+}
+
+
+int act_add_ini(smrule_t *r)
+{
+   struct rdata *rd = get_rdata();
+   double latref, lonref;
+#define UNITS_MM 1
+#define UNITS_CM 10
+   int units = 0;
+   int pos;
+   char *s;
+
+   if (r->oo->type != OSM_NODE)
+   {
+      log_msg(LOG_WARN, "function add() only implemented for nodes, yet.");
+      return 1;
+   }
+
+   if ((s = get_param("units", NULL, r->act)) != NULL)
+   {
+      if (!strcasecmp(s, "mm"))
+         units = UNITS_MM;
+      else if (!strcasecmp(s, "cm"))
+         units = UNITS_CM;
+      else if (strcasecmp(s, "degrees"))
+         log_msg(LOG_WARN, "unknown unit '%s', defaulting to degrees", s);
+   }
+
+   pos = parse_alignment(r->act);
+   switch (pos & 0x03)
+   {
+      case POS_M:
+         latref = (rd->bb.ll.lat + rd->bb.ru.lat) / 2;
+         break;
+      case POS_N:
+         latref = rd->bb.ru.lat;
+         break;
+      case POS_S:
+         latref = rd->bb.ll.lat;
+         break;
+      default:
+         log_msg(LOG_EMERG, "pos = 0x%02x this should never happen!", pos);
+         return -1;
+   }
+   switch (pos & 0x0c)
+   {
+      case POS_C:
+         lonref = (rd->bb.ll.lon + rd->bb.ru.lon) / 2;
+         break;
+      case POS_E:
+         lonref = rd->bb.ru.lon;
+         break;
+      case POS_W:
+         lonref = rd->bb.ll.lon;
+         break;
+      default:
+         log_msg(LOG_EMERG, "pos = 0x%02x this should never happen!", pos);
+         return -1;
+   }
+
+   if ((s = get_param("reference", NULL, r->act)) != NULL)
+   {
+      if (!strcasecmp(s, "relative"))
+      {
+         if (!units)
+         {
+            ((osm_node_t*) r->oo)->lat = latref + ((osm_node_t*) r->oo)->lat;
+            ((osm_node_t*) r->oo)->lon = lonref + ((osm_node_t*) r->oo)->lon;
+         }
+         else
+         {
+            ((osm_node_t*) r->oo)->lat = latref + MM2LAT(((osm_node_t*) r->oo)->lat * units);
+            ((osm_node_t*) r->oo)->lon = lonref + MM2LON(((osm_node_t*) r->oo)->lon * units);
+         }
+      }
+      else if (strcasecmp(s, "absolute"))
+         log_msg(LOG_WARN, "unknown reference '%s', defaulting to 'absolute'", s);
+   }
+
+   return 0;
+}
+
+
+int act_add_main(smrule_t * UNUSED(r), osm_obj_t *UNUSED(o))
+{
+   return 0;
+}
+
+
+int act_add_fini(smrule_t *r)
+{
+
+   osm_node_t *n = malloc_node(r->oo->tag_cnt + 1);
+   osm_node_default(n);
+   memcpy(&n->obj.otag[1], &r->oo->otag[0], r->oo->tag_cnt * sizeof(*r->oo->otag));
+   n->lat = ((osm_node_t*) r->oo)->lat;
+   n->lon = ((osm_node_t*) r->oo)->lon;
+   put_object((osm_obj_t*) n);
+
+   log_msg(LOG_INFO, "placing node to lat = %f, lon = %f", n->lat, n->lon);
+   return 0;
+}
+
+
+int act_translate_ini(smrule_t *r)
+{
+   struct trans_data *td;
+   fparam_t **fp;
+   smrule_t *or;
+   int64_t id;
+   int i, j;
+   char *s;
+
+   // loop over parameter list of rule
+   for (i = 0, j = 0, fp = r->act->fp; *fp != NULL; fp++)
+      // test if there is a 'key' parameter
+      if (!strcasecmp((*fp)->attr, "key"))
+      {
+         i++;
+         j += strlen((*fp)->val);
+      }
+
+   if (!i)
+   {
+      log_msg(LOG_ERR, "mandatory param 'key' missing");
+      return 1;
+   }
+
+   if ((s = get_param("id", NULL, r->act)) == NULL)
+   {
+      log_msg(LOG_ERR, "mandatory param 'id' missing");
+      return 1;
+   }
+
+   errno = 0;
+   id = strtol(s, NULL, 0);
+   if (errno)
+   {
+      log_msg(LOG_ERR, "conversion failed: %s", strerror(errno));
+      return 1;
+   }
+
+   if ((or = get_object0(get_rdata()->rules, id, r->oo->type - 1)) == NULL)
+   {
+      log_msg(LOG_WARN, "no template with id = %"PRId64, id);
+      return 1;
+   }
+
+   if ((td = malloc(sizeof(*td) + i * (sizeof(*td->st) + sizeof(*td->ot)) + j + 1)) == NULL)
+   {
+      log_msg(LOG_ERR, "malloc() failed: %s", strerror(errno));
+      return -1;
+   }
+
+   td->newtag = get_param_bool("newtag", r->act);
+   td->o = or->oo;
+   td->tag_cnt = i;
+   td->st = (struct stag*) (td + 1);
+   td->ot = (struct otag*) ((char*) (td + 1) + i * sizeof(*td->st));
+
+   s = (char*) (td + 1) + i * (sizeof(*td->st) + sizeof(*td->ot));
+
+   // loop over parameter list of rule
+   for (i = 0, fp = r->act->fp; *fp != NULL; fp++)
+   {
+      // test if there is a 'key' parameter
+      if (strcasecmp((*fp)->attr, "key"))
+         continue;
+
+      log_debug("parsing key value '%s'", (*fp)->val);
+      strcpy(s, (*fp)->val);
+      td->ot[i].k.buf = s;
+      td->ot[i].k.len = strlen(s);
+      td->ot[i].v.len = 0;
+      s += td->ot[i].k.len;
+      
+      parse_matchtag(&td->ot[i], &td->st[i]);
+
+      log_debug("key = '%.*s', type = %d", td->ot[i].k.len, td->ot[i].k.buf, td->st[i].stk.type);
+
+      i++;
+   }
+
+   r->data = td;
+
+   log_debug("found %d keys", i);
+
+   return 0;
+}
+
+
+int act_translate_main(smrule_t *r, osm_obj_t *o)
+{
+   struct trans_data *td = r->data;
+   struct stag st;
+   struct otag ot, *tmp_ot;
+   int i, n, m, ocnt;
+
+   memset(&st, 0, sizeof(st));
+   memset(&ot, 0, sizeof(ot));
+
+   ocnt = td->tag_cnt;
+   for (i = 0; i < ocnt; i++)
+   {
+      // test if object has such a key
+      if ((n = bs_match_attr(o, &td->ot[i], &td->st[i])) < 0)
+         continue;
+
+      log_debug("match in tag(%d)@object(%"PRId64")", n, o->id);
+      // copy value to temporary tag 'ot' as key
+      ot.k = o->otag[n].v;
+      // lookup if translation table object (in r->data) contains such key
+      if ((m = bs_match_attr(td->o, &ot, &st)) < 0)
+         continue;
+
+      // add new tag if newtag is true
+      if (td->newtag)
+      {
+         if ((tmp_ot = realloc(o->otag, sizeof(struct otag) * (o->tag_cnt + 1))) == NULL)
+         {
+            log_msg(LOG_DEBUG, "could not realloc tag list: %s", strerror(errno));
+            return 0;
+         }
+         o->otag = tmp_ot;
+         //o->otag[o->tag_cnt].v = td->o->otag[m].v;
+         o->otag[o->tag_cnt].k.len = o->otag[n].k.len + 6;
+         if ((o->otag[o->tag_cnt].k.buf = malloc(o->otag[o->tag_cnt].k.len)) == NULL)
+         {
+            log_msg(LOG_ERR, "malloc() failed: %s", strerror(errno));
+            return -1;
+         }
+         memcpy(o->otag[o->tag_cnt].k.buf, o->otag[n].k.buf, o->otag[n].k.len);
+         memcpy(o->otag[o->tag_cnt].k.buf + o->otag[n].k.len, ":local", 6);
+         n = o->tag_cnt;
+         o->tag_cnt++;
+      }
+
+      // translate, i.e. set object value to value of translation object
+      o->otag[n].v = td->o->otag[m].v;
+   }
+   
+   return 0;
+}
+
+
+int act_translate_fini(smrule_t *r)
+{
+   free(r->data);
+   r->data = NULL;
+   return 0;
+}
+
+
+/*! This function adds the node n to the node list nl. The memory within nl is
+ * increased dynamically with realloc().
+ * @param n Pointer to OSM node.
+ * @param nl Pointer to valid node_list_t structure. If the list is empty the
+ * contents of nl must be initialized to 0 before calling gather_node().
+ * @return The function returns the number of nodes within nl after adding n.
+ * On error, -1 is returned.
+ */
+static int gather_node(osm_node_t *n, node_list_t *nl)
+{
+   if (nl->node_cnt >= nl->max_cnt)
+   {
+      osm_node_t **tnl = realloc(nl->node, (nl->max_cnt + INC_MAX_NL) * sizeof(*nl->node));
+      if (tnl == NULL)
+      {
+         log_msg(LOG_ERR, "realloc() failed: %s", strerror(errno));
+         return -1;
+      }
+      nl->node = tnl;
+      nl->max_cnt = nl->max_cnt + INC_MAX_NL;
+   }
+
+   nl->node[nl->node_cnt++] = n;
+   return nl->node_cnt;
+}
+
+
+static struct pcoord *node_mtx(node_list_t *nl)
+{
+   struct pcoord *nmx;
+   struct coord src, dst;
+
+   log_debug("calculating node distance matrix");
+   if ((nmx = malloc(sizeof(*nmx) * (nl->node_cnt * nl->node_cnt))) == NULL)
+   {
+      log_msg(LOG_ERR, "malloc(%ld kB) for matrix failed: %s", sizeof(*nmx) * nl->node_cnt * nl->node_cnt >> 10, strerror(errno));
+      return NULL;
+   }
+
+   for (int i = 0; i < nl->node_cnt; i++)
+   {
+      src.lon = nl->node[i]->lon;
+      src.lat = nl->node[i]->lat;
+      memset(&nmx[i * nl->node_cnt], 0, sizeof(*nmx));
+      for (int j = i + 1; j < nl->node_cnt; j++)
+      {
+         dst.lon = nl->node[j]->lon;
+         dst.lat = nl->node[j]->lat;
+         nmx[i * nl->node_cnt + j] = coord_diff(&src, &dst);
+      }
+   }
+
+   return nmx;
+}
+
+
+static void rate_nmx(struct pcoord *nmx, int n, double dist)
+{
+   for (int i = 0; i < n; i++)
+      for (int j = i + 1; j < n; j++)
+      {
+         // ignore nodes which have been masked
+         if (nmx[i * n].dist < 0)
+            continue;
+
+         if (nmx[i * n + j].dist < dist)
+            nmx[j * n].dist = MASK_NODE;
+      }
+}
+
+
+static void mod_node(struct pcoord *nmx, node_list_t *nl)
+{
+   struct otag *ot;
+
+   for (int i = 0; i < nl->node_cnt; i++)
+   {
+      if (nmx[i * nl->node_cnt].dist < 0)
+      {
+         if ((ot = realloc(nl->node[i]->obj.otag, sizeof(*nl->node[i]->obj.otag) * (nl->node[i]->obj.tag_cnt + 1))) == NULL)
+         {
+            log_msg(LOG_ERR, "realloc() failed: %s", strerror(errno));
+            continue;
+         }
+         nl->node[i]->obj.otag = ot;
+         set_const_tag(&nl->node[i]->obj.otag[nl->node[i]->obj.tag_cnt], "smrender:mask", "yes");
+         nl->node[i]->obj.tag_cnt++;
+      }
+   }
+}
+
+
+int act_mask_ini(smrule_t *r)
+{
+   node_list_t *nl;
+   
+   if (r->oo->type != OSM_NODE)
+   {
+      log_msg(LOG_NOTICE, "mask() is implemented for nodes only, yet.");
+      return 1;
+   }
+
+   if ((nl = malloc(sizeof(*nl))) == NULL)
+   {
+      log_msg(LOG_ERR, "malloc() failed: %s", strerror(errno));
+      return -1;
+   }
+   memset(nl, 0, sizeof(*nl));
+
+   nl->min_dist = NODE_MIN_DIST;
+   if (get_param("distance", &nl->min_dist, r->act) != NULL)
+   {
+      if (nl->min_dist <= 0)
+      {
+         log_msg(LOG_NOTICE, "Distance must be positive value. Setting to default.");
+         nl->min_dist = NODE_MIN_DIST;
+      }
+      else
+         nl->min_dist /= 60;
+   }
+
+   r->data = nl;
+   return 0;
+}
+
+
+int act_mask_main(smrule_t *r, osm_obj_t *o)
+{
+   gather_node((osm_node_t*) o, r->data);
+   return 0;
+}
+
+
+void output_nmx(const struct pcoord *nmx, int n)
+{
+   for (int i = 0; i < n; i++)
+   {
+      fprintf(stderr, "%d: ", i);
+      for (int j = 0; j < n; j++)
+      {
+         if (j && j < i)
+            fprintf(stderr, "-/-, ");
+         else
+            fprintf(stderr, "%.1f/%.1f, ", nmx[i * n + j].dist * 60, nmx[i * n + j].bearing);
+      }
+      fprintf(stderr, "\n");
+   }
+}
+
+
+int act_mask_fini(smrule_t *r)
+{
+   struct pcoord *nmx;
+   node_list_t *nl = r->data;
+
+   log_debug("gathered %d nodes", nl->node_cnt);
+   if ((nmx = node_mtx(nl)) != NULL)
+   {
+      rate_nmx(nmx, nl->node_cnt, nl->min_dist);
+      //output_nmx(nmx, nl->node_cnt);
+      mod_node(nmx, nl);
+      free(nmx);
+   }
+
+   free(nl->node);
+   free(nl);
    r->data = NULL;
    return 0;
 }
