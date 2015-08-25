@@ -285,7 +285,7 @@ static cairo_status_t cairo_smr_write_func(void *closure, const unsigned char *d
 }
 
 
-void *cairo_smr_image_surface_from_bg(cairo_format_t fmt)
+void *cairo_smr_image_surface_from_bg(cairo_format_t fmt, cairo_antialias_t alias)
 {
    cairo_surface_t *sfc;
    cairo_t *dst;
@@ -295,6 +295,7 @@ void *cairo_smr_image_surface_from_bg(cairo_format_t fmt)
    cairo_smr_log_status(dst);
    cairo_scale(dst, (double) rdata_dpi() / 72, (double) rdata_dpi() / 72);
    cairo_set_source_surface(dst, sfc_, 0, 0);
+   cairo_set_antialias(dst, alias);
    cairo_paint(dst);
    CSS_INC(CSS_PAINT);
    cairo_destroy(dst);
@@ -314,7 +315,7 @@ void save_main_image(FILE *f, int ftype)
    switch (ftype)
    {
       case FTYPE_PNG:
-         sfc = cairo_smr_image_surface_from_bg(CAIRO_FORMAT_ARGB32);
+         sfc = cairo_smr_image_surface_from_bg(CAIRO_FORMAT_ARGB32, CAIRO_ANTIALIAS_DEFAULT);
          if ((e = cairo_surface_write_to_png_stream(sfc, cairo_smr_write_func, f)) != CAIRO_STATUS_SUCCESS)
             log_msg(LOG_ERR, "failed to save png image: %s", cairo_status_to_string(e));
          cairo_surface_destroy(sfc);
@@ -527,6 +528,7 @@ static void parse_auto_rot(const action_t *act, double *angle, struct auto_rot *
 int act_draw_ini(smrule_t *r)
 {
    struct actDraw *d;
+   value_t v;
    char *s;
 
    // just to be on the safe side
@@ -566,12 +568,23 @@ int act_draw_ini(smrule_t *r)
    d->border.style = parse_style(get_param("bstyle", NULL, r->act));
 
    if (get_param_bool("curve", r->act))
+   {
       d->curve = CURVE;
-   if (get_param("curve_factor", &d->curve_fact, r->act) == NULL)
-      d->curve_fact = DIV_PART;
+      if (get_param("curve_factor", &d->curve_fact, r->act) == NULL)
+         d->curve_fact = DIV_PART;
+   }
 
    if (get_param_bool("wavy", r->act))
+   {
       d->curve = WAVY;
+      if ((s = get_param("wavy_length", &d->curve_fact, r->act)) != NULL)
+      {
+         parse_length_def(s, &v, U_MM);
+         d->wavy_length = rdata_unit(&v, U_DEG);
+      }
+      else
+         d->wavy_length = WAVY_LENGTH;
+   }
 
    // honor direction of ways
    d->directional = get_param_bool("directional", r->act);
@@ -924,7 +937,7 @@ static inline int cairo_smr_poly(cairo_t *ctx, const struct actDraw *d, const os
    if (d->curve == CURVE)
       return cairo_smr_poly_curve(w, ctx, d->curve_fact);
    if (d->curve == WAVY)
-      return cairo_smr_wavy(w, ctx, WAVY_LENGTH);
+      return cairo_smr_wavy(w, ctx, d->wavy_length);
 
    cairo_smr_poly_line(w, ctx);
    return 0;
