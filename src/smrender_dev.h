@@ -187,7 +187,10 @@ struct actDraw
    int directional;
    int collect_open;
    int curve;
-   double curve_fact;
+   union
+   {
+      double curve_fact, wavy_length;
+   };
    struct wlist *wl;
 #ifdef HAVE_CAIRO
    cairo_t *ctx;
@@ -252,7 +255,7 @@ void delete_tile(void *);
 void cut_tile(const struct bbox *, void *);
 void clear_tile(void *);
 int save_image(const char *, void *, int);
-void *cairo_smr_image_surface_from_bg(cairo_format_t);
+void *cairo_smr_image_surface_from_bg(cairo_format_t, cairo_antialias_t);
 #else
 #define save_main_image(a, b)
 #define create_tile() NULL
@@ -276,6 +279,7 @@ void free_fparam(fparam_t **);
 int parse_alignment(const action_t *act);
 int parse_alignment_str(const char *);
 int parse_length(const char *, value_t *);
+int parse_length_def(const char *, value_t *, unit_t );
 
 /* smkap.c */
 int save_kap(FILE *, struct rdata *);
