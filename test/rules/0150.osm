@@ -2,7 +2,7 @@
 <osm version='0.6' generator='Bernhard R. Fischer'>
     <way version="-10">
       <tag k='seamark:type' v='anchorage'/>
-      <tag k='_action_' v='ins_eqdist:distance=0.05'/>
+      <tag k='_action_' v='ins_eqdist:distance=100m'/>
    </way>
    <node>
       <tag k='seamark:type' v='anchorage'/>
