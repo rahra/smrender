@@ -778,8 +778,10 @@ int act_shape_fini(smrule_t *r)
 
 int act_ins_eqdist_ini(smrule_t *r)
 {
-#define DEFAULT_DISTANCE 2.0
+#define DEFAULT_DISTANCE (2.0/60)
    double *dist;
+   value_t v;
+   char *s;
 
    if ((dist = malloc(sizeof(*dist))) == NULL)
    {
@@ -789,16 +791,15 @@ int act_ins_eqdist_ini(smrule_t *r)
 
    r->data = dist;
 
-   if (get_param("distance", dist, r->act) == NULL)
+   if ((s = get_param("distance", NULL, r->act)) != NULL)
    {
-      *dist = DEFAULT_DISTANCE;
+      parse_length_def(s, &v, U_NM);
+      *dist = fabs(rdata_unit(&v, U_DEG));
    }
-   else if (*dist <= 0)
-   {
+   else
       *dist = DEFAULT_DISTANCE;
-   }
 
-   *dist /= 60.0;
+   log_debug("distance = %.3f nm", *dist * 60);
    return 0;
 }
 
