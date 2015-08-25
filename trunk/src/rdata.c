@@ -1,4 +1,4 @@
-/* Copyright 2011 Bernhard R. Fischer, 2048R/5C5FFD47 <bf@abenteuerland.at>
+/* Copyright 2011-2015 Bernhard R. Fischer, 2048R/5C5FFD47 <bf@abenteuerland.at>
  *
  * This file is part of smrender.
  *
@@ -35,6 +35,8 @@
 #include "smrender_dev.h"
 
 
+static void test_rdata_unit(void);
+
 static struct rdata rd_;
 
 
@@ -61,11 +63,11 @@ int mm2pxi(double x)
    return round(mm2pxf(x));
 }
 
-
+/*
 double px2mm(double x)
 {
    return x * 25.4 / rd_.dpi;
-}
+}*/
 
 
 void pxf2geo(double x, double y, double *lon, double *lat)
@@ -114,11 +116,10 @@ void rdata_log(void)
    log_msg(LOG_NOTICE, "   lath = %f, lath_len = %f", rd_.lath, rd_.lath_len);
    log_msg(LOG_NOTICE, "   page size = %.1f x %.1f mm",
          PX2MM(rd_.w), PX2MM(rd_.h));
-   log_msg(LOG_NOTICE, "   rendering: %dx%d px, dpi = %d",
+   log_msg(LOG_NOTICE, "   rendering: %.1fx%.1f px, dpi = %d",
          rd_.w, rd_.h, rd_.dpi);
-   log_msg(LOG_NOTICE, "   final: %dx%d px, dpi = %d",
-         rd_.fw, rd_.fh, rd_.dpi);
-   log_msg(LOG_NOTICE, "   1 px = %.3f mm, 1mm = %d px", PX2MM(1), (int) MM2PX(1));
+   log_msg(LOG_NOTICE, "   1 px = %.3f mm, 1 mm = %d px", PX2MM(1), (int) MM2PX(1));
+   log_msg(LOG_NOTICE, "   1 px = %.3f nm, 1 nm = %.1f px", rdata_px_unit(1, U_NM), 1 / rdata_px_unit(1, U_NM));
    log_msg(LOG_NOTICE, "   scale 1:%.0f, %.1f x %.1f nm",
          rd_.scale, rd_.wc * 60 * cos(DEG2RAD(rd_.mean_lat)), rd_.hc * 60);
    log_msg(LOG_NOTICE, "   flags = 0x%04x, MAX_ITER = %d", rd_.flags, MAX_ITER);
@@ -126,6 +127,8 @@ void rdata_log(void)
          G_GRID, G_TICKS, G_STICKS, G_MARGIN, G_TW, G_STW, G_BW);
    log_debug("   square_nm = %f, square_mm = %f", rdata_square_nm(), rdata_square_mm());
    log_msg(LOG_NOTICE, "***");
+
+   test_rdata_unit();
 }
 
 
@@ -134,31 +137,137 @@ double rdata_px_unit(double x, unit_t type)
 {
    switch (type)
    {
+      case U_1:
       case U_PX:
          return x;
       case U_CM:
-         x *= 10;
+         return x * 25.4 / rd_.dpi / 10;
       case U_MM:
          return x * 25.4 / rd_.dpi;
       case U_PT:
          return x * 72 / rd_.dpi;
       case U_IN:
          return x / rd_.dpi;
+      case U_NM:
+      case U_MIN:
+         return x * rd_.mean_lat_len * 60 / rd_.w;
+      case U_KM:
+         return x * rd_.mean_lat_len * 60 / rd_.w * 1.852;
+      case U_M:
+         return x * rd_.mean_lat_len * 60 / rd_.w * 1852;
+      case U_KBL:
+         return x * rd_.mean_lat_len * 60 / rd_.w * 10;
+      case U_FT:
+         return x * rd_.mean_lat_len * 60 / rd_.w * 6076.12;
+      case U_DEG:
+         return x * rd_.mean_lat_len      / rd_.w;
       default:
          return NAN;
    }
 }
 
 
+double rdata_unit_px(double x, unit_t type)
+{
+   switch (type)
+   {
+      case U_1:
+      case U_PX:
+         return x;
+      case U_CM:
+         return x / 25.4 * rd_.dpi * 10;
+      case U_MM:
+         return x / 25.4 * rd_.dpi;
+      case U_PT:
+         return x / 72 * rd_.dpi;
+      case U_IN:
+         return x * rd_.dpi;
+      case U_NM:
+      case U_MIN:
+         return x / rd_.mean_lat_len / 60 * rd_.w;
+      case U_KM:
+         return x / rd_.mean_lat_len / 60 * rd_.w / 1.852;
+      case U_M:
+         return x / rd_.mean_lat_len / 60 * rd_.w / 1852;
+      case U_KBL:
+         return x / rd_.mean_lat_len / 60 * rd_.w / 10;
+      case U_FT:
+         return x / rd_.mean_lat_len / 60 * rd_.w / 6076.12;
+      case U_DEG:
+         return x / rd_.mean_lat_len      * rd_.w;
+      default:
+         return NAN;
+   }
+}
+
+
+double rdata_unit(const value_t *v, unit_t u)
+{
+   return rdata_px_unit(rdata_unit_px(v->val, v->u), u);
+}
+
+
+const char *unit_str(unit_t type)
+{
+   switch (type)
+   {
+      case U_1:
+         return "1";
+      case U_PX:
+         return "px";
+      case U_CM:
+         return "cm";
+      case U_MM:
+         return "mm";
+      case U_PT:
+         return "pt";
+      case U_IN:
+         return "in";
+      case U_NM:
+         return "nm";
+      case U_MIN:
+         return "'";
+      case U_KM:
+         return "km";
+      case U_M:
+         return "m";
+      case U_KBL:
+         return "kbl";
+      case U_FT:
+         return "ft";
+      case U_DEG:
+         return "°";
+      default:
+         return "?";
+   }
+}
+
+
+static void test_rdata_unit(void)
+{
+#define TEST_RDU_VAL 200.0
+   double v;
+   int i;
+
+   for (i = 0, v = 0; !isnan(v); i++)
+   {
+      v = rdata_px_unit(TEST_RDU_VAL, i);
+      log_msg(LOG_DEBUG, "%.1f px = %.3f %s", TEST_RDU_VAL, v, unit_str(i));
+      v = rdata_unit_px(TEST_RDU_VAL, i);
+      log_msg(LOG_DEBUG, "%.1f %s = %.3f px", TEST_RDU_VAL, unit_str(i), v);
+   }
+}
+
+
 double rdata_width(unit_t type)
 {
-   return rdata_px_unit(rd_.fw, type);
+   return rdata_px_unit(rd_.w, type);
 }
 
 
 double rdata_height(unit_t type)
 {
-   return rdata_px_unit(rd_.fh, type);
+   return rdata_px_unit(rd_.h, type);
 }
 
 
@@ -203,11 +312,5 @@ int is_on_page(const struct coord *c)
    if (c->lon < rd_.bb.ll.lon || c->lon > rd_.bb.ru.lon || c->lat < rd_.bb.ll.lat || c->lat > rd_.bb.ru.lat)
       return 0;
    return 1;
-}
-
-
-int conv_unit(value_t *v, unit_t dst_u)
-{
-   return 0;
 }
 
