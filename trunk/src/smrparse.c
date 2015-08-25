@@ -690,6 +690,42 @@ int parse_alignment(const action_t *act)
 }
 
 
+unit_t parse_unit(const char *uptr)
+{
+   if (uptr == NULL)
+      return U_1;
+   if (*uptr == '\0')
+      return U_1;
+   if (!strcasecmp(uptr, "nm") || !strcasecmp(uptr, "sm"))
+      return U_NM;
+   if (!strcasecmp(uptr, "kbl"))
+      return U_KBL;
+   if (!strcasecmp(uptr, "ft"))
+      return U_FT;
+   if (!strcasecmp(uptr, "mm"))
+      return U_MM;
+   if (!strcasecmp(uptr, "°") || !strcasecmp(uptr, "deg") || !strcasecmp(uptr, "degrees"))
+      return U_DEG;
+   if (!strcasecmp(uptr, "'"))
+      return U_MIN;
+   if (!strcasecmp(uptr, "m"))
+      return U_M;
+   if (!strcasecmp(uptr, "km"))
+      return U_KM;
+   if (!strcasecmp(uptr, "in") || !strcasecmp(uptr, "\""))
+      return U_IN;
+   if (!strcasecmp(uptr, "cm"))
+      return U_CM;
+   if (!strcasecmp(uptr, "px"))
+      return U_PX;
+   if (!strcasecmp(uptr, "pt"))
+      return U_PT;
+
+   log_msg(LOG_WARN, "unknown unit '%s', defaulting to '1'", uptr);
+   return U_1;
+}
+
+
 int parse_length(const char *s, value_t *v)
 {
    char *eptr;
@@ -706,33 +742,19 @@ int parse_length(const char *s, value_t *v)
    // skip leading spaces
    for (; isspace(*eptr); eptr++);
 
-   if (*eptr == '\0')
-      v->u = U_1;
-   else if (!strcasecmp(eptr, "nm") || !strcasecmp(eptr, "sm"))
-      v->u = U_NM;
-   else if (!strcasecmp(eptr, "kbl"))
-      v->u = U_KBL;
-   else if (!strcasecmp(eptr, "ft"))
-      v->u = U_FT;
-   else if (!strcasecmp(eptr, "mm"))
-      v->u = U_MM;
-   else if (!strcasecmp(eptr, "°"))
-      v->u = U_DEG;
-   else if (!strcasecmp(eptr, "'"))
-      v->u = U_MIN;
-   else if (!strcasecmp(eptr, "m"))
-      v->u = U_M;
-   else if (!strcasecmp(eptr, "km"))
-      v->u = U_KM;
-   else if (!strcasecmp(eptr, "in"))
-      v->u = U_IN;
-   else if (!strcasecmp(eptr, "cm"))
-      v->u = U_CM;
-   else if (!strcasecmp(eptr, "px"))
-      v->u = U_PX;
-   else if (!strcasecmp(eptr, "pt"))
-      v->u = U_PT;
+   v->u = parse_unit(eptr);
+   return 0;
+}
 
+
+int parse_length_def(const char *s, value_t *v, unit_t u)
+{
+   int e;
+   if ((e = parse_length(s, v)))
+      return e;
+
+   if (v->u == U_1)
+      v->u = u;
    return 0;
 }
 
