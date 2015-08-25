@@ -696,9 +696,6 @@ void init_rendering_window(struct rdata *rd, char *win, const char *paper)
       }
    }
 
-   rd->fw = rd->w;
-   rd->fh = rd->h;
-
    init_bbox_mll(rd);
 }
 

@@ -1,4 +1,4 @@
-/* Copyright 2011 Bernhard R. Fischer, 2048R/5C5FFD47 <bf@abenteuerland.at>
+/* Copyright 2011-2015 Bernhard R. Fischer, 2048R/5C5FFD47 <bf@abenteuerland.at>
  *
  * This file is part of smrender.
  *
@@ -37,8 +37,9 @@
 #define RD_UIDS 4          //<! output IDs unsigned
 
 // convert mm to pixels
-#define MM2PX(x) mm2pxi(x)
+#define MM2PX(x) mm2pxf(x)
 // convert pixels to mm
+#define px2mm(x) rdata_px_unit(x, U_MM)
 #define PX2MM(x) px2mm(x)
 // convert mm to degrees
 #define MM2LAT(x) ((x) * (rd->bb.ru.lat - rd->bb.ll.lat) / PX2MM(rd->h))
@@ -52,7 +53,9 @@ typedef enum
    // units in respect to the page
    U_MM, U_CM, U_PX, U_PT, U_IN,
    // units in respect to reality
-   U_NM, U_KM, U_M, U_KBL, U_FT, U_DEG, U_MIN
+   U_NM, U_KM, U_M, U_KBL, U_FT,
+   // degrees/minutes on a great circle
+   U_DEG, U_MIN
 } unit_t;
 
 typedef struct value
@@ -97,12 +100,10 @@ struct rdata
    //! mean latitude and its length in degrees corresponding to the real nautical miles
    double mean_lat, mean_lat_len;
    double mean_lon;
-   //! hyperbolic values for transversial Mercator (latitude stretching)
+   //! hyperbolic values for Mercator projection (latitude stretching)
    double lath, lath_len;
    //! (pixel) image width and height of rendered image
-   int w, h;
-   //! (pixel) image width and height of final image
-   int fw, fh;
+   double w, h;
    //! pixel resolution
    int dpi;
    //! scale
@@ -125,7 +126,7 @@ struct rdata
 double mm2ptf(double);
 double mm2pxf(double);
 int mm2pxi(double);
-double px2mm(double);
+//double px2mm(double);
 void pxf2geo(double, double, double*, double*);
 void geo2pt(double, double, double*, double*);
 void geo2pxf(double, double, double*, double*);
@@ -137,6 +138,8 @@ struct rdata *rdata_get(void);
 #define get_rdata rdata_get
 void rdata_log(void);
 double rdata_px_unit(double, unit_t);
+double rdata_unit_px(double, unit_t);
+double rdata_unit(const value_t *, unit_t );
 double rdata_width(unit_t);
 double rdata_height(unit_t);
 int rdata_dpi(void);
