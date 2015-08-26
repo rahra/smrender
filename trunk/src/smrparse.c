@@ -706,7 +706,7 @@ unit_t parse_unit(const char *uptr)
       return U_MM;
    if (!strcasecmp(uptr, "°") || !strcasecmp(uptr, "deg") || !strcasecmp(uptr, "degrees"))
       return U_DEG;
-   if (!strcasecmp(uptr, "'"))
+   if (!strcasecmp(uptr, "'") || !strcasecmp(uptr, "min"))
       return U_MIN;
    if (!strcasecmp(uptr, "m"))
       return U_M;
