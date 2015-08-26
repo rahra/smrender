@@ -11,4 +11,5 @@
 * cat_poly() should add specific tag. There should also be an option for those ways which are already closed to either be ignore, duplicated and just a tag added.
 * Bug: reverse pointers are not updated for all put_objects(), hence, e.g. split() does not work in all cases.
 * Bug: it is not (always) checked that a tag does already exist when adding tags internally
-
+* Generic unit functions (rdata_unit() and parse_length()) should be implemented for all actions.
+* Dash length of dashed lines should be configurable.
