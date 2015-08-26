@@ -245,7 +245,7 @@ const char *unit_str(unit_t type)
 
 static void test_rdata_unit(void)
 {
-#define TEST_RDU_VAL 200.0
+#define TEST_RDU_VAL 1.0
    double v;
    int i;
 
