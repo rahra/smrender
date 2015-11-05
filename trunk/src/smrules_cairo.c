@@ -1244,11 +1244,6 @@ int act_cap_ini(smrule_t *r)
       log_msg(LOG_WARN, "parameter 'key' missing");
       return 1;
    }
-   if (*cap.key == '*')
-   {
-      cap.key++;
-      cap.pos |= POS_UC;
-   }
    if ((s = get_param("color", NULL, r->act)) != NULL)
       cap.col = parse_color(s);
 
@@ -1281,7 +1276,12 @@ int act_cap_ini(smrule_t *r)
          cap.pos &= ~(POS_N | POS_S);
    }
    log_debug("halignkey = %s, valignkey = %s", safe_null_str(cap.halignkey), safe_null_str(cap.valignkey));
-
+   if (*cap.key == '*')
+   {
+      cap.key++;
+      cap.pos |= POS_UC;
+   }
+ 
    cap.ctx = cairo_create(sfc_);
    if (cairo_smr_log_status(cap.ctx) != CAIRO_STATUS_SUCCESS)
       return -1;
