@@ -9,8 +9,9 @@ fi
 for FRULE in rules/*.osm
 do
 
-   echo "smrender -P A4 -i testdata.osm -r $FRULE -G -o $DEST/$(basename ${FRULE%%.osm}.png) 15E34.35:43N44.06:10000"
-   smrender -DD -P 50x50 -i testdata.osm -r $FRULE -G -o $DEST/$(basename ${FRULE%%.osm}.png) 15E34.35:43N44.06:10000
+   CMD="smrender -P 50x50 -i testdata.osm -r $FRULE -G -o $DEST/$(basename ${FRULE%%.osm}.png) 15E34.35:43N44.06:10000"
+   echo $CMD
+   $CMD
 
 done
 
