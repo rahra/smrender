@@ -14,7 +14,7 @@ fi
 for FRULE in $SRCOSM
 do
 
-   CMD="smrender -DD -P 50x50 -i testdata.osm -r $FRULE -G -o $DEST/$(basename ${FRULE%%.osm}.png) 15E34.35:43N44.06:10000"
+   CMD="smrender -w out.osm -DD -P 50x50 -i testdata.osm -r $FRULE -G -o $DEST/$(basename ${FRULE%%.osm}.png) 15E34.35:43N44.06:10000"
    echo $CMD
    $CMD
 
