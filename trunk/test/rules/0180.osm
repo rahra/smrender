@@ -9,9 +9,14 @@
       <tag k='generator' v='smrender'/>
       <tag k='_action_' v='draw:color=navajowhite;bcolor=black'/>
    </way>
+
    <node>
-      <tag k='natural' v='bay'/>
-      <tag k='_action_' v='cap:font=sans-serif;size=2mm;key=name;angle=auto'/>
+      <tag k='seamark:type' v=''/>
+      <tag k='_action_' v='pchar@libsmfilter.so'/>
+   </node>
+   <node>
+      <tag k='_action_' v='cap:font=sans-serif;size=1.4;halign=east;key=seamark:light_character;angle=auto;weight=0.7'/>
+      <tag k='seamark:light_character' v=''/>
    </node>
 </osm>
 

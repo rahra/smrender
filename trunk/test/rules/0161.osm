@@ -2,7 +2,7 @@
 <osm version='0.6' generator='Bernhard R. Fischer'>
    <node>
       <tag k='natural' v='bay'/>
-      <tag k='_action_' v='cap:font=sans-serif;size=3mm;key=*name'/>
+      <tag k='_action_' v='cap:font=sans-serif;size=2mm;key=*name'/>
    </node>
 </osm>
 
