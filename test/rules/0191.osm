@@ -1,0 +1,73 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<osm version='0.6' generator='Bernhard R. Fischer'>
+   <way>
+      <tag k='natural' v='coastline'/>
+      <tag k='_action_' v='cat_poly'/>
+   </way>
+   <way>
+      <tag k='natural' v='coastline'/>
+      <tag k='generator' v='smrender'/>
+      <tag k='_action_' v='draw:color=navajowhite;bcolor=black'/>
+   </way>
+
+   <node version="-10">
+      <tag k='seamark:type' v=''/>
+      <tag k='_action_' v='vsector@libsmfilter.so:f=0.7'/>
+   </node>
+   <way>
+      <tag k='seamark:light_radial' v=''/>
+      <tag k='_action_' v='draw:color=black;style=dashed'/>
+   </way>
+   <way>
+      <tag k='seamark:light_arc' v='red'/>
+      <tag k='seamark:arc_style' v='solid'/>
+      <tag k='_action_' v='draw:color=red;width=.3'/>
+   </way>
+   <way>
+      <tag k='seamark:light_arc' v='green'/>
+      <tag k='seamark:arc_style' v='solid'/>
+      <tag k='_action_' v='draw:color=green;width=.3'/>
+   </way>
+   <way>
+      <tag k='seamark:light_arc' v='white'/>
+      <tag k='seamark:arc_style' v='solid'/>
+      <tag k='_action_' v='draw:color=gold;width=.3'/>
+   </way>
+   <way>
+      <tag k='seamark:light_arc' v='!/red|green|white/!'/>
+      <tag k='seamark:arc_style' v='solid'/>
+      <tag k='_action_' v='draw:color=black'/>
+   </way>
+   <way>
+      <tag k='seamark:light_arc' v=''/>
+      <tag k='seamark:arc_style' v='dashed'/>
+      <tag k='_action_' v='draw:color=black;style=dashed'/>
+   </way>
+   <way>
+      <tag k='seamark:type' v='navigation_line'/>
+      <tag k='_action_' v='draw:color=black;style=dashed;width=0.2'/>
+   </way>
+
+   <node>
+      <tag k='seamark:type' v=''/>
+      <tag k='_action_' v='pchar@libsmfilter.so'/>
+   </node>
+   <node>
+      <tag k='seamark:type' v='light_minor'/>
+      <tag k='_action_' v='img:file=../SeaMapSymbols/Light_Minor.svg;scale=0.5'/>
+   </node>
+   <node>
+      <tag k='seamark:light_character' v=''/>
+      <tag k='_action_' v='cap:font=sans-serif;size=1.4;halign=east;key=seamark:light_character;angle=auto;weight=0.7'/>
+   </node>
+    <node>
+      <tag k='seamark:type' v='/light_minor|light_major/'/>
+      <tag k='_action_' v='cap:font=sans-serif;size=1.4;key=seamark:name;anglekey=seamark:light_character:autoangle;valign=south;halignkey=seamark:light_character:autoalign'/>
+   </node>
+   <node>
+      <tag k='seamark:type' v='light_minor'/>
+      <tag k='_action_' v='img:file=../SeaMapSymbols/Light_Magenta_120.svg;scale=0.5;angle=auto'/>
+   </node>
+
+</osm>
+

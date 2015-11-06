@@ -1,0 +1,65 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<osm version='0.6' generator='Bernhard R. Fischer'>
+   <!-- translation table for Croatian lights -->
+   <node id='1000'>
+      <tag k='Fl' v='Bl'/>
+      <tag k='LFl' v='DBl'/>
+      <tag k='Oc' v='Pk'/>
+      <tag k='F' v=' '/> <!-- FIXME... -->
+      <tag k='Iso' v='Izo'/>
+      <tag k='Q' v='K'/>
+      <tag k='IQ' v='KPk'/>
+      <tag k='VQ' v='VK'/>
+      <tag k='IVQ' v='VKPk'/>
+      <tag k='UQ' v='UK'/>
+      <tag k='IUQ' v='UKPk'/>
+      <tag k='FFl' v='Sj'/>
+      <tag k='white' v='B'/>
+      <tag k='red' v='C'/>
+      <tag k='green' v='Z'/>
+      <tag k='yellow' v='Ž'/>
+      <tag k='black' v='Cr'/>
+      <tag k='violett' v='Lj'/>
+   </node>
+   <!-- translation table for German lights -->
+   <node id='1001'>
+      <tag k='Fl' v='Blz.'/>
+      <tag k='LFl' v='Blk.'/>
+      <tag k='Oc' v='Ubr.'/>
+      <tag k='F' v='F.'/>
+      <tag k='Iso' v='Glt.'/>
+      <tag k='Q' v='Fkl.'/>
+      <tag k='IQ' v='Fkl.unt.'/>
+      <tag k='VQ' v='SFkl.'/>
+      <tag k='IVQ' v='SFkl.unt.'/>
+      <tag k='UQ' v='UFkl.'/>
+      <tag k='IUQ' v='UFkl.unt.'/>
+      <tag k='FFl' v='F.Blz.'/>
+      <tag k='white' v='w.'/>
+      <tag k='red' v='r.'/>
+      <tag k='green' v='gn.'/>
+      <tag k='yellow' v='g.'/>
+      <tag k='black' v='s.'/>
+      <tag k='violett' v='viol.'/>
+   </node>
+   <!-- translation rule for light character -->
+   <node version='-100'>
+      <tag k='/seamark:light:.*character/' v=''/>
+      <tag k='_action_' v='translate:id=1000;key=/seamark:light:.*character/'/>
+   </node>
+   <!-- translation rule for light colour -->
+   <node version='-100'>
+      <tag k='/seamark:light:.*colour/' v=''/>
+      <tag k='_action_' v='translate:id=1000;key=/seamark:light:.*colour/;newtag=1'/>
+   </node>
+
+   <node>
+      <tag k='seamark:type' v=''/>
+      <tag k='_action_' v='pchar@libsmfilter.so:lang=hr'/>
+   </node>
+   <node version="6">
+      <tag k='_action_' v='cap:font=sans-serif;size=1.4;key=seamark:light_character'/>
+      <tag k='seamark:light_character' v=''/>
+   </node>
+</osm>
+

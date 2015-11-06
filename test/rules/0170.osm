@@ -1,0 +1,12 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<osm version='0.6' generator='Bernhard R. Fischer'>
+   <node>
+      <tag k='seamark:type' v=''/>
+      <tag k='_action_' v='pchar@libsmfilter.so'/>
+   </node>
+   <node version="6">
+      <tag k='_action_' v='cap:font=sans-serif;size=1.4;key=seamark:light_character'/>
+      <tag k='seamark:light_character' v=''/>
+   </node>
+</osm>
+
