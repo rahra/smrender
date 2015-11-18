@@ -25,6 +25,7 @@
 #include <errno.h>
 #include <dlfcn.h>
 #include <ctype.h>
+#include <inttypes.h>
 
 #include "smrender_dev.h"
 
@@ -42,7 +43,8 @@ static char *skipb(const char *s)
 
 
 /*! Parse a literal match condition into a struct specialTag.
- *  @param b Pointer to bstring_t with match definition.
+ *  @param b Pointer to bstring_t with match definition. The contents of b are
+ *  modified.
  *  @param t Pointer to struct specialTag.
  *  @return The function returns 0 if everything is ok. If a condition could
  *  not be properly parsed, a negative value is returned and it will be
@@ -338,7 +340,7 @@ int init_rule(osm_obj_t *o, smrule_t **r)
    smrule_t *rl;
    int e, i;
 
-   log_debug("initializing rule 0x%016lx", o->id);
+   log_debug("initializing rule 0x%016"PRIx64" (%"PRId64")", o->id, o->id & 0x000000ffffffffff);
 
    if ((*r = alloc_rule(o)) == NULL)
       return -1;
@@ -366,7 +368,7 @@ int init_rule(osm_obj_t *o, smrule_t **r)
    {
       // FIXME: don't understand next fixme
       // FIXME need to be added to btree
-      log_msg(LOG_DEBUG, "rule %ld has no action, it may be used as template", o->id);
+      log_msg(LOG_DEBUG, "rule %"PRId64" has no action, it may be used as template", o->id);
       return 0;
    }
 
