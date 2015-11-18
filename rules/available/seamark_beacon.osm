@@ -105,8 +105,8 @@
    </node>
  
    <node>
-      <tag k='_action_' v='img:file=SeaMapSymbols/Light_House.svg'/>
-      <tag k='/^seamark:light.*/' v=''/>
+      <tag k='_action_' v='img:file=SeaMapSymbols/Church.svg'/>
+      <tag k='seamark:landmark:function' v='church'/>
       <tag k='seamark:type' v='landmark' />
    </node>
    <node>
