@@ -30,6 +30,7 @@
 #include <stdlib.h>
 #include <errno.h>
 #include <string.h>
+#include <stdio.h>
 
 #include "smrender.h"
 #include "smcore.h"
@@ -39,6 +40,53 @@
 
 extern volatile sig_atomic_t int_;
 extern int render_all_nodes_;
+
+
+#define ADD_RULE_TAG
+#ifdef ADD_RULE_TAG
+static int add_rule_tag(const smrule_t *r, osm_obj_t *o)
+{
+   char buf[64], *s = NULL, *tmp;
+   int n, len = 0;
+
+   if ((n = match_attr(o, "smrender:rules", NULL)) >= 0)
+   {
+      s = o->otag[n].v.buf;
+      len = o->otag[n].v.len;
+   }
+
+   // FIXME: constant shouldn't be hardcoded
+   snprintf(buf, sizeof(buf), "%"PRId64, r->oo->id & 0x000000ffffffffff);
+   if ((tmp = realloc(s, len + strlen(buf) + 1)) == NULL)
+   {
+      log_errno(LOG_ERR, "realloc() failed");
+      return -1;
+   }
+   s = tmp;
+
+   if (len)
+      s[len++] = ';';
+   strcpy(s + len, buf);
+
+   // add tag if it didn't exist before
+   if (n == -1)
+   {
+      if ((n = realloc_tags(o, o->tag_cnt + 1)) == -1)
+      {
+         free(s);
+         log_errno(LOG_ERR, "realloc() failed");
+         return -1;
+      }
+      o->otag[n].k.buf = "smrender:rules";
+      o->otag[n].k.len = 14;
+   }
+
+   o->otag[n].v.buf = s;
+   o->otag[n].v.len = strlen(s);
+
+   return 0;
+}
+#endif
 
 
 /*! Match and apply ruleset to object if it is visible.
@@ -83,16 +131,23 @@ int apply_rule(osm_obj_t *o, smrule_t *r, int *ret)
             break;
       }
 
+   // check if tags of rule match tags of object
    for (i = 0; i < r->oo->tag_cnt; i++)
       if (bs_match_attr(o, &r->oo->otag[i], &r->act->stag[i]) == -1)
          return ERULE_NOMATCH;
 
+   // check if object is visible
    if (!o->vis)
       return ERULE_INVISIBLE;
 
+   // call function with this object
    i = r->act->main.func(r, o);
    if (ret != NULL)
       *ret = i;
+
+#ifdef ADD_RULE_TAG
+   add_rule_tag(r, o);
+#endif
    return 0;
 }
 
