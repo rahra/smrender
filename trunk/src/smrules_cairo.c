@@ -100,6 +100,7 @@
 #define CURVE 1
 #define WAVY 2
 #define WAVY_LENGTH 0.0015
+#define PIPE_DOT_SCALE 2.5
 
 #define MAJORAXIS 720.0
 #define AUTOROT NAN
@@ -482,7 +483,7 @@ int cairo_smr_get_pixel(cairo_surface_t *sfc, int x, int y)
          cairo_image_surface_get_format(sfc));
 }
 
-
+//FIXME: This should be moved to smrparse.c
 static void parse_auto_rot(const action_t *act, double *angle, struct auto_rot *rot)
 {
    char *val;
@@ -976,7 +977,7 @@ static void render_poly_line(cairo_t *ctx, const struct actDraw *d, const osm_wa
 
       if (d->border.style == DRAW_PIPE)
       {
-         cairo_set_line_width(ctx, cairo_get_line_width(ctx) * 2);
+         cairo_set_line_width(ctx, cairo_get_line_width(ctx) * PIPE_DOT_SCALE);
          cairo_smr_dash(ctx, DRAW_PIPE, d->border.width);
          cairo_smr_poly(ctx, d, w);
          cairo_stroke(ctx);
