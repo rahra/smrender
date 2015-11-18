@@ -1,4 +1,4 @@
-/* Copyright 2011 Bernhard R. Fischer, 2048R/5C5FFD47 <bf@abenteuerland.at>
+/* Copyright 2011-2015 Bernhard R. Fischer, 2048R/5C5FFD47 <bf@abenteuerland.at>
  *
  * This file is part of libhpxml.
  *
@@ -76,17 +76,21 @@ int bs_ncmp(bstring_t b, const char *s, int n)
 }
 
 
+/*! This function compares a b_string to a regular C \0-terminated character
+ * string.
+ * @param b String as bstring_t structure.
+ * @param s Pointer to C string.
+ * @return The function returns an integer less than, equal, or greater than 0
+ * exactly like strcmp(3).
+ */
 int bs_cmp(bstring_t b, const char *s)
 {
+   char c;
+
+   // compare characters and return difference if they are not equal
    for (; b.len && *s; (void) bs_advance(&b), s++)
-   {
-      // element of b is less than element of s
-      if (*b.buf < *s)
-         return -1;
-      // element of b is greater than element of s
-      if (*b.buf > *s)
-         return 1;
-   }
+      if ((c = *b.buf - *s))
+         return c;
 
    // strings are equal and of equal length
    if (!b.len && !*s)
@@ -94,22 +98,30 @@ int bs_cmp(bstring_t b, const char *s)
 
    // string s is longer than b
    if (*s)
-      return 1;
+      return -*s;
 
    // string s is shorter than b
-   return -1;
+   return *b.buf;
 }
 
 
+/*! This function converts the string in b into a long integer. Currently, it
+ * converts only decimal numbers, i.e. it uses a base of 10.
+ * @param b String of type bstring_t.
+ * @return The function returns the value of the converted string. The
+ * conversion stops at the first character which is not between 0 and 9. Thus,
+ * it returns 0 if there is no digit at the beginning of the string.
+ * FIXME: This function should be improved to something similar to strtol(3).
+ */
 long bs_tol(bstring_t b)
 {
-   int n = 0;
+   int n = 1;
    long l = 0;
 
    if (b.len && *b.buf == '-')
    {
       (void) bs_advance(&b);
-      n = 1;
+      n = -1;
    }
 
    for (; b.len && *b.buf >= '0' && *b.buf <= '9'; (void) bs_advance(&b))
@@ -118,10 +130,7 @@ long bs_tol(bstring_t b)
       l += *b.buf - '0';
    }
 
-   if (n)
-      return -l;
-
-   return l;
+   return l * n;
 }
 
 
