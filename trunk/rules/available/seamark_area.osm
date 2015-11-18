@@ -24,6 +24,10 @@
       <tag k='seamark:type' v='cable_submarine'/>
       <tag k='_action_' v='draw:color=magenta;wavy=yes'/>
    </way>
+   <way>
+      <tag k='seamark:type' v='pipeline_submarine'/>
+      <tag k='_action_' v='draw:bcolor=magenta;bstyle=pipe;bwidth=0.2'/>
+   </way>
    
    <way version="-10">
       <tag k='seamark:type' v='anchorage'/>

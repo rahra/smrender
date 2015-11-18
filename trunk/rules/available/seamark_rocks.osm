@@ -13,6 +13,11 @@
    </node>
    <node>
       <tag k='seamark:type' v='wreck'/>
+      <tag k='seamark:wreck:category' v='/^hull_showing/'/>
+      <tag k='_action_' v='img:file=SeaMapSymbols/WreckS.svg'/>
+   </node>
+   <node>
+      <tag k='seamark:type' v='wreck'/>
       <tag k='~seamark:wreck:category~' v=''/>
       <tag k='_action_' v='img:file=SeaMapSymbols/WreckS.svg'/>
    </node>
