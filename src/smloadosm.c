@@ -522,7 +522,7 @@ int read_osm_file(hpx_ctrl_t *ctl, bx_node_t **tree, const struct filter *fi, st
    hpx_tree_t *tlist = NULL;
    bx_node_t *tr;
    time_t tim;
-   int e, dup_cnt = 0, t = 0;
+   int e, dup_cnt = 0;
 
    log_debug("revision >= 1593");
    //install_sigusr1();
@@ -546,13 +546,6 @@ int read_osm_file(hpx_ctrl_t *ctl, bx_node_t **tree, const struct filter *fi, st
          log_msg(LOG_INFO, "onode_memory: %ld kByte, line %ld, %.2f MByte/s",
                (long) onode_mem() / 1024, oline_, ((double) ctl->pos / (double) (time(NULL) - tim)) / (double) (1024 * 1024));
          log_msg(LOG_INFO, "ctl->pos = %ld (%ld %%), ctl->len = %ld, ctl->buf.len = %ld", ctl->pos, ctl->pos * 100 / ctl->len, ctl->len, ctl->buf.len);
-      }
-
-      // debugging
-      if (t != obj->type)
-      {
-         t = obj->type;
-         //log_debug("new object section: type = %d", t);
       }
 
       if (obj != NULL)
@@ -608,7 +601,7 @@ int read_osm_file(hpx_ctrl_t *ctl, bx_node_t **tree, const struct filter *fi, st
                   }
                   break;
             }
-         }
+         } // if (fi != NULL)
 
          // object was deleted by filter
          if (obj == NULL)
@@ -624,7 +617,7 @@ int read_osm_file(hpx_ctrl_t *ctl, bx_node_t **tree, const struct filter *fi, st
 
          if (ds != NULL)
             update_stats(obj, ds);
-      }
+      } //if (obj != NULL)
       else
          log_debug("read_osm_obj() returned NULL object");
    }
