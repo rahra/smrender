@@ -18,30 +18,50 @@
 /*! \file smcoast.c
  * This file contains the code which is used to close open polygons. Open
  * polygons obviously cannot be filled, thus the must be closed before. Open
- * polygons occure at the edges of the boundbox which is used to select data out
- * of the OSM database. This is one of the most difficult parts at all.
+ * polygons occure at the edges of the bounding box which is used to select
+ * data out of the OSM database. This is one of the most difficult parts at
+ * all.
+ *
+ * The basic stages of this polygon-closing algorithm are as follows:
+ * 1) Gather all open polygons.
+ * 2) Create pdef list which contains all end points of open polygons (pdef_cnt
+ *    = open_poly_cnt * 2).
+ * 3) Retrieve node ids from those points (each start and end point).
+ * 4) Sort pdef list by node id.
+ * 5) Set prev/next pointers for each point in pdef list at their neighboring
+ *    points, i.e. if one start point has the same node id as the neighbor end
+ *    point (poly_find_adj2()). Then it is the same point (node) which belongs
+ *    to two differrent ways, thus those ways have to be connected.
+ * 6) Loop over all ways in the list (loop_detect() returns number of open ways).
+ * 6.1) Count nodes of "connected" (next/prev-pointered) ways and detect if
+ *    there is a loop, i.e. a circular list of ways (count_poly_ref() = 1 if
+ *    loop, 0 if unclosed).
+ * 6.2) Create new way with the according number of nodes (node count = sum of
+ *    all connected ways).
+ * 6.3) Copy node ids of all connected ways to newly created way
+ *    (join_open_poly()). Mark ways which have been processed as deleteable
+ *    (from list). Mark those which are still open (i.e. not already looped) as
+ *    open.
+ * 6.4) Put new way to way pool.
+ * 7) Free pdef list.
+ * 8) Trim open ways to edges of page.
+ * 9) Create new pdef list with number of still open ways.
+ * 10) Add all end points to pdef list and calculate their bearing from the
+ *    center point of the rendering area (poly_get_brg() returns number of open
+ *    ways).
+ * 11) Sort points by bearing.
+ * 12) Iterate over all points in the order of the list (connect_open()): find
+ *    first start node and next end node.
+ * 12.1) Test if both are on the same edge of the rendering area, otherwise
+ *    append additional corner point(s) of the rendering rectangle which are
+ *    between the start and end node in clockwise order behind the end node.
+ * 12.2) If start and end node belong to the same way, close polygon, i.e.
+ *    append start node at the end.
+ * 12.3)
+ *
+ *
  *
  *  @author Bernhard R. Fischer
- */
-
-/*
- * 1) gather all open polygons
- * 2) Create pdef list which contains all end points of open polygons (pdef_cnt = open_poly_cnt * 2)
- * 3) Retrieve node ids from those points (each start and end point)
- * 4) Sort pdef list by node id.
- * 5) Set prev/next pointers in points of pdef list at neighboring points, i.e. if one start point has the same node id as the neighboring end point (poly_find_adj2()).
- * 6) loop over all ways (loop_detect() returns number of open ways)
- * 6.1) count nodes of "connected" (pointered) ways and detect if there is a loop (count_poly_ref() = 1 if loop, 0 if unclosed)
- * 6.2) create new way with the according number of nodes (node count = sum of all connected ways)
- * 6.3) copy node ids of all connected ways to newly created way (join_open_poly()). Mark ways which have been processed as deleteable (from list). Mark those which are still open (i.e. not already looped) as open.
- * 6.4) put new way to way pool.
- * 7) Free list of pdef
- * 8) Trim open ways to edges of page
- * 9) create new pdef list with number of still open ways.
- * 10) add all end points to pdef list and calculate bearing from center point (poly_get_brg() returns number of open ways)
- * 11) sort points by bearing
- * 12) connect_open()
- * 12.1)
  *
  */
 #include <unistd.h>
