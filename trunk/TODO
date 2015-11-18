@@ -14,3 +14,6 @@
 * Generic unit functions (rdata_unit() and parse_length()) should be implemented for all actions.
 * Dash length of dashed lines should be configurable.
 * Rule tests not complete yet.
+* Documentation of captions on ways incomplete.
+* Not sure but add_rule_tag() in smcore.c probably creates segfaults (observed one time).
+
