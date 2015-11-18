@@ -380,21 +380,40 @@ int act_poly_centroid_main(smrule_t * UNUSED(r), osm_way_t *w)
 }
 
 
-int act_reverse_way_main(smrule_t * UNUSED(r), osm_way_t *w)
+static int reverse_way(osm_way_t *w)
 {
-   int i;
    int64_t ref;
 
-   if (!is_closed_poly(w))
-      return 0;
-
-   for (i = 1; i <= w->ref_cnt / 2 - 1; i++)
+   for (int i = 1; i <= w->ref_cnt / 2 - 1; i++)
    {
       ref = w->ref[i];
       w->ref[i] = w->ref[w->ref_cnt - i - 1];
       w->ref[w->ref_cnt - i - 1] = ref;
    }
    return 0;
+}
+
+
+int act_reverse_way_ini(smrule_t *r)
+{
+   if (r->oo->type != OSM_NODE)
+   {
+     log_msg(LOG_ERR, "reverse_way is only applicable to ways");
+     return 1;
+   }
+   return 0;
+}
+
+
+int act_reverse_way_fini(smrule_t * UNUSED(r))
+{
+   return 0;
+}
+
+
+int act_reverse_way_main(smrule_t * UNUSED(r), osm_obj_t *o)
+{
+   return reverse_way((osm_way_t*) o);
 }
 
 
@@ -410,7 +429,7 @@ int set_way_direction(osm_way_t *w, int dir)
       return -1;
 
    if (((ar < 0) && (dir == DIR_CCW)) || ((ar > 0) && (dir == DIR_CW)))
-      return act_reverse_way_main(NULL, w);
+      return reverse_way(w);
 
    return 0;
 }
