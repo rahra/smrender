@@ -84,6 +84,9 @@ struct dstats
    int ver[MAX_ITER];
 };
 
+/*! This structure contains all core parameters and settings which are
+ * necessary for Smrender to operate properly.
+ */
 struct rdata
 {
    //! root node of node rules and way rules
@@ -95,15 +98,22 @@ struct rdata
    bx_node_t *index;
    //! bounding box (left lower and right upper coordinates)
    struct bbox bb;
-   //! coordinate with/height (wc=bb.ru.lon-bb.ll.lon, hc=bb.ru.lat-bb.ll.lat)
-   double wc, hc;
+   //! coordinate width in degrees (wc=bb.ru.lon-bb.ll.lon)
+   double wc, 
+   //! coordinate height in degrees (hc=bb.ru.lat-bb.ll.lat)
+          hc;
    //! mean latitude and its length in degrees corresponding to the real nautical miles
    double mean_lat, mean_lat_len;
+   //! mean longitude in degrees
    double mean_lon;
-   //! hyperbolic values for Mercator projection (latitude stretching)
-   double lath, lath_len;
-   //! (pixel) image width and height of rendered image
-   double w, h;
+   //! hyperbolic value of mean latitude, necessary for Mercator projection (latitude stretching)
+   double lath,
+   //! difference between hyperbolic max. and min. latitudes
+          lath_len;
+   //! (pixel) image width of rendered image
+   double w,
+   //! (pixel) image height of rendered image
+          h;
    //! pixel resolution
    int dpi;
    //! scale
