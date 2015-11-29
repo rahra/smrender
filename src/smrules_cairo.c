@@ -646,11 +646,17 @@ static double tri_area(const point_t **p, int n)
 void control_points(const line_t *g, const line_t *l, point_t *p1, point_t *p2, double f)
 {
    const point_t *p[3];
-   double lgt, a1, a2;
+   double lgt, a1, a2, da, ha;
    line_t h;
 
+   // calculate length of h (line between g and l)
    lgt = sqrt(pow(g->B.x - l->A.x, 2) + pow(g->B.y - l->A.y, 2));
 
+   // calculate angle of h
+   h.A = g->B;
+   h.B = l->A;
+   ha = angle(&h);
+ 
    h.B = g->B;
 #define ISOSCELES_TRIANGLE
 #ifdef ISOSCELES_TRIANGLE
@@ -665,7 +671,8 @@ void control_points(const line_t *g, const line_t *l, point_t *p1, point_t *p2, 
    p[0] = &g->A;
    p[1] = &g->B;
    p[2] = &l->A;
-   a1 += tri_area(p, 3) < 0 ? -M_PI_2 : M_PI_2;
+   da = M_PI_2 * sgn(tri_area(p, 3));
+   a1 = da == 0 ? ha : a1 + da;
 
    p1->x = g->B.x + lgt * cos(a1) * f;
    p1->y = g->B.y + lgt * sin(a1) * f;
@@ -682,7 +689,8 @@ void control_points(const line_t *g, const line_t *l, point_t *p1, point_t *p2, 
    p[0] = &g->B;
    p[1] = &l->A;
    p[2] = &l->B;
-   a2 += tri_area(p, 3) < 0 ? -M_PI_2 : M_PI_2;
+   da = M_PI_2 * sgn(tri_area(p, 3));
+   a2 = da == 0 ? ha : a2 + da;
 
    p2->x = l->A.x - lgt * cos(a2) * f;
    p2->y = l->A.y - lgt * sin(a2) * f;

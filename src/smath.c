@@ -81,3 +81,13 @@ double fmod2(double a, double n)
    return a < 0 ? a + n : a;
 }
 
+
+/*! This implements the signum function. 
+ * @param a Parameter to test for.
+ * @return The function returns 1 if a > 0, -1 if a < 0 and 0 if a == 0.
+ */
+int sgn(double a)
+{
+   return (a > 0) - (a < 0);
+}
+
