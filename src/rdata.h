@@ -72,13 +72,11 @@ struct bbox
 struct dstats
 {
    struct bbox bb;
-   long ncnt, wcnt, rcnt;
-   int64_t min_nid;
-   int64_t max_nid;
-   int64_t min_wid;
-   int64_t max_wid;
-   int nid_bits, wid_bits;
-   int64_t nid_mask, wid_mask;
+   long cnt[4];
+   int64_t min_id[4];
+   int64_t max_id[4];
+   int id_bits[4];
+   int64_t id_mask[4];
    const void *lo_addr, *hi_addr;   // lowest and highest memory address
    int ver_cnt;
    int ver[MAX_ITER];

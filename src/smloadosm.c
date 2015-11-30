@@ -23,6 +23,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
+#include <inttypes.h>
 #include <unistd.h>
 #include <string.h>
 #include <time.h>
@@ -111,8 +112,11 @@ static int get_value(const char *k, hpx_tag_t *tag, bstring_t *b)
 static void init_stats(struct dstats *ds)
 {
    memset(ds, 0, sizeof(*ds));
-   ds->min_nid = ds->min_wid = MAX_ID;
-   ds->max_nid = ds->max_wid = MIN_ID;
+   for (int i = 0; i < 4; i++)
+   {
+      ds->min_id[i] = INT64_MAX;
+      ds->max_id[i] = INT64_MIN;
+   }
    ds->bb.ll.lat = 90;
    ds->bb.ru.lat = -90;
    ds->bb.ll.lon = 180;
@@ -124,9 +128,9 @@ static void init_stats(struct dstats *ds)
  
 static void log_stats(const struct dstats *ds)
 {
-   log_debug(" ncnt = %ld, min_nid = %ld, max_nid = %ld (%d bits)", ds->ncnt, ds->min_nid, ds->max_nid, ds->nid_bits);
-   log_debug(" wcnt = %ld, min_wid = %ld, max_wid = %ld (%d bits)", ds->wcnt, ds->min_wid, ds->max_wid, ds->wid_bits);
-   log_debug(" rcnt = %ld", ds->rcnt);
+   for (int i = 1; i < 4; i++)
+      log_debug("[%d] cnt = %ld, min_id = %ld, max_id = %ld (%d bits)",
+            i, ds->cnt[i], ds->min_id[i], ds->max_id[i], ds->id_bits[i]);
    log_debug(" left lower %.3f,%.3f right bottom %.3f,%.3f", ds->bb.ll.lon, ds->bb.ll.lat, ds->bb.ru.lon, ds->bb.ru.lat);
    log_debug(" lo_addr = %p, hi_addr = %p", ds->lo_addr, ds->hi_addr);
 }
@@ -134,12 +138,12 @@ static void log_stats(const struct dstats *ds)
 
 static void update_node_stats(const osm_node_t *n, struct dstats *ds)
 {
-   ds->ncnt++;
    if (ds->bb.ru.lat < n->lat) ds->bb.ru.lat = n->lat;
    if (ds->bb.ll.lon > n->lon) ds->bb.ll.lon = n->lon;
    if (ds->bb.ll.lat > n->lat) ds->bb.ll.lat = n->lat;
    if (ds->bb.ru.lon < n->lon) ds->bb.ru.lon = n->lon;
 }
+
 
 static int update_stats(const osm_obj_t *o, struct dstats *ds)
 {
@@ -148,21 +152,17 @@ static int update_stats(const osm_obj_t *o, struct dstats *ds)
    switch (o->type)
    {
       case OSM_NODE:
-      ds->ncnt++;
-      update_node_stats((osm_node_t*) o, ds);
-      if (ds->min_nid > o->id) ds->min_nid = o->id;
-      if (ds->max_nid < o->id) ds->max_nid = o->id;
-      break;
-
+         update_node_stats((osm_node_t*) o, ds);
       case OSM_WAY:
-      ds->wcnt++;
-      if (ds->min_wid > o->id) ds->min_wid = o->id;
-      if (ds->max_wid < o->id) ds->max_wid = o->id;
-      break;
-
       case OSM_REL:
-      ds->rcnt++;
-      break;
+         ds->cnt[o->type]++;
+         if (ds->min_id[o->type] > o->id) ds->min_id[o->type] = o->id;
+         if (ds->max_id[o->type] < o->id) ds->max_id[o->type] = o->id;
+         break;
+
+      default:
+         log_msg(LOG_ERR, "unknown type %d", o->type);
+         return -1;
    }
    if ((void*) o > ds->hi_addr)
       ds->hi_addr = o;
@@ -200,10 +200,11 @@ static int bits(int64_t n)
 
 static void fin_stats(struct dstats *ds)
 {
-   ds->nid_bits = bits(ds->max_nid);
-   ds->nid_mask = ((int64_t) 1 << ds->nid_bits) - 1;
-   ds->wid_bits = bits(ds->max_wid);
-   ds->wid_mask = ((int64_t) 1 << ds->wid_bits) - 1;
+   for (int i = 1; i < 4; i++)
+   {
+      ds->id_bits[i] = bits(ds->max_id[i]);
+      ds->id_mask[i] = ((int64_t) 1 << ds->id_bits[i]) - 1;
+   }
 }
 
 
@@ -457,19 +458,9 @@ int read_osm_obj(hpx_ctrl_t *ctl, hpx_tree_t **tlistptr, osm_obj_t **obj)
                      }
                      if (get_value("role", tlist->subtag[i]->tag, &b) != -1)
                      {
-                        if (!b.len)
-                           mem->role = ROLE_EMPTY;
-                        else if (!bs_cmp(b, "inner"))
-                           mem->role = ROLE_INNER;
-                        else if (!bs_cmp(b, "outer"))
-                           mem->role = ROLE_OUTER;
-                        else
-                        {
-                           /* too much debugging
-                           log_msg(LOG_WARN, "relation %ld: role type not implemented yet: '%.*s'",
-                                 (long) o.o.id, b.len, b.buf);
-                                 */
-                        }
+                        if (!(mem->role = strrole(&b)))
+                           log_msg(LOG_WARN, "relation %"PRId64": role type not implemented: '%.*s'",
+                                 o.o.id, b.len, b.buf);
                      }
                      // FIXME: 'role' not parsed yet
                      if (mem->type)
