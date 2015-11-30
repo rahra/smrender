@@ -198,6 +198,7 @@ void osm_node_default(osm_node_t *n)
    osm_obj_default((osm_obj_t*) n);
 }
 
+
 const char *role_str(int role)
 {
    switch (role)
@@ -208,9 +209,89 @@ const char *role_str(int role)
          return "inner";
       case ROLE_OUTER:
          return "outer";
+      case ROLE_TO:
+         return "to";
+      case ROLE_FROM:
+         return "from";
+      case ROLE_VIA:
+         return "via";
+      case ROLE_LINK:
+         return "link";
+      case ROLE_FORWARD:
+         return "forward";
+      case ROLE_BACKWARD:
+         return "backward";
+      case ROLE_STOP:
+         return "stop";
+      case ROLE_LABEL:
+         return "label";
+      case ROLE_ADMIN_CENTRE:
+         return "admin_centre";
       case ROLE_NA:
       default:
          return "n/a";
+   }
+}
+
+
+/*! This function tests the bstring_t pointed to by b for a known role-string
+ * of a relation.
+ * @param b Pointer to a role-string of type bstring_t.
+ * @return This function returns an integer corresponding to role-string. These
+ * integers are defined by an enum in osm_inplace.h name ROLE_xxx. If the
+ * string is empty ROLE_EMPTY is returned. If the string is unknown or a NULL
+ * pointer is passed ROLE_NA is returned.
+ * */
+int strrole(const bstring_t *b)
+{
+   if (b == NULL)
+      return ROLE_NA;
+   else if (!b->len)
+      return ROLE_EMPTY;
+   else if (!bs_cmp(*b, "inner"))
+      return ROLE_INNER;
+   else if (!bs_cmp(*b, "outer"))
+      return ROLE_OUTER;
+   else if (!bs_cmp(*b, "to"))
+      return ROLE_TO;
+   else if (!bs_cmp(*b, "from"))
+      return ROLE_FROM;
+   else if (!bs_cmp(*b, "via"))
+      return ROLE_VIA;
+   else if (!bs_cmp(*b, "link"))
+      return ROLE_LINK;
+   else if (!bs_cmp(*b, "forward"))
+      return ROLE_FORWARD;
+   else if (!bs_cmp(*b, "backward"))
+      return ROLE_BACKWARD;
+   else if (!bs_cmp(*b, "stop"))
+      return ROLE_STOP;
+   else if (!bs_cmp(*b, "label"))
+      return ROLE_LABEL;
+   else if (!bs_cmp(*b, "admin_centre"))
+      return ROLE_ADMIN_CENTRE;
+   else
+      return ROLE_NA;
+}
+
+
+/*! This fucntion returns a constant string which corresponds to the type of an
+ * OSM object.
+ * @param type Type of object, which is one of OSM_NODE, OSM_WAY, or OSM_REL.
+ * @return Returns a pointer to a string.
+ */
+const char *type_str(int type)
+{
+   switch (type)
+   {
+      case OSM_NODE:
+         return "node";
+      case OSM_WAY:
+         return "way";
+      case OSM_REL:
+         return "relation";
+      default:
+         return "unknown";
    }
 }
 
