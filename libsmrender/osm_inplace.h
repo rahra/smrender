@@ -1,18 +1,18 @@
-/* Copyright 2011 Bernhard R. Fischer, 2048R/5C5FFD47 <bf@abenteuerland.at>
+/* Copyright 2011-2015 Bernhard R. Fischer, 2048R/5C5FFD47 <bf@abenteuerland.at>
  *
- * This file is part of smfilter.
+ * This file is part of Smrender (originally Smfilter).
  *
- * Smfilter is free software: you can redistribute it and/or modify
+ * Smrender is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, version 3 of the License.
  *
- * Smfilter is distributed in the hope that it will be useful,
+ * Smrender is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with smfilter. If not, see <http://www.gnu.org/licenses/>.
+ * along with Smrender. If not, see <http://www.gnu.org/licenses/>.
  */
 
 #ifndef OSM_INPLACE_H
@@ -29,7 +29,9 @@
 #define get_v(x,y) get_value("v",x,y)
 
 enum {OSM_NA, OSM_NODE, OSM_WAY, OSM_REL};
-enum {ROLE_NA, ROLE_EMPTY, ROLE_INNER, ROLE_OUTER};
+enum {ROLE_NA, ROLE_EMPTY, ROLE_INNER, ROLE_OUTER, ROLE_VIA, ROLE_FROM,
+   ROLE_TO, ROLE_LINK, ROLE_FORWARD, ROLE_BACKWARD, ROLE_STOP, ROLE_LABEL,
+   ROLE_ADMIN_CENTRE};
 
 
 #define SIZEOF_OSM_OBJ(x) ((x)->type == OSM_NODE ? sizeof(osm_node_t) : \
@@ -100,7 +102,8 @@ void osm_obj_default(osm_obj_t *);
 void osm_way_default(osm_way_t *);
 void osm_node_default(osm_node_t *);
 const char *role_str(int );
-
+int strrole(const bstring_t *);
+const char *type_str(int );
 
 #endif
 
