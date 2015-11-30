@@ -76,14 +76,9 @@ static int64_t out_id(int64_t id, int type)
    switch (type)
    {
       case OSM_NODE:
-         mask = rd->ds.nid_mask;
-         break;
       case OSM_WAY:
-         mask = rd->ds.wid_mask;
-         break;
       case OSM_REL:
-         // FIXME: artificial limit!
-         mask = INT64_C(30);
+         mask = rd->ds.id_mask[type];
          break;
       default:
          log_msg(LOG_EMERG, "unknown object type %d", type);
