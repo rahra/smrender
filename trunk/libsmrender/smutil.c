@@ -252,6 +252,15 @@ int bs_match(const bstring_t *dst, const bstring_t *pat, const struct specialTag
 }
 
 
+/*! This function matches the match tag defined by ot and st to the tags of the
+ * object o. 
+ * @param o Object to with a specific tag is matched.
+ * @param ot Tag which is matched to o.
+ * @param st Special match information in respect to ot for additional
+ * parameters, such as "greater than", "less than", "regex", and so on.
+ * @return The function returns the index if the tag with o which matches the
+ * requirements or -1 if no tag matches.
+ */
 int bs_match_attr(const osm_obj_t *o, const struct otag *ot, const struct stag *st)
 {
    int i, kmatch, vmatch;
