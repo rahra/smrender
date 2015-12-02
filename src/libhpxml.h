@@ -15,6 +15,13 @@
  * along with libhpxml. If not, see <http://www.gnu.org/licenses/>.
  */
 
+/*! \file libhpxml.h
+ * This file contains all structures and prototypes for the high performance
+ * XML parser library libhpxml.
+ * 
+ * @author Bernhard R. Fischer
+ */
+
 #ifndef HPXML_H
 #define HPXML_H
 
