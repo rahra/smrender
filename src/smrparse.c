@@ -323,7 +323,7 @@ void check_way_type(smrule_t *r)
 }
 
 
-/*! This function parses a rule defined within the object o into the smrule_t
+/*! This function parses a rule defined within the object o into a smrule_t
  * structure r. The memory is reserved by a call to alloc_rule() and must be
  * freed again with free(). If the _action_ tag was parsed properly, it is
  * removed from that object's list of tags.
@@ -340,7 +340,7 @@ int init_rule(osm_obj_t *o, smrule_t **r)
    smrule_t *rl;
    int e, i;
 
-   log_debug("initializing rule 0x%016"PRIx64" (%"PRId64")", o->id, o->id & 0x000000ffffffffff);
+   log_debug("initializing rule %"PRId64" (0x%016"PRIx64", %"PRId64")", o->id, o->id, o->id & 0x000000ffffffffff);
 
    if ((*r = alloc_rule(o)) == NULL)
       return -1;
