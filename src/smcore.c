@@ -1,4 +1,4 @@
-/* Copyright 2011-2014 Bernhard R. Fischer, 2048R/5C5FFD47 <bf@abenteuerland.at>
+/* Copyright 2011-2015 Bernhard R. Fischer, 2048R/5C5FFD47 <bf@abenteuerland.at>
  *
  * This file is part of smrender.
  *
@@ -42,50 +42,173 @@ extern volatile sig_atomic_t int_;
 extern int render_all_nodes_;
 
 
-#define ADD_RULE_TAG
+//#define ADD_RULE_TAG
 #ifdef ADD_RULE_TAG
+/*FIXME: The following code does not work yet because at some place tags are
+ * copied from one object to another. Those are shallow copies, thus the string
+ * pointers of the rules tag point to the same area and are thus overwritten
+ * from one object to another. Also copied tags and realloc() may render
+ * pointer duplicates inaccessible (because of memory reallocation). A
+ * different solution is to be found...
+ */
+
+
+/*! Compare string s2 to the initial part of bstring_t s1, i.e. strlen(s2) number of
+ * characters.
+ */
+static int bs_ncmp2(const bstring_t *s1, const char *s2)
+{
+   for (int i = 0; i < s1->len && *s2; i++, s2++)
+      if (s1->buf[i] != *s2)
+         return s1->buf[i] - *s2;
+   if (!*s2)
+      return 0;
+   return -*s2;
+}
+
+
+static int check_rule_tag(const osm_obj_t *o, bstring_t b)
+{
+   long id;
+   char c;
+   int i;
+
+   if (bs_ncmp2(&b, type_str(o->type)))
+   {
+      log_debug("rule type mismatch of %s %"PRId64", tag = '%.*s'", type_str(o->type), o->id, b.len, b.buf);
+      return -1;
+   }
+   i = strlen(type_str(o->type));
+   if (b.len <= i)
+   {
+      log_debug("rule tag truncated of '%s' %"PRId64, type_str(o->type), o->id);
+      return -1;
+   }
+   bs_nadvance(&b, i);
+   if (*b.buf != '=')
+   {
+      log_debug("syntax error in rule tag truncated of '%s' %"PRId64, type_str(o->type), o->id);
+      return -1;
+   }
+   bs_advance(&b);
+   if (!b.len)
+   {
+      log_debug("syntax error in rule tag truncated of '%s' %"PRId64, type_str(o->type), o->id);
+      return -1;
+   }
+   if (*b.buf == '-')
+   {
+      if (b.len <= 1)
+      {
+         log_debug("syntax error in rule tag truncated of '%s' %"PRId64, type_str(o->type), o->id);
+         return -1;
+      }
+      c = b.buf[1];
+   }
+   else
+      c = *b.buf;
+   if (c < '0' || c > '9')
+   {
+      log_debug("syntax error in rule tag truncated of '%s' %"PRId64, type_str(o->type), o->id);
+      return -1;
+   }
+   id = bs_tol(b);
+   if (id != o->id)
+   {
+      log_debug("id mismatch in rule tag of %"PRId64" (is %"PRId64")", o->id, id);
+      return -1;
+   }
+   return 0;
+}
+
+
+int alloc_init_rule_tag(const osm_obj_t *o, bstring_t *b)
+{
+   char *s;
+   if ((s = malloc(32)) == NULL)
+   {
+      log_errno(LOG_ERR, "malloc() failed");
+      return -1;
+   }
+   b->buf = s;
+   if ((b->len = snprintf(b->buf, 32, "%s=%"PRId64, type_str(o->type), o->id)) == -1)
+   {
+      log_msg(LOG_EMERG, "snprintf() failed. WTF?");
+      b->len = 0;
+   }
+   return 0;
+}
+
+ 
 static int add_rule_tag(const smrule_t *r, osm_obj_t *o)
 {
-   char buf[64], *s = NULL, *tmp;
-   int n, len = 0;
+   char buf[64];
+   int n, plen;
+   bstring_t b;
 
-   if ((n = match_attr(o, "smrender:rules", NULL)) >= 0)
+   if ((n = match_attr(o, RULES_TAG, NULL)) >= 0)
    {
-      s = o->otag[n].v.buf;
-      len = o->otag[n].v.len;
+
+      b = o->otag[n].v;
+      if (!b.len)
+      {
+         log_msg(LOG_EMERG, "Rules-tag without content! This may indicate a bug.");
+         return -1;
+      }
+      if (check_rule_tag(o, b))
+      {
+         log_debug("reallocating rule tag for %s %"PRId64, type_str(o->type), o->id);
+         if (alloc_init_rule_tag(o, &b) == -1)
+            return -1;
+      }
+   }
+   else
+   {
+      if ((n = realloc_tags(o, o->tag_cnt + 1)) == -1)
+      {
+         log_errno(LOG_ERR, "realloc_tags() failed");
+         return -1;
+      }
+
+      // safety check only
+      if (n != o->tag_cnt - 1) log_msg(LOG_ERR, "this should not happen!");
+
+      b.len = o->otag[n].v.len = 0;
+      b.buf = o->otag[n].v.buf = NULL;
+
+      o->otag[n].k.buf = RULES_TAG;
+      o->otag[n].k.len = strlen(o->otag[n].k.buf);
+
+      if (alloc_init_rule_tag(o, &b) == -1)
+         return -1;
    }
 
    // FIXME: constant shouldn't be hardcoded
-   snprintf(buf, sizeof(buf), "%"PRId64, r->oo->id & 0x000000ffffffffff);
-   if ((tmp = realloc(s, len + strlen(buf) + 1)) == NULL)
+   if ((plen = snprintf(buf, sizeof(buf), "%"PRId64, r->oo->id & 0x000000ffffffffff)) == -1)
+   {
+      log_msg(LOG_ERR, "snprintf() returned -1");
+      return -1;
+   }
+ 
+   // allocate string memory for oldstring + newstring + ';'
+   char *tmp;
+   if ((tmp = realloc(b.buf, b.len + plen + 1)) == NULL)
    {
       log_errno(LOG_ERR, "realloc() failed");
       return -1;
    }
-   s = tmp;
+   b.buf = tmp;
 
-   if (len)
-      s[len++] = ';';
-   strcpy(s + len, buf);
+   if (b.len)
+      b.buf[b.len++] = ';';
+   memcpy(b.buf + b.len, buf, plen);
+   b.len += plen;
 
-   // add tag if it didn't exist before
-   if (n == -1)
-   {
-      if ((n = realloc_tags(o, o->tag_cnt + 1)) == -1)
-      {
-         free(s);
-         log_errno(LOG_ERR, "realloc() failed");
-         return -1;
-      }
-      o->otag[n].k.buf = "smrender:rules";
-      o->otag[n].k.len = 14;
-   }
+   o->otag[n].v = b;
 
-   o->otag[n].v.buf = s;
-   o->otag[n].v.len = strlen(s);
-
+   log_debug("%s, id = %"PRId64", v = '%.*s'", type_str(o->type), o->id, b.len, b.buf);
    return 0;
-}
+} 
 #endif
 
 
@@ -237,14 +360,14 @@ int apply_smrules(smrule_t *r, long ver)
       return 1;
    }
 
-   if (!r->oo->vis)
-   {
-      log_msg(LOG_INFO, "ignoring invisible rule %016lx", (long) r->oo->id);
-      return 0;
-   }
-
    if (r->oo->ver != (int) ver)
       return 0;
+
+   if (!r->oo->vis)
+   {
+      log_msg(LOG_INFO, "ignoring invisible rule %016"PRIx64, r->oo->id);
+      return 0;
+   }
 
    // FIXME: wtf is this?
    if (r->act->func_name == NULL)
