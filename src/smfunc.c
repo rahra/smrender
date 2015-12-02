@@ -363,11 +363,11 @@ int act_poly_centroid_main(smrule_t * UNUSED(r), osm_way_t *w)
    n->lat = c.lat;
    n->lon = c.lon;
 
-   snprintf(buf, sizeof(buf), "%ld", (long) w->obj.id);
+   snprintf(buf, sizeof(buf), "%"PRId64, w->obj.id);
    if ((s = strdup(buf)) == NULL)
    {
       free_obj((osm_obj_t*) n);
-      log_msg(LOG_DEBUG, "could not strdup: %s", strerror(errno));
+      log_errno(LOG_ERR, "could not strdup()");
       return 0;
    }
    set_const_tag(&n->obj.otag[0], "smrender:id:way", s);
@@ -532,9 +532,11 @@ int act_shape_ini(smrule_t *r)
    (void) get_param("phase", &as->phase, r->act);
    as->phase *= M_PI / 180.0;
 
+   e = 0;
    as->startkey = get_param_err("start", &as->start, r->act, &e);
    if (e)
       as->start = NAN;
+   e = 0;
    as->endkey = get_param_err("end", &as->end, r->act, &e);
    if (e)
       as->end = NAN;
@@ -2233,22 +2235,6 @@ int act_incomplete_ini(smrule_t *r)
 }
 
 
-static const char *type_to_str(int type)
-{
-   switch (type)
-   {
-      case OSM_NODE:
-         return "node";
-      case OSM_WAY:
-         return "way";
-      case OSM_REL:
-         return "relation";
-      default:
-         return "unknown";
-   }
-}
-
-
 int act_incomplete_main(smrule_t *r, osm_rel_t *rel)
 {
    if (rel->obj.type != OSM_REL)
@@ -2259,7 +2245,7 @@ int act_incomplete_main(smrule_t *r, osm_rel_t *rel)
 
    for (int i = 0; i < rel->mem_cnt; i++)
       if (get_object(rel->mem[i].type, rel->mem[i].id) == NULL)
-         fprintf(r->data, "%s/%"PRId64"\n", type_to_str(rel->mem[i].type), rel->mem[i].id);
+         fprintf(r->data, "%s/%"PRId64"\n", type_str(rel->mem[i].type), rel->mem[i].id);
 
    return 0;
 }
@@ -2691,6 +2677,38 @@ int act_mask_fini(smrule_t *r)
    free(nl->node);
    free(nl);
    r->data = NULL;
+   return 0;
+}
+
+
+int act_del_match_tags_ini(smrule_t *r)
+{
+   r->data = 0;
+   return 0;
+}
+
+
+int act_del_match_tags_main(smrule_t *r, osm_obj_t *o)
+{
+   int i, n;
+
+   for (i = 0; i < r->oo->tag_cnt; i++)
+   {
+      if ((n = bs_match_attr(o, &r->oo->otag[i], &r->act->stag[i])) == -1)
+         continue;
+      memmove(&o->otag[n], &o->otag[n + 1], sizeof(o->otag[n]) * (o->tag_cnt - n - 1));
+      o->tag_cnt--;
+      r->data++;
+   }
+
+   return 0;
+}
+
+
+int act_del_match_tags_fini(smrule_t *r)
+{
+   log_debug("%ld tags deleted", (long) r->data);
+   r->data = 0;
    return 0;
 }
 
