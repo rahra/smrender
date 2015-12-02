@@ -629,7 +629,6 @@ typedef struct line
 
 
 static inline double angle(const line_t *g) { return atan2(g->B.y - g->A.y, g->B.x - g->A.x); }
-static inline double length(const line_t *g) { return sqrt(pow(g->B.x - g->A.x, 2) + pow(g->B.y - g->A.y, 2)); }
 
 
 static double tri_area(const point_t **p, int n)
