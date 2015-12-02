@@ -15,5 +15,6 @@
 * Dash length of dashed lines should be configurable.
 * Rule tests not complete yet.
 * Documentation of captions on ways incomplete.
-* Not sure but add_rule_tag() in smcore.c probably creates segfaults (observed one time).
+* Add_rule_tag() in smcore.c segfaults if there are smrender:rules tags already in the input data. This is because realloc() tries to reallocate a memory mapped location. Code disabled (#define ADD_RULE_TAG in smcore.c), working solution in development.
+* Captions on depth contours in wrong order (are on land).
 
