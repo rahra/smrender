@@ -220,13 +220,13 @@ int norm_rule_way(osm_obj_t *o, void *p)
    lat += RULE_LAT_DIFF;
 
    n = malloc_node(0);
-   n->obj.id = --((struct dstats*) p)->min_nid;
+   n->obj.id = --((struct dstats*) p)->min_id[OSM_NODE];
    n->obj.ver = 1;
    n->lat = lat;
    n->lon = 0;
    put_object0(&rd->rules, n->obj.id, n, IDX_NODE);
    n = malloc_node(0);
-   n->obj.id = --((struct dstats*) p)->min_nid;
+   n->obj.id = --((struct dstats*) p)->min_id[OSM_NODE];
    n->obj.ver = 1;
    n->lat = lat;
    n->lon = RULE_LON_DIFF;
@@ -463,6 +463,7 @@ void usage(const char *s)
          "   -i <osm input> ...... OSM input data (default is stdin).\n"
          "   -k <filename> ....... Generate KAP file.\n"
          "   -K <filename> ....... Generate KAP header file.\n"
+         "   -L <logfile> ........ Save log output to <logfile>.\n"
          "   -l .................. Select landscape output. Only useful with option -P.\n"
          "   -M .................. Input file is memory mapped (default).\n"
          "   -m .................. Input file is read into heap memory.\n"
@@ -718,9 +719,10 @@ int main(int argc, char *argv[])
    char *s;
    struct tile_info ti;
    int level = 5;    // default log level: 5 = LOG_NOTICE
+   char *logfile = "stderr";
 
    (void) gettimeofday(&tv_start, NULL);
-   init_log("stderr", level);
+   init_log(logfile, level);
    rd = get_rdata();
    init_grid(&grd);
    rd->cmdline = mk_cmd_line((const char**) argv);
@@ -731,7 +733,7 @@ int main(int argc, char *argv[])
    if (setlocale(LC_CTYPE, "") == NULL)
       log_msg(LOG_WARN, "setlocale() failed");
 
-   while ((n = getopt(argc, argv, "ab:Dd:fg:Ghi:k:K:lMmN:no:O:P:r:R:s:t:T:uVvw:")) != -1)
+   while ((n = getopt(argc, argv, "ab:Dd:fg:Ghi:k:K:lL:MmN:no:O:P:r:R:s:t:T:uVvw:")) != -1)
       switch (n)
       {
          case 'a':
@@ -746,7 +748,7 @@ int main(int argc, char *argv[])
             if (level < 7)
             {
                level++;
-               init_log("stderr", level);
+               init_log(logfile, level);
             }
             break;
 
@@ -806,6 +808,15 @@ int main(int argc, char *argv[])
             kap_hfile = optarg;
             break;
 
+         case 'L':
+            logfile = optarg;
+            init_log(logfile, level);
+            break;
+
+         case 'l':
+            rd->flags |= RD_LANDSCAPE;
+            break;
+
          case 'M':
             w_mmap = 1;
             break;
@@ -825,10 +836,6 @@ int main(int argc, char *argv[])
 
          case 'n':
             rd->flags |= RD_UIDS;
-            break;
-
-         case 'l':
-            rd->flags |= RD_LANDSCAPE;
             break;
 
          case 'o':
@@ -942,7 +949,7 @@ int main(int argc, char *argv[])
    (void) read_osm_file(cfctl, &rd->rules, NULL, &rstats);
    (void) close(cfctl->fd);
 
-   if (!rstats.ncnt && !rstats.wcnt && !rstats.rcnt)
+   if (!rstats.cnt[OSM_NODE] && !rstats.cnt[OSM_WAY] && !rstats.cnt[OSM_REL])
    {
       log_msg(LOG_ERR, "no rules found");
       exit(EXIT_NORULES);
@@ -1008,7 +1015,7 @@ int main(int argc, char *argv[])
       (void) read_osm_file(ctl, get_objtree(), NULL, &rd->ds);
    }
 
-   if (!rd->ds.ncnt)
+   if (!rd->ds.cnt[OSM_NODE])
    {
       log_msg(LOG_ERR, "no data to render");
       exit(EXIT_NODATA);
