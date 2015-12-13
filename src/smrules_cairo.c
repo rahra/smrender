@@ -64,6 +64,7 @@
 #include "smrender_dev.h"
 #include "smcoast.h"
 #include "rdata.h"
+#include "bspline.h"
 
 // define this if color difference shall be calculated in the 3d color space.
 //#define COL_DIFF_3D
@@ -614,85 +615,6 @@ int act_draw_ini(smrule_t *r)
         d->directional, d->collect_open, d->wl);
 
    return 0;
-}
-
-
-typedef struct point
-{
-   double x, y;
-} point_t;
-
-typedef struct line
-{
-   point_t A, B;
-} line_t;
-
-
-static inline double angle(const line_t *g) { return atan2(g->B.y - g->A.y, g->B.x - g->A.x); }
-
-
-static double tri_area(const point_t **p, int n)
-{
-   double a = 0;
-
-   for (int i = 0; i < n; i++)
-      a += p[i]->x * p[(i + 1) % n]->y - p[(i + 1) % n]->x * p[i]->y;
-
-   return a / 2;
-}
-
-
-void control_points(const line_t *g, const line_t *l, point_t *p1, point_t *p2, double f)
-{
-   const point_t *p[3];
-   double lgt, a1, a2, da, ha;
-   line_t h;
-
-   // calculate length of h (line between g and l)
-   lgt = sqrt(pow(g->B.x - l->A.x, 2) + pow(g->B.y - l->A.y, 2));
-
-   // calculate angle of h
-   h.A = g->B;
-   h.B = l->A;
-   ha = angle(&h);
- 
-   h.B = g->B;
-#define ISOSCELES_TRIANGLE
-#ifdef ISOSCELES_TRIANGLE
-   h.A.x = (g->B.x - lgt * cos(angle(g)) + l->A.x) * 0.5;
-   h.A.y = (g->B.y - lgt * sin(angle(g)) + l->A.y) * 0.5;
-#else
-   h.A.x = (g->A.x + l->A.x) * 0.5;
-   h.A.y = (g->A.y + l->A.y) * 0.5;
-#endif
-
-   a1 = angle(&h);
-   p[0] = &g->A;
-   p[1] = &g->B;
-   p[2] = &l->A;
-   da = M_PI_2 * sgn(tri_area(p, 3));
-   a1 = da == 0 ? ha : a1 + da;
-
-   p1->x = g->B.x + lgt * cos(a1) * f;
-   p1->y = g->B.y + lgt * sin(a1) * f;
-
-   h.B = l->A;
-#ifdef ISOSCELES_TRIANGLE
-   h.A.x = (g->B.x + l->A.x + lgt * cos(angle(l))) * 0.5;
-   h.A.y = (g->B.y + l->A.y + lgt * sin(angle(l))) * 0.5;
-#else
-   h.A.x = (g->B.x + l->B.x) * 0.5;
-   h.A.y = (g->B.y + l->B.y) * 0.5;
-#endif
-   a2 = angle(&h);
-   p[0] = &g->B;
-   p[1] = &l->A;
-   p[2] = &l->B;
-   da = M_PI_2 * sgn(tri_area(p, 3));
-   a2 = da == 0 ? ha : a2 + da;
-
-   p2->x = l->A.x - lgt * cos(a2) * f;
-   p2->y = l->A.y - lgt * sin(a2) * f;
 }
 
 
