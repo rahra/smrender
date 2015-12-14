@@ -68,7 +68,7 @@ void control_points(const line_t *g, const line_t *l, point_t *p1, point_t *p2, 
    line_t h;
 
    // calculate length of line (P1/P2)
-   lgt = sqrt(pow(g->B.x - l->A.x, 2) + pow(g->B.y - l->A.y, 2));
+   lgt = hypot(g->B.x - l->A.x, g->B.y - l->A.y);
 
 #ifdef ISOSCELES_TRIANGLE
    // end point of 1st tangent
