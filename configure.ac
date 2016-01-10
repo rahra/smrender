@@ -37,7 +37,7 @@ PKG_CHECK_MODULES([FONTCONFIG], [fontconfig],
 ])
 
 AS_IF([test "x$with_libjpeg" != "xno"], [
-PKG_CHECK_MODULES([LIBJPEG], [libjpegkkk],
+PKG_CHECK_MODULES([LIBJPEG], [libjpeg],
                   [AC_DEFINE([HAVE_LIBJPEG], [1], [compile with support for libjpeg.])],
                   [AC_MSG_NOTICE([img() is compiled without JPEG support])]
                   )
