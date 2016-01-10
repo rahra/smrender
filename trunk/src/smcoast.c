@@ -862,7 +862,9 @@ void init_cat_poly(struct rdata *rd)
 {
    center_.lat = rd->mean_lat;
    center_.lon = rd->mean_lon;
-   if (rd->flags & RD_CORNER_POINTS)
+   //FIXME: if cat_poly is called with no_corner, co_pt_ is still used in
+   //octant() thus it will segfault if init_corer_brg() is not called
+   //if (rd->flags & RD_CORNER_POINTS)
       init_corner_brg(rd, &center_, co_pt_);
 }
 
