@@ -227,6 +227,15 @@ const char *role_str(int role)
          return "label";
       case ROLE_ADMIN_CENTRE:
          return "admin_centre";
+      case ROLE_FORWARD_STOP:
+         return "forward_stop";
+      case ROLE_BACKWARD_STOP:
+         return "backward_stop";
+      case ROLE_PLATFORM:
+         return "platform";
+      case ROLE_MAIN_STREAM:
+         return "main_stream";
+ 
       case ROLE_NA:
       default:
          return "n/a";
@@ -270,6 +279,15 @@ int strrole(const bstring_t *b)
       return ROLE_LABEL;
    else if (!bs_cmp(*b, "admin_centre"))
       return ROLE_ADMIN_CENTRE;
+   else if (!bs_cmp(*b, "forward_stop"))
+      return ROLE_FORWARD_STOP;
+   else if (!bs_cmp(*b, "backward_stop"))
+      return ROLE_BACKWARD_STOP;
+   else if (!bs_cmp(*b, "platform"))
+      return ROLE_PLATFORM;
+   else if (!bs_cmp(*b, "main_stream"))
+      return ROLE_MAIN_STREAM;
+ 
    else
       return ROLE_NA;
 }
