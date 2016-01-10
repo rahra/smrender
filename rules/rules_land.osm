@@ -168,10 +168,12 @@
       <tag k='border' v='copyright'/>
    </node>
 
+   <!--
     <way>
       <tag k='generator' v='smrender'/>
       <tag k='_action_' v='out:file=smrender.osm'/>
    </way>
+-->
   
    <way>
       <tag k='grid' v=''/>
