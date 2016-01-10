@@ -65,6 +65,9 @@
 #include "smcoast.h"
 #include "rdata.h"
 #include "bspline.h"
+#ifdef HAVE_LIBJPEG
+#include "cairo_jpg.h"
+#endif
 
 // define this if color difference shall be calculated in the 3d color space.
 //#define COL_DIFF_3D
@@ -2226,9 +2229,9 @@ int act_img_ini(smrule_t *r)
       img.scale = 1;
    img.scale *= get_rdata()->img_scale;
 
-#ifdef HAVE_RSVG
    if (strlen(name) >= 4 && !strcasecmp(name + strlen(name) - 4, ".svg"))
    {
+#ifdef HAVE_RSVG
       log_debug("opening SVG '%s'", name);
 
       cairo_rectangle_t rect;
@@ -2262,16 +2265,35 @@ int act_img_ini(smrule_t *r)
       cairo_destroy(ctx);
 
       g_object_unref(rh);
+#else
+      log_msg(LOG_WARN, "unabled to load file %s: compiled without SVG support", name);
+#endif
    }
    else
-#endif
    {
-      log_debug("opening PNG '%s'", name);
-      sfc = cairo_image_surface_create_from_png(name);
-      if ((e = cairo_surface_status(sfc)) != CAIRO_STATUS_SUCCESS)
+      if (strlen(name) >= 4 && !strcasecmp(name + strlen(name) - 4, ".jpg"))
       {
-         log_msg(LOG_ERR, "cannot open file %s: %s", name, cairo_status_to_string(e));
-         return -1;
+#ifdef HAVE_LIBJPEG
+         log_debug("opening JPG '%s'", name);
+         sfc = cairo_image_surface_create_from_jpeg(name);
+         if ((e = cairo_surface_status(sfc)) != CAIRO_STATUS_SUCCESS)
+         {
+            log_msg(LOG_ERR, "cannot open file %s: %s", name, cairo_status_to_string(e));
+            return -1;
+         }
+#else
+         log_msg(LOG_WARN, "unabled to load file %s: compiled without JPG support", name);
+#endif
+      }
+      else
+      {
+         log_debug("opening PNG '%s'", name);
+         sfc = cairo_image_surface_create_from_png(name);
+         if ((e = cairo_surface_status(sfc)) != CAIRO_STATUS_SUCCESS)
+         {
+            log_msg(LOG_ERR, "cannot open file %s: %s", name, cairo_status_to_string(e));
+            return -1;
+         }
       }
 
       img.w = cairo_image_surface_get_width(sfc) * img.scale;
