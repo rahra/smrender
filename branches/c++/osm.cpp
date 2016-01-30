@@ -1,0 +1,6 @@
+
+
+OsmObj::OsmObj()
+{
+}
+
