@@ -33,6 +33,10 @@
       <tag k='_action_' v='draw:color=black'/>
    </way>
    <way>
+      <tag k='landuse' v='residential'/>
+      <tag k='_action_' v='draw:color=gray'/>
+   </way>
+   <way>
       <tag k='building' v=''/>
       <tag k='_action_' v='draw:color=black'/>
    </way>
