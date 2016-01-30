@@ -1,0 +1,11 @@
+<svg
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:xlink="http://www.w3.org/1999/xlink"  
+   version="1.1"
+   width="60"
+   height="60">
+  <symbol id="notice_d1b" width="60" height="60">
+    <path d="M 1,30 15,45 45,15 59,30 45,45 15,15 z" style="fill:#ffff00;stroke:#000000;stroke-width:2" />
+  </symbol>
+  <use xlink:href="#notice_d1b" x="0" y="0" />
+</svg>

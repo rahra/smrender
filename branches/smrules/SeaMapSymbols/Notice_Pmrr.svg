@@ -1,0 +1,14 @@
+<svg
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:xlink="http://www.w3.org/1999/xlink"  
+   version="1.1"
+   width="60"
+   height="60">
+  <symbol id="notice_pmrr" width="60" height="60">
+    <rect width="58" height="58" rx="4" ry="4" x="1" y="1" style="fill:#ffffff;stroke:#000000;stroke-width:2" />
+    <line x1="16" y1="12" x2="16" y2="48" style="stroke:#00d400;stroke-width:6;fill:none" />
+    <line x1="44" y1="12" x2="44" y2="48" style="stroke:#00d400;stroke-width:6;fill:none" />
+    <line x1="16" y1="30" x2="44" y2="30" style="stroke:#00d400;stroke-width:6;fill:none" />
+  </symbol>
+  <use xlink:href="#notice_pmrr" x="0" y="0" />
+</svg>

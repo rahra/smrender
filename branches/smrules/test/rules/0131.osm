@@ -1,0 +1,8 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<osm version='0.6' generator='Bernhard R. Fischer'>
+   <way>
+      <tag k='pipe' v='waste'/>
+      <tag k='_action_' v='draw:color=magenta;width=.2;wavy=yes;wavy_length=1.5'/>
+   </way>
+</osm>
+

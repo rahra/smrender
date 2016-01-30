@@ -1,0 +1,13 @@
+<svg
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:xlink="http://www.w3.org/1999/xlink"  
+   version="1.1"
+   width="60"
+   height="60">
+ <symbol id="notice_a1a" width="60" height="60">
+    <circle cx="30" cy="30" r="28" style="fill:#e80000;fill-opacity:1;stroke:none" />
+    <rect width="56" height="16" x="2" y="22" style="fill:#ffffff;fill-opacity:1;stroke:none" />
+    <circle cx="30" cy="30" r="28" style="fill:none;stroke:#000000;stroke-width:2;stroke-opacity:1" />
+  </symbol>
+  <use xlink:href="#notice_a1a" x="0" y="0" />
+</svg>

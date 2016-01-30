@@ -1,0 +1,11 @@
+<svg
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:xlink="http://www.w3.org/1999/xlink"  
+   version="1.0"
+   width="30"
+   height="30">
+  <symbol id="distance_u" width="30" height="30">
+    <circle cx="15.0" cy="15.0" r="11.0" style="fill:none;stroke:#a30075;stroke-width:3.0;stroke-opacity:1" />
+  </symbol>
+  <use xlink:href="#distance_u" x="0" y="0" />
+</svg>

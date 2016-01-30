@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg id="svg2" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns="http://www.w3.org/2000/svg" height="400" width="300" version="1.0" xmlns:cc="http://creativecommons.org/ns#" xmlns:dc="http://purl.org/dc/elements/1.1/">
+ <metadata id="metadata2913">
+  <rdf:RDF>
+   <cc:Work rdf:about="">
+    <dc:format>image/svg+xml</dc:format>
+    <dc:type rdf:resource="http://purl.org/dc/dcmitype/StillImage"/>
+    <dc:title/>
+   </cc:Work>
+  </rdf:RDF>
+ </metadata>
+ <g id="layer2" transform="translate(0,40)">
+  <g id="g4347" transform="translate(-.015749 9.9938)">
+   <g id="g2831-0" transform="translate(-9.9402 .051981)"></g>
+  </g>
+  <text id="text4426" xml:space="preserve" font-size="48px" y="212.83916" x="142.20082" font-family="Times New Roman" fill="#000000"><tspan id="tspan4428" x="142.20082" y="212.83916">!</tspan></text>
+  <text id="text2897" font-weight="900" xml:space="preserve" font-size="28px" y="238.84975" x="36.169567" font-family="Arial Black" fill="#000000"><tspan id="tspan2899" x="36.169567" y="238.84975">Check Position</tspan></text>
+ </g>
+</svg>

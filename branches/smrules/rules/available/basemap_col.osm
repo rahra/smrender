@@ -1,0 +1,175 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<osm version='0.6' generator='Bernhard R. Fischer'>
+   <node>
+      <tag k='_action_' v='cap:font=sans-serif:italic;size=1.4;angle=auto;halign=east;key=name'/>
+      <tag k='natural' v='bay'/>
+   </node>
+
+   <!-- the following rules try to detect if on land or sea -->
+   <way version="-100" id="100">
+      <tag k='natural' v='coastline'/>
+      <tag k='_action_' v='disable_rule:id=110'/>
+   </way>
+   <way version="-100" id="110">
+      <tag k='/natural|building/' v=''/>
+      <tag k='_action_' v='enable_rule:id=120'/>
+   </way>
+   <way version="-100" id="115">
+      <tag k='natural' v='coastline'/>
+   </way>
+   <way version="-100" id="120" visible="false">
+      <tag k='border' v='page'/>
+      <tag k='generator' v='smrender'/>
+      <tag k='_action_' v='set_tags:id=115'/>
+   </way>
+ 
+   <way>
+      <!--<tag k='grid' v='subticks_border'/>-->
+      <tag k='border' v='page'/>
+      <tag k='_action_' v='draw:color=skyblue'/>
+   </way>
+   <way version="-10">
+      <tag k='seamark:type' v='depth_contour'/>
+      <tag k='_action_' v='ins_eqdist:distance=3'/>
+   </way>
+   <node version="-10">
+      <tag k='seamark:type' v='depth_contour'/>
+      <tag k='distance' v=''/>
+      <tag k='_action_' v='shape:style=circle;radius=0.8'/>
+   </node>
+   <node>
+      <tag k='seamark:type' v='depth_contour'/>
+      <tag k='distance' v=''/>
+      <tag k='_action_' v='cap:font=sans-serif;size=1.6;angle=90;anglekey=bearing;key=seamark:depth_contour:depth'/>
+   </node>
+   <way>
+      <tag k='seamark:type' v='depth_contour'/>
+      <tag k='seamark:depth_contour:depth' v='20'/>
+      <tag k='~distance~' v=''/>
+      <tag k='_action_' v='cat_poly'/>
+   </way>
+   <way>
+      <tag k='seamark:type' v='depth_contour'/>
+      <tag k='seamark:depth_contour:depth' v='10'/>
+      <tag k='generator' v='smrender'/>
+      <tag k='~distance~' v=''/>
+      <tag k='_action_' v='cat_poly'/>
+   </way>
+   <way>
+      <tag k='seamark:type' v='depth_contour'/>
+      <tag k='seamark:depth_contour:depth' v='20'/>
+      <tag k='~distance~' v=''/>
+      <tag k='_action_' v='draw:color=powderblue;ignore_open=1;directional=0;curve=1'/>
+   </way>
+   <way>
+      <tag k='seamark:type' v='depth_contour'/>
+      <tag k='seamark:depth_contour:depth' v='10'/>
+      <tag k='~distance~' v=''/>
+      <tag k='_action_' v='draw:color=white;ignore_open=1;directional=1;curve=1'/>
+   </way>
+   <way>
+      <tag k='seamark:type' v='depth_contour'/>
+      <tag k='~distance~' v=''/>
+      <tag k='_action_' v='draw:bcolor=black;curve=1'/>
+   </way>
+   <way>
+      <tag k='tidal' v='yes'/>
+      <tag k='_action_' v='draw:color=darkseagreen'/>
+   </way>
+   <!--   <way>
+      <tag k='seamark:type' v='depth_contour'/>
+      <tag k='distance' v=''/>
+      <tag k='_action_' v='draw:color=white'/>
+   </way>-->
+   <way>
+      <tag k='natural' v='coastline'/>
+      <tag k='_action_' v='cat_poly'/>
+   </way>
+   <way>
+      <tag k='natural' v='coastline'/>
+      <tag k='_action_' v='poly_area'/>
+   </way>
+   <way>
+      <tag k='natural' v='coastline'/>
+      <tag k='_action_' v='poly_centroid'/>
+   </way>
+   <way>
+      <tag k='_action_' v='sync_threads'/>
+   </way>
+   <way>
+      <tag k='natural' v='coastline'/>
+      <tag k='_action_' v='draw:color=greenyellow;bcolor=black;curve=1'/>
+   </way>
+   <way>
+      <tag k='contour' v='elevation'/>
+      <tag k='contour_ext' v='!elevation_minor!'/>
+      <tag k='ele' v=']0['/>
+      <tag k='_action_' v='draw:bcolor=chocolate'/>
+   </way>
+   <way>
+      <tag k='contour' v='elevation'/>
+      <tag k='contour_ext' v='elevation_minor'/>
+      <tag k='ele' v=']0['/>
+      <tag k='_action_' v='draw:bcolor=chocolate;bstyle=dashed'/>
+   </way>
+   <way version='1'>
+      <tag k='seamark:sounding:quality' v='/report/'/>
+      <tag k='seamark:sounding' v=']20.01['/>
+      <tag k='_action_' v='draw:color=skyblue;bcolor=black;bstyle=dotted'/>
+   </way>
+   <way version='1'>
+      <tag k='seamark:sounding:quality' v='/report/'/>
+      <tag k='seamark:sounding' v=']10.01['/>
+      <tag k='seamark:sounding' v='[20]'/>
+      <tag k='_action_' v='draw:color=powderblue;bcolor=black;bstyle=dotted'/>
+   </way>
+   <way version='1'>
+      <tag k='seamark:sounding:quality' v='/report/'/>
+      <tag k='seamark:sounding' v='[10.01]'/>
+      <tag k='_action_' v='draw:color=white;bcolor=black;bstyle=dotted'/>
+   </way>
+   <way version='1'>
+      <tag k='seamark:sounding:quality' v='approx'/>
+      <tag k='_action_' v='draw:bcolor=black;bstyle=dashed'/>
+   </way>
+   <way>
+      <tag k='natural' v='water'/>
+      <!--<tag k='water' v='/river|lake|canal/'/>-->
+      <tag k='_action_' v='draw:color=skyblue;bcolor=#000080'/>
+   </way>
+   <way>
+      <tag k='natural' v='water'/>
+      <tag k='_action_' v='poly_area'/>
+   </way>
+   <way>
+      <tag k='waterway' v=''/>
+      <tag k='_action_' v='draw:color=skyblue;bcolor=skyblue'/>
+   </way>
+   <way>
+      <tag k='_action_' v='cap:font=sans-serif:bold;size=auto;key=*name;angle=majoraxis'/>
+      <tag k='place' v='/island|islet/'/>
+   </way>
+   <way>
+      <tag k='_action_' v='cap:font=sans-serif:bold;color=#000080;size=2.0;key=name'/>
+      <tag k='smrender:area' v=']0.004['/>
+      <tag k='natural' v='water'/>
+   </way>
+   <relation>
+      <tag k='place' v='island'/>
+      <tag k='type' v='multipolygon'/>
+      <tag k='_action_' v='cat_poly:no_corner=1'/>
+   </relation>
+<!-- the following rule somehow interferes with other cat_poly()s
+   <relation>
+      <tag k='natural' v='water'/>
+      <tag k='type' v='multipolygon'/>
+      <tag k='_action_' v='cat_poly:no_corner=1'/>
+   </relation>
+-->
+   <relation>
+      <tag k='waterway' v=''/>
+      <tag k='type' v='multipolygon'/>
+      <tag k='_action_' v='cat_poly:no_corner=1'/>
+   </relation>
+</osm>
+

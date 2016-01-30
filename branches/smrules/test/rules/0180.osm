@@ -1,0 +1,22 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<osm version='0.6' generator='Bernhard R. Fischer'>
+   <way>
+      <tag k='natural' v='coastline'/>
+      <tag k='_action_' v='cat_poly'/>
+   </way>
+   <way>
+      <tag k='natural' v='coastline'/>
+      <tag k='generator' v='smrender'/>
+      <tag k='_action_' v='draw:color=navajowhite;bcolor=black'/>
+   </way>
+
+   <node>
+      <tag k='seamark:type' v=''/>
+      <tag k='_action_' v='pchar@libsmfilter.so'/>
+   </node>
+   <node>
+      <tag k='_action_' v='cap:font=sans-serif;size=1.4;halign=east;key=seamark:light_character;angle=auto;weight=0.7'/>
+      <tag k='seamark:light_character' v=''/>
+   </node>
+</osm>
+

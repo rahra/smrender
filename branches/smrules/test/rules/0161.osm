@@ -1,0 +1,8 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<osm version='0.6' generator='Bernhard R. Fischer'>
+   <node>
+      <tag k='natural' v='bay'/>
+      <tag k='_action_' v='cap:font=sans-serif;size=2mm;key=*name'/>
+   </node>
+</osm>
+

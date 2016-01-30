@@ -1,0 +1,13 @@
+<svg
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:xlink="http://www.w3.org/1999/xlink"  
+   version="1.1"
+   width="60"
+   height="60">
+  <symbol id="notice_a" width="60" height="60">
+    <rect width="58" height="58" rx="4" ry="4" x="1" y="1" style="fill:#e80000;stroke:#000000;stroke-width:2" />
+    <rect width="42" height="42" x="9" y="9" style="fill:#ffffff;fill-opacity:1;stroke:none" />
+    <path d="M 6,6 54,54" style="fill:none;stroke:#e80000;stroke-width:8" />
+  </symbol>
+  <use xlink:href="#notice_a" x="0" y="0" />
+</svg>

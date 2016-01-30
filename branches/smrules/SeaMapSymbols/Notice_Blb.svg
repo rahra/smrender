@@ -1,0 +1,11 @@
+<svg
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:xlink="http://www.w3.org/1999/xlink"  
+   version="1.1"
+   width="60"
+   height="60">
+  <symbol id="notice_blb" width="60" height="60">
+    <rect width="58" height="58" rx="4" ry="4" x="1" y="1" style="fill:#ffffff;stroke:#f00000;stroke-width:2" />
+  </symbol>
+  <use xlink:href="#notice_blb" x="0" y="0" />
+</svg>

@@ -1,0 +1,26 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<osm version='0.6' generator='Bernhard R. Fischer'>
+   <node version="-10">
+      <tag k='seamark:type' v=''/>
+      <tag k='_action_' v='vsector@libsmfilter.so'/>
+   </node>
+   <node version="5">
+      <tag k='/^seamark:light:.*/' v=''/>
+      <tag k='_action_' v='img:angle=auto;weight=1;file=SeaMapSymbols/Light_Magenta_120.svg'/>
+   </node>
+   <way>
+      <tag k='seamark:light_radial' v=''/>
+      <tag k='_action_' v='draw:color=black;style=dashed'/>
+   </way>
+   <way>
+      <tag k='seamark:light_arc' v=''/>
+      <tag k='seamark:arc_style' v='solid'/>
+      <tag k='_action_' v='draw:color=black'/>
+   </way>
+   <way>
+      <tag k='seamark:light_arc' v=''/>
+      <tag k='seamark:arc_style' v='dashed'/>
+      <tag k='_action_' v='draw:color=black;style=dashed'/>
+   </way>
+</osm>
+

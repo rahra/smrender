@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg id="svg2" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns="http://www.w3.org/2000/svg" height="400" width="300" version="1.0" xmlns:cc="http://creativecommons.org/ns#" xmlns:dc="http://purl.org/dc/elements/1.1/">
+ <metadata id="metadata2913">
+  <rdf:RDF>
+   <cc:Work rdf:about="">
+    <dc:format>image/svg+xml</dc:format>
+    <dc:type rdf:resource="http://purl.org/dc/dcmitype/StillImage"/>
+    <dc:title/>
+   </cc:Work>
+  </rdf:RDF>
+ </metadata>
+ <g id="layer4" transform="translate(0,80)">
+  <g id="g2992" fill="#f0f" transform="matrix(-.27731 -.69685 .69685 -.27731 82.844 275.88)">
+   <path id="path28209" d="m131.6 181.31-61.628 76.308-4.5301 5.5783-5.5574 4.2237-6.8994 2.1092-7.3222-0.10972-6.8122-2.2963-5.7474-4.3373-4.2013-6.0873-2.2249-7.0512 0.15697-6.9752 2.7328-6.0895 4.5948-5.3084 5.5935-4.868 1.1742-0.94649 90.671-44.15zm28.001-25.261c2.1971-0.21962 4.1584 1.3852 4.378 3.5823 0.21962 2.1971-1.3852 4.1584-3.5823 4.378-2.1971 0.21962-4.1584-1.3852-4.378-3.5823-0.21962-2.1971 1.3852-4.1584 3.5823-4.378z" fill-rule="evenodd" fill="#f0f"/>
+  </g>
+ </g>
+</svg>

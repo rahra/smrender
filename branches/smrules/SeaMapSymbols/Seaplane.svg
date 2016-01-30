@@ -1,0 +1,15 @@
+<svg
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:xlink="http://www.w3.org/1999/xlink"  
+   version="1.1"
+   width="200"
+   height="200">
+  <symbol id="seaplane" width="200" height="200">
+    <circle cx="100" cy="100" r="60" style="fill:none;stroke:#a30075;stroke-width:4" />
+    <path d="M 80,120 L 140,120 L 150,110 z" style="fill:#a30075;stroke:none" />
+    <path d="M 50,115 L 140,105 A 3,2 0 0 0 140,90 A 20,20 0 0 1 130,85 L 70,102 A 25,25 0 0 0 55,85 A 25,25 0 0 0 50,115z"
+     style="fill:#a30075;stroke:none" />
+    <line x1="120" y1="105" x2="125" y2="115" style="fill:none;stroke:#a30075;stroke-width:5" />
+  </symbol>
+  <use xlink:href="#seaplane" x="0" y="0" />
+</svg>

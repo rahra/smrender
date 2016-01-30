@@ -1,0 +1,37 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<osm version='0.6' generator='Bernhard R. Fischer'>
+   <node version='1'>
+      <tag k='seamark:type' v='sounding'/>
+      <tag k='_action_' v='shape:style=circle;radius=5;start=45;end=180;subtype=sectored'/>
+   </node>
+   <way version='2'>
+      <tag k='seamark:type' v='sounding'/>
+      <tag k='_action_' v='draw:color=red'/>
+   </way>
+   <way id='100'>
+      <tag k='sector' v='yes'/>
+   </way>
+   <way version='2'>
+      <tag k='seamark:type' v='sounding'/>
+      <tag k='_action_' v='set_tags:id=100'/>
+   </way>
+   <node version='2'>
+      <tag k='seamark:type' v='sounding'/>
+      <tag k='_action_' v='shape:style=circle;radius=5'/>
+   </node>
+   <node version='2'>
+      <tag k='seamark:type' v='sounding'/>
+      <tag k='_action_' v='shape:nodes=8;radius=5;r2=6;subtype=stared'/>
+   </node>
+    <way version='3'>
+      <tag k='seamark:type' v='sounding'/>
+      <tag k='~sector~' v=''/>
+      <tag k='_action_' v='draw:bcolor=black;bwidth=.5'/>
+   </way>
+   <node version='3'>
+      <tag k='seamark:type' v='sounding'/>
+      <tag k='_action_' v='img:file=../SeaMapSymbols/AnchorageER.svg;scale=2'/>
+   </node>
+ 
+</osm>
+

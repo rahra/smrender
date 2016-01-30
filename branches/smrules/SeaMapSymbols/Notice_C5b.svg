@@ -1,0 +1,11 @@
+<svg
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:xlink="http://www.w3.org/1999/xlink"  
+   version="1.1"
+   width="60"
+   height="60">
+  <symbol id="notice_c5b" width="60" height="60">
+    <path d="M 29.02314,51 12.6,30.029534 29.02314,9 50.968,9 l 0,42 z" />
+  </symbol>
+  <use xlink:href="#notice_c5b" x="0" y="0" />
+</svg>

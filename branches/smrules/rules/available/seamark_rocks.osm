@@ -1,0 +1,46 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<osm version='0.6' generator='Bernhard R. Fischer'>
+
+   <node>
+      <tag k='seamark:type' v='wreck'/>
+      <tag k='seamark:wreck:category' v='/non-dangerous|distributed_remains/'/>
+      <tag k='_action_' v='img:file=SeaMapSymbols/WreckND.svg'/>
+   </node>
+   <node>
+      <tag k='seamark:type' v='wreck'/>
+      <tag k='seamark:wreck:category' v='/^dangerous|mast_showing/'/>
+      <tag k='_action_' v='img:file=SeaMapSymbols/WreckD.svg'/>
+   </node>
+   <node>
+      <tag k='seamark:type' v='wreck'/>
+      <tag k='seamark:wreck:category' v='/^hull_showing/'/>
+      <tag k='_action_' v='img:file=SeaMapSymbols/WreckS.svg'/>
+   </node>
+   <node>
+      <tag k='seamark:type' v='wreck'/>
+      <tag k='~seamark:wreck:category~' v=''/>
+      <tag k='_action_' v='img:file=SeaMapSymbols/WreckS.svg'/>
+   </node>
+   <node>
+      <tag k='seamark:type' v='rock'/>
+      <tag k='seamark:rock:water_level' v='!/covers|awash/!'/>
+      <tag k='_action_' v='img:file=SeaMapSymbols/Rock.svg;scale=0.5'/>
+   </node>
+   <node>
+      <tag k='seamark:type' v='rock'/>
+      <tag k='~seamark:rock:water_level~' v=''/>
+      <tag k='_action_' v='img:file=SeaMapSymbols/Rock.svg;scale=0.5'/>
+   </node>
+   <node>
+      <tag k='seamark:type' v='rock'/>
+      <tag k='seamark:rock:water_level' v='covers'/>
+      <tag k='_action_' v='img:file=SeaMapSymbols/RockC.svg;scale=0.5'/>
+   </node>
+   <node>
+      <tag k='seamark:type' v='rock'/>
+      <tag k='seamark:rock:water_level' v='awash'/>
+      <tag k='_action_' v='img:file=SeaMapSymbols/RockA.svg;scale=0.5'/>
+   </node>
+
+</osm>
+

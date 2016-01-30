@@ -1,0 +1,11 @@
+<svg
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:xlink="http://www.w3.org/1999/xlink"  
+   version="1.1"
+   width="60"
+   height="60">
+  <symbol id="notice_junction_r" width="60" height="60">
+    <path d="m 28.3125,2.375 0,23.53125 -0.03125,0 0,0.03125 -2.0625,0 0,31.25 8.25,0 0,-23.0625 22.9375,0 0,-8.21875 -25.625,0 0,-23.53125 -3.46875,0 z"/>
+  </symbol>
+  <use xlink:href="#notice_junction_r" x="0" y="0" />
+</svg>

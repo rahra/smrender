@@ -1,0 +1,12 @@
+<svg
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:xlink="http://www.w3.org/1999/xlink"  
+   version="1.0"
+   width="300"
+   height="400">
+  <symbol id="light_major" width="300" height="400">
+    <path d="m 128.83,228.5 8.5124,-24.8 -20.912,-14.875 h 25.512 l 8.15,-24.462 7.8001,24.462 h 25.862 l -20.9,15.225 7.8001,24.45 -20.563,-15.225 L 128.8296,228.5 z M 157,200 c 0,3.864 -3.136,7 -7,7 -3.864,0 -7,-3.136 -7,-7 0,-3.864 3.136,-7 7,-7 3.864,0 7,3.136 7,7 z"
+       style="fill:#000000;fill-rule:evenodd" />
+  </symbol>
+  <use xlink:href="#light_major" x="0" y="0" />
+</svg>

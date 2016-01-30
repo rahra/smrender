@@ -1,0 +1,15 @@
+<svg
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:xlink="http://www.w3.org/1999/xlink"  
+   version="1.0"
+   width="300"
+   height="400">
+  <symbol id="ice" width="300" height="400">
+   <circle cx="150" cy="200" r="10" style="stroke:000000;stroke-width:4;fill:none"/>
+   <line x1="115" y1="200" x2="140" y2="200" style="stroke:000000;stroke-width:4;fill:none"/>
+   <line x1="185" y1="200" x2="160" y2="200" style="stroke:000000;stroke-width:4;fill:none"/>
+   <path d="M 135,200 A 15,15, 0,0,1, 120,185 L 120,165 L 180,165 L 180,185 A 15,15, 0,0,1 165,200 M 144,208 L 144,240 L 156,240 L156,208"
+    style="stroke:000000;stroke-width:4;fill:none"/>
+  </symbol>
+  <use xlink:href="#ice" x="0" y="0" />
+</svg>

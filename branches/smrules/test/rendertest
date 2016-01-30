@@ -1,0 +1,22 @@
+#!/bin/sh
+
+DEST="images"
+SRCOSM="rules/*.osm"
+
+if test ! -z "$1" ; then
+   SRCOSM=$1
+fi
+
+if test ! -d $DEST ; then
+   mkdir $DEST
+fi
+
+for FRULE in $SRCOSM
+do
+
+   CMD="smrender -D -P 50x50 -i testdata.osm -r $FRULE -G -o $DEST/$(basename ${FRULE%%.osm}.png) 15E34.35:43N44.06:10000"
+   echo $CMD
+   $CMD
+
+done
+

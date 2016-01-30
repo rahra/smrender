@@ -1,0 +1,14 @@
+#!/bin/sh
+
+CURL="curl"
+URL="http://api.openstreetmap.org/api/0.6"
+
+while :
+do
+   if ! read way ; then
+      exit 0
+   fi
+
+   $CURL "$URL/$way/full" > "`basename $way`.osm"
+done
+

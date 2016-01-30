@@ -1,0 +1,37 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<osm version='0.6' generator='Bernhard R. Fischer'>
+   <way version='-10'>
+      <tag k='way' v='route'/>
+      <tag k='_action_' v='ins_eqdist:distance=5'/>
+   </way>
+   <node version='-10'>
+      <tag k='way' v='route'/>
+      <tag k='bearing' v=''/>
+      <tag k='_action_' v='shape:style=triangle;radius=2;angle=-90;key=bearing'/>
+   </node>
+   <way>
+      <tag k='way' v='route'/>
+      <tag k='_action_' v='draw:color=#00600000;width=0.3;curve=1'/>
+   </way>
+   <way>
+      <tag k='o' v='b'/>
+      <tag k='_action_' v='draw:bcolor=#00600000;bwidth=0.2'/>
+   </way>
+   <node version="-10">
+      <tag k='o' v='b'/>
+      <tag k='_action_' v='shape:style=circle;radius=3'/>
+   </node>
+   <node version="-10">
+      <tag k='o' v='b'/>
+      <tag k='_action_' v='shape:style=square;angle=45;radius=.5'/>
+   </node>
+   <node>
+      <tag k='_action_' v='cap:font=sans-serif;size=4;key=log;valign=south;color=#00600000'/>
+      <tag k='log' v=''/>
+   </node>
+   <node>
+      <tag k='_action_' v='cap:font=sans-serif;size=4;key=date;valign=north;color=#00600000'/>
+      <tag k='date' v=''/>
+   </node>
+</osm>
+

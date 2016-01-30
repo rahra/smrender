@@ -1,0 +1,38 @@
+#!/bin/sh
+#
+# This is a wrapper script which mimes compatibility to smfilter. It may be
+# used too ease the transition from smfilter to smrender.
+#
+# @author Bernhard R. Fischer
+#
+
+RULES=`mktemp smf.XXXXXXXXXX`
+
+param=""
+while getopts "a:b:d:r:" c
+do
+   case $c in
+      a | b | d | r)
+         param="$c=$OPTARG,$param"
+         ;;
+      \?)
+         echo $USAGE
+         exit 1
+         ;;
+   esac
+done
+
+cat << ! > $RULES
+<node>
+   <tag k='seamark:type' v=''/>
+   <tag 
+      k='_action_'
+      v='vsector@@SMFILTER_NAME@:$param'
+   />
+</node>
+!
+
+smrender -i /dev/stdin -o /dev/null -M -G -r $RULES -w /dev/stdout 2>/dev/null
+
+rm $RULES
+

@@ -1,0 +1,20 @@
+* captions along ways (open polygons) not supported yet
+* border width of closed polygons seams to have a bug. (already fixed?)
+* Negative OSM IDs may colide, read_osm() does not assign IDs properly. (low prio)
+* minor Bug refine_poly() if lat[0] == lat[1] (function deprecated)
+* Bug: free objects sometimes segfaults in threaded mode
+* multi-line text output
+* incomplete() several rules, one filename (like out())
+* automatic bay/cape font size
+* color diff function improvement (black/white stretching in spherical coordinate system)
+* bug: missing safety check for latitudes > 85.05
+* cat_poly() should add specific tag. There should also be an option for those ways which are already closed to either be ignore, duplicated and just a tag added.
+* Bug: reverse pointers are not updated for all put_objects(), hence, e.g. split() does not work in all cases.
+* Bug: it is not (always) checked that a tag does already exist when adding tags internally
+* Generic unit functions (rdata_unit() and parse_length()) should be implemented for all actions.
+* Dash length of dashed lines should be configurable.
+* Rule tests not complete yet.
+* Documentation of captions on ways incomplete.
+* Add_rule_tag() in smcore.c segfaults if there are smrender:rules tags already in the input data. This is because realloc() tries to reallocate a memory mapped location. Code disabled (#define ADD_RULE_TAG in smcore.c), working solution in development.
+* Captions on depth contours in wrong order (are on land).
+

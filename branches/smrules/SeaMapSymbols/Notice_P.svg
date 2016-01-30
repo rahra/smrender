@@ -1,0 +1,14 @@
+<svg
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:xlink="http://www.w3.org/1999/xlink"  
+   version="1.1"
+   width="60"
+   height="60">
+  <symbol id="notice_p" width="60" height="60">
+    <text x="15.5" y="44.5"
+     style="font-size:40;font-weight:bold;font-family:Arial">
+     <tspan x="15.5" y="44.5">P</tspan>
+    </text>
+  </symbol>
+  <use xlink:href="#notice_p" x="0" y="0" />
+</svg>

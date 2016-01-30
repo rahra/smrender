@@ -1,0 +1,101 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<osm version='0.6' generator='Bernhard R. Fischer'>
+
+   <!-- clip page to inner ticks border -->
+   <way id="2000">
+      <tag k="grid" v="inner_clip"/>
+   </way>
+   <way version="100">
+      <tag k="grid" v="subticks_border"/>
+      <tag k="_action_" v="set_tags:id=2000"/>
+   </way>
+   <way version="100">
+      <tag k="border" v="page"/>
+      <tag k="_action_" v="set_tags:id=2000"/>
+   </way>
+   <way version="100">
+      <tag k="grid" v="inner_clip"/>
+      <tag k="_action_" v="draw:color=white;directional=1"/>
+   </way>
+
+   <node version="100">
+      <tag k='_action_' v='cap:font=sans-serif:bold;size=4;key=name;angle=90;valign=north;yoff=3'/>
+      <tag k='grid' v='text'/>
+      <tag k='border' v='left'/>
+   </node>
+   <node version="100">
+      <tag k='_action_' v='cap:font=sans-serif:bold;size=4;key=name;angle=270;valign=north;yoff=3'/>
+      <tag k='grid' v='text'/>
+      <tag k='border' v='right'/>
+   </node>
+   <node version="100">
+      <tag k='_action_' v='cap:font=sans-serif:bold;size=4;key=name;valign=north;yoff=3'/>
+      <tag k='grid' v='text'/>
+      <tag k='border' v='top'/>
+   </node>
+   <node version="100">
+      <tag k='_action_' v='cap:font=sans-serif:bold;size=4;key=name;valign=south;yoff=1'/>
+      <tag k='grid' v='text'/>
+      <tag k='border' v='bottom'/>
+   </node>
+   <node version="100">
+      <tag k='_action_' v='cap:font=sans-serif:bold;size=6;key=name;valign=north;halign=east;color=brown'/>
+      <tag k='grid' v='text'/>
+      <tag k='border' v='title'/>
+   </node>
+   <node version="100">
+      <tag k='grid' v='outer_border'/>
+      <tag k='pointindex' v='0'/>
+      <tag k='_action_' v='cap:font=sans-serif;size=2;key=lat;valign=north;halign=east'/>
+   </node>
+    <node version="100">
+      <tag k='grid' v='outer_border'/>
+      <tag k='pointindex' v='0'/>
+      <tag k='_action_' v='cap:font=sans-serif;size=2;key=lon;valign=north;halign=west;angle=90'/>
+   </node>
+   <node version="100">
+      <tag k='grid' v='outer_border'/>
+      <tag k='pointindex' v='1'/>
+      <tag k='_action_' v='cap:font=sans-serif;size=2;key=lat;valign=north;halign=west'/>
+   </node>
+    <node version="100">
+      <tag k='grid' v='outer_border'/>
+      <tag k='pointindex' v='1'/>
+      <tag k='_action_' v='cap:font=sans-serif;size=2;key=lon;valign=north;halign=east;angle=270'/>
+   </node>
+   <node version="100">
+      <tag k='grid' v='outer_border'/>
+      <tag k='pointindex' v='2'/>
+      <tag k='_action_' v='cap:font=sans-serif;size=2;key=lat;valign=south;halign=west'/>
+   </node>
+    <node version="100">
+      <tag k='grid' v='outer_border'/>
+      <tag k='pointindex' v='2'/>
+      <tag k='_action_' v='cap:font=sans-serif;size=2;key=lon;angle=270;valign=north;halign=west'/>
+   </node>
+    <node version="100">
+      <tag k='grid' v='outer_border'/>
+      <tag k='pointindex' v='3'/>
+      <tag k='_action_' v='cap:font=sans-serif;size=2;key=lat;valign=south;halign=east'/>
+   </node>
+    <node version="100">
+      <tag k='grid' v='outer_border'/>
+      <tag k='pointindex' v='3'/>
+      <tag k='_action_' v='cap:font=sans-serif;size=2;key=lon;angle=90;valign=north;halign=east'/>
+   </node>
+   <node version="100">
+      <tag k='generator' v='smrender'/>
+      <tag k='chartdate' v=''/>
+      <tag k='_action_' v='cap:font=sans-serif;color=magenta;size=2;key=chartdate;valign=south;halign=east'/>
+   </node>
+   <node version="100">
+      <tag k='_action_' v='cap:font=sans-serif:bold;size=2;key=name;valign=north'/>
+      <tag k='grid' v='text'/>
+      <tag k='border' v='copyright'/>
+   </node>
+   <way version="100">
+      <tag k='grid' v=''/>
+      <tag k='_action_' v='draw:bcolor=black'/>
+   </way>
+</osm>
+

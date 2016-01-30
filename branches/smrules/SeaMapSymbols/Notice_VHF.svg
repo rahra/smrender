@@ -1,0 +1,12 @@
+<svg
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:xlink="http://www.w3.org/1999/xlink"  
+   version="1.1"
+   width="60"
+   height="60">
+  <symbol id="notice_vhf" width="60" height="60">
+    <text x="13.3" y="26.3" transform="scale(0.89843305,1.113049)" style="font-size:18;Font-Family:Arial Black" >
+     <tspan>VHF</tspan></text>
+  </symbol>
+  <use xlink:href="#notice_vhf" x="0" y="0" />
+</svg>

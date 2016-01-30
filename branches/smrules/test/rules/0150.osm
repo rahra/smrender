@@ -1,0 +1,17 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<osm version='0.6' generator='Bernhard R. Fischer'>
+    <way version="-10">
+      <tag k='seamark:type' v='anchorage'/>
+      <tag k='_action_' v='ins_eqdist:distance=100m'/>
+   </way>
+   <node>
+      <tag k='seamark:type' v='anchorage'/>
+      <tag k='generator' v='smrender'/>
+      <tag k='_action_' v='img:file=../SeaMapSymbols/Anchorage.svg;anglekey=bearing;angle=-90;scale=0.2'/>
+   </node>
+   <way>
+      <tag k='seamark:type' v='/separation_lane|anchorage/'/>
+      <tag k='_action_' v='draw:bcolor=#40FF00FF;bwidth=0.2;bstyle=dashed'/>
+   </way>
+</osm>
+

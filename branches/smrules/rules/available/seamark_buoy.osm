@@ -1,0 +1,239 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<osm version='0.6' generator='Bernhard R. Fischer'>
+
+   <node>
+      <tag k='seamark:type' v='buoy_safe_water'/>
+      <tag k='seamark:buoy_safe_water:shape' v='spar'/>
+      <tag k='_action_' v='img:file=SeaMapSymbols/Spar_Red_White.svg'/>
+   </node>
+   <node>
+      <tag k='seamark:type' v='buoy_safe_water'/>
+      <tag k='seamark:buoy_safe_water:shape' v='pillar'/>
+      <tag k='_action_' v='img:file=SeaMapSymbols/Pillar_Red_White.svg'/>
+   </node>
+   <node>
+      <tag k='seamark:type' v='buoy_safe_water' />
+      <tag k='seamark:buoy_safe_water:shape' v='spherical' />
+      <tag k='_action_' v='img:file=SeaMapSymbols/Sphere_Red_White.svg'/>
+   </node>
+   <node>
+      <tag k='seamark:type' v='buoy_safe_water'/>
+      <tag k='~seamark:buoy_safe_water:shape~' v=''/>
+      <tag k='_action_' v='img:file=SeaMapSymbols/Spar_Red_White.svg'/>
+   </node>
+
+   <node>
+      <tag k='seamark:type' v='buoy_cardinal' />
+      <tag k='seamark:buoy_cardinal:category' v='west' />
+      <tag k='~seamark:buoy_cardinal:shape~' v='' />
+      <tag k='_action_' v='img:file=SeaMapSymbols/Pillar_Yellow_Black_Yellow.svg'/>
+   </node>
+   <node>
+      <tag k='seamark:type' v='buoy_cardinal' />
+      <tag k='seamark:buoy_cardinal:category' v='east' />
+      <tag k='~seamark:buoy_cardinal:shape~' v='' />
+      <tag k='_action_' v='img:file=SeaMapSymbols/Pillar_Black_Yellow_Black.svg'/>
+   </node>
+   <node>
+      <tag k='seamark:type' v='buoy_cardinal' />
+      <tag k='seamark:buoy_cardinal:category' v='south' />
+      <tag k='~seamark:buoy_cardinal:shape~' v='' />
+      <tag k='_action_' v='img:file=SeaMapSymbols/Pillar_Yellow_Black.svg'/>
+   </node>
+   <node>
+      <tag k='seamark:type' v='buoy_cardinal' />
+      <tag k='seamark:buoy_cardinal:category' v='north' />
+      <tag k='~seamark:buoy_cardinal:shape~' v='' />
+      <tag k='_action_' v='img:file=SeaMapSymbols/Pillar_Black_Yellow.svg'/>
+   </node>
+
+   <node>
+      <tag k='seamark:type' v='buoy_cardinal' />
+      <tag k='seamark:buoy_cardinal:category' v='west' />
+      <tag k='seamark:buoy_cardinal:shape' v='pillar' />
+      <tag k='_action_' v='img:file=SeaMapSymbols/Pillar_Yellow_Black_Yellow.svg'/>
+   </node>
+   <node>
+      <tag k='seamark:type' v='buoy_cardinal' />
+      <tag k='seamark:buoy_cardinal:category' v='east' />
+      <tag k='seamark:buoy_cardinal:shape' v='pillar' />
+      <tag k='_action_' v='img:file=SeaMapSymbols/Pillar_Black_Yellow_Black.svg'/>
+   </node>
+   <node>
+      <tag k='seamark:type' v='buoy_cardinal' />
+      <tag k='seamark:buoy_cardinal:category' v='south' />
+      <tag k='seamark:buoy_cardinal:shape' v='pillar' />
+      <tag k='_action_' v='img:file=SeaMapSymbols/Pillar_Yellow_Black.svg'/>
+   </node>
+   <node>
+      <tag k='seamark:type' v='buoy_cardinal' />
+      <tag k='seamark:buoy_cardinal:category' v='north' />
+      <tag k='seamark:buoy_cardinal:shape' v='pillar' />
+      <tag k='_action_' v='img:file=SeaMapSymbols/Pillar_Black_Yellow.svg'/>
+   </node>
+
+   <node>
+      <tag k='seamark:type' v='buoy_cardinal' />
+      <tag k='seamark:buoy_cardinal:category' v='west' />
+      <tag k='seamark:buoy_cardinal:shape' v='spar' />
+      <tag k='_action_' v='img:file=SeaMapSymbols/Spar_Yellow_Black_Yellow.svg'/>
+   </node>
+   <node>
+      <tag k='seamark:type' v='buoy_cardinal' />
+      <tag k='seamark:buoy_cardinal:category' v='east' />
+      <tag k='seamark:buoy_cardinal:shape' v='spar' />
+      <tag k='_action_' v='img:file=SeaMapSymbols/Spar_Black_Yellow_Black.svg'/>
+   </node>
+   <node>
+      <tag k='seamark:type' v='buoy_cardinal' />
+      <tag k='seamark:buoy_cardinal:category' v='south' />
+      <tag k='seamark:buoy_cardinal:shape' v='spar' />
+      <tag k='_action_' v='img:file=SeaMapSymbols/Spar_Yellow_Black.svg'/>
+   </node>
+   <node>
+      <tag k='seamark:type' v='buoy_cardinal' />
+      <tag k='seamark:buoy_cardinal:category' v='north' />
+      <tag k='seamark:buoy_cardinal:shape' v='spar' />
+      <tag k='_action_' v='img:file=SeaMapSymbols/Spar_Black_Yellow.svg'/>
+   </node>
+
+
+   <node>
+      <tag k='_action_' v='img:file=SeaMapSymbols/Can_Red.svg'/>
+      <!--tag k='_action_' v='img:file=SeaMapSymbols/Can.svg'/-->
+      <tag k='seamark:buoy_lateral:category' v='port' />
+      <tag k='~seamark:buoy_lateral:shape~' v='' />
+      <tag k='seamark:type' v='buoy_lateral' />
+   </node>
+   <node>
+      <tag k='_action_' v='img:file=SeaMapSymbols/Cone_Green.svg'/>
+      <!--tag k='_action_' v='img:file=SeaMapSymbols/Cone_Black.svg'/-->
+      <tag k='seamark:buoy_lateral:category' v='starboard' />
+      <tag k='~seamark:buoy_lateral:shape~' v='' />
+      <tag k='seamark:type' v='buoy_lateral' />
+   </node>
+   <node>
+      <tag k='_action_' v='img:file=SeaMapSymbols/Can_Red.svg'/>
+      <!--tag k='_action_' v='img:file=SeaMapSymbols/Can.svg'/-->
+      <tag k='seamark:buoy_lateral:category' v='port' />
+      <tag k='seamark:buoy_lateral:shape' v='can' />
+      <tag k='seamark:type' v='buoy_lateral' />
+   </node>
+   <node>
+      <tag k='_action_' v='img:file=SeaMapSymbols/Cone_Green.svg'/>
+      <!--tag k='_action_' v='img:file=SeaMapSymbols/Cone_Black.svg'/-->
+      <tag k='seamark:buoy_lateral:category' v='starboard' />
+      <tag k='seamark:buoy_lateral:shape' v='conical' />
+      <tag k='seamark:type' v='buoy_lateral' />
+   </node>
+   <node>
+      <tag k='_action_' v='img:file=SeaMapSymbols/Pillar_Red.svg'/>
+      <!--tag k='_action_' v='img:file=SeaMapSymbols/Pillar.svg'/-->
+      <tag k='seamark:buoy_lateral:category' v='port' />
+      <tag k='seamark:buoy_lateral:shape' v='pillar' />
+      <tag k='seamark:type' v='buoy_lateral' />
+   </node>
+   <node>
+      <tag k='_action_' v='img:file=SeaMapSymbols/Pillar_Green.svg'/>
+      <!--tag k='_action_' v='img:file=SeaMapSymbols/Pillar_Black.svg'/-->
+      <tag k='seamark:buoy_lateral:category' v='starboard' />
+      <tag k='seamark:buoy_lateral:shape' v='pillar' />
+      <tag k='seamark:type' v='buoy_lateral' />
+   </node>
+   <node>
+      <tag k='_action_' v='img:file=SeaMapSymbols/Spar_Red.svg'/>
+      <!--tag k='_action_' v='img:file=SeaMapSymbols/Pillar_Black.svg'/-->
+      <tag k='seamark:buoy_lateral:category' v='port' />
+      <tag k='seamark:buoy_lateral:shape' v='spar' />
+      <tag k='seamark:type' v='buoy_lateral' />
+   </node>
+
+   <node>
+      <tag k='_action_' v='img:file=SeaMapSymbols/Pillar_Red_Green_Red.svg'/>
+      <tag k='seamark:buoy_lateral:category' v='preferred_channel_starboard' />
+      <tag k='seamark:buoy_lateral:shape' v='pillar' />
+      <tag k='seamark:type' v='buoy_lateral' />
+   </node>
+   <node>
+      <tag k='_action_' v='img:file=SeaMapSymbols/Cone_Red_Green_Red.svg'/>
+      <tag k='seamark:buoy_lateral:category' v='preferred_channel_starboard' />
+      <tag k='seamark:buoy_lateral:shape' v='conical' />
+      <tag k='seamark:type' v='buoy_lateral' />
+   </node>
+   <node>
+      <tag k='_action_' v='img:file=SeaMapSymbols/Pillar_Green_Red_Green.svg'/>
+      <!--tag k='_action_' v='img:file=SeaMapSymbols/Pillar_Black.svg'/-->
+      <tag k='seamark:buoy_lateral:category' v='preferred_channel_port' />
+      <tag k='seamark:buoy_lateral:shape' v='pillar' />
+      <tag k='seamark:type' v='buoy_lateral' />
+   </node>
+   <node>
+      <tag k='_action_' v='img:file=SeaMapSymbols/Cone_Green_Red_Green.svg'/>
+      <tag k='seamark:buoy_lateral:category' v='preferred_channel_port' />
+      <tag k='seamark:buoy_lateral:shape' v='conical' />
+      <tag k='seamark:type' v='buoy_lateral' />
+   </node>
+   <node>
+      <tag k='_action_' v='img:file=SeaMapSymbols/Spar_Green_Red_Green.svg'/>
+      <tag k='seamark:buoy_lateral:category' v='preferred_channel_port' />
+      <tag k='seamark:buoy_lateral:shape' v='spar' />
+      <tag k='seamark:type' v='buoy_lateral' />
+   </node>
+   <node>
+      <tag k='_action_' v='img:file=SeaMapSymbols/Spar_Green_Red_Green.svg'/>
+      <tag k='seamark:buoy_lateral:category' v='preferred_channel_port' />
+      <tag k='seamark:buoy_lateral:shape' v='spar' />
+      <tag k='seamark:type' v='buoy_lateral' />
+   </node>
+
+
+   <node>
+      <tag k='seamark:type' v='buoy_special_purpose'/>
+      <tag k='seamark:buoy_special_purpose:shape' v='barrel'/>
+      <tag k='_action_' v='img:file=SeaMapSymbols/Barrel_Yellow.svg'/>
+   </node>
+   <node>
+      <tag k='seamark:type' v='buoy_special_purpose'/>
+      <tag k='seamark:buoy_special_purpose:shape' v='can'/>
+      <tag k='_action_' v='img:file=SeaMapSymbols/Can_Yellow.svg'/>
+   </node>
+   <node>
+      <tag k='seamark:type' v='buoy_special_purpose'/>
+      <tag k='seamark:buoy_special_purpose:shape' v='spar'/>
+      <tag k='_action_' v='img:file=SeaMapSymbols/Spar_Yellow.svg'/>
+   </node>
+   <node>
+      <tag k='seamark:type' v='buoy_special_purpose'/>
+      <tag k='~seamark:buoy_special_purpose:shape~' v=''/>
+      <tag k='_action_' v='img:file=SeaMapSymbols/Sphere_Yellow.svg'/>
+   </node>
+
+   <node>
+      <tag k='seamark:mooring:shape' v='super-buoy'/>
+      <tag k='seamark:type' v='mooring'/>
+      <tag k='_action_' v='img:file=SeaMapSymbols/Super.svg'/>
+   </node>
+   <node>
+      <tag k='seamark:buoy_special_purpose:shape' v='super-buoy'/>
+      <tag k='seamark:type' v='buoy_special_purpose'/>
+      <tag k='_action_' v='img:file=SeaMapSymbols/Super.svg'/>
+   </node>
+
+   <node>
+      <tag k='seamark:type' v='buoy_isolated_danger'/>
+      <tag k='seamark:buoy_isolated_danger:shape' v='spar'/>
+      <tag k='_action_' v='img:file=SeaMapSymbols/Spar_Black_Red_Black.svg'/>
+   </node>
+   <node>
+      <tag k='seamark:type' v='buoy_isolated_danger'/>
+      <tag k='seamark:buoy_isolated_danger:shape' v='pillar'/>
+      <tag k='_action_' v='img:file=SeaMapSymbols/Pillar_Black_Red_Black.svg'/>
+   </node>
+   <node>
+      <tag k='seamark:type' v='buoy_isolated_danger'/>
+      <tag k='~seamark:buoy_isolated_danger:shape~' v='pillar'/>
+      <tag k='_action_' v='img:file=SeaMapSymbols/Spar_Black_Red_Black.svg'/>
+   </node>
+
+</osm>
+
