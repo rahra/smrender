@@ -1,9 +1,2 @@
-See http://www.abenteuerland.at/smrender/ for more information.
-
-To compile and install from the tarball:
-./configure
-make
-make install
-
-If it was checked out from SVN. run /autoconf.sh before!
+See README.md for more information.
 

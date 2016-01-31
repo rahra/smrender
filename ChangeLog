@@ -1,0 +1,322 @@
+2016-01-28 Bernhard R. Fischer <bf@abenteuerland.at>
+ 
+ 	 * Started to migrate the project to Github.
+
+2015-08-22 Bernhard R. Fischer <bf@abenteuerland.at>
+
+    * new version: 4.0 r1854 online!
+    * Started to add test and demonstrational rules.
+    * Implemented measurement unit parser and converter (but not applied to all actions yet).
+    * Pixels are internally handled completely as double (and not int).
+
+2015-07-25 Bernhard R. Fischer <bf@abenteuerland.at>
+
+    * new version: 4.0 r1842 online!
+    * New function clip() implemented for clipping of white page border.
+    * Bugfix in KAP code: artefacts and segfaults in landscape charts.
+    * Sea chart ruleset improved.
+    * Added new line stlye 'wavy' which may be used to render e.g. underwater cables.
+    * Added new line style 'pipe' to render e.g. underwater pipes.
+	 * Added new line stlye 'rounddot' which is similar to 'dotted' but makes
+	 real round dots (which may be visible in high resolutions).
+	 * Started to add set of test rules for the purpose of testing the renderer
+	 after code modifications and to demonstrate rendering capabilities.
+	 * Added basic translation rules for Greek language (Greek charts).
+
+2015-04-27 Bernhard R. Fischer <bf@abenteuerland.at>
+
+    * new version: 4.0 r1821 online!
+    * New function mask() implemented for uncluttering of clusters of objects.
+	 * Language support in function pchar() of libsmfilter added. Currently
+	 supported languages are English, German, and Croatian.
+    * Default values of xoff/yoff parameters of function cap() are now font-size dependent.
+    * Serveral minor fixes and improvements.
+
+2015-02-08 Bernhard R. Fischer <bf@abenteuerland.at>
+
+	 * new version: 4.0 r1811 online!
+	 * Fixed calculation of rendering window. Projection parameters were
+	 slightly incorrect which led to incorrect page border alignment
+	 specifically with large scales.
+	 * Function draw() now support bezier lines for a more smooth rendering of
+	 polygons (ways). Use curve=1 (see documentation) to activate this feature.
+	 refine_poly() is deprecated instead.
+    * Segfault fixed in rules parser.
+    * Read filter rewritten (didn't work accidentaly any more after several changes).
+    * Fixed severe heap corruption in OSM parser.
+	 * Added new function translate() to do tag translations. This can be used
+	 to translate e.g. specific tags into different languages.
+	 * Option -o now creates output files in the format given by the file name
+	 extension. -O is deprecated instead.
+    * Added support for SVG output.
+    * Sea chart ruleset further improved.
+    * Function img() now supports SVG images (based on librsvg2).
+    * Seachart icons are now part of the package as SVGs (ruleset modified accordingly).
+	 * vsector@libsmfilter supports new parameter 'f'. It is used as scaling
+	 factor over all sectors. This is usefule for large scale charts.
+    * img() has new parameter 'anglekey' to rotate images based on tags.
+	 * New command line option '-s' for a global image scaling. This is useful
+	 for large scale charts.
+	 * Modified code for directional filling: CAIRO_OPERATOR_CLEAR removed
+	 because it is unsupported by the PDF and SVG surfaces.
+
+2014-10-22 Bernhard R. Fischer <bf@abenteuerland.at>
+
+	 * new version: 4.0 r1709 online!
+    * Added parameters xoff and yoff to function cap().
+    * Updated standard rules.
+    * Added Doxyfile and improved code documentation.
+    * Fix in in pchar@libsmfilter.so.
+    * Added function add() to add OSM nodes to the data directly from the ruleset.
+    * Added option -N for renumbering OSM IDs.
+    * inherit_tags() can now inherit up and down (not just up).
+    * Added function compass()
+    * to libsmfilter to render magnetic variation compass.
+    * Fixed segfault in ruleset loader.
+    * Fixed special case of directional filling of function draw() if largest polygon is directed clockwise.
+    * Several other minor fixes.
+
+2014-09-22  Bernhard R. Fischer <bf@abenteuerland.at>
+
+	 * new version: 3.0 r1662 online!
+    * This is the final 3.0 stable release. Further development is running into 4.0. Serious bugs will be back-ported.
+	 * Automatic rotation of island captions highly improved. Automatic
+	 captions are aligned to the "major axis" of polygons (such as islands).
+    * Ruleset updates and fixes.
+    * Several minor fixes.
+	 * Version 4.0 preview: 4.0 will provide a native interface to Smrender's
+	 internal database. It will be implemented as Websocket, thus giving
+	 web-based apps an easy access to OSM data.
+
+2013-11-13 Bernhard R. Fischer <bf@abenteuerland.at>
+
+	 * new version: 3.0 r1537 online!
+    * Implemented new action exec() to execute programs and scripts. See documentation for more details.
+    * Some fixes in cat_poly() for newly found special cases.
+    * Introduced new ruleset which look similar to Imray's Tetra charts.
+    * New internal function get_param_bool() added for parsing boolean variables.
+
+2013-03-25 Bernhard R. Fischer <bf@abenteuerland.at>
+
+    * new version: 3.0 r1484 online!
+    * cat_poly() has new parameter copy.
+    * shape() can produce more complex shapes.
+	 * Missing support for dashed and dotted lines added again (This was
+	 missing since the transition from libgd to libcairo.).
+    * cap() is now able to rotate captions based on the value of a tag of a node.
+    * Standard map ruleset improved.
+    * Source code does now comply to C99.
+    * New actions available: zeroway(), split(), inherit_tags(), incomplete().
+    * New options available: -D, -n, -V.
+    * Code improvements in places.
+    * All new features are documented in the documentation. Please, see there for details. 
+
+2013-03-25 Bernhard R. Fischer <bf@abenteuerland.at>
+
+    * new version: 3.0 r1408 online!
+	 * The action img() is now applicable to areas (closed ways) which will
+	 fill the polygon with the image in a tiled manner.
+    * img() supplies the new parameter "scale" for scaling images.
+    * The action neighbortile() was improved to check all nodes of a way and not just the first and last.
+	 * The parameter parser for the action parameters was completely rewritten.
+	 It now allows to enclose strings in single or double quotes and escaping
+	 with the backslash.
+    * New action strfmt() implemented. This allows to create formatted strings in a printf()-style manner.
+
+2013-02-11 Bernhard R. Fischer <bf@abenteuerland.at>
+
+	 * new version: 3.0 r1391 online!
+	 * Smrender now uses libcairo instead of libgd. This improves the quality
+	 of the output image and it allows to natively create (vector-based) PDF
+	 documents.
+
+2013-01-13 Bernhard R. Fischer <bf@abenteuerland.at>
+
+    * new version: 2.0 r1362 online!
+    * Implemented full X11 color table.
+    * Smrender now honors the visibility of objects, i.e. invisible objects are ignored.
+    * Added a lot of seamark rules.
+
+2012-12-28 Bernhard R. Fischer <bf@abenteuerland.at>
+
+    * new version: 2.0 r1357 online!
+	 * Fixed a too-verbose-debugging issue.
+
+2012-12-28 Bernhard R. Fischer <bf@abenteuerland.at>
+
+    * new version: 2.0 r1356 online!
+	 * Implemented new W3C color table. Skeleton library libskel updated.
+
+2012-12-12 Bernhard R. Fischer <bf@abenteuerland.at>
+
+    * new version: 2.0 r1354 online!
+    * Bugfix in OSM file output of relations.
+    * Bugfix of coordinate strings of negative (South/West) coordinates.
+    * Started parsing/implementation of roles of relations.
+
+2012-12-06 Bernhard R. Fischer <bf@abenteuerland.at>
+
+    * new version: 2.0.r1353 online!
+	 * Rule set allows conditional rendering with actions enable_rule() and
+	 disable_rule() and the object attribute "visible=true|false".
+    * Support for tile creation added.
+    * Code reorganized: common functions are moved to libsmrender.so. This enables library support on Windows.
+    * The rendering window may now be specified as bounding box as well.
+    * Multi-threading support highly improved (but is still experimental and thus not enabled by default).
+    * Action cat_poly() now supports optional parameters ign_incomplete and no_corner.
+    * Action out() no creates a more compact format and supports relations.
+    * Auto-rotation completely rewritten.
+    * Out-of-bounds tracking of ways (see function neighbortile()).
+    * Several ruleset updates.
+    * Several internal improvements and bugfixes.
+
+2012-10-23 Bernhard R. Fischer <bf@abenteuerland.at>
+
+	 * new version: 1.2.r1326 online!
+	 * New action 'ruler' added. It draws a ruler with partitions in
+	 kilometers. This feature mainly is intended to be used for either land
+	 maps or just maps which are used to show to non-marine people (who do not
+	 know about nautical miles;).
+	 * Grid may now be activated by a rule with the action 'grid'. The options
+	 -g and -G are still available and will also be in future because they are
+	 more appropriate if smrender is invoked by scripts.
+    * New action 'dist_median' which calculates the median of the lengths of the edges of a way.
+	 * For security reasons the main functions of the actions must now be
+	 suffixed by '_main'. Please note that this will break backwards
+	 compatibility to old third-party libraries for Smrender.
+	 * New action 'poly_len' added. It works similar to 'poly_area'.
+	 * Action 'cap_way' (caption on way) slightly reorganized: if parameter
+	 'size' is missing or set to 'auto' then auto-sizing is in force.
+    * Option -u introduced to generate download URLs.
+    * Smrender now may read rules from a files in a directory instead of a single file.
+	 * Experimental multi-threading added (./configure --enable-threads) which
+	 may give improvements on huge input files and rendering areas. Don't use
+	 in production environments! This feature will be improved in future
+	 releases.
+    * Experimental action 'diff' added to diff OSM files based on their object IDs.
+
+2012-09-07 Bernhard R. Fischer <bf@abenteuerland.at>
+
+	 * new version: 1.2.r1301 online!
+	 * KAP compression improved.
+	 * Option -K added to generate KAP header only.
+
+2012-09-06 Bernhard R. Fischer <bf@abenteuerland.at>
+
+	 * new version: 1.2.r1299 online!
+	 * Smrender now is able to generate KAP files!
+	 * Bugfix in OSM output (relations had ill format).
+	 * Option -t added.
+
+2012-08-28 Bernhard R. Fischer <bf@abenteuerland.at>
+
+	 * new version: 1.2.r1290 online!
+	 * New option -s implemented which activates a new anti-aliasing technique
+	 for improved image quality.
+	 * New action shape() implemented to allow generation of standard shapes,
+	 such as triangles, squares, and circles.
+
+2012-08-16 Bernhard R. Fischer <bf@abenteuerland.at>
+
+	 * new version: 1.2.r1286 online!
+    * Support for relations now implemented.
+    * cat_poly() may now be applied to relations as well.
+	 * The "window" specification on the command line is now more flexible
+	 because it accepts nautical notations for coordinates as well (e.g.
+	 43N30). See documentation for more information.
+    * Minor bug fix of refine_poly().
+	 * The file rulesbig.osm now fits the new rules syntax which was
+	 implemented in revision 1264. I forgot to update this file.
+
+2012-06-11 Bernhard R. Fischer <bf@abenteuerland.at>
+
+	 * new version: 1.2.r1269 online!
+	 * Minor typecasting fixes to compile smooth on cygwin.
+
+2012-06-11 Bernhard R. Fischer <bf@abenteuerland.at>
+
+	 * new version: 1.2.r1267 online!
+	 * pchar@libsmfilter.so improved.
+	 * Documentation updated.
+
+2012-06-11 Bernhard R. Fischer <bf@abenteuerland.at>
+
+	 * new version: 1.2.r1264 online!
+	 * Actions totally restructured. The syntax of the actions are now more
+	 intuitive and homogeneous. Please note that this new version: will thus
+	 break your old ruleset! It is not backwards compatible. Please read the
+	 documentation of the actions for more details.
+    * mmap() support (option -M) is now on by default.y
+    * Code restructured in the way that all libgd functions are now found in smrules.c.
+	 * Header files restructured; smrender.h contains all necessary types for
+	 library development, all internal types and declarations are moved to
+	 smrender_dev.h.
+	 * Smrender may now compiled without libgd. In that case it can be used for
+	 all kinds of OSM file processing except for rendering itself.
+    * HTML-style color definition in actions now optionally support transparency.
+    * Bugfix in projection. The previous versions had a slight incorrect projection.
+    * Ruleset can now be saved to a well-formed file (see option -R).
+
+2012-05-16 Bernhard R. Fischer <bf@abenteuerland.at>
+
+	 * new version: 1.1.r1240 online!
+	 * It seems that libgd does not support antialiasing on lines with a
+	 thickness > 1. There are some reports in the net, also I found some hints
+	 that this is documented but I actually could not find it in the libgd
+	 documentation. Smrender now disables antialiasing when drawing lines
+	 thicker than 1 pixel.
+	 * The new version: of smrender supports the option -b which allows to set
+	 a background color other than white (which is default).
+
+2012-05-05 Bernhard R. Fischer <bf@abenteuerland.at>
+
+ 	 * new version: 1.1.r1239 online!
+	 * Bugfix in libsmfilter, memcpy may have caused endless loop.
+
+2012-03-25 Bernhard R. Fischer <bf@abenteuerland.at>
+
+	 * new version: 1.1.r1236 online!
+	 * Bugfix in argument parse for rule-based function arguments.
+
+2012-03-22 Bernhard R. Fischer <bf@abenteuerland.at>
+
+	 * new version: 1.1.r1235 online!
+	 * Fix for segfault on 32 bit Linux. Sorry guys!
+
+2012-03-22 Bernhard R. Fischer <bf@abenteuerland.at>
+
+	 * new version: 1.1.r1234 online!
+	 * This version contains a slightly adapted libsmfilter according to the suggestions from Malcolm H. Thanks!
+	 * Additionally, the package includes the shell script "smfilter2" which is
+	 a wrapper script that mimes the behavior of Smfilter with Smrender.
+
+2012-03-20 Bernhard R. Fischer <bf@abenteuerland.at>
+
+	 * new version: 1.1.r1230 online!
+	 * Function refine_poly() added for refinement of polylines. This highly improves the appearance of the map.
+
+2012-03-12 Bernhard R. Fischer <bf@abenteuerland.at>
+
+	 * new version: 1.1.r1225 online!
+	 * gen_layer() is now separate action 'mskfill'.
+	 * new functions set_cw() and set_ccw() available.
+	 * new action 'settags' available. (see documentation for details)
+
+2012-03-11 Bernhard R. Fischer <bf@abenteuerland.at>
+
+	 * new version: 1.1.r1223 online!
+	 * The 'draw' action now supports dotted and dashed line styles, smrender
+	 provides new internal function 'gen_layer()' for filling multi-polygons,
+	 libsmfilter provides new function 'sounding()' to generate typical circles
+	 around depth soundings.
+
+2012-03-09 Bernhard R. Fischer <bf@abenteuerland.at>
+
+	 * smrender comes now with GNU autotools. This should simplify the
+	 compilation and installation process. It is tested to compile and run on
+	 Debian/Squeeze, FreeBSD 8.x, OpenBSD 5.0, and Mac OS X 10.7.3 (Lion).
+
+2012-03-08 Bernhard R. Fischer <bf@abenteuerland.at>
+
+	 * documentation updated. There is now a simple example given on how to use smrender.
+
