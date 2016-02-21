@@ -608,7 +608,7 @@ void init_rendering_window(struct rdata *rd, char *win, const char *paper)
       int i = strcnt(win, ':');
       double param;
 
-      if (i < 2 || i > 3)
+      if (i != 2 && i != 3 && i != 7)
          log_msg(LOG_ERR, "format error in window"), exit(EXIT_FAILURE);
 
       s = strtok(win, ":");
@@ -642,7 +642,7 @@ void init_rendering_window(struct rdata *rd, char *win, const char *paper)
             log_msg(LOG_ERR, "illegal size parameter"), exit(EXIT_FAILURE);
       }
       // window is bounding box
-      else
+      else if (i == 3)
       {
          rd->bb.ll.lon = rd->mean_lon;
          rd->bb.ll.lat = rd->mean_lat;
@@ -662,6 +662,48 @@ void init_rendering_window(struct rdata *rd, char *win, const char *paper)
 
          rd->mean_lon = (rd->bb.ru.lon + rd->bb.ll.lon) / 2.0;
          rd->mean_lat = (rd->bb.ru.lat + rd->bb.ll.lat) / 2.0;
+      }
+      else if (i == 7)
+      {
+         rd->polygon_window = 1;
+         rd->bb.ll.lon = rd->bb.ru.lon = rd->pw[0].lon = rd->mean_lon;
+         rd->bb.ll.lat = rd->bb.ru.lat = rd->pw[0].lat = rd->mean_lat;
+
+         for (i = 1; i < 4; i++)
+         {
+            n = parse_coord(s, &param);
+            if (n == COORD_LON)
+               rd->pw[i].lon = param;
+            else
+               rd->pw[i].lat = param;
+
+            s = strtok(NULL, ":");
+            n = parse_coord(s, &param);
+            if (n == COORD_LAT)
+               rd->pw[i].lat = param;
+            else
+               rd->pw[i].lon = param;
+
+            rd->bb.ll.lon = fmin(rd->bb.ll.lon, rd->pw[i].lon);
+            rd->bb.ll.lat = fmin(rd->bb.ll.lat, rd->pw[i].lat);
+            rd->bb.ru.lon = fmax(rd->bb.ll.lon, rd->pw[i].lon);
+            rd->bb.ru.lat = fmax(rd->bb.ll.lat, rd->pw[i].lat);
+
+            s = strtok(NULL, ":");
+         }
+
+/*         rd->bb.ll.lon = rd->pw[0].lon;
+         rd->bb.ll.lat = rd->pw[0].lat;
+         rd->bb.ru.lon = rd->pw[1].lon;
+         rd->bb.ru.lat = rd->pw[3].lat;*/
+
+         rd->mean_lon = (rd->bb.ru.lon + rd->bb.ll.lon) / 2.0;
+         rd->mean_lat = (rd->bb.ru.lat + rd->bb.ll.lat) / 2.0;
+      }
+      else
+      {
+         log_msg(LOG_EMERG, "fatal window error: this should never happend");
+         exit(EXIT_FAILURE);
       }
    }
 

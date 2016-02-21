@@ -96,6 +96,10 @@ struct rdata
    bx_node_t *index;
    //! bounding box (left lower and right upper coordinates)
    struct bbox bb;
+   //! polygon window instead of bbox
+   int polygon_window;
+   //! coordinates of polygon
+   struct coord pw[4];
    //! coordinate width in degrees (wc=bb.ru.lon-bb.ll.lon)
    double wc, 
    //! coordinate height in degrees (hc=bb.ru.lat-bb.ll.lat)

@@ -63,12 +63,6 @@ int mm2pxi(double x)
    return round(mm2pxf(x));
 }
 
-/*
-double px2mm(double x)
-{
-   return x * 25.4 / rd_.dpi;
-}*/
-
 
 void pxf2geo(double x, double y, double *lon, double *lat)
 {
@@ -77,17 +71,69 @@ void pxf2geo(double x, double y, double *lon, double *lat)
 }
 
 
-void geo2pxf(double lon, double lat, double *x, double *y)
+/*! This function projects the polygon defined by the 4 points rd_.pw[] (pw[0]
+ * -> left lower, pw[1] -> right lower, pw[2] -> right upper, pw[3] -> left
+ *  upper) to the rectangular page. This does not fulfill Mercartor
+ *  constraints. The function is experimental.
+ */
+void geo2pxf_rect(double lon, double lat, double *x, double *y)
 {
-   *x = (lon - rd_.bb.ll.lon) * rd_.w / rd_.wc;
-   *y = rd_.h * (0.5 - (asinh(tan(DEG2RAD(lat))) - rd_.lath) / rd_.lath_len);
+   double x0, y0, sx, sy, dx, dy, mx, my;
+
+   x0 = lon - rd_.pw[0].lon;
+   y0 = lat - rd_.pw[0].lat;
+
+   sx = x0 / (rd_.pw[1].lon - rd_.pw[0].lon);
+   sy = y0 / (rd_.pw[3].lat - rd_.pw[0].lat);
+
+   dx = (rd_.pw[3].lon - rd_.pw[0].lon);
+   dy = (rd_.pw[1].lat - rd_.pw[0].lat);
+   mx = (rd_.pw[2].lon - rd_.pw[3].lon) / (rd_.pw[1].lon - rd_.pw[0].lon);
+   my = (rd_.pw[2].lat - rd_.pw[1].lat) / (rd_.pw[3].lat - rd_.pw[0].lat);
+
+   x0 -= dx * sy;
+   x0 /= 1 - (1 - mx) * sy;
+
+   y0 -= dy * sx;
+   y0 /= 1 - (1 - my) * sx;
+
+   *x = x0 * rd_.w / (rd_.pw[1].lon - rd_.pw[0].lon);
+   *y = rd_.h - y0 * rd_.h / (rd_.pw[3].lat - rd_.pw[0].lat);
 }
 
 
+/*! Convert geographic to Cartesian (pixel) coordinates x and y.
+ * @param lon Longitude of object.
+ * @param lat Latitude of object.
+ * @param x Pointer to x coordinate for result.
+ * @param y Pointer to y coordinate.
+ */
+void geo2pxf(double lon, double lat, double *x, double *y)
+{
+   if (!rd_.polygon_window)
+   {
+      *x = (lon - rd_.bb.ll.lon) * rd_.w / rd_.wc;
+      *y = rd_.h * (0.5 - (asinh(tan(DEG2RAD(lat))) - rd_.lath) / rd_.lath_len);
+   }
+   else
+   {
+      geo2pxf_rect(lon, lat, x, y);
+   }
+}
+
+
+/*! Convert geographic to page coordinates, i.e. Cartesian coordinates
+ * dependent on pixel density (dpi).
+ * @param lon Longitude of object.
+ * @param lat Latitude of object.
+ * @param x Pointer to x coordinate for result.
+ * @param y Pointer to y coordinate.
+ */
 void geo2pt(double lon, double lat, double *x, double *y)
 {
-   *x = (lon - rd_.bb.ll.lon) * rd_.w * 72 / (rd_.wc * rd_.dpi);
-   *y = rd_.h * (0.5 - (asinh(tan(DEG2RAD(lat))) - rd_.lath) / rd_.lath_len) * 72 / rd_.dpi;
+   geo2pxf(lon, lat, x, y);
+   *x = rdata_px_unit(*x, U_PT);
+   *y = rdata_px_unit(*y, U_PT);
 }
 
 
@@ -114,6 +160,9 @@ void rdata_log(void)
    log_msg(LOG_NOTICE, "   mean_lat = %.3f°, mean_lat_len = %.3f (%.1f nm)",
          rd_.mean_lat, rd_.mean_lat_len, rd_.mean_lat_len * 60);
    log_msg(LOG_NOTICE, "   lath = %f, lath_len = %f", rd_.lath, rd_.lath_len);
+   log_msg(LOG_NOTICE, "   polygon_window = %d", rd_.polygon_window);
+   for (int i = 0; i < 4; i++)
+      log_msg(LOG_NOTICE, "   pw[%d] = {%.3f %.3f}", i, rd_.pw[i].lat, rd_.pw[i].lon);
    log_msg(LOG_NOTICE, "   page size = %.1f x %.1f mm",
          PX2MM(rd_.w), PX2MM(rd_.h));
    log_msg(LOG_NOTICE, "   rendering: %.1fx%.1f px, dpi = %d",
