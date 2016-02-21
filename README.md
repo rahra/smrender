@@ -21,9 +21,9 @@ samples](https://www.cypherpunk.at/download/smrender/samples/).
 
 ## Download
 
-The latest snapshots of version 4.0 of Smrender are are found in the current/ directory.
+The latest snapshots of version 4.0 of Smrender are are found in the [current/](https://www.cypherpunk.at/download/smrender/current/) directory.
 
-Older versions of Smrender have been moved to the archive/ directory.
+Older versions of Smrender have been moved to the [archive/](https://www.cypherpunk.at/download/smrender/archive/) directory.
 
 ## Documentation
 
