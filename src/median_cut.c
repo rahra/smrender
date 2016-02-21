@@ -19,6 +19,9 @@
  * reduce the colors of an image to a specified number.
  * The algorthim was ported to C from the original C++ sample at
  * http://en.literateprograms.org/Median_cut_algorithm_(C_Plus_Plus)?oldid=12754
+ *
+ * For testing, compile with
+ * gcc -Wall -DTEST_MEDIAN_CUT -DHAVE_CONFIG_H `pkg-config --libs --cflags cairo` -std=c99 -I../libsmrender -I..  -lsmrender -omedian_cut median_cut.c
  */
 
 #ifdef HAVE_CONFIG_H
@@ -108,12 +111,6 @@ static int mc_point_compare(const mc_point_t *a, const mc_point_t *b)
 static int mc_block_compare(const mc_block_t *a, const mc_block_t *b)
 {
    return mc_longest_side_length(b) - mc_longest_side_length(a);
-}
-
-
-static int mc_block_lum_compare(const mc_block_t *a, const mc_block_t *b)
-{
-   return a->lum - b->lum;
 }
 
 
@@ -275,6 +272,13 @@ static uint32_t mc_point_to_cairo_color(const mc_point_t *pt)
 }
 
 
+/*! This function reduces the colors in an Cairo image surface to a defined
+ * number of colors.
+ * @param src Pointer to the Cairo image surface.
+ * @param ncol Maximum number of final colors.
+ * @param Pointer to an array which will recieve the color values.
+ * @return The function returns the final number of colors.
+ */
 int cairo_smr_image_surface_color_reduce(cairo_surface_t *src, int ncol, uint32_t *palette)
 {
    unsigned char *pix;
@@ -289,7 +293,7 @@ int cairo_smr_image_surface_color_reduce(cairo_surface_t *src, int ncol, uint32_
 
    if ((pt = malloc(sizeof(*pt) * (cairo_image_surface_get_width(src) * cairo_image_surface_get_height(src)))) == NULL)
    {
-      //perror("malloc");
+      log_errno(LOG_ERR, "malloc() failed");
       return -1;
    }
 
@@ -354,6 +358,8 @@ int cairo_smr_image_surface_color_reduce(cairo_surface_t *src, int ncol, uint32_
 int main(int argc, char **argv)
 {
    cairo_surface_t *sfc;
+   int col = 127;
+   uint32_t palette[col];
    
    if (argc < 3)
    {
@@ -379,7 +385,7 @@ int main(int argc, char **argv)
          return 1;
    }
 
-   cairo_smr_image_surface_color_reduce(sfc, 127);
+   col = cairo_smr_image_surface_color_reduce(sfc, col, palette);
    cairo_surface_write_to_png(sfc, argv[2]);
    cairo_surface_destroy(sfc);
 

@@ -166,6 +166,13 @@ int gen_kap_header(FILE *f, struct rdata *rd)
 }
 
 
+/*! Find index for a given color in the palette.
+ * @param palette Pointer to palette.
+ * @param cnt Number of colors in palette.
+ * @param col Color to find.
+ * @return Returns the index + 1 for the given color or -1 if the color was not
+ * found.
+ */
 static int palette_index(uint32_t *palette, int cnt, uint32_t col)
 {
    for (int i = 0; i < cnt; i++)
@@ -187,9 +194,9 @@ static int get_depth(int hcnt)
 
 int save_kap(FILE *f, struct rdata *rd)
 {
-   int d, i, x, y, hcnt, off, w = rd->w;
+   int d, i, x, y, hcnt, off, w = round(rd->w), h = round(rd->h);
    uint8_t buf_out[w + 4], buf_in[w];
-   int32_t offp[(int) round(rd->h) + 1];
+   int32_t offp[h + 1];
    void *img;
    uint32_t palette[127];
 
@@ -203,6 +210,7 @@ int save_kap(FILE *f, struct rdata *rd)
       log_msg(LOG_ERR, "reducing colors failed");
       return -1;
    }
+   log_debug("reduced to %d colors", hcnt);
 
    d = get_depth(hcnt);
    log_debug("KAP color depth %d", d);
@@ -216,17 +224,19 @@ int save_kap(FILE *f, struct rdata *rd)
    off += fprintf(f, "\x1a%c%c", '\0', (char) d);
 
    log_debug("compressing image");
-   for (y = 0; y < rd->h; y++)
+   for (y = 0; y < h; y++)
    {
+      if (!(y % (h / 10))) log_debug("compressing line %d", y);
+
       offp[y] = htonl(off);
-      for (x = 0; x < rd->w; x++)
+      for (x = 0; x < w; x++)
          buf_in[x] = palette_index(palette, hcnt, get_pixel(img, x, y));
-      i = bsb_compress_row(buf_in, buf_out, d, y, rd->w, rd->w);
+      i = bsb_compress_row(buf_in, buf_out, d, y, w, w);
       fwrite(buf_out, i, 1, f);
       off += i;
    }
    offp[y] = htonl(off);
-   fwrite(offp, sizeof(int32_t), rd->h + 1, f);
+   fwrite(offp, sizeof(int32_t), h + 1, f);
    
    destroy_image(img);
 

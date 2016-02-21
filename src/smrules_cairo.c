@@ -295,7 +295,7 @@ void *cairo_smr_image_surface_from_bg(cairo_format_t fmt, cairo_antialias_t alia
    cairo_surface_t *sfc;
    cairo_t *dst;
 
-   sfc = cairo_image_surface_create(fmt, rdata_width(U_PX), rdata_height(U_PX));
+   sfc = cairo_image_surface_create(fmt, round(rdata_width(U_PX)), round(rdata_height(U_PX)));
    dst = cairo_create(sfc);
    cairo_smr_log_status(dst);
    cairo_scale(dst, (double) rdata_dpi() / 72, (double) rdata_dpi() / 72);
@@ -1412,24 +1412,6 @@ static cairo_surface_t *cairo_smr_plane(int w, int h, int x, int col)
 
    return sfc;
 }
-
-
-static inline double min(double a, double b)
-{
-   return a < b ? a : b;
-}
-
-
-static inline double max(double a, double b)
-{
-   return a > b ? a : b;
-}
-
-
-/*static inline double sqr(double a)
-{
-   return a * a;
-}*/
 
 
 static uint32_t cairo_smr_double_to_gray(double a)
