@@ -42,21 +42,22 @@
 typedef unsigned char mc_pdim_t;
 
 // point with number of dimensions
-typedef struct Point
+typedef struct mc_point
 {
     mc_pdim_t x[NUM_DIMENSIONS];
 } mc_point_t;
 
 // block with number of points
-typedef struct Block
+typedef struct mc_block
 {
     mc_point_t min_corner, max_corner, avg;
     mc_point_t* points;
     int len;
-    int lum;
 } mc_block_t;
 
 
+/*! Initialize a block.
+ */
 static void mc_init_block(mc_block_t *blk, mc_point_t *p, int len)
 {
    blk->points = p;
@@ -67,12 +68,15 @@ static void mc_init_block(mc_block_t *blk, mc_point_t *p, int len)
 }
 
 
+/*! Find the dimension with the longest distance between its min and max value.
+ * @param blk Pointer to block.
+ * @return Returns the the index which is between i and NUM_DIMENSIONS - 1.
+ */
 static int mc_longest_side_index(const mc_block_t *blk)
 {
-   int m = blk->max_corner.x[0] - blk->min_corner.x[0];
-   int diff, maxi = 0;
+   int diff, m = 0, maxi = 0;
 
-   for (int i = 1; i < NUM_DIMENSIONS; i++)
+   for (int i = 0; i < NUM_DIMENSIONS; i++)
    {
       diff = blk->max_corner.x[i] - blk->min_corner.x[i];
       if (diff > m)
@@ -86,6 +90,10 @@ static int mc_longest_side_index(const mc_block_t *blk)
 }
 
 
+/*! Calculate the distance of the longest side of a block.
+ * @param blk Pointer to the block.
+ * @return Returns the distance of the longest side.
+ */
 static int mc_longest_side_length(const mc_block_t *blk)
 {
    int i = mc_longest_side_index(blk);
@@ -114,30 +122,6 @@ static int mc_block_compare(const mc_block_t *a, const mc_block_t *b)
 }
 
 
-/*
-static void mc_block_longest_first(mc_block_t *blk, int size)
-{
-   int i, l, len, idx;
-
-   for (i = 0, len = 0, idx = 0; i < size; i++)
-   {
-      l = mc_longest_side_length(&blk[i]);
-      if (l > len)
-      {
-         idx = i;
-         len = l;
-      }
-   }
-
-   if (!idx)
-      return;
-
-   mc_block_t tmp = blk[idx];
-   blk[idx] = blk[0];
-   blk[0] = tmp;
-}*/
-
-
 static mc_pdim_t mc_min(mc_pdim_t a, mc_pdim_t b)
 {
    return a < b ? a : b;
@@ -150,31 +134,42 @@ static mc_pdim_t mc_max(mc_pdim_t a, mc_pdim_t b)
 }
 
 
-static int mc_nearest_block_index(const mc_block_t *blk, int size, const mc_point_t *pt)
+/*! Calculate the distance of two colors.
+ */
+static int mc_col_dist(const mc_point_t *a, const mc_point_t *b)
 {
-   int diff0[NUM_DIMENSIONS], diff1[NUM_DIMENSIONS];
-   int n, m;
-
+   int diff = 0;
    for (int i = 0; i < NUM_DIMENSIONS; i++)
-      diff0[i] = abs(mc_point_compare0(&blk->avg, pt, i));
-
-   n = 0;
-   for (int i = 1; i < size; i++)
-   {
-      m = 0;
-      for (int j = 0; j < NUM_DIMENSIONS; j++)
-         if ((diff1[j] = abs(mc_point_compare0(&blk[i].avg, pt, j))) < diff0[j])
-            m++;
-      if (m >= NUM_DIMENSIONS)
-      {
-         n = i;
-         memcpy(diff0, diff1, sizeof(diff0));
-      }
-   }
-   return n;
+      diff += abs(a->x[i] - b->x[i]);
+   return diff;
 }
 
 
+/*! Find the color (index) which is nearest to the color of pt.
+ * @param blk Pointer to the block list (of colors).
+ * @param size Number of blocks in list.
+ * @param pt Point to which the nearest color shall be found.
+ * @returns Returns the index, 0 <= index < size.
+ */
+static int mc_nearest_block_index(const mc_block_t *blk, int size, const mc_point_t *pt)
+{
+   int diff, dist = 0x1000000, idx = 0;
+   for (int i = 0; i < size; i++)
+   {
+      diff = mc_col_dist(&blk[i].avg, pt);
+      if (diff < dist)
+      {
+         dist = diff;
+         idx = i;
+      }
+   }
+   return idx;
+}
+
+
+/*! Find the colors which have the lowest and highest color values in the list
+ * of points (pixels).
+ */
 static void mc_shrink(mc_block_t *blk)
 {
    int i, j;
@@ -189,30 +184,43 @@ static void mc_shrink(mc_block_t *blk)
 }
 
 
+/*! Calculate the average color value of all pixels in the block.
+ * @param blk Pointer to the block.
+ */
 static void mc_avg_block(mc_block_t *blk)
 {
    long sum;
 
-   blk->lum = 0;
    for (int j = 0; j < NUM_DIMENSIONS; j++)
    {
       sum = 0;
       for (int i = 0; i < blk->len; i++)
          sum += blk->points[i].x[j];
       blk->avg.x[j] = sum / blk->len;
-#define CSQR(x) ((int) (x) * (int) (x))
-      blk->lum += CSQR(blk->avg.x[j]);
    }
-   //printf("%02x%02x%02x\n", blk->avg.x[2], blk->avg.x[1], blk->avg.x[0]);
 }
 
 
+/*! Allocate memory for the block list.
+ * @param desired Number of elements.
+ * @return This function returns a pointer to the block list or NULL in case of
+ * error.
+ */
 static mc_block_t *mc_block_list(unsigned desired)
 {
    return malloc(sizeof(mc_block_t) * desired);
 }
 
 
+/*! This function actually reduces the colors to a given number.
+ * @param image Pointer to an array of all points of the image.
+ * @param num Number of elements in array (total number of pixels).
+ * @param desired Desired numbers of colors after color reduction.
+ * @param blk Pointer to block array. This has to have as much elements as
+ * defined by _desired_.
+ * @return This function returnes the final number of colors (which may be less
+ * than desired).
+ */
 static int mc_median_cut(mc_point_t *image, unsigned num, unsigned desired, mc_block_t *blk)
 {
    int size;
@@ -221,6 +229,7 @@ static int mc_median_cut(mc_point_t *image, unsigned num, unsigned desired, mc_b
    log_debug("reducing...");
    mc_init_block(blk, image, num);
    mc_shrink(blk);
+   mc_avg_block(blk);
    size = 1;
 
    while (size < (int) desired && blk->len > 1)
@@ -231,6 +240,7 @@ static int mc_median_cut(mc_point_t *image, unsigned num, unsigned desired, mc_b
       // FIXME: This sorting is not necessary. A partial sort (such as
       // std::nth_element) would sufficient.
       mc_ixptr_ = mc_longest_side_index(blk);
+      // sort points along one dimension (mc_ixptr_).
       qsort(blk->points, blk->len, sizeof(*blk->points),
             (int (*) (const void*, const void*)) mc_point_compare);
 
@@ -243,21 +253,7 @@ static int mc_median_cut(mc_point_t *image, unsigned num, unsigned desired, mc_b
       mc_avg_block(&blk[size]);
       size++;
       qsort(blk, size, sizeof(*blk), (int (*) (const void*, const void*)) mc_block_compare);
-      //mc_block_longest_first(blk, size);
    }
-
-   //qsort(blk, size, sizeof(*blk), (int (*) (const void*, const void*)) mc_block_compare);
-
-   // remove duplicates
-   for (int i = 0; i < size - 1; i++)
-      if (!memcmp(&blk[i].avg, &blk[i + 1].avg, sizeof(blk[i + 1].avg)))
-      {
-         log_debug("removing dup at %d", i);
-         if (i < size - 2)
-            memmove(&blk[i + 1], &blk[i + 2], sizeof(*blk) * (size - i - 2));
-         size--;
-         i--;
-      }
 
    return size;
 }
@@ -272,6 +268,15 @@ static uint32_t mc_point_to_cairo_color(const mc_point_t *pt)
 }
 
 
+static void mc_cairo_color_to_point(const void *pix, mc_point_t *pt)
+{
+   uint32_t c = *((uint32_t*) pix);
+   pt->x[0] = c & 0xff;
+   pt->x[1] = (c >> 8) & 0xff;
+   pt->x[2] = (c >> 16) & 0xff;
+}
+
+ 
 /*! This function reduces the colors in an Cairo image surface to a defined
  * number of colors.
  * @param src Pointer to the Cairo image surface.
@@ -283,9 +288,9 @@ int cairo_smr_image_surface_color_reduce(cairo_surface_t *src, int ncol, uint32_
 {
    unsigned char *pix;
    mc_block_t *blk;
-   mc_point_t *pt;
-   uint32_t c;
-   int i = 0;
+   mc_point_t *pt, p;
+   uint32_t *padr;
+   int i;
 
    cairo_surface_flush(src);
    if ((pix = cairo_image_surface_get_data(src)) == NULL)
@@ -298,16 +303,11 @@ int cairo_smr_image_surface_color_reduce(cairo_surface_t *src, int ncol, uint32_
    }
 
    log_debug("retrieving pixels");
+   i = 0;
    for (int y = 0; y < cairo_image_surface_get_height(src); y++)
    {
       for (int x = 0; x < cairo_image_surface_get_width(src); x++, i++)
-      {
-         c = ((uint32_t*) pix)[x];
-         pt[i].x[0] = c & 0xff;
-         pt[i].x[1] = (c >> 8) & 0xff;
-         pt[i].x[2] = (c >> 16) & 0xff;
-         //printf("%06x\n", c & 0xffffff);
-      }
+         mc_cairo_color_to_point(((uint32_t*) pix) + x, &pt[i]);
       pix += cairo_image_surface_get_stride(src);
    }
 
@@ -327,18 +327,12 @@ int cairo_smr_image_surface_color_reduce(cairo_surface_t *src, int ncol, uint32_
    {
       for (int x = 0; x < cairo_image_surface_get_width(src); x++)
       {
-         c = ((uint32_t*) pix)[x];
-         pt->x[0] = c & 0xff;
-         pt->x[1] = (c >> 8) & 0xff;
-         pt->x[2] = (c >> 16) & 0xff;
+         padr = ((uint32_t*) pix) + x;
+         mc_cairo_color_to_point(padr, &p);
 
-         i = mc_nearest_block_index(blk, ncol, pt);
+         i = mc_nearest_block_index(blk, ncol, &p);
 
-         /*c = 0xff000000;
-         c |= blk[i].avg.x[0];
-         c |= blk[i].avg.x[1] << 8;
-         c |= blk[i].avg.x[2] << 16;*/
-         ((uint32_t*) pix)[x] = mc_point_to_cairo_color(&blk[i].avg);
+         *padr = mc_point_to_cairo_color(&blk[i].avg);
       }
       pix += cairo_image_surface_get_stride(src);
    }
