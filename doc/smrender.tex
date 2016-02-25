@@ -569,7 +569,7 @@ a node.\\
 
 \rbox{<tag k='\_action\_' v='img:file=icons/Light\_Minor.png'/>}\\
 
-The basic format of an action is defined as follows.
+The basic format of an action and basic values and types are defined as follows.
 
 \begin{verbatim}
    <action> := <ref> [ ':' <param> [ ';' <param> [ ... ] ] ]
@@ -580,6 +580,11 @@ The basic format of an action is defined as follows.
    <bool>   := 'yes' | 'no' | 'true' | 'false' | <num>
    <num>    := any decimal number
    SEP      := '`' | '"'
+   <length> := <num> [ <udef> ]
+   <udef>   := <pageunit> | <nautunit>
+   <pageunit> := 'mm' | 'cm' | 'in' | 'px' | 'pt' | '"'
+   <nautunit> := 'degrees' | 'deg' | 'min' | 
+                 'm' | 'km' | 'ft' | 'nm' | 'sm'
 \end{verbatim}
 
 Every action consists of a symbol name \optv{ref} which is used to find the
@@ -822,16 +827,36 @@ caption is than placed at the position of the centroid\footnote{This is similar
 
 \subsubsection{Drawing and Filling} \label{sec:draw}
 
-The \emph{draw} action is used to draw lines of various styles and fill polygons. This action uses solid colors for its operation. If you wish to fill an area with an image as pattern please have a look at Section \ref{sec:img}.
-The following shows the basic rule format.
+The \emph{draw} action is used to draw lines of various styles and fill
+polygons. This action uses solid colors for its operation. If you wish to fill
+an area with an image as pattern please have a look at Section \ref{sec:img}.
+The following shows the basic rule format.\footnote{Basic BNF parameters are
+defined in Section \ref{sec:act} on page \pageref{sec:act}.}
 
 \begin{verbatim}
-   <action>   := 'draw:' <param> [ ';' <param> ... ]
-   <param>    := <name> '=' <value>
-   <name>     := 'color' | 'width' | 'style' |
-                 'bcolor' | 'bwidth' | 'bstyle' |
-                 'directional' | 'ignore_open' | 'curve' |
-                 'curve_factor' | 'wavy' | 'wavy_length'
+   <action>    := 'draw:' <param> [ ';' <param> ... ]
+   <param>     := <filldef> | <borderdef> | <options>
+   <filldef>   := <color> | <style> | <width> | <dashlen>
+   <borderdef> := <bcolor> | <bstyle> | <bwidth> | <bdashlen>
+   <color>     := 'color' '=' <coldef>
+   <bolor>     := 'bcolor' '=' <coldef>
+   <style>     := 'style' '=' <styledef>
+   <styledef>  := 'solid' | 'dashed' | 'dotted' | 'transparent' |
+                  'pipe' | 'rounddot'
+   <bstyle>    := 'bstyle' '=' <styledef>
+   <width>     := 'width' '=' <num>
+   <bwidth>    := 'bwidth' '=' <num>
+   <dashlen>   := 'dash' '=' <dashdef>
+   <dashdef>   := <length> [ ':' <length> ... ]
+   <options>   := <dirdef> | <opendef> | <curvedef> | <wavedef>
+   <dirdef>    := 'directional' '=' <bool>
+   <opendef>   := 'ignore_open' '=' <bool>
+   <curvedef>  := <curve> | <cfactor>
+   <curve>     := 'curve' '=' <bool>
+   <cfactor>   := 'curve_factor' '=' <decval>
+   <wavedef>   := <wave> | <wlen>
+   <wave>      := 'wavy' '=' <bool>
+   <wlen>      := 'wavy_length' '=' <bool>
 \end{verbatim}
 
 The action behaves a little bit different if it is a polyline (open way, e.g. a
@@ -853,6 +878,7 @@ short lines (squares) round dots are drawn.
 \textsf{Pipe} is used to create a line style as is used on sea charts for
 underwater pipes. It is a combination of dotted and dashed.
 
+Smrender allows to specify the length of dashes and the spaces in betweed with the options \textsf{dash} and \textsf{bdash}.
 %The border style surrounds the background, e.g. with a thin line.
 
 \optv{Width} and \optv{bwidth} are given in millimeters. A width of 0 draws the
@@ -881,13 +907,6 @@ If \optv{ignore\_open} is set to ``1'', the rule is applied to closed polygons o
 % coastline links land rechts wasser
 % depthcont links seicht rechts tief
 
-\begin{wrapfigure}{r}{55mm}
-   \centering
-   \includegraphics{inc/depth_cont}
-
-   \caption{Directional filling.}\label{fig:dir}
-\end{wrapfigure}
-
 A special fill mode is used if \optv{directional} is set to ``1''.  Usually,
 \smrender{} always fills the inner part of a polygon independently of its
 direction, i.e. if the nodes of the polygon (way) are ordered clockwise or
@@ -896,6 +915,13 @@ enclosed within each other. This may result in unexpected rendering results.
 The main reason for that is that OSM is just a two-dimensional database.
 OpenStreetmap provides special tagging facilities to handle such cases, for
 example multi-poly relations.
+
+\begin{wrapfigure}{r}{55mm}
+   \centering
+   \includegraphics{inc/depth_cont}
+
+   \caption{Directional filling.}\label{fig:dir}
+\end{wrapfigure}
 
 A typical application for the \emph{directional} fill mode on sea charts is the
 rendering of depth contours, in particular if they are filled in shallow
@@ -977,7 +1003,6 @@ rendered by a subsequent rule. Currently, \smrender{} only OSM nodes are support
    <param>       := <units> | <halign> | <valign> | <reference>
    <units>       := 'units' '=' <decval> [ <udef> ]
    <decval>      := a decimal number
-   <udef>        := 'mm' | 'cm' | 'degrees'
    <halign>      := 'halign' '=' <hdef>
    <hdef>        := 'north' | 'south'
    <valign>      := 'valign' '=' <vdef>
