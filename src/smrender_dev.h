@@ -106,6 +106,8 @@
 #define FTYPE_PDF 2
 #define FTYPE_SVG 3
 
+// maximum number of dash definitions in a dash array
+#define MAX_DASHLEN 4
 
 //enum {WHITE, YELLOW, BLACK, BLUE, MAGENTA, BROWN, TRANSPARENT, BGCOLOR, MAXCOLOR};
 enum {LAT, LON};
@@ -178,6 +180,8 @@ struct drawStyle
    double width;
    short style;
    short used;
+   int dashlen;
+   double dash[MAX_DASHLEN];
 };
 
 struct actDraw
@@ -280,6 +284,7 @@ int parse_alignment(const action_t *act);
 int parse_alignment_str(const char *);
 int parse_length(const char *, value_t *);
 int parse_length_def(const char *, value_t *, unit_t );
+int parse_length_mm_array(const char *, double *, int );
 
 /* smkap.c */
 int save_kap(FILE *, struct rdata *);

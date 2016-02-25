@@ -235,7 +235,7 @@ int parse_color(const char *s)
  * @return -1 if s == NULL, -2 if s does not contain any data ('\0'), -3 if
  * there is no expected colon, and -4 if no conversion took place.
  */
-static int parse_double_option(const char *s, double *v, char **endptr)
+int parse_double_option(const char *s, double *v, char **endptr)
 {
    if (s == NULL)
       return -1;
@@ -260,14 +260,7 @@ int parse_style(const char *s)
       return DRAW_SOLID;
 
    if (!strcmp(s, "solid")) return DRAW_SOLID;
-   if (!strncmp(s, "dashed", 6))
-   {
-      double v;
-      int err;
-      if ((err = parse_double_option(s + 6, &v, NULL)))
-         log_debug("parse_double_option() returned %d", err);
-      return DRAW_DASHED;
-   }
+   if (!strcmp(s, "dashed")) return DRAW_DASHED;
    if (!strcmp(s, "dotted")) return DRAW_DOTTED;
    if (!strcmp(s, "transparent")) return DRAW_TRANSPARENT;
    if (!strcmp(s, "pipe")) return DRAW_PIPE;
@@ -696,7 +689,7 @@ unit_t parse_unit(const char *uptr)
 {
    if (uptr == NULL)
       return U_1;
-   if (*uptr == '\0')
+   if (*uptr == '\0' || *uptr == ':')
       return U_1;
    if (!strcasecmp(uptr, "nm") || !strcasecmp(uptr, "sm"))
       return U_NM;
@@ -706,7 +699,7 @@ unit_t parse_unit(const char *uptr)
       return U_FT;
    if (!strcasecmp(uptr, "mm"))
       return U_MM;
-   if (!strcasecmp(uptr, "Â°") || !strcasecmp(uptr, "deg") || !strcasecmp(uptr, "degrees"))
+   if (!strcasecmp(uptr, "°") || !strcasecmp(uptr, "deg") || !strcasecmp(uptr, "degrees"))
       return U_DEG;
    if (!strcasecmp(uptr, "'") || !strcasecmp(uptr, "min"))
       return U_MIN;
@@ -758,5 +751,37 @@ int parse_length_def(const char *s, value_t *v, unit_t u)
    if (v->u == U_1)
       v->u = u;
    return 0;
+}
+
+
+/*! Parses a string of the form "<ddd.ddd>[<unit>]:<eee.eee>[<unit>]:..." into
+ * an array. If no unit exists, mm is used by default.
+ * @param s Pointer to the string.
+ * @param val Pointer to the array which will receive the values.
+ * @param len Number of elements of the array.
+ * @return Returns the number of elements found in the array or a negative
+ * value according to parse_length_def() in case of error.
+ */
+int parse_length_mm_array(const char *s, double *val, int len)
+{
+   int cnt, e;
+   value_t v;
+
+   if (val == NULL)
+      return 0;
+
+   for (cnt = 0; s != NULL && len; cnt++, val++, len--)
+   {
+      if ((e = parse_length_def(s, &v, U_MM)) != 0)
+      {
+         log_debug("parse_length_def() returned %d", e);
+         return e;
+      }
+      *val = rdata_unit(&v, U_MM);
+      if ((s = strchr(s, ':')) != NULL)
+         s++;
+   }
+
+   return cnt;
 }
 

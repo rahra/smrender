@@ -530,6 +530,34 @@ static void parse_auto_rot(const action_t *act, double *angle, struct auto_rot *
 }
 
  
+static void parse_dash_style(const char *s, struct drawStyle *ds)
+{
+   if (s != NULL)
+      ds->dashlen = parse_length_mm_array(s, ds->dash, sizeof(ds->dash) / sizeof(*ds->dash));
+   if (s == NULL || ds->dashlen <= 0)
+      switch (ds->style)
+      {
+         case DRAW_DASHED:
+         case DRAW_PIPE:
+            ds->dash[0] = 7;
+            ds->dash[1] = 3;
+            ds->dashlen = 2;
+            break;
+         case DRAW_DOTTED:
+            ds->dash[0] = 1;
+            ds->dashlen = 1;
+            break;
+         case DRAW_ROUNDDOT:
+            ds->dash[0] = 0;
+            ds->dash[1] = 2;
+            ds->dashlen = 2;
+            break;
+         default:
+            ds->dashlen = 0;
+      }
+}
+
+
 int act_draw_ini(smrule_t *r)
 {
    struct actDraw *d;
@@ -591,6 +619,9 @@ int act_draw_ini(smrule_t *r)
          d->wavy_length = WAVY_LENGTH;
    }
 
+   parse_dash_style(get_param("dash", NULL, r->act), &d->fill);
+   parse_dash_style(get_param("bdash", NULL, r->act), &d->border);
+
    // honor direction of ways
    d->directional = get_param_bool("directional", r->act);
    d->collect_open = !get_param_bool("ignore_open", r->act);
@@ -612,9 +643,9 @@ int act_draw_ini(smrule_t *r)
    sm_threaded(r);
 
    //log_msg(LOG_DEBUG, "directional = %d, ignore_open = %d", d->directional, !d->collect_open);
-   log_msg(LOG_DEBUG, "{%08x, %.1f, %d, %d}, {%08x, %.1f, %d, %d}, %d, %d, %p",
-        d->fill.col, d->fill.width, d->fill.style, d->fill.used,
-        d->border.col, d->border.width, d->border.style, d->border.used,
+   log_msg(LOG_DEBUG, "{%08x, %.1f, %d, %d, %d, {%.1f, %.1f}}, {%08x, %.1f, %d, %d, %d, {%.1f, %.1f}}, %d, %d, %p",
+        d->fill.col, d->fill.width, d->fill.style, d->fill.used, d->fill.dashlen, d->fill.dash[0], d->fill.dash[1],
+        d->border.col, d->border.width, d->border.style, d->border.used, d->border.dashlen, d->border.dash[0], d->border.dash[1],
         d->directional, d->collect_open, d->wl);
 
    return 0;
@@ -822,42 +853,29 @@ static double cairo_smr_fill_width(const struct actDraw *d)
 }
 
 
-static void cairo_smr_dash(cairo_t *ctx, int style, double bwidth)
+static void cairo_smr_dash(cairo_t *ctx, int style, double bwidth, const double *ds, int len)
 {
-   double dash[2];
-   int n = 0;
+   double dash[MAX_DASHLEN], l;
+   int n;
+
+   for (n = 0, l = 0; n < len && n < MAX_DASHLEN; n++)
+   {
+      dash[n] = mm2wu(bwidth) * ds[n];
+      l += dash[n];
+   }
 
    switch (style)
    {
-      case DRAW_DASHED:
-         dash[0] = mm2wu(bwidth) * 7;
-         dash[1] = mm2wu(bwidth) * 3;
-         n = 2;
-         break;
-
-      case DRAW_DOTTED:
-         dash[0] = mm2wu(bwidth);
-         n = 1;
-         break;
-
       case DRAW_ROUNDDOT:
          cairo_set_line_cap(ctx, CAIRO_LINE_CAP_ROUND);
-         dash[0] = 0;
-         dash[1] = mm2wu(bwidth) * 2;
-         n = 2;
          break;
 
       case DRAW_PIPE:
          cairo_set_line_cap(ctx, CAIRO_LINE_CAP_ROUND);
          dash[0] = 0;
-         dash[1] = mm2wu(bwidth) * 10;
+         dash[1] = l;
          n = 2;
          break;
-
-/*
-      case DRAW_SOLID:
-      default:
- */
    }
    cairo_set_dash(ctx, dash, n, 0);
 }
@@ -902,7 +920,7 @@ static void render_poly_line(cairo_t *ctx, const struct actDraw *d, const osm_wa
       // The pipe is a special case: it is a combination of a dashed and a
       // dotted line, the dots are place at the beginning of each dash.
       cairo_set_line_width(ctx, cairo_smr_border_width(d, is_closed_poly(w)));
-      cairo_smr_dash(ctx, d->border.style == DRAW_PIPE ? DRAW_DASHED : d->border.style, d->border.width);
+      cairo_smr_dash(ctx, d->border.style == DRAW_PIPE ? DRAW_DASHED : d->border.style, d->border.width, d->border.dash, d->border.dashlen);
       cairo_smr_poly(ctx, d, w);
       cairo_stroke(ctx);
       CSS_INC(CSS_STROKE);
@@ -910,7 +928,7 @@ static void render_poly_line(cairo_t *ctx, const struct actDraw *d, const osm_wa
       if (d->border.style == DRAW_PIPE)
       {
          cairo_set_line_width(ctx, cairo_get_line_width(ctx) * PIPE_DOT_SCALE);
-         cairo_smr_dash(ctx, DRAW_PIPE, d->border.width);
+         cairo_smr_dash(ctx, DRAW_PIPE, d->border.width, d->border.dash, d->border.dashlen);
          cairo_smr_poly(ctx, d, w);
          cairo_stroke(ctx);
          CSS_INC(CSS_STROKE);
@@ -924,7 +942,7 @@ static void render_poly_line(cairo_t *ctx, const struct actDraw *d, const osm_wa
       if (!is_closed_poly(w))
       {
          cairo_set_line_width(ctx, cairo_smr_fill_width(d));
-         cairo_smr_dash(ctx, d->fill.style, d->border.width);
+         cairo_smr_dash(ctx, d->fill.style, d->border.width, d->fill.dash, d->fill.dashlen);
          cairo_stroke(ctx);
          CSS_INC(CSS_STROKE);
       }
