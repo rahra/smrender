@@ -10,16 +10,12 @@
    </node>
    <way>
       <tag k='natural' v='coastline'/>
-      <tag k='_action_' v='refine_poly'/>
-   </way>
-   <way>
-      <tag k='natural' v='coastline'/>
       <tag k='_action_' v='cat_poly'/>
    </way>
 
    <way>
       <tag k='natural' v='coastline'/>
-      <tag k='_action_' v='draw:color=#e0e0e0;bcolor=blue'/>
+      <tag k='_action_' v='draw:color=#e0e0e0;bcolor=blue;curve=1'/>
    </way>
 
 
@@ -38,6 +34,25 @@
    <tag k='_action_' v='draw:color=#dcbe92'/>
 </way>
 
+<way>
+   <tag k='waterway' v=''/>
+   <tag k='_action_' v='draw:bcolor=blue'/>
+</way>
+
+<way>
+   <tag k='waterway' v=''/>
+   <tag k='_action_' v='draw:color=skyblue'/>
+</way>
+
+<way>
+   <tag k='railway' v='rail'/>
+   <tag k='_action_' v='draw:color=black;width=0.4'/>
+</way>
+
+<way>
+   <tag k='railway' v='rail'/>
+   <tag k='_action_' v='draw:color=lightgray;width=0.4;style=dashed'/>
+</way>
 
 <way>
    <tag k='highway' v='/residential|unclassified/'/>
@@ -64,16 +79,15 @@
    <tag k='_action_' v='draw:color=#ec989a;width=1.1;bcolor=#a0a0a0'/>
 </way>
 
+<way>
+   <tag k='highway' v='/motorway|motorway_link/'/>
+   <tag k='_action_' v='draw:color=orange;width=0.8;bcolor=orangered'/>
+</way>
 
 
 <way>
    <tag k='building' v=''/>
    <tag k='_action_' v='draw:color=#beaaa5;bcolor=black'/>
-</way>
-
-<way>
-   <tag k='waterway' v=''/>
-   <tag k='_action_' v='draw:color=blue'/>
 </way>
 
    <node>
@@ -168,12 +182,10 @@
       <tag k='border' v='copyright'/>
    </node>
 
-   <!--
     <way>
       <tag k='generator' v='smrender'/>
       <tag k='_action_' v='out:file=smrender.osm'/>
    </way>
--->
   
    <way>
       <tag k='grid' v=''/>
@@ -188,6 +200,12 @@
    <relation version='10'>
       <tag k='route' v='horse'/>
       <tag k='_action_' v='draw:color=#ff0000;width=.7'/>
+   </relation>
+
+   <relation>
+      <tag k='waterway' v=''/>
+      <tag k='type' v='multipolygon'/>
+      <tag k='_action_' v='cat_poly:no_corner=1'/>
    </relation>
 
 </osm>
