@@ -4,9 +4,9 @@ A rule-based renderer for OSM data.
 
 ## Description
 
-Smrender is a powerful, flexible, and modular rule-based rendering engine for
+Smrender is a powerful, flexible, and modular rule-based data processing and rendering engine for
 OSM data. It is mainly intended to create paper charts for print-out but it can
-be used for tile creation and other tasks as well. Because of its very generic
+be used for a lot of other tasks as well. Because of its very generic
 and modular software design it is perfectly suitable for complex OSM data
 processing and manipulation tasks such as filtering, modification, and
 statistical analysis.
@@ -21,7 +21,13 @@ samples](https://www.cypherpunk.at/download/smrender/samples/).
 
 ## Download
 
-The latest snapshots of version 4.0 of Smrender are are found in the [current/](https://www.cypherpunk.at/download/smrender/current/) directory.
+The latest snapshots of version 4.1 of Smrender are found in the
+[current/](https://www.cypherpunk.at/download/smrender/current/) directory.
+
+With February 2016, the primary project page of Smrender was moved to
+[Github](https://github.com/rahra/smrender). The old page is found at
+[Abenteueland](http://www.abenteuerland.at/smrender/) which I will keep up for
+a while.
 
 Older versions of Smrender have been moved to the [archive/](https://www.cypherpunk.at/download/smrender/archive/) directory.
 
