@@ -1080,8 +1080,14 @@ void *handle_http(void *p)
                }
 
                log_access(&saddr, dbuf, 101, 0);
-               http_ws_com(fd, qc);
+               err = http_ws_com(fd, qc);
                qc_release(qc);
+               if (err < 0)
+               {
+                  log_access(&saddr, dbuf, -err, 0);
+                  eclose(fd);
+                  continue;
+               }
             }
             else
             {

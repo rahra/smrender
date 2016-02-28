@@ -161,6 +161,9 @@ int ws_read_frame(websocket_t *ws, char *buf, int size, int32_t *mask)
             errno = e;
             return -1;
          }
+         // FIXME: EOF should be handled better than here!
+         if (!len)
+            return -1;
          ws->len += len;
 
          // check if enough data is in buffer
