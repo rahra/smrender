@@ -297,7 +297,7 @@ void geo_legend(struct rdata *rd, const struct grid *grd)
    geo_description(rd->bb.ru.lat - MM2LAT(grd->g_margin), rd->bb.ll.lon + rd->wc / 2, s, "top");
    geo_description(rd->bb.ru.lat - MM2LAT(grd->g_margin), rd->bb.ll.lon + MM2LON(grd->g_margin), rd->title, "title");
    if (grd->copyright)
-      geo_description(rd->bb.ll.lat + MM2LAT(grd->g_margin + grd->g_tw + grd->g_stw), rd->bb.ll.lon + rd->wc / 2, "Generated with " PACKAGE_STRING ", author Bernhard R. Fischer, 2048R/5C5FFD47 <bf@abenteuerland.at>, data source: OSM.", "copyright");
+      geo_description(rd->bb.ll.lat + MM2LAT(grd->g_margin + grd->g_tw + grd->g_stw), rd->bb.ll.lon + rd->wc / 2, "Generated with " PACKAGE_STRING ", author Bernhard R. Fischer, 4096R/8E24F29D <bf@abenteuerland.at>, data source: OSM.", "copyright");
    if (grd->cmdline)
       geo_description(rd->bb.ll.lat + MM2LAT(grd->g_margin - grd->g_tw), rd->bb.ll.lon + rd->wc / 2, rd->cmdline, "copyright");
 }
