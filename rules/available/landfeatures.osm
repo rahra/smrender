@@ -32,18 +32,41 @@
       <tag k='natural' v='peak'/>
       <tag k='_action_' v='draw:color=black'/>
    </way>
+
    <way>
       <tag k='landuse' v='residential'/>
-      <tag k='_action_' v='draw:color=gray'/>
+      <tag k='_action_' v='draw:color=#40808080'/>
    </way>
    <way>
       <tag k='building' v=''/>
       <tag k='_action_' v='draw:color=black'/>
    </way>
+
+   <!-- railway -->
+   <way>
+      <tag k='railway' v='rail'/>
+      <tag k='_action_' v='draw:color=navajowhite;width=0.2;bcolor=#303030'/>
+   </way>
+   <way>
+      <tag k='railway' v='rail'/>
+      <tag k='_action_' v='draw:color=#303030;width=0.2;style=dashed;dash=8:8'/>
+   </way>
+
+   <!-- highways -->
+   <way>
+      <tag k='highway' v='/unclassified|track/'/>
+      <tag k='_action_' v='draw:color=black;style=dashed'/>
+   </way>
    <way>
       <tag k='highway' v='/^(secondary|primary|residential)$/'/>
       <tag k='_action_' v='draw:bcolor=black'/>
    </way>
+   <way>
+      <tag k='highway' v='/^(motorway|trunk|motorway_link)$/'/>
+      <tag k='_action_' v='draw:color=navajowhite;width=0.3;bcolor=black'/>
+   </way>
+
+   <!-- cliffs -->
    <way version="-10">
       <tag k='natural' v='cliff'/>
       <tag k='_action_' v='ins_eqdist:distance=.15'/>

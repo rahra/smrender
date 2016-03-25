@@ -1,17 +1,35 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <osm version='0.6' generator='Bernhard R. Fischer'>
+   <!-- choose seamarks for rendering -->
+   <node id="125">
+      <tag k='smrender:render' v='yes'/>
+   </node>
+   <node version="-10">
+      <!-- Choose seamarks with a light and a range > 2.9 nm for rendering.
+           This is useful for large scales, i.e. >= 1:150000. -->
+      <!--tag k='/seamark:light:.*range/' v=']2.9['/-->
+      <!-- Choose all seamarks for rendering. -->
+      <tag k='seamark:type' v=''/>
+      <tag k='_action_' v='set_tags:id=125'/>
+   </node>
+
+   <!-- create sectors, light captions, and light flares -->
    <node version="-10">
       <tag k='seamark:type' v=''/>
-      <tag k='_action_' v='vsector@libsmfilter.so'/>
+      <tag k='smrender:render' v='yes'/>
+      <tag k='_action_' v='vsector@libsmfilter.so:f=2'/>
    </node>
    <node version="-10">
       <tag k='seamark:type' v=''/>
-      <tag k='_action_' v='pchar@libsmfilter.so'/>
+      <tag k='_action_' v='pchar@libsmfilter.so:lang=de'/>
    </node>
    <node version="5">
       <tag k='/seamark:light:.*/' v=''/>
+      <tag k='smrender:render' v='yes'/>
       <tag k='_action_' v='img:angle=auto;weight=1;file=SeaMapSymbols/Light_Magenta_120.svg'/>
    </node>
+
+   <!-- render light sectors -->
    <way>
       <tag k='seamark:light_radial' v=''/>
       <tag k='_action_' v='draw:color=black;style=dashed'/>

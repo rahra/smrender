@@ -16,6 +16,7 @@ dist_available_rules_DATA = \
 	rules/available/seamark_compass.osm \
 	rules/available/seamark_rocks.osm \
 	rules/available/seamark_topmark.osm \
+	rules/available/soundings.osm \
 	rules/available/translation.osm
 
 rules_100000dir = $(smrender_datadir)/rules_100000
@@ -38,6 +39,7 @@ install-data-hook:
 		$(LN_S) ../available/seamark_buoy.osm 029buoy.osm && \
 		$(LN_S) ../available/seamark_beacon.osm 030beacon.osm && \
 		$(LN_S) ../available/seamark_topmark.osm 031topmark.osm && \
+		$(LN_S) ../available/soundings.osm 032soundings.osm && \
 		$(LN_S) ../available/legend.osm 900legend.osm
 	if test -e $(DESTDIR)$(rules_100000dir) ; then \
 		rm -r $(DESTDIR)$(rules_100000dir) ; \
@@ -58,6 +60,7 @@ install-data-hook:
 		$(LN_S) ../available/seamark_buoy.osm 029buoy.osm && \
 		$(LN_S) ../available/seamark_beacon.osm 030beacon.osm && \
 		$(LN_S) ../available/seamark_topmark.osm 031topmark.osm && \
+		$(LN_S) ../available/soundings.osm 032soundings.osm && \
 		$(LN_S) ../available/legend.osm 900legend.osm
 	
 nodist_bin_SCRIPTS = tools/smfilter2

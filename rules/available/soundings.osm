@@ -1,0 +1,30 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<osm version='0.6' generator='Bernhard R. Fischer'>
+
+   <!-- render soundings -->
+   <node version='1'>
+      <tag k='seamark:type' v='sounding'/>
+      <tag k='_action_' v='strfmt:addtag=seamark:sounding:frac;format=%r;key=seamark:sounding'/>
+   </node>
+   <node version='1'>
+      <tag k='seamark:type' v='sounding'/>
+      <tag k='_action_' v='strfmt:addtag=seamark:sounding:int;format=%d;key=seamark:sounding'/>
+   </node>
+   <node version='1'>
+      <tag k='seamark:type' v='sounding'/>
+      <tag k='seamark:sounding:frac' v='0'/>
+      <tag k='_action_' v='cap:font=sans-serif;size=1.6;key=seamark:sounding'/>
+   </node>
+   <node version='1'>
+      <tag k='seamark:type' v='sounding'/>
+      <tag k='seamark:sounding:frac' v=']0['/>
+      <tag k='_action_' v='cap:font=sans-serif;size=1.6;halign=west;xoff=-1.0;key=seamark:sounding:int'/>
+   </node>
+   <node version='1'>
+      <tag k='seamark:type' v='sounding'/>
+      <tag k='seamark:sounding:frac' v=']0['/>
+      <tag k='_action_' v='cap:font=sans-serif;size=1.2;halign=east;xoff=1.0;valign=south;yoff=0;key=seamark:sounding:frac'/>
+   </node>
+
+</osm>
+
