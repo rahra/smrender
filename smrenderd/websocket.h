@@ -26,24 +26,52 @@
 
 
 #define WS_FIN 0x80
-#define WS_OP_TXT 0x01
 #define WS_MASK 0x80
+
+#define WS_OP_TXT 0x1
+#define WS_OP_BIN 0x2
+#define WS_OP_CLOSE 0x8
+#define WS_OP_PING 0x9
+#define WS_OP_PONG 0xa
+
+#define WS_LEN16 0x7e
+#define WS_LEN64 0x7f
+
+//! minimum frame length
+#define WS_HDR_MINLEN 2
+//! maximum frame length
+#define WS_HDR_MAXLEN 14
+//! determine maximum payload size
+#define WS_PLD_SIZE(x) ((x)->size - WS_HDR_MAXLEN)
 
 
 typedef struct websocket
 {
    int fd;        //!< file descriptor of socket
-   int size;      //!< size of input buffer
-   int len;       //!< data within input buffer
-   uint8_t buf[]; //!< pointer to input buffer
+   int size;      //!< maximum frame size
+   int mask;      //!< 0 if frames shall not be masked
+   int op;
 } websocket_t;
 
+typedef struct ws_frame
+{
+   int len;       //!< bytes used in buffer (for reading)
+   int hlen;      //!< length of header
+   int64_t plen;  //!< length of payload
+   int op;        //!< opcode (FIN, TXT, ...)
+   int32_t mask;  //!< frame encoding mask (see RFC6455)
+   char *buf;     //!< frame buffer
+} ws_frame_t;
 
-void ws_mask(char *, int , int32_t );
-int ws_write_frame(websocket_t *, const char *, int size, int32_t );
-int ws_read_frame(websocket_t *, char *, int , int32_t *);
-websocket_t *ws_init(int , int );
+
+int ws_write_frame(int , ws_frame_t *);
+int ws_read_frame(int , ws_frame_t *, int );
+
+void ws_init(websocket_t *, int , int , int );
 void ws_free(websocket_t *);
+
+int ws_write(websocket_t *, const char *, int );
+int ws_read(websocket_t *, char *, int );
 
 #endif
 

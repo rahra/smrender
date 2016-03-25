@@ -700,7 +700,7 @@ int smws_send_error(websocket_t *ws, int e)
       return -1;
 
    n = snprintf(buf, sizeof(buf), "SMWS/1.0 %s %s", msgt_[WS_MSGT_ERROR], errt_[i]);
-   return ws_write_frame(ws, buf, n, 0);
+   return ws_write(ws, buf, n);
 }
 
 
@@ -825,56 +825,59 @@ int act_ws_traverse_fini(smrule_t *r)
 
 int http_ws_com(int fd, qcache_t *qc)
 {
-   websocket_t *ws;
-   char buf[1000];
-   int32_t mask;
+   websocket_t ws;
+   char buf[8000];
    bstring_t b;
    int msgt, n;
    osm_obj_t *o = NULL;
    hpx_tree_t *tlist = NULL;
+   int disconn = 0, err = 0;
 
-   if ((ws = ws_init(fd, 8000)) == NULL)
-   {
-      log_msg(LOG_ERR, "could not create websocket");
-      return -500;
-   }
+   ws_init(&ws, fd, 1000, 0);
 
    if (hpx_tree_resize(&tlist, 0) == -1)
       perror("hpx_tree_resize"), exit(EXIT_FAILURE);
    if ((tlist->tag = hpx_tm_create(16)) == NULL)
       perror("hpx_tm_create"), exit(EXIT_FAILURE);
 
-   for (;;)
+   for (; !disconn;)
    {
-      if ((b.len = ws_read_frame(ws, buf, sizeof(buf) - 1, &mask)) == -1)
+      log_debug("reading frame...");
+      if ((n = ws_read(&ws, buf, sizeof(buf) - 1)) == -1)
       {
-         log_msg(LOG_ERR, "ws_read_frame() failed");
+         // FIXME: this error should be handled better
+         log_errno(LOG_ERR, "frame buffer too small");
          return -500;
       }
-      b.buf = buf;
+      if (!n)
+         break;
 
-      ws_mask(b.buf, b.len, mask);
+      b.buf = buf;
+      b.len = n;
       b.buf[b.len] = '\0';
 
+      log_debug("parsing header");
       if ((msgt = smws_parse_header(&b)) < 0)
       {
          log_msg(LOG_WARN, "smws_parse_header() failed: %d", msgt);
-         smws_send_error(ws, -msgt);
+         smws_send_error(&ws, -msgt);
          continue;
       }
+      log_debug("type = %d", msgt);
 
       switch (msgt & 0xffff)
       {
          case WS_MSGT_OBJ:
+            log_debug("command 'object'");
             if (!smws_proc_objt(&b, tlist, &o))
             {
-               smws_send_error(ws, WS_ERRT_ILLDATA);
+               smws_send_error(&ws, WS_ERRT_ILLDATA);
                break;
             }
 
             if ((n = match_attr(o, "_action_", NULL)) >= 0)
             {
-               smws_send_error(ws, WS_ERRT_ILLDATA);
+               smws_send_error(&ws, WS_ERRT_ILLDATA);
                free_obj(o);
                break;
             }
@@ -885,7 +888,7 @@ int http_ws_com(int fd, qcache_t *qc)
             {
                log_msg(LOG_ERR, "realloc() failed: %s", strerror(errno));
                free_obj(o);
-               smws_send_error(ws, WS_ERRT_AGAIN);
+               smws_send_error(&ws, WS_ERRT_AGAIN);
                break;
             }
             o->otag = ot;
@@ -894,10 +897,23 @@ int http_ws_com(int fd, qcache_t *qc)
 
             smrule_t *r;
             init_rule(o, &r);
-            smws_send_error(ws, WS_ERRT_ACK);
+            smws_send_error(&ws, WS_ERRT_ACK);
             break;
 
          case WS_MSGT_CMD:
+            log_debug("command 'cmd'");
+            switch (msgt >> 16)
+            {
+               case WS_CMDT_DISCONN:
+                  smws_send_error(&ws, WS_ERRT_ACK);
+                  disconn++;
+                  break;
+
+               case WS_CMDT_NEXT:
+                  log_msg(LOG_NOTICE, "not implemented");
+                  smws_send_error(&ws, WS_ERRT_ACK);
+                  break;
+            }
             break;
 
          default:
@@ -906,8 +922,10 @@ int http_ws_com(int fd, qcache_t *qc)
    }
 
    hpx_tm_free_tree(tlist);
+   ws_free(&ws);
+   log_debug("exiting http_ws_com()");
 
-   return 0;
+   return err;
 }
 
 
@@ -1082,6 +1100,7 @@ void *handle_http(void *p)
                log_access(&saddr, dbuf, 101, 0);
                err = http_ws_com(fd, qc);
                qc_release(qc);
+               // FIXME: if http_ws_com() returns, should it not always close the connection?
                if (err < 0)
                {
                   log_access(&saddr, dbuf, -err, 0);
@@ -1166,6 +1185,14 @@ int httpd_init(struct smhttpd *smd)
    if (listen(smd->fd, MAX_CONNS + 5) == -1)
       perror("listen"), exit(EXIT_FAILURE);
 
+//#define SINGLE_THREADED
+#ifdef SINGLE_THREADED
+   smd->max_conns = 0;
+   smd->htth[0].n = 0;
+   smd->htth[0].sfd = smd->fd;
+   handle_http(&smd->htth[0]);
+   return 0;
+#endif
    // create session handler tasks
    for (int i = 0; i < smd->max_conns; i++)
    {
