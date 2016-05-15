@@ -15,6 +15,17 @@
       <tag k='_action_' v='draw:color=black'/>
    </way>
 
+   <!-- direction of traffic flow INT1 IM 10 -->
+   <way version="-10">
+      <tag k='seamark:type' v='separation_lane'/>
+      <tag k='_action_' v='ins_eqdist:distance=10mm'/>
+   </way>
+   <node>
+      <tag k='seamark:type' v='separation_lane'/>
+      <tag k='generator' v='smrender'/>
+      <tag k='_action_' v='img:file=SeaMapSymbols/LaneArrow.svg;anglekey=bearing'/>
+   </node>
+
    <!-- separation zone INT1 IM 13 -->
    <way>
       <tag k='seamark:type' v='separation_zone'/>
@@ -57,12 +68,11 @@
       <tag k='generator' v='smrender'/>
       <tag k='_action_' v='img:file=SeaMapSymbols/Anchorage.svg;anglekey=bearing;angle=-90'/>
    </node>
-   <!-- separation line INT1 IM 15, IN 12.1 -->
+   <!-- separation line INT1 IM 15, IN 1.2 -->
    <way>
-      <tag k='seamark:type' v='/separation_lane|anchorage/'/>
+      <tag k='seamark:type' v='/separation_boundary|anchorage/'/>
       <tag k='_action_' v='draw:bcolor=#40FF00FF;bwidth=0.5;bstyle=dashed'/>
    </way>
-
 
 </osm>
 

@@ -247,7 +247,12 @@
       <tag k='smrender:render' v='yes'/>
       <tag k='_action_' v='img:file=SeaMapSymbols/Cone_Yellow.svg'/>
    </node>
-
+   <node>
+      <tag k='seamark:type' v='buoy_special_purpose'/>
+      <tag k='seamark:buoy_special_purpose:shape' v='spherical'/>
+      <tag k='smrender:render' v='yes'/>
+      <tag k='_action_' v='img:file=SeaMapSymbols/Sphere_Yellow.svg'/>
+   </node>
    <node>
       <tag k='seamark:type' v='buoy_special_purpose'/>
       <tag k='~seamark:buoy_special_purpose:shape~' v=''/>
