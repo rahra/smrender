@@ -384,7 +384,8 @@ option \optk{a} is set implicitly.
 \item[\optk{s}] \optv{f}
 
    This option scales all images used in the \textsf{img()} function by the
-   factor \optv{f} (see Section \ref{sec:img}). By default this is 1.
+   factor \optv{f} (see Section \ref{sec:img}). By default this is 1. This
+   factor is applied additionally to a scaling defined in \textsf{img()}.
 
 \item[\optk{t}] \optv{title}
 
@@ -1385,7 +1386,9 @@ rendered in the second rule.
    \item {\sffamily ins\_eqdist} (\textsc{experimental})
 
       This function inserts nodes along a way with equal distances. The
-      distance is given with the parameter \optv{distance} in nautical miles.
+      distance is given with the parameter \optv{distance} in any unit
+      according to \ref{sec:units}. If no unit is specified, nautical miles is
+      taken as default.
       The newly inserted nodes inherit all tags from the way and additionally
       the tags \textsf{generator=smrender}, and \textsf{distance=*}, and
       \textsf{bearing=*} are added. The latter two tags are set to the
