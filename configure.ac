@@ -76,6 +76,7 @@ AX_PTHREAD([
 
 AC_SEARCH_LIBS([sin], [m])
 AC_SEARCH_LIBS([dlopen], [dl])
+#AC_SEARCH_LIBS([RAND_bytes], [crypto])
 
 AC_CHECK_FUNCS([strptime dladdr mbtowc execvpe])
 
