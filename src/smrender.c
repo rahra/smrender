@@ -347,6 +347,37 @@ int free_objects(osm_obj_t *o, void * UNUSED(p))
 }
 
 
+/*! Calculate the large page bounding if a page should be rotated.
+ * @param rd Pointer to rdata structure.
+ * @param angle Pointer to string containing decimal rotation.
+ */
+static void page_rotate(struct rdata *rd, const char *angle)
+{
+   double a, r;
+   char *endptr;
+
+  if (angle == NULL)
+      return;
+
+   errno = 0;
+   rd->rot = strtod(angle, &endptr);
+   if (errno || endptr == angle)
+   {
+      rd->rot = 0;
+      return;
+   }
+
+   rd->rot = fmod(DEG2RAD(rd->rot), 2 * M_PI);
+   if (rd->rot == 0)
+      return;
+
+   a = atan(rd->h / rd->w);
+   r = hypot(rd->h, rd->w);
+   rd->h = r * sin(a + fabs(rd->rot));
+   rd->w = r * cos(a - fabs(rd->rot));
+}
+
+
 /*! This function initializes the pixel width (w) and height (h) of the rdata
  * structure. rd->dpi must be pre-initialized!
  * @param rd Pointer to the rdata structure.
@@ -355,21 +386,24 @@ int free_objects(osm_obj_t *o, void * UNUSED(p))
  */
 void init_rd_paper(struct rdata *rd, const char *paper)
 {
-   char buf[strlen(paper) + 1], *s;
+   char buf[strlen(paper) + 1], *s, *angle;
    double a4_w, a4_h;
 
    a4_w = MM2PX(210);
    a4_h = MM2PX(297);
 
-   if (strchr(paper, 'x'))
+   strcpy(buf, paper);
+   strtok(buf, ":");
+   angle = strtok(NULL, ":");
+
+   if (strchr(buf, 'x'))
    {
-      strcpy(buf, paper);
       if ((s = strtok(buf, "x")) == NULL)
          log_msg(LOG_ERR, "strtok returned NULL"),
             exit(EXIT_FAILURE);
       rd->w = MM2PX(atof(s));
       if ((s = strtok(NULL, "x")) == NULL)
-         log_msg(LOG_ERR, "format error in page size: '%s'", paper),
+         log_msg(LOG_ERR, "format error in page size: '%s'", buf),
             exit(EXIT_FAILURE);
       rd->h = MM2PX(atof(s));
       
@@ -380,38 +414,35 @@ void init_rd_paper(struct rdata *rd, const char *paper)
       if (!rd->w && !rd->h)
          log_msg(LOG_ERR, "width and height cannot both be 0"),
             exit(EXIT_FAILURE);
-
-      return;
-   }
-
-   if (!strcasecmp(paper, "A4"))
+   } 
+   else if (!strcasecmp(buf, "A4"))
    {
       rd->w = a4_w;
       rd->h = a4_h;
    }
-   else if (!strcasecmp(paper, "A3"))
+   else if (!strcasecmp(buf, "A3"))
    {
       rd->w = a4_h;
       rd->h = a4_w * 2;
    }
-   else if (!strcasecmp(paper, "A2"))
+   else if (!strcasecmp(buf, "A2"))
    {
       rd->w = a4_w * 2;
       rd->h = a4_h * 2;
    }
-   else if (!strcasecmp(paper, "A1"))
+   else if (!strcasecmp(buf, "A1"))
    {
       rd->w = a4_h * 2;
       rd->h = a4_w * 4;
    }
-   else if (!strcasecmp(paper, "A0"))
+   else if (!strcasecmp(buf, "A0"))
    {
       rd->w = a4_w * 4;
       rd->h = a4_h * 4;
    }
    else
    {
-      log_msg(LOG_WARN, "unknown page size %s, defaulting to A4", paper);
+      log_msg(LOG_WARN, "unknown page size %s, defaulting to A4", buf);
       rd->w = a4_w;
       rd->h = a4_h;
    }
@@ -422,6 +453,10 @@ void init_rd_paper(struct rdata *rd, const char *paper)
       rd->w = rd->h;
       rd->h = a4_w;
    }
+
+   rd->pgw = rd->w;
+   rd->pgh = rd->h;
+   page_rotate(rd, angle);
 }
 
 
@@ -432,7 +467,7 @@ static void print_version(void)
 #ifdef HAVE_CAIRO
    printf("Using libcairo %s.\n", cairo_version_string());
 #else
-   printf("Compile without libcairo support.\n");
+   printf("Compiled without libcairo support.\n");
 #endif
 }
 
@@ -686,17 +721,11 @@ void init_rendering_window(struct rdata *rd, char *win, const char *paper)
 
             rd->bb.ll.lon = fmin(rd->bb.ll.lon, rd->pw[i].lon);
             rd->bb.ll.lat = fmin(rd->bb.ll.lat, rd->pw[i].lat);
-            rd->bb.ru.lon = fmax(rd->bb.ll.lon, rd->pw[i].lon);
-            rd->bb.ru.lat = fmax(rd->bb.ll.lat, rd->pw[i].lat);
+            rd->bb.ru.lon = fmax(rd->bb.ru.lon, rd->pw[i].lon);
+            rd->bb.ru.lat = fmax(rd->bb.ru.lat, rd->pw[i].lat);
 
             s = strtok(NULL, ":");
          }
-
-/*         rd->bb.ll.lon = rd->pw[0].lon;
-         rd->bb.ll.lat = rd->pw[0].lat;
-         rd->bb.ru.lon = rd->pw[1].lon;
-         rd->bb.ru.lat = rd->pw[3].lat;*/
-
          rd->mean_lon = (rd->bb.ru.lon + rd->bb.ll.lon) / 2.0;
          rd->mean_lat = (rd->bb.ru.lat + rd->bb.ll.lat) / 2.0;
       }
@@ -1171,7 +1200,7 @@ int main(int argc, char *argv[])
 
    if (kap_file != NULL)
    {
-      log_msg(LOG_INFO, "generating KAP file %s", kap_file);
+      log_msg(LOG_NOTICE, "generating KAP file %s", kap_file);
       if ((f = fopen(kap_file, "w")) == NULL)
          log_msg(LOG_WARN, "cannot open file %s: %s", kap_file, strerror(errno));
       else
@@ -1184,7 +1213,7 @@ int main(int argc, char *argv[])
 
    if (kap_hfile != NULL)
    {
-      log_msg(LOG_INFO, "generating KAP header file %s", kap_hfile);
+      log_msg(LOG_NOTICE, "generating KAP header file %s", kap_hfile);
       if ((f = fopen(kap_hfile, "w")) == NULL)
          log_msg(LOG_WARN, "cannot open file %s: %s", kap_file, strerror(errno));
       else

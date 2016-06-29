@@ -309,6 +309,18 @@ void *cairo_smr_image_surface_from_bg(cairo_format_t fmt, cairo_antialias_t alia
 }
 
 
+static void cairo_smr_page_rotate(cairo_t *ctx)
+{
+   struct rdata *rd = get_rdata();
+
+   if (rd->rot == 0)
+      return;
+
+   log_debug("rotating output by %.1f°", RAD2DEG(rd->rot));
+   cairo_rotate(ctx, rd->rot);
+}
+
+
 void save_main_image(FILE *f, int ftype)
 {
    cairo_surface_t *sfc;
@@ -329,12 +341,14 @@ void save_main_image(FILE *f, int ftype)
       case FTYPE_PDF:
 #ifdef CAIRO_HAS_PDF_SURFACE
          log_debug("PDF: width = %.2f pt (%.2f mm), height = %.2f pt (%.2f mm)",
-               rdata_width(U_PT), rdata_width(U_MM), rdata_height(U_PT), rdata_height(U_MM));
-         sfc = cairo_pdf_surface_create_for_stream(cairo_smr_write_func, f, rdata_width(U_PT), rdata_height(U_PT));
+               rdata_page_width(U_PT), rdata_page_width(U_MM), rdata_page_height(U_PT), rdata_page_height(U_MM));
+         sfc = cairo_pdf_surface_create_for_stream(cairo_smr_write_func, f, rdata_page_width(U_PT), rdata_page_height(U_PT));
          //cairo_pdf_surface_restrict_to_version(sfc, CAIRO_PDF_VERSION_1_4);
          dst = cairo_create(sfc);
          cairo_smr_log_status(dst);
-         cairo_set_source_surface(dst, sfc_, 0, 0);
+         cairo_translate(dst, rdata_page_width(U_PT) / 2, rdata_page_height(U_PT) / 2);
+         cairo_smr_page_rotate(dst);
+         cairo_set_source_surface(dst, sfc_, rdata_width(U_PT) / -2, rdata_height(U_PT) / -2);
          cairo_paint(dst);
          cairo_show_page(dst);
          cairo_destroy(dst);
@@ -346,17 +360,16 @@ void save_main_image(FILE *f, int ftype)
 #ifdef CAIRO_HAS_SVG_SURFACE
       case FTYPE_SVG:
          log_debug("width = %.2f pt, height = %.2f pt", rdata_width(U_PT), rdata_height(U_PT));
-         sfc = cairo_svg_surface_create_for_stream(cairo_smr_write_func, f, rdata_width(U_PT), rdata_height(U_PT));
-         //sfc = cairo_svg_surface_create("out.svg", rdata_width(U_PT), rdata_height(U_PT));
+         sfc = cairo_svg_surface_create_for_stream(cairo_smr_write_func, f, rdata_page_width(U_PT), rdata_page_height(U_PT));
          cairo_svg_surface_restrict_to_version (sfc, CAIRO_SVG_VERSION_1_2);
          dst = cairo_create(sfc);
          cairo_smr_log_status(dst);
-         cairo_set_source_surface(dst, sfc_, 0, 0);
+         cairo_translate(dst, rdata_page_width(U_PT) / 2, rdata_page_height(U_PT)/2);
+         cairo_smr_page_rotate(dst);
+         cairo_set_source_surface(dst, sfc_, -rdata_width(U_PT) / 2, -rdata_height(U_PT) / 2);
          cairo_paint(dst);
-         //cairo_show_page(dst);
          cairo_destroy(dst);
          cairo_surface_destroy(sfc);
-
 #else
          log_msg(LOG_NOTICE, "cannot create SVG, cairo was compiled without SVG support");
 #endif

@@ -98,8 +98,10 @@ struct rdata
    struct bbox bb;
    //! polygon window instead of bbox
    int polygon_window;
-   //! coordinates of polygon
+   //! coordinates of polygon (ll, rl, ru, lu)
    struct coord pw[4];
+   //! rotation of page
+   double rot;
    //! coordinate width in degrees (wc=bb.ru.lon-bb.ll.lon)
    double wc, 
    //! coordinate height in degrees (hc=bb.ru.lat-bb.ll.lat)
@@ -116,6 +118,10 @@ struct rdata
    double w,
    //! (pixel) image height of rendered image
           h;
+   //! page (pixel) width, this == rd->w if no rotation takes place (i.e. rd->rot = 0)
+   double pgw;
+   //! page (pixel) height
+   double pgh;
    //! pixel resolution
    int dpi;
    //! scale
@@ -152,6 +158,8 @@ void rdata_log(void);
 double rdata_px_unit(double, unit_t);
 double rdata_unit_px(double, unit_t);
 double rdata_unit(const value_t *, unit_t );
+double rdata_page_width(unit_t);
+double rdata_page_height(unit_t);
 double rdata_width(unit_t);
 double rdata_height(unit_t);
 int rdata_dpi(void);

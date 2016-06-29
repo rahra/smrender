@@ -154,6 +154,13 @@ void geo_square(struct rdata *rd, double b, char *v)
    osm_way_t *w;
    int i;
 
+   if (rd->polygon_window)
+      for (int i = 0; i < 4; i++)
+      {
+         lat[i] = rd->pw[3 - i].lat;
+         lon[i] = rd->pw[3 - i].lon;
+      }
+
    w = malloc_way(2, 5);
    osm_way_default(w);
    set_const_tag(&w->obj.otag[1], "grid", v);

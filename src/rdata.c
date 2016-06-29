@@ -163,10 +163,11 @@ void rdata_log(void)
    log_msg(LOG_NOTICE, "   polygon_window = %d", rd_.polygon_window);
    for (int i = 0; i < 4; i++)
       log_msg(LOG_NOTICE, "   pw[%d] = {%.3f %.3f}", i, rd_.pw[i].lat, rd_.pw[i].lon);
+   log_msg(LOG_NOTICE, "   rotation = %.1f", RAD2DEG(rd_.rot));
    log_msg(LOG_NOTICE, "   page size = %.1f x %.1f mm",
-         PX2MM(rd_.w), PX2MM(rd_.h));
-   log_msg(LOG_NOTICE, "   rendering: %.1fx%.1f px, dpi = %d",
-         rd_.w, rd_.h, rd_.dpi);
+         PX2MM(rd_.pgw), PX2MM(rd_.pgh));
+   log_msg(LOG_NOTICE, "   rendering: %.1f x %.1f mm (%.1fx%.1f px), dpi = %d",
+         PX2MM(rd_.w), PX2MM(rd_.h), rd_.w, rd_.h, rd_.dpi);
    log_msg(LOG_NOTICE, "   1 px = %.3f mm, 1 mm = %d px", PX2MM(1), (int) MM2PX(1));
    log_msg(LOG_NOTICE, "   1 px = %.3f nm, 1 nm = %.1f px", rdata_px_unit(1, U_NM), 1 / rdata_px_unit(1, U_NM));
    log_msg(LOG_NOTICE, "   scale 1:%.0f, %.1f x %.1f nm",
@@ -305,6 +306,18 @@ static void test_rdata_unit(void)
       v = rdata_unit_px(TEST_RDU_VAL, i);
       log_msg(LOG_DEBUG, "%.1f %s = %.3f px", TEST_RDU_VAL, unit_str(i), v);
    }
+}
+
+
+double rdata_page_width(unit_t type)
+{
+   return rdata_px_unit(rd_.pgw, type);
+}
+
+
+double rdata_page_height(unit_t type)
+{
+   return rdata_px_unit(rd_.pgh, type);
 }
 
 

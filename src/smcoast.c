@@ -279,8 +279,9 @@ static int64_t edge_point(struct coord crd, int pos, int64_t nid)
             log_msg(LOG_EMERG, "octant not allowed: 0x%02x", pos);
             return 0;
       }
-      n = malloc_node(1);
+      n = malloc_node(2);
       osm_node_default(n);
+      set_const_tag(&n->obj.otag[1], "smrender:cat_poly", "edge_point");
       n->lat = crd.lat;
       n->lon = crd.lon;
       put_object((osm_obj_t*) n);
@@ -540,7 +541,7 @@ static int collect_tags(const osm_obj_t *cp, const osm_obj_t *src, osm_obj_t *ds
  * w. The original ways in the list are marked for deletion.
  * @param pl Starting way of a waylist.
  * @param w Way to which the node refs are joined.
- * @return The fcuntion returns the total number finally joined refs.
+ * @return The function returns the total number finally joined refs.
  */
 static int join_open_poly(struct poly *pl, osm_way_t *w)
 {
