@@ -1504,28 +1504,44 @@ int act_strfmt_ini(smrule_t *r)
 int act_strfmt_main(smrule_t *r, osm_obj_t *o)
 {
    struct otag *ot;
-   char buf[2048];
-   int len;
+   char buf[2048], *s;
+   int len, n;
 
    if ((len = mk_fmt_str(buf, sizeof(buf), ((struct fmt_info*) r->data)->fmt, r->act->fp, o)) <= 0)
-      return len;
-
-   if ((ot = realloc(o->otag, sizeof(*o->otag) * (o->tag_cnt + 1))) == NULL)
    {
-      log_msg(LOG_ERR, "realloc() failed in strfmt(): %s", strerror(errno));
-      return -1;
+      log_debug("mk_fmt_str() failed: %d", len);
+      return len;
    }
-   o->otag = ot;
 
-   o->otag[o->tag_cnt].k.buf = (char*) ((struct fmt_info*) r->data)->addtag;
-   o->otag[o->tag_cnt].k.len = strlen(o->otag[o->tag_cnt].k.buf);
-   if ((o->otag[o->tag_cnt].v.buf = strdup(buf)) == NULL)
+   // check if desired tag already exists
+   if ((n = match_attr(o, (char*) ((struct fmt_info*) r->data)->addtag, NULL)) == -1)
+   {
+      log_debug("adding tag '%s'='%s' to object %"PRId64,
+            (char*) ((struct fmt_info*) r->data)->addtag, buf, o->id);
+      if ((ot = realloc(o->otag, sizeof(*o->otag) * (o->tag_cnt + 1))) == NULL)
+      {
+         log_msg(LOG_ERR, "realloc() failed in strfmt(): %s", strerror(errno));
+         return -1;
+      }
+      o->otag = ot;
+      n = o->tag_cnt;
+      o->tag_cnt++;
+      o->otag[n].k.buf = (char*) ((struct fmt_info*) r->data)->addtag;
+      o->otag[n].k.len = strlen(o->otag[n].k.buf);
+   }
+   else
+   {
+      log_debug("reusing tag '%s'=*", (char*) ((struct fmt_info*) r->data)->addtag);
+   }
+
+
+   if ((s = strdup(buf)) == NULL)
    {
       log_msg(LOG_ERR, "strdup() failed in strfmt(): %s", strerror(errno));
       return -1;
    }
-   o->otag[o->tag_cnt].v.len = len;
-   o->tag_cnt++;
+   o->otag[n].v.buf = s;
+   o->otag[n].v.len = len;
 
    return 0;
 }
