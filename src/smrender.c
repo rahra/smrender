@@ -269,11 +269,11 @@ int strip_ways(osm_way_t *w, void * UNUSED(p))
 
 void print_url(struct bbox bb)
 {
-   char *url[] = {
-      "http://www.overpass-api.de/api/xapi?map?",
-      "http://overpass.osm.rambler.ru/cgi/xapi?map?",
-      "http://jxapi.openstreetmap.org/xapi/api/0.6/map?",
-      "http://open.mapquestapi.com/xapi/api/0.6/map?",
+   const char *url[] = {
+      "http://www.overpass-api.de/api/xapi_meta?*[bbox=%.3f,%.3f,%.3f,%.3f]\n",
+      "http://api.openstreetmap.org/api/0.6/map?bbox=%.3f,%.3f,%.3f,%.3f\n",
+      "http://overpass.osm.rambler.ru/cgi/xapi_meta?*[bbox=%.3f,%.3f,%.3f,%.3f]\n",
+      "http://api.openstreetmap.fr/xapi?*[bbox=%.3f,%.3f,%.3f,%.3f]\n",
       NULL};
    double d;
    int i;
@@ -286,7 +286,7 @@ void print_url(struct bbox bb)
    bb.ru.lat += d;
 
    for (i = 0; url[i] != NULL; i++)
-      printf("%sbbox=%.3f,%.3f,%.3f,%.3f\n", url[i], bb.ll.lon, bb.ll.lat, bb.ru.lon, bb.ru.lat);
+      printf(url[i], bb.ll.lon, bb.ll.lat, bb.ru.lon, bb.ru.lat);
 }
 
 
