@@ -21,6 +21,14 @@
       <tag k='yellow' v='Ž'/>
       <tag k='black' v='Cr'/>
       <tag k='violett' v='Lj'/>
+
+      <!-- seabed -->
+      <tag k='sand' v='P'/>
+      <tag k='mud' v='M'/>
+      <tag k='stones' v='K'/>
+      <tag k='gravel' v='Š'/>
+      <tag k='coral' v='Kor'/>
+      <tag k='shells' v='Šk'/>
    </node>
 
    <!-- translation table for German lights -->
@@ -71,12 +79,18 @@
    <!-- translation rule for light character -->
    <node version='-100'>
       <tag k='/seamark:light:.*character/' v=''/>
-      <tag k='_action_' v='translate:id=1001;key=/seamark:light:.*character/'/>
+      <tag k='_action_' v='translate:id=1000;key=/seamark:light:.*character/'/>
    </node>
    <!-- translation rule for light colour -->
    <node version='-100'>
       <tag k='/seamark:light:.*character/' v=''/>
-      <tag k='_action_' v='translate:id=1001;key=/seamark:light:.*character/'/>
+      <tag k='_action_' v='translate:id=1000;key=/seamark:light:.*character/'/>
+   </node>
+
+   <!-- translation rule for nature of seabed-->
+   <node version='-100'>
+      <tag k='seamark:seabed_area:surface' v=''/>
+      <tag k='_action_' v='translate:id=1000;key=seamark:seabed_area:surface'/>
    </node>
 
 </osm>

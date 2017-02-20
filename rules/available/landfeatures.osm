@@ -30,6 +30,7 @@
    </way>
    <way>
       <tag k='natural' v='peak'/>
+      <tag k='ele' v=''/>
       <tag k='_action_' v='draw:color=black'/>
    </way>
 

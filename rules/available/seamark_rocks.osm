@@ -42,5 +42,11 @@
       <tag k='_action_' v='img:file=SeaMapSymbols/RockA.svg;scale=0.5'/>
    </node>
 
+
+   <node>
+      <tag k='seamark:seabed_area:surface' v=''/>
+      <tag k='_action_' v='cap:font=sans:slant=italic;size=2;key=seamark:seabed_area:surface'/>
+   </node>
+
 </osm>
 
