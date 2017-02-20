@@ -1,6 +1,6 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <osm version='0.6' upload='true' generator='JOSM'>
-  <node id='-31406' action='modify' visible='true' lat='43.73500885767' lon='15.57045129159' />
+  <node id='-31406' action='modify' visible='true' lat='43.73471955856' lon='15.57045129159' />
   <node id='-31404' action='modify' visible='true' lat='43.73435514755' lon='15.5724537597'>
     <tag k='end' v='45' />
     <tag k='name' v='Westbay' />
