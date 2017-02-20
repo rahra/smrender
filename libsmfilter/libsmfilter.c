@@ -627,7 +627,7 @@ static int find_sep(bstring_t *c)
 }
 
 
-/*! get_sectors() parses the tags of an OSM nodes and extracts
+/*! get_sectors() parses the tags of an OSM node and extracts
  *  sector data into struct sector data structures.
  *  @param sec Pointer to first element of struct sector array.
  *  @param nmax maximum number of elements in array sec.

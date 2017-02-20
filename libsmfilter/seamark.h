@@ -57,7 +57,7 @@ struct lchar
    int range;
 };
 
-/*! Struct sector contains all light sectors as the are imported from the
+/*! Struct sector contains all light sectors as they are imported from the
  * original OSM file. Those sectors are then further split into subsectors. The
  * subsectors are hold within struct sector_frac structures.
  */
