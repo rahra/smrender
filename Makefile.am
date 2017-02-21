@@ -596,3 +596,5 @@ SeaMapSymbols/WreckD.svg \
 SeaMapSymbols/WreckND.svg \
 SeaMapSymbols/WreckS.svg
 
+dist_noinst_DATA = test/Makefile test/testdata.osm test/rules
+
