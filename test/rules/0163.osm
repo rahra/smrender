@@ -11,7 +11,7 @@
    </way>
    <node>
       <tag k='natural' v='bay'/>
-      <tag k='_action_' v='cap:font=sans-serif;size=2mm;key=name;angle=auto'/>
+      <tag k='_action_' v='cap:font=serif:bold;size=2mm;key=name;angle=auto'/>
    </node>
 </osm>
 

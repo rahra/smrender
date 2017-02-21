@@ -7,11 +7,11 @@
    <way>
       <tag k='natural' v='coastline'/>
       <tag k='generator' v='smrender'/>
-      <tag k='_action_' v='draw:color=navajowhite;bcolor=black'/>
+      <tag k='_action_' v='draw:color=navajowhite;bcolor=black;curve=yes'/>
    </way>
    <node>
       <tag k='natural' v='bay'/>
-      <tag k='_action_' v='cap:font=serif;size=2mm;key=name;angle=auto'/>
+      <tag k='_action_' v='cap:font=DejaVu Serif:style=Italic;size=2mm;key=name;angle=auto'/>
    </node>
 </osm>
 
