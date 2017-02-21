@@ -37,8 +37,8 @@
 #include <pthread.h>
 #endif
 #include <cairo.h>
-#undef CAIRO_HAS_FT_FONT
-#undef CAIRO_HAS_FC_FONT
+//#undef CAIRO_HAS_FT_FONT
+//#undef CAIRO_HAS_FC_FONT
 #ifdef CAIRO_HAS_FT_FONT
 #include <cairo-ft.h>
 #endif
