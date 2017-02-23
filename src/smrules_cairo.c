@@ -75,8 +75,8 @@
 //#define COL_DIFF_BRGT
 // define this if color difference shall be calculated by the luminosity.
 #define COL_DIFF_LUM
-//#define COL_STRETCH_BW
-#define COL_STRETCH_F 1.0
+#define COL_STRETCH_BW
+#define COL_STRETCH_F 1.25
 
 #define POS_OFFSET mm2unit(1.4)
 
@@ -142,12 +142,6 @@ typedef struct cartesian
 {
    double x, y, z;
 } cartesian_t;
-
-
-typedef struct spherical
-{
-   double r, phi, th;
-} spherical_t;
 
 
 static cairo_surface_t *sfc_;
@@ -1458,33 +1452,21 @@ static uint32_t cairo_smr_double_to_gray(double a)
 
 
 #ifdef COL_STRETCH_BW
-static void spherical_to_cartesian(cartesian_t *c, const spherical_t *s)
+static void rot_y(cartesian_t *c, double a)
 {
-   c->x = s->r * sin(s->th) * cos(s->phi);
-   c->y = s->r * sin(s->th) * sin(s->phi);
-   c->z = s->r * cos(s->th);
+   double x =  c->x * cos(a) + c->z * sin(a);
+   double z = -c->x * sin(a) + c->z * cos(a);
+   c->x = x;
+   c->z = z;
 }
 
 
-static void cartesian_to_spherical(spherical_t *s, const cartesian_t *c)
+static void rot_z(cartesian_t *c, double a)
 {
-   s->r = sqrt(sqr(c->x) + sqr(c->y) + sqr(c->z));
-   s->phi = atan2(c->y, c->x);
-   s->th = acos(c->z / s->r);
-}
-
-
-static void rotate_up(spherical_t *s)
-{
-      s->phi += M_PI_4;
-      s->th -= acos(1 / sqrt(3));
-}
- 
-
-static void rotate_dia(spherical_t *s)
-{
-   s->phi -= M_PI_4;
-   s->th += acos(1 / sqrt(3));
+   double x =  c->x * cos(a) - c->y * sin(a);
+   double y =  c->x * sin(a) + c->y * cos(a);
+   c->x = x;
+   c->y = y;
 }
 
 
@@ -1496,23 +1478,23 @@ static uint32_t cairo_smr_rgb_to_color(double r, double g, double b)
 
 static void cairo_smr_color_bw_stretch(double f, uint32_t *col)
 {
-   spherical_t s;
    cartesian_t c;
 
    c.x = REDD(*col);
    c.y = GREEND(*col);
    c.z = BLUED(*col);
 
-   cartesian_to_spherical(&s, &c);
-   rotate_up(&s);
-   spherical_to_cartesian(&c, &s);
+	// rotate color space that bw components are along z-axis
+   rot_z(&c, -M_PI_4);
+   rot_y(&c, -acos(1 / sqrt(3)));
 
+	// scale x/y components
    c.x /= f;
    c.y /= f;
 
-   cartesian_to_spherical(&s, &c);
-   rotate_dia(&s);
-   spherical_to_cartesian(&c, &s);
+	// rotate back into RGB color space
+   rot_y(&c,  acos(1 / sqrt(3)));
+   rot_z(&c,  M_PI_4);
 
    *col = (*col & 0xff000000) | cairo_smr_rgb_to_color(c.x, c.y, c.z);
 }
