@@ -24,6 +24,9 @@
     <tag k='seamark:light:reference' v='E 4275' />
     <tag k='seamark:name' v='Anafi' />
     <tag k='seamark:type' v='light_minor' />
+    <tag k='angle' v='20' />
+    <tag k='alignw' v='west' />
+    <tag k='aligne' v='east' />
   </node>
   <node id='-31400' action='modify' visible='true' lat='43.73425719491' lon='15.57318903674' />
   <node id='-31398' action='modify' visible='true' lat='43.7341357795' lon='15.57328600684' />

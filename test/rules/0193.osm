@@ -1,0 +1,34 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<osm version='0.6' generator='Bernhard R. Fischer'>
+   <way>
+      <tag k='natural' v='coastline'/>
+      <tag k='_action_' v='cat_poly'/>
+   </way>
+   <way>
+      <tag k='natural' v='coastline'/>
+      <tag k='generator' v='smrender'/>
+      <tag k='_action_' v='draw:color=navajowhite;bcolor=black'/>
+   </way>
+
+   <node>
+      <tag k='seamark:type' v=''/>
+      <tag k='_action_' v='pchar@libsmfilter.so'/>
+   </node>
+   <node>
+      <tag k='seamark:type' v='light_minor'/>
+      <tag k='_action_' v='img:file=../SeaMapSymbols/Light_Minor.svg;scale=0.5'/>
+   </node>
+   <node>
+      <tag k='seamark:light_character' v=''/>
+      <tag k='_action_' v='cap:font=sans-serif;size=1.4;halign=east;key=seamark:light_character;anglekey=angle;halignkey=aligne'/>
+   </node>
+   <node>
+      <tag k='seamark:type' v='light_minor'/>
+      <tag k='_action_' v='img:file=../SeaMapSymbols/Light_Magenta_120.svg;scale=0.5;angle=0;anglekey=angle;alignkey=aligne'/>
+   </node>
+   <node>
+      <tag k='seamark:type' v='/light_minor|light_major/'/>
+      <tag k='_action_' v='cap:font=sans-serif;size=1.4;key=seamark:name;anglekey=angle;valign=south;halignkey=aligne'/>
+   </node>
+</osm>
+
