@@ -136,6 +136,7 @@ struct actImage
    struct auto_rot rot;
    double scale;
    char *akey;       // angle is defined in a tag
+   char *alignkey;   // alignment defined in a tag
 #ifdef HAVE_CAIRO
    cairo_surface_t *img;
    cairo_pattern_t *pat;
@@ -168,6 +169,7 @@ struct actCaption
    char *halignkey;  // keys defining alignment for tag-dependent alignment
    char *valignkey;
    double xoff, yoff;   //!< x/y offset from origin
+   int hide;         // if set to 1 do everything except showing the caption
    struct auto_rot rot;
 #ifdef HAVE_CAIRO
    cairo_t *ctx;

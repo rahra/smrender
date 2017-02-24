@@ -1240,6 +1240,8 @@ int act_cap_ini(smrule_t *r)
       cap.pos |= POS_UC;
    }
  
+   cap.hide = get_param_bool("hide", r->act);
+
    cap.ctx = cairo_create(sfc_);
    if (cairo_smr_log_status(cap.ctx) != CAIRO_STATUS_SUCCESS)
       return -1;
@@ -2091,10 +2093,13 @@ static int cap_coord(const struct actCaption *cap, const struct coord *c, const 
       a += DEG2RAD(360 - cap->angle);
    }
 
-   cairo_rotate(cap->ctx, a);
-   pos_offset(pos, tx.width + tx.x_bearing, fe.ascent, cap->xoff, cap->yoff, &x, &y);
-   cairo_move_to(cap->ctx, x, y);
-   cairo_show_text(cap->ctx, buf);
+   if (!cap->hide)
+   {
+      cairo_rotate(cap->ctx, a);
+      pos_offset(pos, tx.width + tx.x_bearing, fe.ascent, cap->xoff, cap->yoff, &x, &y);
+      cairo_move_to(cap->ctx, x, y);
+      cairo_show_text(cap->ctx, buf);
+   }
    cairo_restore(cap->ctx);
 
    return 0;
@@ -2323,6 +2328,7 @@ int act_img_ini(smrule_t *r)
       log_msg(LOG_NOTICE, "ignoring angle=auto");
       img.angle = 0;
    }
+   img.alignkey = get_param("alignkey", NULL, r->act);
 
    if (r->oo->type == OSM_NODE)
    {
@@ -2420,10 +2426,25 @@ int img_place(const struct actImage *img, const osm_node_t *n)
    }
    else
    {
-      int m;
+      int m = -1;
       a = 0;
       if (img->akey != NULL && (m = match_attr(&n->obj, img->akey, NULL)) >= 0)
          a = DEG2RAD(bs_tod(n->obj.otag[m].v));
+      if (m >= 0)
+         log_debug("detected anglekey: %.1f", RAD2DEG(a));
+
+      if (img->alignkey != NULL && (m = match_attr(&n->obj, img->alignkey, NULL)) >= 0)
+      {
+         int pos;
+         char buf[n->obj.otag[m].v.len + 1];
+         memcpy(buf, n->obj.otag[m].v.buf, sizeof(buf) - 1);
+         buf[n->obj.otag[m].v.len] = '\0';
+         pos = parse_alignment_str(buf);
+         if (pos & POS_W)
+            //a = a + M_PI;
+            //a = -(a + M_PI);
+            a = a + M_PI_2;
+      }
       a += DEG2RAD(360 - img->angle);
    }
 
