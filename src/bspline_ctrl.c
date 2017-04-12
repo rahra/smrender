@@ -28,7 +28,6 @@
 #include "config.h"
 #endif
 
-#include <cairo.h>
 #include <math.h>
 
 #include "bspline.h"
