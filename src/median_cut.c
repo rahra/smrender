@@ -31,7 +31,9 @@
 #include <string.h>
 #include <stdlib.h>
 #include <stdint.h>
+#ifdef HAVE_CAIRO
 #include <cairo.h>
+#endif
 
 #include "smrender.h"
 
@@ -259,6 +261,7 @@ static int mc_median_cut(mc_point_t *image, unsigned num, unsigned desired, mc_b
 }
 
 
+#ifdef HAVE_CAIRO
 static uint32_t mc_point_to_cairo_color(const mc_point_t *pt)
 {
    return 0xff000000 | 
@@ -342,6 +345,7 @@ int cairo_smr_image_surface_color_reduce(cairo_surface_t *src, int ncol, uint32_
    free(blk);
    return ncol;
 }
+#endif
 
 
 #ifdef TEST_MEDIAN_CUT

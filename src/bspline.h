@@ -31,8 +31,6 @@
 #ifndef BSPLINE_H
 #define BSPLINE_H
 
-#include <cairo.h>
-
 
 typedef struct point
 {
