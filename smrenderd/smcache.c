@@ -63,7 +63,9 @@ void qc_release(qcache_t *qc)
    qc->age = time(NULL);
    qc->ctr--;
    if (!qc->ctr)
+   {
       qc_signal(&cond_);
+   }
    qc_unlock(&mutex_);
 }
 
