@@ -222,20 +222,19 @@ int hpx_process_elem(bstring_t b, hpx_tag_t *p)
 
    if (*b.buf == '/')
    {
+      if (!bs_advance(&b))
+         return -1;
 
-   if (!bs_advance(&b))
-      return -1;
+      if (!skip_bblank(&b))
+         return -1;
 
-   if (!skip_bblank(&b))
-      return -1;
+      hpx_parse_name(&b, &p->tag);
 
-   hpx_parse_name(&b, &p->tag);
+      if (!skip_bblank(&b))
+         return -1;
 
-   if (!skip_bblank(&b))
-      return -1;
-
-   if (*b.buf != '>')
-      return -1;
+      if (*b.buf != '>')
+         return -1;
 
       p->type = HPX_CLOSE;
       //call tag processor
