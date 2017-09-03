@@ -76,9 +76,16 @@ AX_PTHREAD([
 
 AC_SEARCH_LIBS([sin], [m])
 AC_SEARCH_LIBS([dlopen], [dl])
-#AC_SEARCH_LIBS([RAND_bytes], [crypto])
+AC_SEARCH_LIBS([RAND_bytes], [crypto])
 
 AC_CHECK_FUNCS([strptime dladdr mbtowc execvpe])
+
+PKG_CHECK_MODULES([GLIB], [glib-2.0],
+                  [AC_DEFINE([HAVE_GLIB], [1], [using glib version check])],
+                  []
+                  )
+AC_SUBST(GLIB_LIBS)
+AC_SUBST(GLIB_CFLAGS)
 
 AS_IF([test -n "$export_dynamic_flag_spec"], [
    exp_dyn=`eval echo $export_dynamic_flag_spec`

@@ -51,6 +51,9 @@
 #ifdef HAVE_RSVG
 #include <librsvg/rsvg.h>
 #endif
+#ifdef HAVE_GLIB
+#include <glib.h>
+#endif
 
 // this format was defined in version 1.12
 #ifndef CAIRO_FORMAT_RGB30
@@ -150,10 +153,12 @@ static cairo_rectangle_t ext_;
 
 void __attribute__((constructor)) cairo_smr_init(void)
 {
+#ifdef HAVE_GLIB
    log_debug("using libcairo %s, using GLIB %d.%d", cairo_version_string(), glib_major_version, glib_minor_version);
 #if ! GLIB_CHECK_VERSION(2,36,0)
    log_debug("calling g_type_init()");
    g_type_init();
+#endif
 #endif
 #ifdef PUSH_GROUP
    log_debug("using push()/pop()");
