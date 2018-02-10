@@ -650,8 +650,8 @@ int hpx_get_elem(hpx_ctrl_t *ctl, bstring_t *b, int *in_tag, long *lno)
    long e;
    bstringl_t bl;
 
-   if ((e = hpx_get_eleml(ctl, &bl, in_tag, lno)) == -1)
-      return -1;
+   if ((e = hpx_get_eleml(ctl, &bl, in_tag, lno)) <= 0)
+      return e;
 
    if (bl.len > INT_MAX)
    {
