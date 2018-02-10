@@ -505,6 +505,7 @@ void usage(const char *s)
          "   -N <offset> ......... Add numerical <offset> to all IDs in output data.\n"
          "   -n .................. Output IDs as positive values only.\n"
          "   -r <rules file> ..... Rules file ('rules.osm' is default).\n"
+         "                         Set <rules file> to 'none' to run without rules.\n"
          "   -R <file> ........... Output all rules to <file>.\n"
          "   -s <img scale> ...... Set global image scale (default = 1).\n"
          "   -t <title> .......... Set descriptional chart title.\n"
@@ -775,7 +776,7 @@ void init_rendering_window(struct rdata *rd, char *win, const char *paper)
 int main(int argc, char *argv[])
 {
    hpx_ctrl_t *ctl, *cfctl;
-   int fd = 0, n, i;
+   int fd = 0, n, i, norules = 0;
    struct stat st;
    FILE *f;
    char *cf = "rules.osm", *img_file = NULL, *osm_ifile = NULL, *osm_ofile =
@@ -945,6 +946,8 @@ int main(int argc, char *argv[])
 
          case 'r':
             cf = optarg;
+            if (!strcmp(cf, "none"))
+               cf = NULL, norules++;
             break;
 
          case 'R':
@@ -1022,8 +1025,8 @@ int main(int argc, char *argv[])
 
    if (!rstats.cnt[OSM_NODE] && !rstats.cnt[OSM_WAY] && !rstats.cnt[OSM_REL])
    {
-      log_msg(LOG_ERR, "no rules found");
-      exit(EXIT_NORULES);
+      log_msg(LOG_NOTICE, "no rules found");
+      norules++;
    }
 
    qsort(rstats.ver, rstats.ver_cnt, sizeof(int), (int(*)(const void*, const void*)) cmp_int);
@@ -1038,18 +1041,21 @@ int main(int argc, char *argv[])
       save_osm(osm_rfile, rd->rules, NULL, NULL);
    }
 
-   log_msg(LOG_INFO, "preparing node rules");
-   if (traverse(rd->rules, 0, IDX_NODE, (tree_func_t) init_rules, rd->rules) < 0)
-      log_msg(LOG_ERR, "rule parser failed"),
-         exit(EXIT_FAILURE);
-   log_msg(LOG_INFO, "preparing way rules");
-   if (traverse(rd->rules, 0, IDX_WAY, (tree_func_t) init_rules, rd->rules) < 0)
-      log_msg(LOG_ERR, "rule parser failed"),
-         exit(EXIT_FAILURE);
-   log_msg(LOG_INFO, "preparing relation rules");
-   if (traverse(rd->rules, 0, IDX_REL, (tree_func_t) init_rules, rd->rules) < 0)
-      log_msg(LOG_ERR, "rule parser failed"),
-         exit(EXIT_FAILURE);
+   if (!norules)
+   {
+      log_msg(LOG_INFO, "preparing node rules");
+      if (traverse(rd->rules, 0, IDX_NODE, (tree_func_t) init_rules, rd->rules) < 0)
+         log_msg(LOG_ERR, "rule parser failed"),
+            exit(EXIT_FAILURE);
+      log_msg(LOG_INFO, "preparing way rules");
+      if (traverse(rd->rules, 0, IDX_WAY, (tree_func_t) init_rules, rd->rules) < 0)
+         log_msg(LOG_ERR, "rule parser failed"),
+            exit(EXIT_FAILURE);
+      log_msg(LOG_INFO, "preparing relation rules");
+      if (traverse(rd->rules, 0, IDX_REL, (tree_func_t) init_rules, rd->rules) < 0)
+         log_msg(LOG_ERR, "rule parser failed"),
+            exit(EXIT_FAILURE);
+   }
 
    if ((osm_ifile != NULL) && ((fd = open(osm_ifile, O_RDONLY)) == -1))
       log_msg(LOG_ERR, "cannot open file %s: %s", osm_ifile, strerror(errno)),
@@ -1145,10 +1151,13 @@ int main(int argc, char *argv[])
    traverse(*get_objtree(), 0, IDX_WAY, free_objects, NULL);
    traverse(*get_objtree(), 0, IDX_NODE, free_objects, NULL);
 
-   log_debug("freeing rule objects");
-   traverse(rd->rules, 0, IDX_REL, (tree_func_t) free_rules, NULL);
-   traverse(rd->rules, 0, IDX_WAY, (tree_func_t) free_rules, NULL);
-   traverse(rd->rules, 0, IDX_NODE, (tree_func_t) free_rules, NULL);
+   if (!norules)
+   {
+      log_debug("freeing rule objects");
+      traverse(rd->rules, 0, IDX_REL, (tree_func_t) free_rules, NULL);
+      traverse(rd->rules, 0, IDX_WAY, (tree_func_t) free_rules, NULL);
+      traverse(rd->rules, 0, IDX_NODE, (tree_func_t) free_rules, NULL);
+   }
 
    log_debug("freeing main object tree");
    bx_free_tree(*get_objtree());
