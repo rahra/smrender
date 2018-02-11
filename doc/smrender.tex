@@ -699,7 +699,7 @@ looks like the following.
 \begin{verbatim}
    <action>   := 'cap:' <param> [ ';' <param> ]
    <param>    := <fontdef> | <angledef> | <aligndef> | <wcapopt>
-                 | <fopt>
+                 | <fopt> | <hide>
 
    <fontdef>  := <fontname> | <fontsize> | <color> | <fopt>
                  | <key>
@@ -736,6 +736,8 @@ looks like the following.
    <dalgn>    := 'alignkey' '=' <all_alg>
    <dhalgn>   := 'halignkey' '=' <lon_alg>
    <dvalgn>   := 'valignkey' '=' <lat_alg>
+
+   <hide>     := 'hide' '=' <bool>
 \end{verbatim}
 
 %FIXME: 'min_size' | 'max_size' | 'min_area' | 'auto_scale' not described yet!
@@ -813,6 +815,13 @@ The parameter \textsf{'anglekey'} defines a key which can be used if the
 caption shall be rotated based on the value of a tag. The value of the
 parameter \textsf{angle} is added additionally. The parameter
 \textsf{angle=auto} is ignored if a \textsf{anglekey} is set.
+
+If \optv{hide} is set to \textsf{yes} or any other boolean true value (see
+Section \ref{sec:act}) this function is executed as described above except that
+it finally does not display the caption. This may be useful if auto-rotation is used
+(\optv{angle = auto}). In a first step \textsf{cap()} is called with \optv{hide =
+true}. Subsequently other rules may be called by using e.g. the tags
+\textsf{anglekey} or \textsf{alignkey}.
 
 \paragraph{Captions on ways} are handled a little bit different from captions
 on nodes. Actually, captions on ways (polylines) are not supported yet but

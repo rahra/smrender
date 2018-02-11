@@ -1,7 +1,7 @@
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN"
            "http://www.w3.org/TR/REC-html40/loose.dtd">
 <html>
-<meta name="GENERATOR" content="TtH 4.05">
+<meta name="GENERATOR" content="TtH 4.08">
  <style type="text/css"> div.p { margin-top: 7pt;}</style>
  <style type="text/css"><!--
  td div.comp { margin-top: -0.6ex; margin-bottom: -1ex;}
@@ -471,8 +471,9 @@ option <span style="font-family:helvetica"><span class="small"><b>-a</b></span><
 <br /><span style="font-family:helvetica"><span class="small"><b>-r</b></span></span> <span style="font-family:helvetica"><span class="small"><u>file</u></span></span>
 
 <div class="p"><!----></div>
-   This option specifies the <span style="font-family:helvetica"><span class="small"><u>file</u></span></span> name of the rules file. If it is omitted, <span style="font-family:helvetica"><i><span class="small">Smrender</span></i></span> expects the
-   rules file to be named <span style="font-family:helvetica">rules.osm</span>.
+   This option specifies the <span style="font-family:helvetica"><span class="small"><u>file</u></span></span> name of the rules file. If it is
+   omitted, <span style="font-family:helvetica"><i><span class="small">Smrender</span></i></span> expects the rules file to be named <span style="font-family:helvetica">rules.osm</span>.
+   If <span style="font-family:helvetica"><span class="small"><u>file</u></span></span> is set to <span style="font-family:helvetica">none</span> <span style="font-family:helvetica"><i><span class="small">Smrender</span></i></span> is run without rules.
 
 <div class="p"><!----></div>
    If <span style="font-family:helvetica"><span class="small"><u>file</u></span></span> is a directory <span style="font-family:helvetica"><i><span class="small">Smrender</span></i></span> will scan it and read all files
@@ -494,7 +495,8 @@ option <span style="font-family:helvetica"><span class="small"><b>-a</b></span><
 
 <div class="p"><!----></div>
    This option scales all images used in the <span style="font-family:helvetica">img()</span> function by the
-   factor <span style="font-family:helvetica"><span class="small"><u>f</u></span></span> (see Section <a href="#sec:img">6.1.3</a>). By default this is 1.
+   factor <span style="font-family:helvetica"><span class="small"><u>f</u></span></span> (see Section <a href="#sec:img">6.1.3</a>). By default this is 1. This
+   factor is applied additionally to a scaling defined in <span style="font-family:helvetica">img()</span>.
 <br /><span style="font-family:helvetica"><span class="small"><b>-t</b></span></span> <span style="font-family:helvetica"><span class="small"><u>title</u></span></span>
 
 <div class="p"><!----></div>
@@ -731,7 +733,7 @@ a node.<br />
 <div class="p"><!----></div>
 <table align="left" border="1"><tr><td width="0" align="center">
 <tt>&lt;tag k='_action_' v='img:file=icons/Light_Minor.png'/&#62;</tt></td></tr></table><!--hbox-->
-<br clear="all" /><br />The basic format of an action is defined as follows.
+<br clear="all" /><br />The basic format of an action and basic values and types are defined as follows.
 
 <div class="p"><!----></div>
 
@@ -744,6 +746,11 @@ a node.<br />
 &nbsp;&nbsp;&nbsp;&lt;bool&#62;&nbsp;&nbsp;&nbsp;:=&nbsp;'yes'&nbsp;|&nbsp;'no'&nbsp;|&nbsp;'true'&nbsp;|&nbsp;'false'&nbsp;|&nbsp;&lt;num&#62;
 &nbsp;&nbsp;&nbsp;&lt;num&#62;&nbsp;&nbsp;&nbsp;&nbsp;:=&nbsp;any&nbsp;decimal&nbsp;number
 &nbsp;&nbsp;&nbsp;SEP&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;:=&nbsp;'`'&nbsp;|&nbsp;'"'
+&nbsp;&nbsp;&nbsp;&lt;length&#62;&nbsp;:=&nbsp;&lt;num&#62;&nbsp;[&nbsp;&lt;udef&#62;&nbsp;]
+&nbsp;&nbsp;&nbsp;&lt;udef&#62;&nbsp;&nbsp;&nbsp;:=&nbsp;&lt;pageunit&#62;&nbsp;|&nbsp;&lt;nautunit&#62;
+&nbsp;&nbsp;&nbsp;&lt;pageunit&#62;&nbsp;:=&nbsp;'mm'&nbsp;|&nbsp;'cm'&nbsp;|&nbsp;'in'&nbsp;|&nbsp;'px'&nbsp;|&nbsp;'pt'&nbsp;|&nbsp;'"'
+&nbsp;&nbsp;&nbsp;&lt;nautunit&#62;&nbsp;:=&nbsp;'degrees'&nbsp;|&nbsp;'deg'&nbsp;|&nbsp;'min'&nbsp;|&nbsp;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;'m'&nbsp;|&nbsp;'km'&nbsp;|&nbsp;'ft'&nbsp;|&nbsp;'nm'&nbsp;|&nbsp;'sm'
 
 </pre>
 
@@ -791,7 +798,7 @@ spaces.
 <div class="p"><!----></div>
 <a id="tth_tAb1">
 </a>    <div style="text-align:center">
-<table>
+<table class="tabular">
 <tr><td align="center">Symbol(s) </td><td align="left">Descripton </td><td align="left">Conversion factor</td></tr>
 <tr><td align="center"><span style="font-family:helvetica">mm</span> </td><td align="left">Millimeters </td><td align="left">= 0.03937" = 0.3527 pt</td></tr>
 <tr><td align="center"><span style="font-family:helvetica">cm</span> </td><td align="left">Centimeters </td><td align="left">= 10 mm</td></tr>
@@ -820,7 +827,7 @@ output format is PDF which is created as vector image as well. There are no pixe
 <div class="p"><!----></div>
 <a id="tth_tAb2">
 </a>    <div style="text-align:center">
-<table>
+<table class="tabular">
 <tr><td align="center">Symbol(s) </td><td align="left">Descripton </td><td align="left">Conversion factor</td></tr>
 <tr><td align="center"><span style="font-family:helvetica">nm</span> </td><td align="left">Nautical miles </td><td align="left">= 1852 m = 6076.12 ft </td></tr>
 <tr><td align="center"><span style="font-family:helvetica">kbl</span> </td><td align="left">Cable length </td><td align="left">= 185.2 m = 0.1 nm</td></tr>
@@ -890,7 +897,7 @@ looks like the following.
 <pre>
 &nbsp;&nbsp;&nbsp;&lt;action&#62;&nbsp;&nbsp;&nbsp;:=&nbsp;'cap:'&nbsp;&lt;param&#62;&nbsp;[&nbsp;';'&nbsp;&lt;param&#62;&nbsp;]
 &nbsp;&nbsp;&nbsp;&lt;param&#62;&nbsp;&nbsp;&nbsp;&nbsp;:=&nbsp;&lt;fontdef&#62;&nbsp;|&nbsp;&lt;angledef&#62;&nbsp;|&nbsp;&lt;aligndef&#62;&nbsp;|&nbsp;&lt;wcapopt&#62;
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;|&nbsp;&lt;fopt&#62;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;|&nbsp;&lt;fopt&#62;&nbsp;|&nbsp;&lt;hide&#62;
 
 &nbsp;&nbsp;&nbsp;&lt;fontdef&#62;&nbsp;&nbsp;:=&nbsp;&lt;fontname&#62;&nbsp;|&nbsp;&lt;fontsize&#62;&nbsp;|&nbsp;&lt;color&#62;&nbsp;|&nbsp;&lt;fopt&#62;
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;|&nbsp;&lt;key&#62;
@@ -928,6 +935,8 @@ looks like the following.
 &nbsp;&nbsp;&nbsp;&lt;dhalgn&#62;&nbsp;&nbsp;&nbsp;:=&nbsp;'halignkey'&nbsp;'='&nbsp;&lt;lon_alg&#62;
 &nbsp;&nbsp;&nbsp;&lt;dvalgn&#62;&nbsp;&nbsp;&nbsp;:=&nbsp;'valignkey'&nbsp;'='&nbsp;&lt;lat_alg&#62;
 
+&nbsp;&nbsp;&nbsp;&lt;hide&#62;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;:=&nbsp;'hide'&nbsp;'='&nbsp;&lt;bool&#62;
+
 </pre>
 
 <div class="p"><!----></div>
@@ -941,7 +950,7 @@ If <span style="font-family:helvetica">fontconfig</span> is available, <span sty
 <span style="font-family:helvetica"><span class="small"><u>font</u></span></span> must be a full path to a TTF font file.
 
 <div class="p"><!----></div>
-<span style="font-family:helvetica"><div class="small"><u>Size</u></div></span> defines the size of the font in millimeters as a deciaml value, for example
+<span style="font-family:helvetica"><div class="small"><u>Size</u></div></span> defines the size of the font in millimeters as a decimal value, for example
 <span style="font-family:helvetica">"size=2.4"</span>.
 
 <div class="p"><!----></div>
@@ -1016,6 +1025,14 @@ parameter <span style="font-family:helvetica">angle</span> is added additionally
 <span style="font-family:helvetica">angle=auto</span> is ignored if a <span style="font-family:helvetica">anglekey</span> is set.
 
 <div class="p"><!----></div>
+If <span style="font-family:helvetica"><span class="small"><u>hide</u></span></span> is set to <span style="font-family:helvetica">yes</span> or any other boolean true value (see
+Section <a href="#sec:act">5.3</a>) this function is executed as described above except that
+it finally does not display the caption. This may be useful if auto-rotation is used
+(<span style="font-family:helvetica"><span class="small"><u>angle = auto</u></span></span>). In a first step <span style="font-family:helvetica">cap()</span> is called with <span style="font-family:helvetica"><span class="small"><u>hide =
+true</u></span></span>. Subsequently other rules may be called by using e.g. the tags
+<span style="font-family:helvetica">anglekey</span> or <span style="font-family:helvetica">alignkey</span>.
+
+<div class="p"><!----></div>
 
 <b>Captions on ways&nbsp;&nbsp;</b> are handled a little bit different from captions
 on nodes. Actually, captions on ways (polylines) are not supported yet but
@@ -1035,18 +1052,37 @@ caption is than placed at the position of the centroid<a href="#tthFtNtAAJ" id="
 </a>
 
 <div class="p"><!----></div>
-The <em>draw</em> action is used to draw lines of various styles and fill polygons. This action uses solid colors for its operation. If you wish to fill an area with an image as pattern please have a look at Section <a href="#sec:img">6.1.3</a>.
-The following shows the basic rule format.
+The <em>draw</em> action is used to draw lines of various styles and fill
+polygons. This action uses solid colors for its operation. If you wish to fill
+an area with an image as pattern please have a look at Section <a href="#sec:img">6.1.3</a>.
+The following shows the basic rule format.<a href="#tthFtNtABA" id="tthFrefABA"><sup>10</sup></a>
 
 <div class="p"><!----></div>
 
 <pre>
-&nbsp;&nbsp;&nbsp;&lt;action&#62;&nbsp;&nbsp;&nbsp;:=&nbsp;'draw:'&nbsp;&lt;param&#62;&nbsp;[&nbsp;';'&nbsp;&lt;param&#62;&nbsp;...&nbsp;]
-&nbsp;&nbsp;&nbsp;&lt;param&#62;&nbsp;&nbsp;&nbsp;&nbsp;:=&nbsp;&lt;name&#62;&nbsp;'='&nbsp;&lt;value&#62;
-&nbsp;&nbsp;&nbsp;&lt;name&#62;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;:=&nbsp;'color'&nbsp;|&nbsp;'width'&nbsp;|&nbsp;'style'&nbsp;|
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;'bcolor'&nbsp;|&nbsp;'bwidth'&nbsp;|&nbsp;'bstyle'&nbsp;|
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;'directional'&nbsp;|&nbsp;'ignore_open'&nbsp;|&nbsp;'curve'&nbsp;|
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;'curve_factor'&nbsp;|&nbsp;'wavy'&nbsp;|&nbsp;'wavy_length'
+&nbsp;&nbsp;&nbsp;&lt;action&#62;&nbsp;&nbsp;&nbsp;&nbsp;:=&nbsp;'draw:'&nbsp;&lt;param&#62;&nbsp;[&nbsp;';'&nbsp;&lt;param&#62;&nbsp;...&nbsp;]
+&nbsp;&nbsp;&nbsp;&lt;param&#62;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;:=&nbsp;&lt;filldef&#62;&nbsp;|&nbsp;&lt;borderdef&#62;&nbsp;|&nbsp;&lt;options&#62;
+&nbsp;&nbsp;&nbsp;&lt;filldef&#62;&nbsp;&nbsp;&nbsp;:=&nbsp;&lt;color&#62;&nbsp;|&nbsp;&lt;style&#62;&nbsp;|&nbsp;&lt;width&#62;&nbsp;|&nbsp;&lt;dashlen&#62;
+&nbsp;&nbsp;&nbsp;&lt;borderdef&#62;&nbsp;:=&nbsp;&lt;bcolor&#62;&nbsp;|&nbsp;&lt;bstyle&#62;&nbsp;|&nbsp;&lt;bwidth&#62;&nbsp;|&nbsp;&lt;bdashlen&#62;
+&nbsp;&nbsp;&nbsp;&lt;color&#62;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;:=&nbsp;'color'&nbsp;'='&nbsp;&lt;coldef&#62;
+&nbsp;&nbsp;&nbsp;&lt;bolor&#62;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;:=&nbsp;'bcolor'&nbsp;'='&nbsp;&lt;coldef&#62;
+&nbsp;&nbsp;&nbsp;&lt;style&#62;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;:=&nbsp;'style'&nbsp;'='&nbsp;&lt;styledef&#62;
+&nbsp;&nbsp;&nbsp;&lt;styledef&#62;&nbsp;&nbsp;:=&nbsp;'solid'&nbsp;|&nbsp;'dashed'&nbsp;|&nbsp;'dotted'&nbsp;|&nbsp;'transparent'&nbsp;|
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;'pipe'&nbsp;|&nbsp;'rounddot'
+&nbsp;&nbsp;&nbsp;&lt;bstyle&#62;&nbsp;&nbsp;&nbsp;&nbsp;:=&nbsp;'bstyle'&nbsp;'='&nbsp;&lt;styledef&#62;
+&nbsp;&nbsp;&nbsp;&lt;width&#62;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;:=&nbsp;'width'&nbsp;'='&nbsp;&lt;num&#62;
+&nbsp;&nbsp;&nbsp;&lt;bwidth&#62;&nbsp;&nbsp;&nbsp;&nbsp;:=&nbsp;'bwidth'&nbsp;'='&nbsp;&lt;num&#62;
+&nbsp;&nbsp;&nbsp;&lt;dashlen&#62;&nbsp;&nbsp;&nbsp;:=&nbsp;'dash'&nbsp;'='&nbsp;&lt;dashdef&#62;
+&nbsp;&nbsp;&nbsp;&lt;dashdef&#62;&nbsp;&nbsp;&nbsp;:=&nbsp;&lt;length&#62;&nbsp;[&nbsp;':'&nbsp;&lt;length&#62;&nbsp;...&nbsp;]
+&nbsp;&nbsp;&nbsp;&lt;options&#62;&nbsp;&nbsp;&nbsp;:=&nbsp;&lt;dirdef&#62;&nbsp;|&nbsp;&lt;opendef&#62;&nbsp;|&nbsp;&lt;curvedef&#62;&nbsp;|&nbsp;&lt;wavedef&#62;
+&nbsp;&nbsp;&nbsp;&lt;dirdef&#62;&nbsp;&nbsp;&nbsp;&nbsp;:=&nbsp;'directional'&nbsp;'='&nbsp;&lt;bool&#62;
+&nbsp;&nbsp;&nbsp;&lt;opendef&#62;&nbsp;&nbsp;&nbsp;:=&nbsp;'ignore_open'&nbsp;'='&nbsp;&lt;bool&#62;
+&nbsp;&nbsp;&nbsp;&lt;curvedef&#62;&nbsp;&nbsp;:=&nbsp;&lt;curve&#62;&nbsp;|&nbsp;&lt;cfactor&#62;
+&nbsp;&nbsp;&nbsp;&lt;curve&#62;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;:=&nbsp;'curve'&nbsp;'='&nbsp;&lt;bool&#62;
+&nbsp;&nbsp;&nbsp;&lt;cfactor&#62;&nbsp;&nbsp;&nbsp;:=&nbsp;'curve_factor'&nbsp;'='&nbsp;&lt;decval&#62;
+&nbsp;&nbsp;&nbsp;&lt;wavedef&#62;&nbsp;&nbsp;&nbsp;:=&nbsp;&lt;wave&#62;&nbsp;|&nbsp;&lt;wlen&#62;
+&nbsp;&nbsp;&nbsp;&lt;wave&#62;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;:=&nbsp;'wavy'&nbsp;'='&nbsp;&lt;bool&#62;
+&nbsp;&nbsp;&nbsp;&lt;wlen&#62;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;:=&nbsp;'wavy_length'&nbsp;'='&nbsp;&lt;bool&#62;
 
 </pre>
 
@@ -1075,6 +1111,7 @@ short lines (squares) round dots are drawn.
 underwater pipes. It is a combination of dotted and dashed.
 
 <div class="p"><!----></div>
+Smrender allows to specify the length of dashes and the spaces in betweed with the options <span style="font-family:helvetica">dash</span> and <span style="font-family:helvetica">bdash</span>.
 
 <div class="p"><!----></div>
 <span style="font-family:helvetica"><div class="small"><u>Width</u></div></span> and <span style="font-family:helvetica"><span class="small"><u>bwidth</u></span></span> are given in millimeters. A width of 0 draws the
@@ -1104,16 +1141,6 @@ If <span style="font-family:helvetica"><span class="small"><u>ignore_open</u></s
 <div class="p"><!----></div>
 
 <div class="p"><!----></div>
-r55mm
-   <div style="text-align:center">
-   <a href="inc/depth_cont">Figure</a>
-
-<div class="p"><!----></div>
-   #1Directional filling.<a id="fig:dir">
-</a>
-</div>
-
-<div class="p"><!----></div>
 A special fill mode is used if <span style="font-family:helvetica"><span class="small"><u>directional</u></span></span> is set to "1".  Usually,
 <span style="font-family:helvetica"><i><span class="small">Smrender</span></i></span> always fills the inner part of a polygon independently of its
 direction, i.e. if the nodes of the polygon (way) are ordered clockwise or
@@ -1124,10 +1151,20 @@ OpenStreetmap provides special tagging facilities to handle such cases, for
 example multi-poly relations.
 
 <div class="p"><!----></div>
+r55mm
+   <div style="text-align:center">
+   <a href="inc/depth_cont">Figure</a>
+
+<div class="p"><!----></div>
+   #1Directional filling.<a id="fig:dir">
+</a>
+</div>
+
+<div class="p"><!----></div>
 A typical application for the <em>directional</em> fill mode on sea charts is the
 rendering of depth contours, in particular if they are filled in shallow
 inshore areas. <span style="font-family:helvetica"><i><span class="small">Smrender</span></i></span> takes care on the direction of the
-polygons.<a href="#tthFtNtABA" id="tthFrefABA"><sup>10</sup></a>
+polygons.<a href="#tthFtNtABB" id="tthFrefABB"><sup>11</sup></a>
 It always fills the portion which is <u>left</u> of the way. Figure <a href="#fig:dir">1</a>
 shows an example. Shallow water with a depth less than 10 meters is rendered
 blue, deeper areas are white (transparent). The white area northeast of the islet
@@ -1218,7 +1255,6 @@ rendered by a subsequent rule. Currently, <span style="font-family:helvetica"><i
 &nbsp;&nbsp;&nbsp;&lt;param&#62;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;:=&nbsp;&lt;units&#62;&nbsp;|&nbsp;&lt;halign&#62;&nbsp;|&nbsp;&lt;valign&#62;&nbsp;|&nbsp;&lt;reference&#62;
 &nbsp;&nbsp;&nbsp;&lt;units&#62;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;:=&nbsp;'units'&nbsp;'='&nbsp;&lt;decval&#62;&nbsp;[&nbsp;&lt;udef&#62;&nbsp;]
 &nbsp;&nbsp;&nbsp;&lt;decval&#62;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;:=&nbsp;a&nbsp;decimal&nbsp;number
-&nbsp;&nbsp;&nbsp;&lt;udef&#62;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;:=&nbsp;'mm'&nbsp;|&nbsp;'cm'&nbsp;|&nbsp;'degrees'
 &nbsp;&nbsp;&nbsp;&lt;halign&#62;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;:=&nbsp;'halign'&nbsp;'='&nbsp;&lt;hdef&#62;
 &nbsp;&nbsp;&nbsp;&lt;hdef&#62;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;:=&nbsp;'north'&nbsp;|&nbsp;'south'
 &nbsp;&nbsp;&nbsp;&lt;valign&#62;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;:=&nbsp;'valign'&nbsp;'='&nbsp;&lt;vdef&#62;
@@ -1307,7 +1343,7 @@ The formal definition looks like the following.
 </pre>
 
 <div class="p"><!----></div>
-This action internally generates an ellipse<a href="#tthFtNtABB" id="tthFrefABB"><sup>11</sup></a>
+This action internally generates an ellipse<a href="#tthFtNtABC" id="tthFrefABC"><sup>12</sup></a>
 with the given <span style="font-family:helvetica">radius</span> (the semi-major axis a) and places a
 number of <span style="font-family:helvetica">nodes</span> on its circumference.
 
@@ -1528,7 +1564,7 @@ rendered in the second rule.
 
 <div class="p"><!----></div>
       Please note that <span style="font-family:helvetica">cat_poly()</span> may create ways with more the 2000
-      nodes which violates the OSM standard definition.<a href="#tthFtNtABC" id="tthFrefABC"><sup>12</sup></a>. This may cause
+      nodes which violates the OSM standard definition.<a href="#tthFtNtABD" id="tthFrefABD"><sup>13</sup></a>. This may cause
          problems if an output file is created (e.g. with option <span style="font-family:helvetica"><span class="small"><b>-w</b></span></span>) and
          used in other OSM applications. <span style="font-family:helvetica"><i><span class="small">Smrender</span></i></span> supports ways of up to
          2<sup>31</sup> nodes. It is assumed that most other OSM processing tools do
@@ -1664,7 +1700,7 @@ rendered in the second rule.
 
 <div class="p"><!----></div>
       This function
-      clips<a href="#tthFtNtABD" id="tthFrefABD"><sup>13</sup></a>
+      clips<a href="#tthFtNtABE" id="tthFrefABE"><sup>14</sup></a>
       to chart to a given border, i.e. it cuts of the rendered parts at the
       page border around to chart.
 
@@ -1690,7 +1726,9 @@ rendered in the second rule.
 
 <div class="p"><!----></div>
       This function inserts nodes along a way with equal distances. The
-      distance is given with the parameter <span style="font-family:helvetica"><span class="small"><u>distance</u></span></span> in nautical miles.
+      distance is given with the parameter <span style="font-family:helvetica"><span class="small"><u>distance</u></span></span> in any unit
+      according to <a href="#sec:units">5.4</a>. If no unit is specified, nautical miles is
+      taken as default.
       The newly inserted nodes inherit all tags from the way and additionally
       the tags <span style="font-family:helvetica">generator=smrender</span>, and <span style="font-family:helvetica">distance=*</span>, and
       <span style="font-family:helvetica">bearing=*</span> are added. The latter two tags are set to the
@@ -1824,7 +1862,7 @@ object <span style="font-family:helvetica"><span class="small"><u>library</u></s
 "<span style="font-family:helvetica">act_</span>" and suffixed by "<span style="font-family:helvetica">_main</span>".  If <span style="font-family:helvetica"><span class="small"><u>library</u></span></span> contains a <span style="font-family:helvetica">'/'</span>, the path is
 resolved and the shared object loaded from that location.  Otherwise the
 dynamic linker tries to find the library in the appropriate system
-directories.<a href="#tthFtNtABE" id="tthFrefABE"><sup>14</sup></a>
+directories.<a href="#tthFtNtABF" id="tthFrefABF"><sup>15</sup></a>
 
 <div class="p"><!----></div>
 Beside linking the function itself, <span style="font-family:helvetica"><i><span class="small">Smrender</span></i></span> tries to import the optional
@@ -1848,7 +1886,6 @@ The prototypes are defined as follows.
 int&nbsp;(*act_function_main)(smrule_t*,&nbsp;osm_obj_t*);
 int&nbsp;(*act_function_fini)(smrule_t*);
 
-
 </pre>
 
 <div class="p"><!----></div>
@@ -1870,7 +1907,6 @@ struct&nbsp;smrule
 
 char&nbsp;*get_param(const&nbsp;char*,&nbsp;double*,&nbsp;const&nbsp;action_t*);
 char&nbsp;*get_parami(const&nbsp;char*,&nbsp;int*,&nbsp;const&nbsp;action_t*);
-
 </pre>
 
 <div class="p"><!----></div>
@@ -1909,7 +1945,6 @@ The third parameter to <span style="font-family:helvetica">get_param()</span> is
 &nbsp;&nbsp;&nbsp;//&nbsp;Pointer&nbsp;to&nbsp;tags
 &nbsp;&nbsp;&nbsp;struct&nbsp;otag&nbsp;*otag;
 }&nbsp;osm_obj_t;
-
 
 </pre>
 
@@ -2207,7 +2242,7 @@ additional library which is <span style="font-family:helvetica">libsmfilter</spa
 </a>
 
 <div class="p"><!----></div>
-<span style="font-family:helvetica">Smfilter</span><a href="#tthFtNtABF" id="tthFrefABF"><sup>15</sup></a> is
+<span style="font-family:helvetica">Smfilter</span><a href="#tthFtNtABG" id="tthFrefABG"><sup>16</sup></a> is
 a preprocessor for Osmarender.  It adds some sea chart specific virtual nodes
 and ways to simplify the rendering process.  The functionality of
 <span style="font-family:helvetica">smfilter</span> is now integrated into <span style="font-family:helvetica"><i><span class="small">Smrender</span></i></span> with
@@ -2231,7 +2266,7 @@ those objects on the page.
 
 <div class="p"><!----></div>
 This function is a full replacement for <span style="font-family:helvetica">smfilter</span>.
-<span style="font-family:helvetica">Smfilter</span> took several options<a href="#tthFtNtABG" id="tthFrefABG"><sup>16</sup></a> to adjust the
+<span style="font-family:helvetica">Smfilter</span> took several options<a href="#tthFtNtABH" id="tthFrefABH"><sup>17</sup></a> to adjust the
 rendering behavior. These are the options <span style="font-family:helvetica"><span class="small"><b>-a</b></span></span>, <span style="font-family:helvetica"><span class="small"><b>-b</b></span></span>, <span style="font-family:helvetica"><span class="small"><b>-d</b></span></span>, and
 <span style="font-family:helvetica"><span class="small"><b>-r</b></span></span> in particular.  <span style="font-family:helvetica">Libsmfilter</span> now takes exactly the same
 parameters since it is just a port.  The parameters must be fed to it within
@@ -2301,8 +2336,8 @@ This is an example for calling <span style="font-family:helvetica">vsector()</sp
 <div class="p"><!----></div>
 A full description of the output produced by <span style="font-family:helvetica">vsector()</span> is found in the
 <span style="font-family:helvetica">smfilter(1)</span> man
-page<a href="#tthFtNtABH" id="tthFrefABH"><sup>17</sup></a> and in the
-OSM wiki.<a href="#tthFtNtABI" id="tthFrefABI"><sup>18</sup></a>
+page<a href="#tthFtNtABI" id="tthFrefABI"><sup>18</sup></a> and in the
+OSM wiki.<a href="#tthFtNtABJ" id="tthFrefABJ"><sup>19</sup></a>
 
 <div class="p"><!----></div>
       <a id="tth_sEc8.1.2"></a><h4>
@@ -2349,11 +2384,11 @@ other rendering rules.
 <span style="font-family:helvetica">Pchar()</span> generates a string which contains the characteristics of the
 light as it is used in official sea charts and the <em>List of Lights</em>. See
 Section P and P.16 in particular if the <em>Chart No.
-1</em>.<a href="#tthFtNtABJ" id="tthFrefABJ"><sup>19</sup></a>
+1</em>.<a href="#tthFtNtACA" id="tthFrefACA"><sup>20</sup></a>
 
 <div class="p"><!----></div>
 The function analyzes the tags of an object. If it contains valid
-<em>OpenSeamap</em> tags<a href="#tthFtNtACA" id="tthFrefACA"><sup>20</sup></a> it
+<em>OpenSeamap</em> tags<a href="#tthFtNtACB" id="tthFrefACB"><sup>21</sup></a> it
 generates the light string and adds the new OSM tag
 <span style="font-family:helvetica">seamark:ligh_character=*</span> to the object. The value of the tag contains
 the string which may be rendered by a subsequent rule.
@@ -2367,7 +2402,7 @@ examples according to <em>INT-1, IP 51</em>:<br />
 
 <div class="p"><!----></div>
 
-<table>
+<table class="tabular">
 <tr><td align="left">English </td><td align="left"><span style="font-family:helvetica">Fl.10s 40m 27M</span> </td></tr>
 <tr><td align="left">German </td><td align="left"><span style="font-family:helvetica">Blz.10s 40m 27sm</span> </td></tr>
 <tr><td align="left">Croation </td><td align="left"><span style="font-family:helvetica">B Bl 10s 40m 27M</span> </td></tr></table>
@@ -2405,7 +2440,7 @@ r45mm
 </a>
 </div>
 The parameter <span style="font-family:helvetica"><span class="small"><u>radius</u></span></span> is mandatory and defines the outer radius of the
-compass. It is given as degrees on a Meridian.<a href="#tthFtNtACB" id="tthFrefACB"><sup>21</sup></a> 
+compass. It is given as degrees on a Meridian.<a href="#tthFtNtACC" id="tthFrefACC"><sup>22</sup></a> 
 <div class="p"><!----></div>
 The parameter <span style="font-family:helvetica"><span class="small"><u>variation</u></span></span> sets the variation, i.e. the amount of degress
 to which the crosslines will be rotated. It is set in degrees. A positive value
@@ -2440,7 +2475,7 @@ depths (I.31).
 <div class="p"><!----></div>
 Tags use for it is <span style="font-family:helvetica">seamark:sounding=*</span> containing the depth in meters,
 and optional <span style="font-family:helvetica">seamark:sounding: quality = {approx | reported_unconfirmed}</span>.
-See <a href="http://www.cypherpunk.at/2012/03/11/rendering-depths-with-smrender/">"Rendering Depths with <span style="font-family:helvetica"><i><span class="small">Smrender</span></i></span>"</a><a href="#tthFtNtACC" id="tthFrefACC"><sup>22</sup></a> for 
+See <a href="http://www.cypherpunk.at/2012/03/11/rendering-depths-with-smrender/">"Rendering Depths with <span style="font-family:helvetica"><i><span class="small">Smrender</span></i></span>"</a><a href="#tthFtNtACD" id="tthFrefACD"><sup>23</sup></a> for 
 more details.
 
 <div class="p"><!----></div>
@@ -2454,7 +2489,7 @@ compile, and install <span style="font-family:helvetica"><i><span class="small">
 
 <div class="p"><!----></div>
 Create a working directory somewhere.
-From the <span style="font-family:helvetica"><i><span class="small">Smrender</span></i></span> download URL<a href="#tthFtNtACD" id="tthFrefACD"><sup>23</sup></a> get the seamap icons package (<span style="font-family:helvetica">icons.tbz2</span>) and
+From the <span style="font-family:helvetica"><i><span class="small">Smrender</span></i></span> download URL<a href="#tthFtNtACE" id="tthFrefACE"><sup>24</sup></a> get the seamap icons package (<span style="font-family:helvetica">icons.tbz2</span>) and
 extract it.
 
 <div class="p"><!----></div>
@@ -2465,7 +2500,7 @@ tar&nbsp;xvfj&nbsp;icons.tbz2
 </pre>
 
 <div class="p"><!----></div>
-Now we have to get some OSM data. We just use the Overpass API<a href="#tthFtNtACE" id="tthFrefACE"><sup>24</sup></a> to get a small window.
+Now we have to get some OSM data. We just use the Overpass API<a href="#tthFtNtACF" id="tthFrefACF"><sup>25</sup></a> to get a small window.
 
 <div class="p"><!----></div>
 
@@ -2748,7 +2783,7 @@ A&nbsp;&nbsp;Compiling and Installing</h2> <a id="sec:compile">
 
 <div class="p"><!----></div>
 <span style="font-family:helvetica"><i><div class="small">Smrender</div></i></span> should be simple to compile. It depends on
-<span style="font-family:helvetica">libcairo</span><a href="#tthFtNtACF" id="tthFrefACF"><sup>25</sup></a> and optionally
+<span style="font-family:helvetica">libcairo</span><a href="#tthFtNtACG" id="tthFrefACG"><sup>26</sup></a> and optionally
 on <span style="font-family:helvetica">fontconfig</span> and <span style="font-family:helvetica">librsvg2</span>. Although they are not mandatory
 it is still suggested to use those packages. With <span style="font-family:helvetica">fontconfig</span> you can
 specify simple font faces such as e.g. <span style="font-family:helvetica">sans-serif</span> or
@@ -2766,7 +2801,7 @@ it can be used for OSM data processing but not for rendering charts (graphics
 output).
 
 <div class="p"><!----></div>
-Download the most recent <span style="font-family:helvetica"><i><span class="small">Smrender</span></i></span> package from its main URL.<a href="#tthFtNtACG" id="tthFrefACG"><sup>26</sup></a>
+Download the most recent <span style="font-family:helvetica"><i><span class="small">Smrender</span></i></span> package from its main URL.<a href="#tthFtNtACH" id="tthFrefACH"><sup>27</sup></a>
 The packages includes the source code, some sea chart rulesets and a few
 ruleset examples, and a skelleton library (<span style="font-family:helvetica">libskel</span>) to show how to
 implement an own library with extension functions. It further includes
@@ -2779,7 +2814,7 @@ directory.
 Then run the configure script <span style="font-family:helvetica">./configure</span>, then build it with <span style="font-family:helvetica">make</span>. It should compile fine. Finally, there is the executable <span style="font-family:helvetica">smrender</span> and
 the <span style="font-family:helvetica">libsmfilter.so</span>. The latter is not mandatory for running <span style="font-family:helvetica"><i><span class="small">Smrender</span></i></span> since it
 may just be loaded dynamically by the rule set (see Section <a href="#sec:smfilter">8.1</a>). Those files
-may be installed into the appropriate directories on your system with <span style="font-family:helvetica">sudo make install</span>.<a href="#tthFtNtACH" id="tthFrefACH"><sup>27</sup></a>
+may be installed into the appropriate directories on your system with <span style="font-family:helvetica">sudo make install</span>.<a href="#tthFtNtACI" id="tthFrefACI"><sup>28</sup></a>
 
 <div class="p"><!----></div>
 <span style="font-family:helvetica"><i><div class="small">Smrender</div></i></span> is known to compile with <span style="font-family:helvetica">gcc 4.x</span> on Debian Linux (Lenny,
@@ -2832,7 +2867,6 @@ int64_t&nbsp;unique_way_id(void);
 osm_node_t&nbsp;*malloc_node(short);
 osm_way_t&nbsp;*malloc_way(short,&nbsp;int);
 osm_rel_t&nbsp;*malloc_rel(short,&nbsp;short);
-
 
 </pre>
 
@@ -2933,7 +2967,10 @@ to the angle definition of maritime navigation which is degrees clockwise from
 <a id="tthFtNtAAJ"></a><a href="#tthFrefAAJ"><sup>9</sup></a>This is similar
    to what <em>Osmarender</em> does.
 <div class="p"><!----></div>
-<a id="tthFtNtABA"></a><a href="#tthFrefABA"><sup>10</sup></a>A few features exist in OSM as well of which the rendering
+<a id="tthFtNtABA"></a><a href="#tthFrefABA"><sup>10</sup></a>Basic BNF parameters are
+defined in Section <a href="#sec:act">5.3</a> on page <a href="#sec:act">pageref</a>.
+<div class="p"><!----></div>
+<a id="tthFtNtABB"></a><a href="#tthFrefABB"><sup>11</sup></a>A few features exist in OSM as well of which the rendering
 depends on the direction. Most importantly this is
 <a href="http://wiki.openstreetmap.org/wiki/Tag:natural=coastline">natural=coastline</a>.
 Other examples are
@@ -2941,46 +2978,46 @@ Other examples are
 and
 <a href="http://wiki.openstreetmap.org/wiki/Tag:natural=cliff">natural=cliff</a>.
 <div class="p"><!----></div>
-<a id="tthFtNtABB"></a><a href="#tthFrefABB"><sup>11</sup></a>Wikipedia: Ellipse, <a href="http://en.wikipedia.org/wiki/Ellipse"><tt>http://en.wikipedia.org/wiki/Ellipse</tt></a>.
+<a id="tthFtNtABC"></a><a href="#tthFrefABC"><sup>12</sup></a>Wikipedia: Ellipse, <a href="http://en.wikipedia.org/wiki/Ellipse"><tt>http://en.wikipedia.org/wiki/Ellipse</tt></a>.
 <div class="p"><!----></div>
-<a id="tthFtNtABC"></a><a href="#tthFrefABC"><sup>12</sup></a>See
+<a id="tthFtNtABD"></a><a href="#tthFrefABD"><sup>13</sup></a>See
          <a href="http://wiki.openstreetmap.org/wiki/Way"><tt>http://wiki.openstreetmap.org/wiki/Way</tt></a>.
 <div class="p"><!----></div>
-<a id="tthFtNtABD"></a><a href="#tthFrefABD"><sup>13</sup></a><a href="https://en.wikipedia.org/wiki/Clipping_%28computer_graphics%29"><tt>https://en.wikipedia.org/wiki/Clipping_\%28computer_graphics\%29</tt></a>
+<a id="tthFtNtABE"></a><a href="#tthFrefABE"><sup>14</sup></a><a href="https://en.wikipedia.org/wiki/Clipping_%28computer_graphics%29"><tt>https://en.wikipedia.org/wiki/Clipping_\%28computer_graphics\%29</tt></a>
 <div class="p"><!----></div>
-<a id="tthFtNtABE"></a><a href="#tthFrefABE"><sup>14</sup></a>See <span style="font-family:helvetica">dlopen(3)</span> for details.
+<a id="tthFtNtABF"></a><a href="#tthFrefABF"><sup>15</sup></a>See <span style="font-family:helvetica">dlopen(3)</span> for details.
 <div class="p"><!----></div>
-<a id="tthFtNtABF"></a><a href="#tthFrefABF"><sup>15</sup></a>See <a href="http://www.abenteuerland.at/smfilter/"><tt>http://www.abenteuerland.at/smfilter/</tt></a>
+<a id="tthFtNtABG"></a><a href="#tthFrefABG"><sup>16</sup></a>See <a href="http://www.abenteuerland.at/smfilter/"><tt>http://www.abenteuerland.at/smfilter/</tt></a>
 <div class="p"><!----></div>
-<a id="tthFtNtABG"></a><a href="#tthFrefABG"><sup>16</sup></a>See
+<a id="tthFtNtABH"></a><a href="#tthFrefABH"><sup>17</sup></a>See
 <a href="http://www.abenteuerland.at/smfilter/smfilter.html"><tt>http://www.abenteuerland.at/smfilter/smfilter.html</tt></a>
 <div class="p"><!----></div>
-<a id="tthFtNtABH"></a><a href="#tthFrefABH"><sup>17</sup></a><a href="http://www.abenteuerland.at/smfilter/smfilter.html"><tt>http://www.abenteuerland.at/smfilter/smfilter.html</tt></a>
+<a id="tthFtNtABI"></a><a href="#tthFrefABI"><sup>18</sup></a><a href="http://www.abenteuerland.at/smfilter/smfilter.html"><tt>http://www.abenteuerland.at/smfilter/smfilter.html</tt></a>
 <div class="p"><!----></div>
-<a id="tthFtNtABI"></a><a href="#tthFrefABI"><sup>18</sup></a><a href="http://wiki.openstreetmap.org/wiki/OpenSeaMap/smfilter"><tt>http://wiki.openstreetmap.org/wiki/OpenSeaMap/smfilter</tt></a>
+<a id="tthFtNtABJ"></a><a href="#tthFrefABJ"><sup>19</sup></a><a href="http://wiki.openstreetmap.org/wiki/OpenSeaMap/smfilter"><tt>http://wiki.openstreetmap.org/wiki/OpenSeaMap/smfilter</tt></a>
 <div class="p"><!----></div>
-<a id="tthFtNtABJ"></a><a href="#tthFrefABJ"><sup>19</sup></a><a href="http://www.nauticalcharts.noaa.gov/mcd/chart1/ChartNo1.pdf"><tt>http://www.nauticalcharts.noaa.gov/mcd/chart1/ChartNo1.pdf</tt></a>
+<a id="tthFtNtACA"></a><a href="#tthFrefACA"><sup>20</sup></a><a href="http://www.nauticalcharts.noaa.gov/mcd/chart1/ChartNo1.pdf"><tt>http://www.nauticalcharts.noaa.gov/mcd/chart1/ChartNo1.pdf</tt></a>
 <div class="p"><!----></div>
-<a id="tthFtNtACA"></a><a href="#tthFrefACA"><sup>20</sup></a>See
+<a id="tthFtNtACB"></a><a href="#tthFrefACB"><sup>21</sup></a>See
 <a href="http://wiki.openstreetmap.org/wiki/OpenSeaMap/Lights_Data_Model"><tt>http://wiki.openstreetmap.org/wiki/OpenSeaMap/Lights_Data_Model</tt></a>.
 <div class="p"><!----></div>
-<a id="tthFtNtACB"></a><a href="#tthFrefACB"><sup>21</sup></a>This is subject to being
+<a id="tthFtNtACC"></a><a href="#tthFrefACC"><sup>22</sup></a>This is subject to being
 improved in future releases.
 <div class="p"><!----></div>
-<a id="tthFtNtACC"></a><a href="#tthFrefACC"><sup>22</sup></a><a href="http://www.cypherpunk.at/2012/03/11/rendering-depths-with-smrender/"><tt>http://www.cypherpunk.at/2012/03/11/rendering-depths-with-smrender/</tt></a>
+<a id="tthFtNtACD"></a><a href="#tthFrefACD"><sup>23</sup></a><a href="http://www.cypherpunk.at/2012/03/11/rendering-depths-with-smrender/"><tt>http://www.cypherpunk.at/2012/03/11/rendering-depths-with-smrender/</tt></a>
 <div class="p"><!----></div>
-<a id="tthFtNtACD"></a><a href="#tthFrefACD"><sup>23</sup></a><a href="http://www.abenteuerland.at/smrender/download/"><tt>http://www.abenteuerland.at/smrender/download/</tt></a>
+<a id="tthFtNtACE"></a><a href="#tthFrefACE"><sup>24</sup></a><a href="http://www.abenteuerland.at/smrender/download/"><tt>http://www.abenteuerland.at/smrender/download/</tt></a>
 <div class="p"><!----></div>
-<a id="tthFtNtACE"></a><a href="#tthFrefACE"><sup>24</sup></a><a href="http://wiki.openstreetmap.org/wiki/Overpass_API"><tt>http://wiki.openstreetmap.org/wiki/Overpass_API</tt></a>.
+<a id="tthFtNtACF"></a><a href="#tthFrefACF"><sup>25</sup></a><a href="http://wiki.openstreetmap.org/wiki/Overpass_API"><tt>http://wiki.openstreetmap.org/wiki/Overpass_API</tt></a>.
 <div class="p"><!----></div>
-<a id="tthFtNtACF"></a><a href="#tthFrefACF"><sup>25</sup></a><a href="http://www.cairographics.org/"><tt>http://www.cairographics.org/</tt></a>
+<a id="tthFtNtACG"></a><a href="#tthFrefACG"><sup>26</sup></a><a href="http://www.cairographics.org/"><tt>http://www.cairographics.org/</tt></a>
 <div class="p"><!----></div>
-<a id="tthFtNtACG"></a><a href="#tthFrefACG"><sup>26</sup></a><a href="http://www.abenteuerland.at/download/smrender/"><tt>http://www.abenteuerland.at/download/smrender/</tt></a>
+<a id="tthFtNtACH"></a><a href="#tthFrefACH"><sup>27</sup></a><a href="http://www.abenteuerland.at/download/smrender/"><tt>http://www.abenteuerland.at/download/smrender/</tt></a>
 <div class="p"><!----></div>
-<a id="tthFtNtACH"></a><a href="#tthFrefACH"><sup>27</sup></a>Root privileges are required to install.
+<a id="tthFtNtACI"></a><a href="#tthFrefACI"><sup>28</sup></a>Root privileges are required to install.
 <br /><br /><hr /><small>File translated from
 T<sub><span class="small">E</span></sub>X
 by <a href="http://hutchinson.belmont.ma.us/tth/">
 T<sub><span class="small">T</span></sub>H</a>,
-version 4.05.<br />On 31 Jan 2016, 09:25.</small>
+version 4.08.</small>
 </html>
