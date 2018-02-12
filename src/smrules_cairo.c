@@ -115,6 +115,7 @@
 #define RENDER_IMMEDIATE 0
 #define CREATE_PATH 1
 #define PUSH_GROUP
+#define AUTOSFC 1
 
 #define CAIRO_SMR_STATS
 #ifdef CAIRO_SMR_STATS
@@ -295,6 +296,7 @@ void *cairo_smr_image_surface_from_bg(cairo_format_t fmt, cairo_antialias_t alia
    cairo_t *dst;
 
    sfc = cairo_image_surface_create(fmt, round(rdata_width(U_PX)), round(rdata_height(U_PX)));
+   cairo_smr_log_surface_status(sfc);
    dst = cairo_create(sfc);
    cairo_smr_log_status(dst);
    cairo_scale(dst, (double) rdata_dpi() / 72, (double) rdata_dpi() / 72);
@@ -304,6 +306,23 @@ void *cairo_smr_image_surface_from_bg(cairo_format_t fmt, cairo_antialias_t alia
    CSS_INC(CSS_PAINT);
    cairo_destroy(dst);
    cairo_smr_log_surface_data(sfc);
+   return sfc;
+}
+
+
+void *cairo_smr_recording_surface_from_bg(void)
+{
+   cairo_surface_t *sfc;
+   cairo_t *ctx;
+
+   sfc = cairo_recording_surface_create(CAIRO_CONTENT_COLOR_ALPHA, &ext_);
+   cairo_smr_log_surface_status(sfc);
+   ctx = cairo_create(sfc);
+   cairo_smr_log_status(ctx);
+   cairo_set_source_surface(ctx, sfc_, 0, 0);
+   cairo_paint(ctx);
+   cairo_destroy(ctx);
+
    return sfc;
 }
 
@@ -1266,6 +1285,7 @@ int act_cap_ini(smrule_t *r)
 #endif
 
    cairo_smr_set_source_color(cap.ctx, cap.col);
+   cairo_set_line_width(cap.ctx, THINLINE);
 #ifdef PUSH_GROUP
    cairo_push_group(cap.ctx);
    CSS_INC(CSS_PUSH);
@@ -1396,7 +1416,7 @@ static void pos_offset(int pos, double width, double height, double xoff, double
 }
 
 
-static cairo_surface_t *cairo_smr_cut_out(double x, double y, double r)
+static cairo_surface_t *cairo_smr_cut_out(cairo_surface_t *bg, double x, double y, double r)
 {
    cairo_surface_t *sfc;
    cairo_t *ctx;
@@ -1413,7 +1433,7 @@ static cairo_surface_t *cairo_smr_cut_out(double x, double y, double r)
    cairo_scale(ctx, PT2PX_SCALE, PT2PX_SCALE);
    x = -x + r / 2;
    y = -y + r / 2;
-   cairo_set_source_surface(ctx, sfc_, x, y);
+   cairo_set_source_surface(ctx, bg, x, y);
    cairo_paint(ctx);
    cairo_destroy(ctx);
 
@@ -1843,7 +1863,7 @@ static int dp_get(const diffvec_t *dv, int num_dv, diffpeak_t **rp)
 }
 
 
-static double find_angle(const struct coord *c, const struct auto_rot *rot, cairo_surface_t *fg)
+static double find_angle(const struct coord *c, const struct auto_rot *rot, cairo_surface_t *fg, cairo_surface_t *bg)
 {
    diffvec_t *dv;
    cairo_surface_t *sfc;
@@ -1871,7 +1891,7 @@ static double find_angle(const struct coord *c, const struct auto_rot *rot, cair
       return 0;
    }
 
-   if ((sfc = cairo_smr_cut_out(x, y, r)) == NULL)
+   if ((sfc = cairo_smr_cut_out(bg, x, y, r)) == NULL)
    {
       log_msg(LOG_ERR, "failed to cut out auto-rotation background");
       free(dv);
@@ -1969,6 +1989,14 @@ static int cap_coord(const struct actCaption *cap, const struct coord *c, const 
    geo2pt(c->lon, c->lat, &x, &y);
    cairo_translate(cap->ctx, x, y);
 
+#ifdef AUTOSFC
+   if (isnan(cap->angle))
+   {
+      cairo_save(cap->auto_ctx);
+      cairo_translate(cap->auto_ctx, x, y);
+   }
+#endif
+
    memcpy(buf, str->buf, str->len);
    buf[str->len] = '\0';
    if (cap->pos & POS_UC)
@@ -2020,7 +2048,7 @@ static int cap_coord(const struct actCaption *cap, const struct coord *c, const 
             return -1;
       }
 
-      a = find_angle(c, &cap->rot, pat);
+      a = find_angle(c, &cap->rot, pat, cap->auto_sfc);
 
       // flip text if necessary
       if (a > M_PI_2 && a < 3 * M_PI_2)
@@ -2098,10 +2126,25 @@ static int cap_coord(const struct actCaption *cap, const struct coord *c, const 
       a += DEG2RAD(360 - cap->angle);
    }
 
+   cairo_rotate(cap->ctx, a);
+   pos_offset(pos, tx.width + tx.x_bearing, fe.ascent, cap->xoff, cap->yoff, &x, &y);
+   /* debugging
+   if (isnan(cap->angle))
+   {
+      cairo_rectangle(cap->ctx, x, y, tx.width + tx.x_bearing + cap->xoff, -fe.ascent);
+      cairo_stroke(cap->ctx);
+   }*/
+#ifdef AUTOSFC
+   if (isnan(cap->angle))
+   {
+      cairo_rotate(cap->auto_ctx, a);
+      cairo_rectangle(cap->auto_ctx, x, y, tx.width + tx.x_bearing + cap->xoff, -fe.ascent);
+      cairo_fill(cap->auto_ctx);
+      cairo_restore(cap->auto_ctx);
+   }
+#endif
    if (!cap->hide)
    {
-      cairo_rotate(cap->ctx, a);
-      pos_offset(pos, tx.width + tx.x_bearing, fe.ascent, cap->xoff, cap->yoff, &x, &y);
       cairo_move_to(cap->ctx, x, y);
       cairo_show_text(cap->ctx, buf);
    }
@@ -2168,6 +2211,17 @@ int act_cap_main(smrule_t *r, osm_obj_t *o)
    struct coord c;
    int n;
 
+#ifdef AUTOSFC
+   struct actCaption *cap = (struct actCaption*) r->data;
+   // create temporary background surface at first call to cap_main()
+   if (isnan(cap->angle) && (cap->auto_sfc == NULL))
+   {
+      cap->auto_sfc = cairo_smr_recording_surface_from_bg();
+      cap->auto_ctx = cairo_create(cap->auto_sfc);
+      cairo_smr_set_source_color(cap->auto_ctx, cap->col);
+   }
+#endif
+
    if ((n = match_attr(o, ((struct actCaption*) r->data)->key, NULL)) == -1)
    {
       //log_debug("node %ld has no caption tag '%s'", nd->nd.id, rl->rule.cap.key);
@@ -2200,6 +2254,16 @@ int act_cap_fini(smrule_t *r)
    CSS_INC(CSS_PAINT);
 #endif
    cairo_destroy(cap->ctx);
+
+#ifdef AUTOSFC
+   if (cap->auto_ctx != NULL)
+      cairo_destroy(cap->auto_ctx);
+   if (cap->auto_sfc != NULL)
+   {
+      //cairo_surface_write_to_png(cap->auto_sfc, "autosfcbg.png");
+      cairo_surface_destroy(cap->auto_sfc);
+   }
+#endif
 
    free(cap);
    r->data = NULL;
@@ -2424,7 +2488,7 @@ int img_place(const struct actImage *img, const osm_node_t *n)
          cairo_destroy(fgx);
       }
 
-      a = find_angle(&c, &img->rot, fg);
+      a = find_angle(&c, &img->rot, fg, sfc_);
 
       if (nimg)
          cairo_surface_destroy(fg);

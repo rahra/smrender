@@ -173,6 +173,8 @@ struct actCaption
    struct auto_rot rot;
 #ifdef HAVE_CAIRO
    cairo_t *ctx;
+   cairo_surface_t *auto_sfc;
+   cairo_t *auto_ctx;
 #endif
 };
 
