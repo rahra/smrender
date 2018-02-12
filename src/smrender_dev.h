@@ -1,4 +1,4 @@
-/* Copyright 2011 Bernhard R. Fischer, 2048R/5C5FFD47 <bf@abenteuerland.at>
+/* Copyright 2011-2018 Bernhard R. Fischer, 4096R/8E24F29D <bf@abenteuerland.at>
  *
  * This file is part of smrender.
  *
