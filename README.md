@@ -33,7 +33,12 @@ Older versions of Smrender have been moved to the [archive/](https://www.cypherp
 
 ## Documentation
 
-The latest documentation for version 4.0 is found (here as HTML page)[http://www.abenteuerland.at/smrender/descr.html] or (here as PDF document)[http://www.abenteuerland.at/smrender/descr.pdf].
+The latest documentation for version 4.0 is found in the [doc/
+folder](https://github.com/rahra/smrender/tree/master/doc) of the source
+repository. You directly view it [here as HTML
+page](https://htmlpreview.github.io/?https://github.com/rahra/smrender/blob/master/doc/smrender.html)
+or [here as PDF
+document](https://github.com/rahra/smrender/raw/master/doc/smrender.pdf).
 
 ## Compile and Install
 
