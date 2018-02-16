@@ -288,6 +288,19 @@ int call_fini(smrule_t *r)
 {
    int e = 0;
 
+   // safety check
+   if (r == NULL)
+   {
+      log_msg(LOG_ERR, "r == NULL, this should not happen (at least in a singled-threaded env)");
+      return e;
+   }
+   // safety check
+   if (r->act == NULL)
+   {
+      log_msg(LOG_ERR, "r->act == NULL, this should never happen!");
+      return e;
+   }
+
    // call de-initialization rule of function rule if available
    if (r->act->fini.func != NULL && !r->act->finished)
    {
@@ -350,7 +363,7 @@ int dequeue_fini(void)
 #endif
 
 
-int apply_smrules(smrule_t *r, long ver)
+int apply_smrules1(smrule_t *r, long ver, const bx_node_t *ot)
 {
    int e = 0;
 
@@ -393,10 +406,10 @@ int apply_smrules(smrule_t *r, long ver)
    {
 #ifdef THREADED_RULES
       if (sm_is_threaded(r))
-         e = traverse_queue(*get_objtree(), r->oo->type - 1, (tree_func_t) apply_smrules0, r);
+         e = traverse_queue(ot, r->oo->type - 1, (tree_func_t) apply_smrules0, r);
       else
 #endif
-         e = traverse(*get_objtree(), 0, r->oo->type - 1, (tree_func_t) apply_smrules0, r);
+         e = traverse(ot, 0, r->oo->type - 1, (tree_func_t) apply_smrules0, r);
    }
    else
       log_debug("   -> no main function");
@@ -414,6 +427,12 @@ int apply_smrules(smrule_t *r, long ver)
    }
 
    return e;
+}
+
+
+int apply_smrules(smrule_t *r, long ver)
+{
+   return apply_smrules1(r, ver, *get_objtree());
 }
 
 
