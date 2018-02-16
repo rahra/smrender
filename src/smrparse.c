@@ -365,6 +365,7 @@ int init_rule(osm_obj_t *o, smrule_t **r)
       return 0;
    }
 
+   // FIXME: init_rule() should work without the following \0-termination
    o->otag[i].v.buf[o->otag[i].v.len] = '\0';
    log_msg(LOG_DEBUG, "parsing '%s'", o->otag[i].v.buf);
 
