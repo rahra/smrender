@@ -45,6 +45,7 @@ int bs_ncmp(bstring_t b, const char *s, int n);
 int bs_cmp(bstring_t b, const char *s);
 long bs_tol(bstring_t b);
 double bs_tod(bstring_t b);
+char *bs_strdup(const bstring_t *b);
 
 #endif
 

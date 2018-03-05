@@ -168,3 +168,33 @@ double bs_tod(bstring_t b)
    return d;
 }
 
+
+/*! This function returns a \0-terminated string with the content of the
+ * bstring_t b. The memory is malloc()'ed and must afterwards be freed again with
+ * free() again.
+ * @param b Pointer to bstring_t structure.
+ * @return The function returns a pointer to \0-terminated string. 0 is
+ * returned if b is a NULL pointer or malloc() failed. In the latter case,
+ * errno is set according to malloc(3).
+ */
+char *bs_strdup(const bstring_t *b)
+{
+   char *s;
+
+   if (b == NULL)
+   {
+      //errno = EFAULT;
+      return NULL;
+   }
+
+   if ((s = malloc(b->len + 1)) == NULL)
+      return NULL;
+
+   if (b->buf != NULL)
+      memcpy(s, b->buf, b->len);
+
+   s[b->len] = '\0';
+
+   return s;
+}
+
