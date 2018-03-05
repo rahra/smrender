@@ -30,6 +30,7 @@
 #include "smrender.h"
 #include "osm_inplace.h"
 #include "bstring.h"
+#include "lists.h"
 
 
 #define TLEN 20
@@ -199,47 +200,56 @@ void osm_node_default(osm_node_t *n)
 }
 
 
+static list_t *role_root_ = NULL;
+
+
+void __attribute__((constructor)) role_ini(void)
+{
+   if ((role_root_ = li_new()) == NULL)
+   {
+      log_errno(LOG_ERR, "li_new() failed");
+      exit(EXIT_FAILURE);
+   }
+}
+
+
+void __attribute__((destructor)) role_fini(void)
+{
+   li_destroy(role_root_, free);
+}
+
+
+#if 0
+// this is just for debugging
+void role_list_all(void)
+{
+   list_t *elem;
+   int i;
+
+   log_debug("role '%s'(%d)", "n/a", ROLE_NA);
+   log_debug("role '%s'(%d)", "", ROLE_EMPTY);
+   for (i = ROLE_FIRST_FREE_NUM, elem = li_first(role_root_); elem != li_head(role_root_); i++, elem = elem->next)
+      log_debug("role '%s'(%d)", (char*) elem->data, i);
+}
+#endif
+
+
 const char *role_str(int role)
 {
-   switch (role)
+   list_t *elem;
+   int i;
+
+   if (role == ROLE_NA)
+      return "n/a";
+   if (role == ROLE_EMPTY)
+      return "";
+
+   for (i = ROLE_FIRST_FREE_NUM, elem = li_first(role_root_); elem != li_head(role_root_); i++, elem = elem->next)
    {
-      case ROLE_EMPTY:
-         return "";
-      case ROLE_INNER:
-         return "inner";
-      case ROLE_OUTER:
-         return "outer";
-      case ROLE_TO:
-         return "to";
-      case ROLE_FROM:
-         return "from";
-      case ROLE_VIA:
-         return "via";
-      case ROLE_LINK:
-         return "link";
-      case ROLE_FORWARD:
-         return "forward";
-      case ROLE_BACKWARD:
-         return "backward";
-      case ROLE_STOP:
-         return "stop";
-      case ROLE_LABEL:
-         return "label";
-      case ROLE_ADMIN_CENTRE:
-         return "admin_centre";
-      case ROLE_FORWARD_STOP:
-         return "forward_stop";
-      case ROLE_BACKWARD_STOP:
-         return "backward_stop";
-      case ROLE_PLATFORM:
-         return "platform";
-      case ROLE_MAIN_STREAM:
-         return "main_stream";
- 
-      case ROLE_NA:
-      default:
-         return "n/a";
+      if (i == role)
+         return elem->data;
    }
+   return "n/a";
 }
 
 
@@ -253,43 +263,30 @@ const char *role_str(int role)
  * */
 int strrole(const bstring_t *b)
 {
+   list_t *elem;
+   char *s;
+   int i;
+
    if (b == NULL)
       return ROLE_NA;
-   else if (!b->len)
+   if (!b->len)
       return ROLE_EMPTY;
-   else if (!bs_cmp(*b, "inner"))
-      return ROLE_INNER;
-   else if (!bs_cmp(*b, "outer"))
-      return ROLE_OUTER;
-   else if (!bs_cmp(*b, "to"))
-      return ROLE_TO;
-   else if (!bs_cmp(*b, "from"))
-      return ROLE_FROM;
-   else if (!bs_cmp(*b, "via"))
-      return ROLE_VIA;
-   else if (!bs_cmp(*b, "link"))
-      return ROLE_LINK;
-   else if (!bs_cmp(*b, "forward"))
-      return ROLE_FORWARD;
-   else if (!bs_cmp(*b, "backward"))
-      return ROLE_BACKWARD;
-   else if (!bs_cmp(*b, "stop"))
-      return ROLE_STOP;
-   else if (!bs_cmp(*b, "label"))
-      return ROLE_LABEL;
-   else if (!bs_cmp(*b, "admin_centre"))
-      return ROLE_ADMIN_CENTRE;
-   else if (!bs_cmp(*b, "forward_stop"))
-      return ROLE_FORWARD_STOP;
-   else if (!bs_cmp(*b, "backward_stop"))
-      return ROLE_BACKWARD_STOP;
-   else if (!bs_cmp(*b, "platform"))
-      return ROLE_PLATFORM;
-   else if (!bs_cmp(*b, "main_stream"))
-      return ROLE_MAIN_STREAM;
- 
-   else
-      return ROLE_NA;
+
+   for (i = ROLE_FIRST_FREE_NUM, elem = li_first(role_root_); elem != li_head(role_root_); i++, elem = elem->next)
+   {
+      if (!bs_cmp(*b, elem->data))
+         return i;
+   }
+
+   if ((s = bs_strdup(b)) == NULL)
+   {
+      log_errno(LOG_ERR, "bs_strdup() failed");
+      return 0;
+   }
+
+   log_debug("adding role '%s'(%d)", s, i);
+   li_add(li_last(role_root_), s);
+   return i;
 }
 
 
