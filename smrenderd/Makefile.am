@@ -1,7 +1,10 @@
+CC = $(PTHREAD_CC)
 AM_CPPFLAGS = -I$(srcdir)/../libsmrender -I$(srcdir)/../src
+AM_CFLAGS = $(PTHREAD_CFLAGS)
+AM_LDFLAGS = $(PTHREAD_LIBS) $(EXP_DYN)
 bin_PROGRAMS = smrenderd smwsclient
-smrenderd_SOURCES = smrenderd.c smhttp.c smdb.c smcache.c websocket.c
+smrenderd_SOURCES = smrenderd.c smhttp.c smdb.c smcache.c websocket.c smdfunc.c
 smrenderd_LDADD = ../libsmrender/libsmrender.la ../src/smcore.o ../src/libhpxml.o ../src/smloadosm.o ../src/smosmout.o ../src/rdata.o ../src/smrparse.o
-noinst_HEADERS = smhttp.h smcache.h websocket.h
+noinst_HEADERS = smhttp.h smcache.h websocket.h smdfunc.h
 smwsclient_SOURCES = smwsclient.c websocket.c
 smwsclient_LDADD = ../libsmrender/libsmrender.la

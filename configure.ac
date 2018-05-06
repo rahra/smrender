@@ -65,13 +65,11 @@ PKG_CHECK_MODULES([RSVG], [librsvg-2.0],
                   )
 ])
 
-
+AX_PTHREAD([])
 AS_IF([test "${enable_threads+set}" = "set"], [
-AX_PTHREAD([
    LIBS="$PTHREAD_LIBS $LIBS"
    CFLAGS="$CFLAGS $PTHREAD_CFLAGS"
    CC="$PTHREAD_CC"
-            ])
 ])
 
 AC_SEARCH_LIBS([sin], [m])

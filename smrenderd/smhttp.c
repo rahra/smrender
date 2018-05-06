@@ -36,6 +36,8 @@
 #include "libhpxml.h"
 #include "websocket.h"
 #include "smloadosm.h"
+#include "smcore.h"
+#include "smdfunc.h"
 
 
 extern bx_node_t *index_;
@@ -143,11 +145,33 @@ size_t read_line(int fd, char *buf, int size)
 }
 
 
+int set_nonblock(int fd)
+{
+   long flags;
+   int err = 0;
+
+   log_debug("setting fd %d to O_NONBLOCK", fd);
+   if ((flags = fcntl(fd, F_GETFL, 0)) == -1)
+   {
+      log_msg(LOG_WARN, "could not get socket flags for %d: \"%s\"", fd, strerror(errno));
+      flags = 0;
+   }
+   if ((fcntl(fd, F_SETFL, flags | O_NONBLOCK)) == -1)
+   {
+      log_msg(LOG_ERR, "could not set O_NONBLOCK for %d: \"%s\"", fd, strerror(errno));
+      err = -1;
+   }
+
+   return err;
+}
+
+
 static int http_flush_input_headers(int fd)
 {
    int buf[2048];
    int s, len;
 
+   set_nonblock(fd);
    for (len = 0; ; len += s)
    {
       if ((s = read(fd, buf, sizeof(buf))) == -1)
@@ -616,10 +640,10 @@ enum {WS_ERRT_ACK, WS_ERRT_UNEXP, WS_ERRT_NTOSUP, WS_ERRT_PROTONOTSUP,
    WS_ERRT_BADMSG, WS_ERRT_NODATA, WS_ERRT_ILLDATA, WS_ERRT_AGAIN};
 enum {WS_OBJT_OSM, WS_OBJT_NODE, WS_OBJT_WAY, WS_OBJT_REL};
 
-static const char *msgt_[] = {"object", "cmd", "error", NULL};
+static const char *msgt_[] = {"object", "cmd", "status", NULL};
 static const char *objt_[] = {"osm", "node", "way", "relation", NULL};
 static const char *cmdt_[] = {"next", "disconn", NULL};
-static const char *errt_[] = {"ack", "unexp", "notsup", "protonotsup", "badmsg", "nodata", "illdata", "again", NULL};
+static const char *errt_[] = {"0,ack", "128,unexp", "129,notsup", "130,protonotsup", "131,badmsg", "132,nodata", "133,illdata", "134,again", NULL};
 static const char **argt_[] = {objt_, cmdt_, errt_, NULL};
 
 
@@ -699,7 +723,7 @@ int smws_send_error(websocket_t *ws, int e)
    if (errt_[i] == NULL)
       return -1;
 
-   n = snprintf(buf, sizeof(buf), "SMWS/1.0 %s %s", msgt_[WS_MSGT_ERROR], errt_[i]);
+   n = snprintf(buf, sizeof(buf), "SMWS/1.0 %s %s\n", msgt_[WS_MSGT_ERROR], errt_[i]);
    return ws_write(ws, buf, n);
 }
 
@@ -751,76 +775,26 @@ int smws_proc_objt(bstring_t *b, hpx_tree_t *tlist, osm_obj_t **o)
 }
  
 
-struct tree_com
+int smws_print_onode(websocket_t *ws, const osm_obj_t *o)
 {
-   int fd[2];
-};
+   FILE *f;
+   char *buf = NULL;
+   size_t len;
 
-struct osm_skel
-{
-   short type;
-   int64_t id;
-};
-
-int act_ws_traverse_ini(smrule_t *r)
-{
-   struct tree_com *tc;
-
-   if ((tc = malloc(sizeof(*tc))) == NULL)
+   log_debug("opening memory stream");
+   if ((f = open_memstream(&buf, &len)) == NULL)
    {
-      log_msg(LOG_ERR, "malloc() failed: %s", strerror(errno));
+      log_errno(LOG_ERR, "open_memstream() failed");
       return -1;
    }
-
-   if (pipe(tc->fd) == -1)
-   {
-      free(tc);
-      log_msg(LOG_ERR, "pipe() failed: %s", strerror(errno));
-      return -1;
-   }
-
-   r->data = tc;
+   print_onode(f, o);
+   print_onode(stdout, o);
+   fclose(f);
+   log_debug("writing %ld bytes to websocket", len);
+   ws_write(ws, buf, len);
+   free(buf);
    return 0;
 }
-
-int act_ws_traverse_main(smrule_t *r, osm_obj_t *o)
-{
-   struct tree_com *tc = r->data;
-   struct osm_skel os;
-   int len;
-   char cmd;
-
-   if ((len = read(tc->fd[0], &cmd, sizeof(cmd))) == -1)
-   {
-      log_msg(LOG_ERR, "read(%d) from pipe failed: %s", tc->fd[0], strerror(errno));
-      return -1;
-   }
-
-   if (!len)
-   {
-      log_msg(LOG_INFO, "received EOF on pipe %d", tc->fd[0]);
-      return 1;
-   }
-
-   switch (cmd)
-   {
-      // get object id
-      case 1:
-         os.type = o->type;
-         os.id = o->id;
-         write(tc->fd[1], &os, sizeof(os));
-         break;
-   }
-
-   return 0;
-}
-
-int act_ws_traverse_fini(smrule_t *r)
-{
-   return 0;
-}
-
-
 
 
 int http_ws_com(int fd, qcache_t *qc)
@@ -829,11 +803,16 @@ int http_ws_com(int fd, qcache_t *qc)
    char buf[8000];
    bstring_t b;
    int msgt, n;
-   osm_obj_t *o = NULL;
+   osm_obj_t *o = NULL, *nobj;
    hpx_tree_t *tlist = NULL;
    int disconn = 0, err = 0;
+   static char str_action[] = "_action_", str_ws_traverse[] = "ws_traverse";
+   smrule_t *r = NULL;
+   trv_com_t tc;
 
    ws_init(&ws, fd, 1000, 0);
+   tc_init(&tc);
+   tc.ot = qc->tree;
 
    if (hpx_tree_resize(&tlist, 0) == -1)
       perror("hpx_tree_resize"), exit(EXIT_FAILURE);
@@ -869,7 +848,16 @@ int http_ws_com(int fd, qcache_t *qc)
       {
          case WS_MSGT_OBJ:
             log_debug("command 'object'");
-            if (!smws_proc_objt(&b, tlist, &o))
+            if (r != NULL)
+            {
+               log_debug("restarting thread");
+               tc_break(&tc);
+               log_debug("freeing old rule");
+               free(r);
+               r = NULL;
+            }
+            // processing new object
+            if (smws_proc_objt(&b, tlist, &o) < 0)
             {
                smws_send_error(&ws, WS_ERRT_ILLDATA);
                break;
@@ -892,11 +880,12 @@ int http_ws_com(int fd, qcache_t *qc)
                break;
             }
             o->otag = ot;
-            set_const_tag(&o->otag[o->tag_cnt], "_action_", "ws_traverse");
+            set_const_tag(&o->otag[o->tag_cnt], str_action, str_ws_traverse);
             o->tag_cnt++;
 
-            smrule_t *r;
             init_rule(o, &r);
+            tc.r = r;
+            tc_traverse(&tc);
             smws_send_error(&ws, WS_ERRT_ACK);
             break;
 
@@ -910,8 +899,16 @@ int http_ws_com(int fd, qcache_t *qc)
                   break;
 
                case WS_CMDT_NEXT:
-                  log_msg(LOG_NOTICE, "not implemented");
-                  smws_send_error(&ws, WS_ERRT_ACK);
+                  if ((nobj = tc_next(&tc)) != NULL)
+                  {
+                     smws_send_error(&ws, WS_ERRT_ACK);
+                     //print_onode(stdout, nobj);
+                     smws_print_onode(&ws, nobj);
+                  }
+                  else
+                  {
+                     smws_send_error(&ws, WS_ERRT_NODATA);
+                  }
                   break;
             }
             break;
@@ -922,6 +919,7 @@ int http_ws_com(int fd, qcache_t *qc)
    }
 
    hpx_tm_free_tree(tlist);
+   tc_free(&tc);
    ws_free(&ws);
    log_debug("exiting http_ws_com()");
 
