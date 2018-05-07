@@ -159,11 +159,7 @@ static struct color_def color_def_[] =
    {0x00FFFF00, "yellow"},             // Artificial Islands, Light: Yellow 
    {0x00FFFFE0, "lightyellow"},
    {0x00FFFFF0, "ivory"},
-   // NOTE: white originally is 0xffffff but has been changend by 1 bit of blue
-   // to distinguish between filled white and background white ("bgcolor").
-   // This has historic reasons of filling procedures and may be changed in
-   // future.
-   {0x00FFFFFE, "white"},              // Deeper Water 
+   {0x00FFFFFF, "white"},              // Deeper Water 
 
    {0x7f000000, "transparent"},
    {0xffffff, "bgcolor"},
