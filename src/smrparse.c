@@ -226,34 +226,6 @@ int parse_color(const char *s)
 }
 
 
-/*! This function parses strings with decimal numbers prepended by a colon into
- * a double variable.
- * @param s Pointer to string. May be preceded by spaces.
- * @param v Pointer to double variable for the result.
- * @param endptr Pointer to receive address of string behind decimal number.
- * This is directly passed to strtod().
- * @return -1 if s == NULL, -2 if s does not contain any data ('\0'), -3 if
- * there is no expected colon, and -4 if no conversion took place.
- */
-int parse_double_option(const char *s, double *v, char **endptr)
-{
-   if (s == NULL)
-      return -1;
-
-   if ((s = skipb(s)) == NULL)
-      return -2;
-
-   if (*s != ':')
-      return -3;
-
-   *v = strtod(s, endptr);
-   if (s == *endptr)
-      return -4;
-
-   return 0;
-}
-
-
 int parse_style(const char *s)
 {
    if (s == NULL)
