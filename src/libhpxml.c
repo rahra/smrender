@@ -33,6 +33,10 @@
 #include <errno.h>
 #ifdef WITH_MMAP
 #include <sys/mman.h>
+#ifndef MAP_NORESERVE
+// MAP_NORESERVE is not defined an all systems is not necessary
+#define MAP_NORESERVE 0
+#endif
 #endif
 
 #include "smrender.h"
