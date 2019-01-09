@@ -42,6 +42,13 @@ document](https://github.com/rahra/smrender/raw/master/doc/smrender.pdf).
 
 ## Compile and Install
 
+If Smrender shall be used only for data manipulations, it does not have any
+dependencies. But if used to produce charts which is the most common case,
+Smrender depends on the following packages which have to be installed before
+compilation:
+`libcairo-dev`
+`librsvg2-dev`
+`libjpeg62-turbo-dev` (or `libjpeg-dev` alternatively)
 
 To compile and install from the tarball:
 ```Shell
