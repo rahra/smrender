@@ -65,6 +65,13 @@ PKG_CHECK_MODULES([RSVG], [librsvg-2.0],
                   )
 ])
 
+AS_IF([test "x$with_libcrypto" != "xno"], [
+PKG_CHECK_MODULES([CRYPTO], [libcrypto],
+                  [AC_DEFINE([HAVE_LIBCRYPTO], [1], [compile with support for libcrypto.])],
+                  [AC_MSG_NOTICE([Websockets are compiled without libcrypto support])]
+                  )
+])
+
 AX_PTHREAD([])
 AS_IF([test "${enable_threads+set}" = "set"], [
    LIBS="$PTHREAD_LIBS $LIBS"
@@ -74,7 +81,7 @@ AS_IF([test "${enable_threads+set}" = "set"], [
 
 AC_SEARCH_LIBS([sin], [m])
 AC_SEARCH_LIBS([dlopen], [dl])
-AC_SEARCH_LIBS([RAND_bytes], [crypto])
+#AC_SEARCH_LIBS([RAND_bytes], [crypto])
 
 AC_CHECK_FUNCS([strptime dladdr mbtowc execvpe])
 

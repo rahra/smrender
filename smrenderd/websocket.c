@@ -31,8 +31,7 @@
 #include <arpa/inet.h>
 #include <unistd.h>
 
-#define WITH_OPENSSL
-#ifdef WITH_OPENSSL
+#ifdef WITH_LIBCRYPTO
 #include <openssl/rand.h>
 #include <openssl/err.h>
 #endif
