@@ -537,7 +537,7 @@ The following rule matches all objects whose \textsf{seamark:light:range}-value 
 
 \item
    Match inversion is done by enclosing the match expression within exclamation marks.
-   This inverts the match if and only if the expression matched. This means that if a tag would match
+   This inverts the match if and only if the expression without inversion would match. This means that if a tag would match
    the expression, the inversion would return ``false'' (no match). But it would not return
    ``true'' (match) if the expression would not match.
 
@@ -548,8 +548,10 @@ The following rule matches all objects whose \textsf{seamark:light:range}-value 
 
 \item 
    Match exclusion is denoted by enclosing the match expression within tildes. It does not match objects
-   with certain tags.
-   The following rule avoid matching of objects which have a tag \textsf{seamark=*}.
+   with certain tags, i.e. it matches the absence of the given tag.  The
+   following rule avoids matching of objects which have a tag
+   \textsf{seamark=*}, i.e. all objects match which do not have such a
+   \textsf{seamark=*} tag.
 
    \rbox{<tag k='\~{}seamark\~{}' v='{}'/>}
 

@@ -684,7 +684,7 @@ The following rule matches all objects whose <span style="font-family:helvetica"
 </li>
 
 <li>   Match inversion is done by enclosing the match expression within exclamation marks.
-   This inverts the match if and only if the expression matched. This means that if a tag would match
+   This inverts the match if and only if the expression without inversion would match. This means that if a tag would match
    the expression, the inversion would return "false" (no match). But it would not return
    "true" (match) if the expression would not match.
 
@@ -700,8 +700,10 @@ The following rule matches all objects whose <span style="font-family:helvetica"
 </li>
 
 <li>    Match exclusion is denoted by enclosing the match expression within tildes. It does not match objects
-   with certain tags.
-   The following rule avoid matching of objects which have a tag <span style="font-family:helvetica">seamark=*</span>.
+   with certain tags, i.e. it matches the absence of the given tag.  The
+   following rule avoids matching of objects which have a tag
+   <span style="font-family:helvetica">seamark=*</span>, i.e. all objects match which do not have such a
+   <span style="font-family:helvetica">seamark=*</span> tag.
 
 <div class="p"><!----></div>
    <table align="left" border="1"><tr><td width="0" align="center">
