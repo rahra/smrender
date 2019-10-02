@@ -1,7 +1,7 @@
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN"
            "http://www.w3.org/TR/REC-html40/loose.dtd">
 <html>
-<meta name="GENERATOR" content="TtH 4.08">
+<meta name="GENERATOR" content="TtH 4.12">
  <style type="text/css"> div.p { margin-top: 7pt;}</style>
  <style type="text/css"><!--
  td div.comp { margin-top: -0.6ex; margin-bottom: -1ex;}
@@ -35,125 +35,64 @@
 
 <div class="p"><!----></div>
                                                                             
-<h1>Contents </h1>
+<h1>Contents </h1> american
 <a href="#tth_sEc1"
->1&nbsp; Release Notes</a><br />
-<a href="#tth_sEc2"
->2&nbsp; Name</a><br />
-<a href="#tth_sEc3"
->3&nbsp; Synopsis</a><br />
-<a href="#tth_sEc4"
->4&nbsp; Description</a><br />
-&nbsp;&nbsp;&nbsp;&nbsp;<a href="#tth_sEc4.1"
->4.1&nbsp; Rendering Window</a><br />
-&nbsp;&nbsp;&nbsp;&nbsp;<a href="#tth_sEc4.2"
->4.2&nbsp; Options</a><br />
-<a href="#tth_sEc5"
->5&nbsp; Ruleset Definition</a><br />
-&nbsp;&nbsp;&nbsp;&nbsp;<a href="#tth_sEc5.1"
->5.1&nbsp; Order of Rule Execution</a><br />
-&nbsp;&nbsp;&nbsp;&nbsp;<a href="#tth_sEc5.2"
->5.2&nbsp; Match Operations</a><br />
-&nbsp;&nbsp;&nbsp;&nbsp;<a href="#tth_sEc5.3"
->5.3&nbsp; Rule Actions</a><br />
-&nbsp;&nbsp;&nbsp;&nbsp;<a href="#tth_sEc5.4"
->5.4&nbsp; Measurement Units</a><br />
-<a href="#tth_sEc6"
->6&nbsp; Rendering Functions</a><br />
-&nbsp;&nbsp;&nbsp;&nbsp;<a href="#tth_sEc6.1"
->6.1&nbsp; Graphical Rendering Primitives</a><br />
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#tth_sEc6.1.1"
->6.1.1&nbsp; Captions</a><br />
-
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#tth_sEc6.1.2"
->6.1.2&nbsp; Drawing and Filling</a><br />
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#tth_sEc6.1.3"
->6.1.3&nbsp; Placing Images</a><br />
-&nbsp;&nbsp;&nbsp;&nbsp;<a href="#tth_sEc6.2"
->6.2&nbsp; Data Manipulation</a><br />
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#tth_sEc6.2.1"
->6.2.1&nbsp; Adding Objects</a><br />
-
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#tth_sEc6.2.2"
->6.2.2&nbsp; Adding Tags to Objects</a><br />
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#tth_sEc6.2.3"
->6.2.3&nbsp; Standard Shapes</a><br />
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#tth_sEc6.2.4"
->6.2.4&nbsp; Create Formatted Strings</a><br />
-
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#tth_sEc6.2.5"
->6.2.5&nbsp; Concatenating Ways</a><br />
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#tth_sEc6.2.6"
->6.2.6&nbsp; Inherit Tags to Objects</a><br />
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#tth_sEc6.2.7"
->6.2.7&nbsp; Generating a Grid</a><br />
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#tth_sEc6.2.8"
->6.2.8&nbsp; Create a Ruler</a><br />
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#tth_sEc6.2.9"
->6.2.9&nbsp; Text Translation</a><br />
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#tth_sEc6.2.10"
->6.2.10&nbsp; Special Data Manipulation Functions</a><br />
-&nbsp;&nbsp;&nbsp;&nbsp;<a href="#tth_sEc6.3"
->6.3&nbsp; Special Purpose Functions</a><br />
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#tth_sEc6.3.1"
->6.3.1&nbsp; Calling External Functions</a><br />
-
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#tth_sEc6.3.2"
->6.3.2&nbsp; Output of OSM Data</a><br />
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#tth_sEc6.3.3"
->6.3.3&nbsp; Executing Programs and Scripts</a><br />
-
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#tth_sEc6.3.4"
->6.3.4&nbsp; Special Control Functions</a><br />
-<a href="#tth_sEc7"
->7&nbsp; Signals</a><br />
-<a href="#tth_sEc8"
->8&nbsp; Extensions</a><br />
-&nbsp;&nbsp;&nbsp;&nbsp;<a href="#tth_sEc8.1"
->8.1&nbsp; Libsmfilter and Smfilter</a><br />
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#tth_sEc8.1.1"
->8.1.1&nbsp; Generating Light Sectors with vsector()</a><br />
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#tth_sEc8.1.2"
->8.1.2&nbsp; Compatibility to Smfilter</a><br />
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#tth_sEc8.1.3"
->8.1.3&nbsp; Generating Light Description Strings</a><br />
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#tth_sEc8.1.4"
->8.1.4&nbsp; Generating a Magnetic Variation Compass</a><br />
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#tth_sEc8.1.5"
->8.1.5&nbsp; Generating Circles around Depth Soundings</a><br />
-<a href="#tth_sEc9"
->9&nbsp; Usage Examples</a><br />
-&nbsp;&nbsp;&nbsp;&nbsp;<a href="#tth_sEc9.1"
->9.1&nbsp; Generating a PDF</a><br />
-&nbsp;&nbsp;&nbsp;&nbsp;<a href="#tth_sEc9.2"
->9.2&nbsp; Generating a KAP File</a><br />
-<a href="#tth_sEc10"
->10&nbsp; Ruleset Examples</a><br />
-&nbsp;&nbsp;&nbsp;&nbsp;<a href="#tth_sEc10.1"
->10.1&nbsp; Creating a Magnetic Variation Compass</a><br />
-&nbsp;&nbsp;&nbsp;&nbsp;<a href="#tth_sEc10.2"
->10.2&nbsp; Translation Example</a><br />
-<a href="#tth_sEc11"
->11&nbsp; Files</a><br />
-<a href="#tth_sEc12"
->12&nbsp; Bugs and Caveats</a><br />
-<a href="#tth_sEc13"
->13&nbsp; Author</a><br />
-<a href="#tth_sEc14"
->14&nbsp; Copyright</a><br />
-<a href="#tth_sEcA"
->A&nbsp; Compiling and Installing</a><br />
-<a href="#tth_sEcB"
->B&nbsp; Writing Own Rendering Functions</a><br />
-<a href="#tth_sEcC"
->C&nbsp; FAQ</a><br />
-&nbsp;&nbsp;&nbsp;&nbsp;<a href="#tth_sEcC.1"
->C.1&nbsp; Why is Smrender not written in C++?</a><br />
-&nbsp;&nbsp;&nbsp;&nbsp;<a href="#tth_sEcC.2"
->C.2&nbsp; Is it possible to create other maps, such as road maps?</a><br />
-<a href="#tth_sEcD"
+>1&nbsp; Release Notes</a><br /><a href="#tth_sEc2"
+>2&nbsp; Name</a><br /><a href="#tth_sEc3"
+>3&nbsp; Synopsis</a><br /><a href="#tth_sEc4"
+>4&nbsp; Description</a><br />&nbsp;&nbsp;&nbsp;&nbsp;<a href="#tth_sEc4.1"
+>4.1&nbsp; Rendering Window</a><br />&nbsp;&nbsp;&nbsp;&nbsp;<a href="#tth_sEc4.2"
+>4.2&nbsp; Options</a><br /><a href="#tth_sEc5"
+>5&nbsp; Ruleset Definition</a><br />&nbsp;&nbsp;&nbsp;&nbsp;<a href="#tth_sEc5.1"
+>5.1&nbsp; Order of Rule Execution</a><br />&nbsp;&nbsp;&nbsp;&nbsp;<a href="#tth_sEc5.2"
+>5.2&nbsp; Match Operations</a><br />&nbsp;&nbsp;&nbsp;&nbsp;<a href="#tth_sEc5.3"
+>5.3&nbsp; Rule Actions</a><br />&nbsp;&nbsp;&nbsp;&nbsp;<a href="#tth_sEc5.4"
+>5.4&nbsp; Measurement Units</a><br /><a href="#tth_sEc6"
+>6&nbsp; Rendering Functions</a><br />&nbsp;&nbsp;&nbsp;&nbsp;<a href="#tth_sEc6.1"
+>6.1&nbsp; Graphical Rendering Primitives</a><br />&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#tth_sEc6.1.1"
+>6.1.1&nbsp; Captions</a><br />&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#tth_sEc6.1.2"
+>6.1.2&nbsp; Drawing and Filling</a><br />&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#tth_sEc6.1.3"
+>6.1.3&nbsp; Placing Images</a><br />&nbsp;&nbsp;&nbsp;&nbsp;<a href="#tth_sEc6.2"
+>6.2&nbsp; Data Manipulation</a><br />&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#tth_sEc6.2.1"
+>6.2.1&nbsp; Adding Objects</a><br />&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#tth_sEc6.2.2"
+>6.2.2&nbsp; Adding Tags to Objects</a><br />&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#tth_sEc6.2.3"
+>6.2.3&nbsp; Standard Shapes</a><br />&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#tth_sEc6.2.4"
+>6.2.4&nbsp; Create Formatted Strings</a><br />&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#tth_sEc6.2.5"
+>6.2.5&nbsp; Concatenating Ways</a><br />&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#tth_sEc6.2.6"
+>6.2.6&nbsp; Inherit Tags to Objects</a><br />&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#tth_sEc6.2.7"
+>6.2.7&nbsp; Generating a Grid</a><br />&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#tth_sEc6.2.8"
+>6.2.8&nbsp; Create a Ruler</a><br />&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#tth_sEc6.2.9"
+>6.2.9&nbsp; Text Translation</a><br />&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#tth_sEc6.2.10"
+>6.2.10&nbsp; Special Data Manipulation Functions</a><br />&nbsp;&nbsp;&nbsp;&nbsp;<a href="#tth_sEc6.3"
+>6.3&nbsp; Special Purpose Functions</a><br />&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#tth_sEc6.3.1"
+>6.3.1&nbsp; Calling External Functions</a><br />&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#tth_sEc6.3.2"
+>6.3.2&nbsp; Output of OSM Data</a><br />&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#tth_sEc6.3.3"
+>6.3.3&nbsp; Executing Programs and Scripts</a><br />&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#tth_sEc6.3.4"
+>6.3.4&nbsp; Special Control Functions</a><br /><a href="#tth_sEc7"
+>7&nbsp; Signals</a><br /><a href="#tth_sEc8"
+>8&nbsp; Extensions</a><br />&nbsp;&nbsp;&nbsp;&nbsp;<a href="#tth_sEc8.1"
+>8.1&nbsp; Libsmfilter and Smfilter</a><br />&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#tth_sEc8.1.1"
+>8.1.1&nbsp; Generating Light Sectors with vsector()</a><br />&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#tth_sEc8.1.2"
+>8.1.2&nbsp; Compatibility to Smfilter</a><br />&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#tth_sEc8.1.3"
+>8.1.3&nbsp; Generating Light Description Strings</a><br />&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#tth_sEc8.1.4"
+>8.1.4&nbsp; Generating a Magnetic Variation Compass</a><br />&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#tth_sEc8.1.5"
+>8.1.5&nbsp; Generating Circles around Depth Soundings</a><br /><a href="#tth_sEc9"
+>9&nbsp; Usage Examples</a><br />&nbsp;&nbsp;&nbsp;&nbsp;<a href="#tth_sEc9.1"
+>9.1&nbsp; Generating a PDF</a><br />&nbsp;&nbsp;&nbsp;&nbsp;<a href="#tth_sEc9.2"
+>9.2&nbsp; Generating a KAP File</a><br /><a href="#tth_sEc10"
+>10&nbsp; Ruleset Examples</a><br />&nbsp;&nbsp;&nbsp;&nbsp;<a href="#tth_sEc10.1"
+>10.1&nbsp; Creating a Magnetic Variation Compass</a><br />&nbsp;&nbsp;&nbsp;&nbsp;<a href="#tth_sEc10.2"
+>10.2&nbsp; Translation Example</a><br /><a href="#tth_sEc11"
+>11&nbsp; Files</a><br /><a href="#tth_sEc12"
+>12&nbsp; Bugs and Caveats</a><br /><a href="#tth_sEc13"
+>13&nbsp; Author</a><br /><a href="#tth_sEc14"
+>14&nbsp; Copyright</a><br /><a href="#tth_sEcA"
+>A&nbsp; Compiling and Installing</a><br /><a href="#tth_sEcB"
+>B&nbsp; Writing Own Rendering Functions</a><br /><a href="#tth_sEcC"
+>C&nbsp; FAQ</a><br />&nbsp;&nbsp;&nbsp;&nbsp;<a href="#tth_sEcC.1"
+>C.1&nbsp; Why is Smrender not written in C++?</a><br />&nbsp;&nbsp;&nbsp;&nbsp;<a href="#tth_sEcC.2"
+>C.2&nbsp; Is it possible to create other maps, such as road maps?</a><br /><a href="#tth_sEcD"
 >D&nbsp; ToDo</a><br />
-
 
 <div class="p"><!----></div>
  <div align="right"><a href="inc/schneggendier_600dpi_16mm">Figure</a>
@@ -417,12 +356,15 @@ option <span style="font-family:helvetica"><span class="small"><b>-a</b></span><
 <br /><span style="font-family:helvetica"><span class="small"><b>-o</b></span></span> <span style="font-family:helvetica"><span class="small"><u>file</u></span></span>
 
 <div class="p"><!----></div>
-   Set the filename of the output image. The image will be saved as PNG file.
+   Set the filename of the output image. <span style="font-family:helvetica"><i><span class="small">Smrender</span></i></span> parses the string and
+   chooses the output file dependent on the file extensions which can be one of
+   <span style="font-family:helvetica">.pdf</span>, <span style="font-family:helvetica">.png</span>, or <span style="font-family:helvetica">.svg</span>. It defaults to PNG if no
+   valid extension was found.
    If this option is omitted no image file will be generated.
 <br /><span style="font-family:helvetica"><span class="small"><b>-O</b></span></span> <span style="font-family:helvetica"><span class="small"><u>file</u></span></span>
 
 <div class="p"><!----></div>
-   Create output PDF file.
+   Create output PDF file. This option is <em>deprecated</em>. See option <span style="font-family:helvetica"><span class="small"><b>-o</b></span></span>.
 <br /><span style="font-family:helvetica"><span class="small"><b>-P</b></span></span> <span style="font-family:helvetica"><span class="small"><u>fmt geom</u></span></span>
 
 <div class="p"><!----></div>
@@ -3021,5 +2963,5 @@ improved in future releases.
 T<sub><span class="small">E</span></sub>X
 by <a href="http://hutchinson.belmont.ma.us/tth/">
 T<sub><span class="small">T</span></sub>H</a>,
-version 4.08.</small>
+version 4.12.</small>
 </html>

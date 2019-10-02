@@ -311,12 +311,15 @@ option \optk{a} is set implicitly.
 
 \item[\optk{o}] \optv{file}
 
-   Set the filename of the output image. The image will be saved as PNG file.
+   Set the filename of the output image. \smrender{} parses the string and
+   chooses the output file dependent on the file extensions which can be one of
+   \textsf{.pdf}, \textsf{.png}, or \textsf{.svg}. It defaults to PNG if no
+   valid extension was found.
    If this option is omitted no image file will be generated.
 
 \item[\optk{O}] \optv{file}
 
-   Create output PDF file.
+   Create output PDF file. This option is \emph{deprecated}. See option \optk{o}.
 
 \item[\optk{P}] \optv{fmt\textbar geom}
 
