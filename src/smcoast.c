@@ -467,7 +467,7 @@ static int count_poly_refs(struct poly *pl, int *cnt)
       // safety check to detect incorrect pointers in double-linked list
       if (list->next != NULL && list->next->prev != NULL && list != list->next->prev)
       {
-         log_msg(LOG_WARN, "loop error! this may indicated an incorrect ruleset");
+         log_msg(LOG_WARN, "loop error! this may indicated broken input data (or an incorrect ruleset)");
          return -1;
       }
    }
