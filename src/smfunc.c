@@ -2728,3 +2728,124 @@ int act_del_match_tags_fini(smrule_t *r)
    return 0;
 }
 
+
+osm_node_t *next_available_node(const osm_way_t *w, int *ref)
+{
+   osm_node_t *n = NULL;
+
+   // safety check
+   if (w == NULL || ref == NULL)
+   {
+      log_msg(LOG_EMERG, "NULL pointer caught");
+      return NULL;
+   }
+
+   // find first valid point (usually this is ref[0])
+   for (; *ref < w->ref_cnt && n == NULL; (*ref)++)
+      n = get_object(OSM_NODE, w->ref[*ref]);
+
+   return n;
+}
+
+
+double course_diff(double a, double b)
+{
+   double y = b - a;
+
+   if (y > 180)
+      y -= 360;
+   if (y < -180)
+      y += 360;
+
+   return y;
+}
+
+
+int act_bearings_ini(smrule_t *UNUSED(r))
+{
+   return 0;
+}
+
+
+
+int act_bearings_main(smrule_t *UNUSED(r), osm_way_t *w)
+{
+   struct pcoord pc[2];
+   struct coord sc, dc;
+   osm_node_t *n[3];
+   double cd, pk;
+   char buf[32];
+   int i;
+
+   if (w->obj.type != OSM_WAY)
+   {
+      log_msg(LOG_WARN, "may be applied to ways only!");
+      return 1;
+   }
+
+   // find first valid point
+   i = 0;
+   if ((n[1] = next_available_node(w, &i)) == NULL)
+   {
+      log_msg(LOG_WARN, "no nodes of way available");
+      return 1;
+   }
+
+   // find first valid point
+   if ((n[2] = next_available_node(w, &i)) == NULL)
+   {
+      log_msg(LOG_WARN, "no nodes of way available");
+      return 1;
+   }
+
+   for (; i < w->ref_cnt;)
+   {
+      n[0] = n[1];
+      n[1] = n[2];
+
+      // find first valid point
+      if ((n[2] = next_available_node(w, &i)) == NULL)
+      {
+         log_msg(LOG_WARN, "no nodes of way available");
+         return 1;
+      }
+
+      log_debug("allocating %d at %p for node %"PRId64, n[1]->obj.tag_cnt + 3, n[1]->obj.otag, n[1]->obj.id);
+      if (realloc_tags(&n[1]->obj, n[1]->obj.tag_cnt + 3) == -1)
+      {
+         log_errno(LOG_ERR, "realloc_tags()");
+         return -1;
+      }
+
+      sc.lat = n[0]->lat;
+      sc.lon = n[0]->lon;
+      dc.lat = n[1]->lat;
+      dc.lon = n[1]->lon;
+      pc[0] = coord_diff(&sc, &dc);
+      sc = dc;
+      dc.lat = n[2]->lat;
+      dc.lon = n[2]->lon;
+      pc[1] = coord_diff(&sc, &dc);
+
+      cd = course_diff(pc[0].bearing, pc[1].bearing);
+      pk = fmod2(pc[0].bearing - (180 - cd) / 2 + (cd < 0) * 180, 360);
+
+      snprintf(buf, sizeof(buf), "%.1f", pc[1].bearing);
+      set_const_tag(&n[1]->obj.otag[n[1]->obj.tag_cnt - 1], "smrender:bearing", strdup(buf));
+
+      snprintf(buf, sizeof(buf), "%.1f", cd);
+      set_const_tag(&n[1]->obj.otag[n[1]->obj.tag_cnt - 2], "smrender:coursedev", strdup(buf));
+
+      snprintf(buf, sizeof(buf), "%.1f", pk);
+      set_const_tag(&n[1]->obj.otag[n[1]->obj.tag_cnt - 3], "smrender:peakdir", strdup(buf));
+   }
+
+   return 0;
+}
+
+
+int act_bearings_fini(smrule_t *UNUSED(r))
+{
+   return 0;
+}
+
