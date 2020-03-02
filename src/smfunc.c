@@ -93,6 +93,13 @@ struct trans_data
 };
 
 
+struct settags
+{
+   int64_t id, lastid;
+   osm_obj_t *o;
+};
+
+
 #define NODE_MIN_DIST (1.0 / 60)
 #define MASK_NODE -1.0
 #define INC_MAX_NL 64
@@ -447,52 +454,112 @@ int act_set_cw_main(smrule_t * UNUSED(r), osm_way_t *w)
 }
 
 
+int64_t random64(void)
+{
+   /* FIXME: this assumes that RAND_MAX == 1 << 31 - 1, hence, the result
+    * will be between 0 and 1 << 63 - 1. If RAND_MAX < 1 << 31 - 1 the result
+    * will not be appropriate. */
+   return ((int64_t) random()) << 31 | random();
+}
+
+
 int act_set_tags_ini(smrule_t *r)
 {
    smrule_t *rule;
-   int64_t templ_id;
    char *s;
+   struct settags st;
 
+   memset(&st, 0, sizeof(st));
+
+   // get id string of template object
    if ((s = get_param("id", NULL, r->act)) == NULL)
    {
       log_msg(LOG_WARN, "set_tags requires parameter 'id'");
       return -1;
    }
 
+   // parse id string
    errno = 0;
-   templ_id = strtol(s, NULL, 0);
+   st.id = strtol(s, NULL, 0);
    if (errno)
    {
       log_msg(LOG_WARN, "cannot convert id: %s", strerror(errno));
       return -1;
    }
 
-   if ((rule = get_object0(get_rdata()->rules, templ_id, r->oo->type - 1)) == NULL)
+   // try get lastid string
+   if ((s = get_param("lastid", NULL, r->act)) != NULL)
    {
-      log_msg(LOG_WARN, "there is no rule of type %d with id 0x%016lx", r->oo->type, templ_id);
-      return 1;
+      // parse lastid string
+      errno = 0;
+      st.lastid = strtol(s, NULL, 0);
+      if (errno)
+      {
+         log_msg(LOG_WARN, "cannot convert id: %s", strerror(errno));
+         return -1;
+      }
+      st.o = NULL;
+   }
+   // if there is no lastid string...
+   else
+   {
+      // get rule according to id
+      if ((rule = get_object0(get_rdata()->rules, st.id, r->oo->type - 1)) == NULL)
+      {
+         log_msg(LOG_WARN, "there is no rule of type %d with id 0x%016lx", r->oo->type, st.id);
+         return 1;
+      }
+      // get object of rule
+      if (rule->oo == NULL)
+      {
+         log_msg(LOG_CRIT, "rule has no object");
+         return 1;
+      }
+      st.o = rule->oo;
    }
 
-   if ((r->data = rule->oo) == NULL)
+   log_debug("set_tags params: id = %"PRId64", lastid = %"PRId64", tag_obj = %p", st.id, st.lastid, st.o);
+
+   // get mem for settags structure
+   if ((r->data = calloc(1, sizeof(st))) == NULL)
    {
-      log_msg(LOG_CRIT, "rule has no object");
-      return 1;
+      log_errno(LOG_ERR, "failed to get memory for struct settags");
+      return -1;
    }
 
+   // copy settags data to heap object
+   *((struct settags*) r->data) = st;
    return 0;
 }
 
 
 int act_set_tags_main(smrule_t *r, osm_obj_t *o)
 {
-   osm_obj_t *templ_o = r->data;
+   struct settags *st = r->data;
+   osm_obj_t *templ_o;
+   smrule_t *rule;
    struct otag *ot;
+   int64_t id;
 
-   if (templ_o == NULL)
+   if (st->o == NULL)
    {
-      log_msg(LOG_CRIT, "NULL pointer to template object");
-      return -1;
+      id = st->id + random64() % (st->lastid - st->id);
+      log_debug("chose id %"PRId64, id);
+
+      if ((rule = get_object0(get_rdata()->rules, id, r->oo->type - 1)) == NULL)
+      {
+         log_msg(LOG_WARN, "there is no rule with id %"PRId64, id);
+         return 1;
+      }
+      if (rule->oo == NULL)
+      {
+         log_msg(LOG_CRIT, "rule has no object");
+         return -1;
+      }
+      templ_o = rule->oo;
    }
+   else
+      templ_o = st->o;
 
    if ((ot = realloc(o->otag, sizeof(struct otag) * (o->tag_cnt + templ_o->tag_cnt))) == NULL)
    {
@@ -504,6 +571,13 @@ int act_set_tags_main(smrule_t *r, osm_obj_t *o)
    memcpy(&o->otag[o->tag_cnt], templ_o->otag, sizeof(struct otag) * templ_o->tag_cnt);
    o->tag_cnt += templ_o->tag_cnt;
 
+   return 0;
+}
+
+
+int act_set_tags_fini(smrule_t *r)
+{
+   free(r->data);
    return 0;
 }
 
@@ -2765,7 +2839,6 @@ int act_bearings_ini(smrule_t *UNUSED(r))
 {
    return 0;
 }
-
 
 
 int act_bearings_main(smrule_t *UNUSED(r), osm_way_t *w)
