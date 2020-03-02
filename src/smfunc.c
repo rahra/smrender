@@ -100,6 +100,25 @@ struct settags
 };
 
 
+struct random
+{
+#define RTYPE_INT 0
+#define RTYPE_DOUBLE 1
+   int type;
+   union
+   {
+      long lo;
+      double lod;
+   };
+   union
+   {
+      long hi;
+      double hid;
+   };
+   char *key;
+};
+
+
 #define NODE_MIN_DIST (1.0 / 60)
 #define MASK_NODE -1.0
 #define INC_MAX_NL 64
@@ -2919,6 +2938,84 @@ int act_bearings_main(smrule_t *UNUSED(r), osm_way_t *w)
 
 int act_bearings_fini(smrule_t *UNUSED(r))
 {
+   return 0;
+}
+
+
+int act_random_ini(smrule_t *r)
+{
+   struct random rnd;
+   int n;
+
+   if ((r->data = calloc(1, sizeof(rnd))) == NULL)
+   {
+      log_errno(LOG_ERR, "failed to allocate struct random");
+      return -1;
+   }
+
+   // set random type, defaults to int
+   rnd.type = get_param_bool("type", r->act);
+   if (!rnd.type)
+   {
+      rnd.lo = 0;
+      rnd.hi = RAND_MAX;
+
+      // set low value, defaults to 0
+      if (get_parami("lo", &n, r->act) != NULL)
+         rnd.lo = n;
+      if (get_parami("hi", &n, r->act) != NULL)
+         rnd.hi = n;
+   }
+   else
+   {
+      // set low value, defaults to 0
+      if (get_param("lo", &rnd.lod, r->act) == NULL)
+         rnd.lod = 0;
+      if (get_param("hi", &rnd.hid, r->act) == NULL)
+         rnd.hid = 1;
+   }
+
+   if ((rnd.key = get_param("key", NULL, r->act)) == NULL)
+      rnd.key = "smrender:random";
+
+   log_debug("random params: type = %d, lo = %ld/%f, hi = %ld/%f, key = '%s'", rnd.type, rnd.lo, rnd.lod, rnd.hi, rnd.hid, rnd.key);
+
+   *((struct random*) r->data) = rnd;
+   return 0;
+}
+
+
+int act_random_main(smrule_t *r, osm_obj_t *o)
+{
+   struct random *rnd = r->data;
+   char buf[32];
+   int n;
+
+   if (!rnd->type)
+      snprintf(buf, sizeof(buf), "%ld", rnd->lo + random() % (rnd->hi - rnd->lo));
+   else
+      snprintf(buf, sizeof(buf), "%f", rnd->lod + (double) random() / RAND_MAX * (rnd->hid - rnd->lod));
+
+   if ((n = match_attr(o, rnd->key, NULL)) < 0)
+   {
+      log_debug("key '%s' not found, allocating space", rnd->key);
+      if (realloc_tags(o, o->tag_cnt + 1) == -1)
+      {
+         log_errno(LOG_ERR, "realloc_tags()");
+         return -1;
+      }
+      n = o->tag_cnt - 1;
+   }
+
+   log_debug("setting key '%s' to '%s'", rnd->key, buf);
+   set_const_tag(&o->otag[n], rnd->key, strdup(buf));
+   return 0;
+}
+
+
+int act_random_fini(smrule_t *r)
+{
+   free(r->data);
    return 0;
 }
 
