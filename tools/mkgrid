@@ -1,0 +1,95 @@
+#!/bin/sh
+# this shell script generades a grid
+
+# node step in degrees
+NODESTEP=5
+# grid step in degrees
+GRIDSTEP=10
+
+echo "<?xml version='1.0' encoding='UTF-8'?>"
+echo "<osm version='0.6' generator='smrender-mkgrid'>"
+
+genid()
+{
+   llat=$(( $1 + 90 ))
+   llon=$(( $2 + 180 ))
+
+   return $(($llat * 1000 + $llon + 1 ))
+}
+
+nscard()
+{
+   V=$( echo $1 | tr -d \- )
+   if test $1 -lt 0 ; then
+      NS="S"
+   elif test $1 -gt 0 ; then
+      NS="N"
+   else
+      NS=""
+   fi
+}
+
+ewcard()
+{
+   V=$( echo $1 | tr -d \- )
+   if test $1 -lt 0 ; then
+      NS="W"
+   elif test $1 -gt 0 ; then
+      NS="E"
+   else
+      NS=""
+   fi
+}
+
+
+# generate nodes
+for lat in $( seq -90 $NODESTEP 90 )
+do
+   for lon in $( seq -180 $NODESTEP 180 )
+   do
+      genid $lat $lon
+      id=$?
+      echo "<node id='$id' version='1' lat='$lat' lon='$lon'/>"
+   done
+done
+
+
+# generate lat grid lines
+for lat in $( seq -80 $GRIDSTEP 80 )
+do
+   nscard $lat
+   id=$(( $lat + 90 * 1000 + 1 ))
+   echo "<way id='$id' version='1'>"
+   echo "<tag k='grid' v='lat'/>"
+   echo "<tag k='grid:lat' v='$lat'/>"
+   echo "<tag k='name' v='${V}${NS}'/>"
+   for lon in $( seq -180 $NODESTEP 180 )
+   do
+      genid $lat $lon
+      id=$?
+      echo "<nd ref='$id'/>"
+   done
+   echo "</way>"
+done
+
+
+#generate lon grid lines
+for lon in $( seq -180 $GRIDSTEP 180 )
+do
+   ewcard $lon
+   id=$(( $lon + 1 ))
+   echo "<way id='$id' version='1'>"
+   echo "<tag k='grid' v='lon'/>"
+   echo "<tag k='grid:lon' v='$lon'/>"
+   echo "<tag k='name' v='${V}${NS}'/>"
+   for lat in $( seq -90 $NODESTEP 90 )
+   do
+      genid $lat $lon
+      id=$?
+      echo "<nd ref='$id'/>"
+   done
+   echo "</way>"
+done
+
+echo "</osm>"
+
