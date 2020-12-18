@@ -180,7 +180,7 @@ of the output image (page format).\\
 
 If it is chosen to use a bounding box specification then the coordinates of the
 left lower (southern western) and the right upper (northern eastern) point
-shall be specified. Because of the projection the bounding box must not
+shall be specified. Because of the projection the bounding box may not
 necessarily fit to the page dimension in which case \smrender{} will
 automatically resize the bounding box to fit to the page.  If a fixed bounding
 box is desired the option \optk{P} is needed with either the width or the
@@ -320,6 +320,11 @@ option \optk{a} is set implicitly.
 \item[\optk{O}] \optv{file}
 
    Create output PDF file. This option is \emph{deprecated}. See option \optk{o}.
+
+\item[\optk{p}] \optv{projection}
+
+   Select the chart projection. This could either be \textsf{mercator} or
+   \textsf{adams2}, the 1st being the default value if the options is omitted.
 
 \item[\optk{P}] \optv{fmt\textbar geom}
 
@@ -1449,7 +1454,14 @@ rendered in the second rule.
    \item {\sffamily split}
 
       This action can be applied to nodes only. It splits all ways at the
-      matching node into two parts.
+      matching node into two parts. As a result two ways exist: the 1st one
+      ends at the specific node and the 2nd one begins at the same node.
+
+      The function \textsf{split()} has the options boolean argument
+      \optv{remsegment}. If it is set to \textsf{true} the way will be split at
+      the matching node but the following segment will be removed. As a result
+      there will also be two ways but they are seperated by one segment, the
+      one which follows the matching node in the original way.
 
    \item {\sffamily refine\_poly} (\textsc{deprecated})
 
@@ -1462,6 +1474,52 @@ rendered in the second rule.
    \item {\sffamily reverse\_way}
 
       This function always reverses a way independent of its current direction.
+
+   \item {\sffamily transcoord}
+
+      This function takes the two arguments \optv{tlat} and \optv{tlon} which
+      translates the point of reference. I.e. it rotates the surface of the
+      world.
+
+      This is necessary to implement the Spilhaus projection which rotates the
+      point of reference to 49.56371678 South and 66.94970198 East. This can be
+      accomplished with the following rule:
+
+\begin{verbatim}
+   <node version='-20' visible='true'>
+      <tag
+         k='_action_'
+         v='transcoord:tlat=-49.56371678;tlon=66.94970198'
+      />
+   </node>
+\end{verbatim}
+
+   \item {\sffamily wrapdetect}
+
+      This function detects if a way wraps from East to West or from West to
+      East across the 180th degree Meridian (West or East).
+
+      If such a wrapping is detected it adds the tag
+      \textsf{smrender:wrapdetect=split} to the node before the wrap. This
+      could be used in a consecutive step to call the function
+      \textsf{split()}.
+
+      This may be desireable because a lot of chart software (such as
+      \emph{Josm} and \smrender{} itself) cannot handle such situations
+      properly.
+
+      The ruleset could look like the following:
+
+\begin{verbatim}
+   <way version='-15'>
+      <tag k='_action_' v='wrapdetect'/>
+   </way>
+
+   <node version='-15' visible='true'>
+      <tag k='smrender:wrapdetect' v='split'/>
+      <tag k='_action_' v='split:remsegment=1'/>
+   </node>
+\end{verbatim}
 
    \item {\sffamily zeroway} (\textsc{experimental})
 
