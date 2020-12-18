@@ -431,6 +431,13 @@ static int poly_find_adj2(struct wlist *wl, struct pdef *pd)
    {
       if (pd[i].nid == pd[i + 1].nid)
       {
+         // detect improper way direction
+         if ((!pd[i].pn && !pd[i + 1].pn) || (pd[i].pn && pd[i + 1].pn))
+         {
+            log_msg(LOG_WARN, "possible data error: either way %"PRId64" or %"PRId64" has wrong direction",
+                  wl->ref[pd[i].wl_index].w->obj.id, wl->ref[pd[i + 1].wl_index].w->obj.id);
+         }
+
          //log_debug("wl_index %d to %d belong together", i, i + 1);
          wl->ref[pd[i + 1].wl_index].next = &wl->ref[pd[i].wl_index];
          wl->ref[pd[i].wl_index].prev = &wl->ref[pd[i + 1].wl_index];
