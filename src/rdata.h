@@ -138,6 +138,8 @@ struct rdata
    int64_t id_off;
    //! default image scale
    double img_scale;
+   //! projection type (0 = default, i.e. Mercator)
+   int proj;
 };
 
 
@@ -150,6 +152,7 @@ void geo2pt(double, double, double*, double*);
 void geo2pxf(double, double, double*, double*);
 void geo2pxi(double, double, int*, int*);
 #define mk_paper_coords(p0, p1, p2, p3, p4) geo2pxi(p1, p0, p3, p4)
+void trans_coord(double, double, double*, double*);
 
 
 struct rdata *rdata_get(void);

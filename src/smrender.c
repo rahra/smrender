@@ -384,7 +384,7 @@ static void page_rotate(struct rdata *rd, const char *angle)
  * @param paper Pointer to a string containing page dimension information, i.e.
  * "A4", "A3",..., or "<width>x<height>" in millimeters.
  */
-void init_rd_paper(struct rdata *rd, const char *paper)
+char *init_rd_paper(struct rdata *rd, const char *paper)
 {
    char buf[strlen(paper) + 1], *s, *angle;
    double a4_w, a4_h;
@@ -454,9 +454,7 @@ void init_rd_paper(struct rdata *rd, const char *paper)
       rd->h = a4_w;
    }
 
-   rd->pgw = rd->w;
-   rd->pgh = rd->h;
-   page_rotate(rd, angle);
+   return angle;
 }
 
 
@@ -630,7 +628,7 @@ int parse_tile_info(char *tstr, struct tile_info *ti)
  */
 void init_rendering_window(struct rdata *rd, char *win, const char *paper)
 {
-   char *s;
+   char *s, *angle;
    int n;
 
    if (win == NULL)
@@ -737,7 +735,7 @@ void init_rendering_window(struct rdata *rd, char *win, const char *paper)
       }
    }
 
-   init_rd_paper(rd, paper);
+   angle = init_rd_paper(rd, paper);
    if (rd->scale > 0)
    {
       if (!rd->w || !rd->h)
@@ -768,6 +766,10 @@ void init_rendering_window(struct rdata *rd, char *win, const char *paper)
          //log_msg(LOG_INFO, "bbox widened from %.2f to %.2f nm", (rd->bb.ru.lon - rd->bb.ll.lon) * cos(DEG2RAD(rd->mean_lat)) * 60, rd->mean_lat_len * 60);
       }
    }
+
+   rd->pgw = rd->w;
+   rd->pgh = rd->h;
+   page_rotate(rd, angle);
 
    init_bbox_mll(rd);
 }
@@ -805,7 +807,7 @@ int main(int argc, char *argv[])
    if (setlocale(LC_CTYPE, "") == NULL)
       log_msg(LOG_WARN, "setlocale() failed");
 
-   while ((n = getopt(argc, argv, "ab:Dd:fg:Ghi:k:K:lL:MmN:no:O:P:r:R:s:t:T:uVvw:")) != -1)
+   while ((n = getopt(argc, argv, "ab:Dd:fg:Ghi:k:K:lL:MmN:no:O:p:P:r:R:s:t:T:uVvw:")) != -1)
       switch (n)
       {
          case 'a':
@@ -938,6 +940,18 @@ int main(int argc, char *argv[])
 
          case 'O':
             pdf_file = optarg;
+            break;
+
+         case 'p':
+            if (!strcasecmp(optarg, "adams2"))
+               rd->proj = 1;
+            else if (!strcasecmp(optarg, "mercator"))
+               rd->proj = 0;
+            else
+            {
+               log_msg(LOG_WARN, "unknown projection '%s', defaulting to Mercator", optarg);
+               rd->proj = 0;
+            }
             break;
 
          case 'P':
