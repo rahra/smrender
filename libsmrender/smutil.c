@@ -57,7 +57,7 @@ bx_node_t **get_objtree(void)
 
 
 /*! Reallocate tag memory for cnt number of tags. The newly added tags (if cnt
- * > o->tag_cnt) or NOT initialized!
+ * > o->tag_cnt) are NOT initialized!
  * @param o Pointer to OSM object.
  * @param cnt Total number of tags.
  * @return The function returns the number of tags before the reallocation. The
@@ -75,6 +75,35 @@ int realloc_tags(osm_obj_t *o, int cnt)
    ocnt = o->tag_cnt;
    o->tag_cnt = cnt;
    return ocnt;
+}
+
+
+/*! This function reallocates the ref memory of ways. The newly allocated refs
+ * are NOT initialized!
+ * @param w Pointer to osm_way_t.
+ * @param cnt Total number of refs.
+ * @return In case of error -1 is returned, otherwise cnt is returned.
+ */
+int realloc_refs(osm_way_t *w, int cnt)
+{
+   int64_t *ref;
+
+   // safety checks
+   if (w == NULL || cnt < 0)
+   {
+      log_msg(LOG_EMERG, "parameter error");
+      return -1;
+   }
+
+   if ((ref = realloc(w->ref, cnt * sizeof(*ref))) == NULL)
+   {
+      log_errno(LOG_EMERG, "could not realloc refs");
+      return -1;
+   }
+
+   w->ref = ref;
+   w->ref_cnt = cnt;
+   return cnt;
 }
 
 

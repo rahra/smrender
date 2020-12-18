@@ -92,6 +92,7 @@ void *get_object0(bx_node_t*, int64_t, int);
 int coord_str(double, int, char*, int);
 int strcnt(const char*, int);
 int realloc_tags(osm_obj_t *, int );
+int realloc_refs(osm_way_t *, int );
 const char *safe_null_str(const char *);
 
 /* smlog.c */
