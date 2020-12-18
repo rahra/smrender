@@ -2,7 +2,7 @@
 # this shell script generades a grid
 
 # node step in degrees
-NODESTEP=5
+NODESTEP=2
 # grid step in degrees
 GRIDSTEP=10
 # append to ids
@@ -44,17 +44,33 @@ ewcard()
 }
 
 
-# generate nodes
-for lat in $( seq -90 $NODESTEP 90 )
+tmpf=$(mktemp)
+
+# generate lat node ids
+for lat in $( seq -90 $GRIDSTEP 90 )
 do
    for lon in $( seq -180 $NODESTEP 180 )
    do
       genid $lat $lon
       id=$?
-      echo "<node id='$id$IDTR' version='1' lat='$lat' lon='$lon'/>"
+      echo "<node id='$id$IDTR' version='1' lat='$lat' lon='$lon'/>" >>$tmpf
    done
 done
 
+# generate lon node ids
+for lat in $( seq -90 $NODESTEP 90 )
+do
+   for lon in $( seq -180 $GRIDSTEP 180 )
+   do
+      genid $lat $lon
+      id=$?
+      echo "<node id='$id$IDTR' version='1' lat='$lat' lon='$lon'/>" >>$tmpf
+   done
+done
+
+# generate nodes
+cat $tmpf | sort | uniq
+rm $tmpf
 
 # generate lat grid lines
 for lat in $( seq -80 $GRIDSTEP 80 )
