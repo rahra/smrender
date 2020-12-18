@@ -30,6 +30,10 @@
 #define C2 1e-9
 #define TOL 1e-5
 
+#define A2_PHI_SCALE 2.62181347
+#define A2_LAM_SCALE 2.62205760
+
+
 typedef struct xy
 {
    double x, y;

@@ -97,8 +97,8 @@ xy_t adams_square_ii_invert(double x, double y)
 {
    double phi, lam;
 
-   phi = fmax(fmin(y / 2.62181347, 1), -1) * M_PI_2;
-   lam = fabs(phi) < M_PI ? fmax(fmin(x / 2.62205760 / cos(phi), 1), -1) * M_PI : 0;
+   phi = fmax(fmin(y / A2_PHI_SCALE, 1), -1) * M_PI_2;
+   lam = fabs(phi) < M_PI ? fmax(fmin(x / A2_LAM_SCALE / cos(phi), 1), -1) * M_PI : 0;
 
    return inverse(x, y, lam, phi, adams_square_ii);
 }
