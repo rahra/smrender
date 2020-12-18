@@ -33,6 +33,7 @@
 #include "rdata.h"
 #include "smrender.h"
 #include "smrender_dev.h"
+#include "adams.h"
 
 
 static void test_rdata_unit(void);
@@ -102,6 +103,50 @@ void geo2pxf_rect(double lon, double lat, double *x, double *y)
 }
 
 
+/*! This function properly wraps longitude values. This is if a longitude value
+ * increases above 180 degrees it "jumps" from East to West, i.e. it becomes
+ * negative and increases from -180 again. This equally is done of a longitude
+ * decreases below -180, i.e. it jumps from West to East.
+ *
+ * @param lon Longitude value.
+ * @return The function returns a proper longitude value which is -180 <= ret
+ * <= 180.
+ */
+double lonmod(double lon)
+{
+   lon = fmod(lon, 360);
+   if (lon < -180)
+      lon += 360;
+   if (lon > 180)
+      lon -= 360;
+   return lon;
+}
+
+
+/*! This function translates coordinates to a different point of reference,
+ * i.e. it rotates to surface to a different reference.
+ * @param theta Translation of latitude in degrees.
+ * @param phi Translation of longitude in degrees.
+ * @param lat0 Pointer to the latitude to tranlate.
+ * @param loni0 Pointer to the longitude to translate.
+ */
+void trans_coord(double theta, double phi, double *lat0, double *lon0)
+{
+   double lat, lon;
+
+   *lat0 = DEG2RAD(*lat0);
+   *lon0 = DEG2RAD(*lon0);
+   theta = DEG2RAD(theta);
+   phi = DEG2RAD(phi);
+
+   lat = asin(cos(theta) * sin(*lat0) - cos(*lon0) * sin(theta) * cos(*lat0));
+   lon = atan2(sin(*lon0), tan(*lat0) * sin(theta) + cos(*lon0) * cos(theta)) - phi;
+
+   *lat0 = RAD2DEG(lat);
+   *lon0 = lonmod(RAD2DEG(lon));
+}
+
+
 /*! Convert geographic to Cartesian (pixel) coordinates x and y.
  * @param lon Longitude of object.
  * @param lat Latitude of object.
@@ -110,6 +155,37 @@ void geo2pxf_rect(double lon, double lat, double *x, double *y)
  */
 void geo2pxf(double lon, double lat, double *x, double *y)
 {
+   if (rd_.proj == 1)
+   {
+//#define SPILDEBUG
+#ifdef SPILDEBUG
+      static double lmin = HUGE_VAL, lmax = -HUGE_VAL, pmin = HUGE_VAL, pmax = -HUGE_VAL, xmin = HUGE_VAL, xmax = -HUGE_VAL, ymin = HUGE_VAL, ymax = -HUGE_VAL;
+      static long cnt = 0;
+#endif
+
+      adams_square_ii_smr(DEG2RAD(lon), DEG2RAD(lat), x, y);
+
+      *x = ((*x + A2_LAM_SCALE) * rd_.w) / (2 * A2_LAM_SCALE);
+      *y = rd_.h - ((*y + A2_PHI_SCALE) * rd_.h) / (2 * A2_PHI_SCALE);
+
+#ifdef SPILDEBUG
+      lmin = fmin(lmin, lon);
+      lmax = fmax(lmax, lon);
+      pmin = fmin(pmin, lat);
+      pmax = fmax(pmax, lat);
+      xmin = fmin(xmin, *x);
+      xmax = fmax(xmax, *x);
+      ymin = fmin(ymin, *y);
+      ymax = fmax(ymax, *y);
+      cnt++;
+      if (cnt % 1000)
+         log_debug("lmin = %.2f, lmax = %.2f, pmin = %.1f, pmax = %.1f, xmin = %.1f, xmax = %.1f, ymin = %.1f, ymax = %.1f",
+               lmin, lmax, pmin, pmax, xmin, xmax, ymin, ymax);
+#endif
+
+     return;
+   }
+
    if (!rd_.polygon_window)
    {
       *x = (lon - rd_.bb.ll.lon) * rd_.w / rd_.wc;
