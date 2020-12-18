@@ -5,6 +5,8 @@
 NODESTEP=5
 # grid step in degrees
 GRIDSTEP=10
+# append to ids
+IDTR="000000"
 
 echo "<?xml version='1.0' encoding='UTF-8'?>"
 echo "<osm version='0.6' generator='smrender-mkgrid'>"
@@ -49,7 +51,7 @@ do
    do
       genid $lat $lon
       id=$?
-      echo "<node id='$id' version='1' lat='$lat' lon='$lon'/>"
+      echo "<node id='$id$IDTR' version='1' lat='$lat' lon='$lon'/>"
    done
 done
 
@@ -59,7 +61,7 @@ for lat in $( seq -80 $GRIDSTEP 80 )
 do
    nscard $lat
    id=$(( $lat + 90 * 1000 + 1 ))
-   echo "<way id='$id' version='1'>"
+   echo "<way id='$id$IDTR' version='1'>"
    echo "<tag k='grid' v='lat'/>"
    echo "<tag k='grid:lat' v='$lat'/>"
    echo "<tag k='name' v='${V}${NS}'/>"
@@ -67,7 +69,7 @@ do
    do
       genid $lat $lon
       id=$?
-      echo "<nd ref='$id'/>"
+      echo "<nd ref='$id$IDTR'/>"
    done
    echo "</way>"
 done
@@ -78,7 +80,7 @@ for lon in $( seq -180 $GRIDSTEP 180 )
 do
    ewcard $lon
    id=$(( $lon + 1 ))
-   echo "<way id='$id' version='1'>"
+   echo "<way id='$id$IDTR' version='1'>"
    echo "<tag k='grid' v='lon'/>"
    echo "<tag k='grid:lon' v='$lon'/>"
    echo "<tag k='name' v='${V}${NS}'/>"
@@ -86,7 +88,7 @@ do
    do
       genid $lat $lon
       id=$?
-      echo "<nd ref='$id'/>"
+      echo "<nd ref='$id$IDTR'/>"
    done
    echo "</way>"
 done
