@@ -757,9 +757,9 @@ void init_rendering_window(struct rdata *rd, char *win, const char *paper)
 
       // autofit page
       if (!rd->w)
-         rd->w = round((double) rd->h * rd->mean_lat_len / (rd->bb.ru.lat - rd->bb.ll.lat));
+         rd->w = rd->h * rd->mean_lat_len / (rd->bb.ru.lat - rd->bb.ll.lat);
       else if (!rd->h)
-         rd->h = round((double) rd->w * (rd->bb.ru.lat - rd->bb.ll.lat) / rd->mean_lat_len);
+         rd->h = rd->w * (rd->bb.ru.lat - rd->bb.ll.lat) / rd->mean_lat_len;
 
       if (rd->mean_lat_len * rd->h / rd->w < rd->bb.ru.lat - rd->bb.ll.lat)
       {
