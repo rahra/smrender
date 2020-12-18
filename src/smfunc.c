@@ -2305,8 +2305,19 @@ int act_split_main(smrule_t *r, osm_node_t *n)
          // store new way
          put_object(&w->obj);
       }
+
       // short original way
-      ((osm_way_t*) (*optr))->ref_cnt = i;
+      if (i > 1)
+      {
+         ((osm_way_t*) (*optr))->ref_cnt = i;
+      }
+      // make sure that short ways have at least 2 nodes
+      else
+      {
+         log_debug("short way %"PRId64, ((osm_way_t*) (*optr))->obj.id);
+         ((osm_way_t*) (*optr))->ref_cnt = 2;
+         ((osm_way_t*) (*optr))->ref[1] = ((osm_way_t*) (*optr))->ref[0];
+      }
 
       // continue of no new way was created
       if (w == NULL)
@@ -3106,7 +3117,7 @@ int act_wrapdetect_main(smrule_t *UNUSED(r), osm_way_t *w)
 #define MAX_DLON 180
    osm_node_t *n[2];
    double dlon;
-   int i;
+   int i, j;
 
    if (w->obj.type != OSM_WAY)
    {
@@ -3116,6 +3127,7 @@ int act_wrapdetect_main(smrule_t *UNUSED(r), osm_way_t *w)
 
    for (i = 0; i < w->ref_cnt; n[0] = n[1])
    {
+      j = i;
       // find first valid point
       if ((n[1] = next_available_node(w, &i)) == NULL)
       {
@@ -3123,7 +3135,7 @@ int act_wrapdetect_main(smrule_t *UNUSED(r), osm_way_t *w)
          return 1;
       }
 
-      if (!i)
+      if (!j)
          continue;
 
       dlon = fabs(n[1]->lon - n[0]->lon);
@@ -3145,6 +3157,83 @@ int act_wrapdetect_main(smrule_t *UNUSED(r), osm_way_t *w)
 
 
 int act_wrapdetect_fini(smrule_t *UNUSED(r))
+{
+   return 0;
+}
+
+
+// maximum distance to be considered as equal (0.1m)
+#define VC_DIST (0.1/1852/60)
+
+int act_virtclosed_ini(smrule_t *UNUSED(r))
+{
+   return 0;
+}
+
+
+int act_virtclosed_main(smrule_t *UNUSED(r), osm_way_t *w)
+{
+   struct pcoord pc;
+   struct coord sc, dc;
+   osm_node_t *n[2];
+
+   // safety check
+   if (w->obj.type != OSM_WAY)
+   {
+      log_msg(LOG_WARN, "can be applied to ways only");
+      return 1;
+   }
+
+   // do not consider already closed ways
+   if (is_closed_poly(w))
+      return 0;
+
+   // safety check
+   if (w->ref_cnt < 2)
+   {
+      log_msg(LOG_EMERG, "ill ref_cnt %d", w->ref_cnt);
+      return 0;
+   }
+
+   if (w->ref[0] == w->ref[w->ref_cnt - 1])
+   {
+      log_debug("ignorin 0-length mini way %"PRId64, w->obj.id);
+      return 0;
+   }
+
+   if ((n[0] = get_object(OSM_NODE, w->ref[0])) == NULL)
+   {
+      log_msg(LOG_WARN, "first node %"PRId64" of way %"PRId64" does not exist", w->ref[0], w->obj.id);
+      return 1;
+   }
+
+   if ((n[1] = get_object(OSM_NODE, w->ref[w->ref_cnt - 1])) == NULL)
+   {
+      log_msg(LOG_WARN, "last node %"PRId64" of way %"PRId64" does not exist", w->ref[w->ref_cnt - 1], w->obj.id);
+      return 1;
+   }
+
+   sc.lat = n[0]->lat;
+   sc.lon = n[0]->lon;
+   dc.lat = n[1]->lat;
+   dc.lon = n[1]->lon;
+   pc = coord_diff(&sc, &dc);
+
+   if (pc.dist < VC_DIST)
+   {
+      log_debug("minimum distance in way %"PRId64" (ref_cnt = %d) found between %"PRId64" and %"PRId64,
+            w->obj.id, w->ref_cnt, w->ref[0], w->ref[w->ref_cnt - 1]);
+
+      if (realloc_refs(w, w->ref_cnt + 1) == -1)
+         return -1;
+      w->ref[w->ref_cnt - 1] = w->ref[0];
+   }
+
+   return 0;
+}
+
+
+int act_virtclosed_fini(smrule_t *UNUSED(r))
 {
    return 0;
 }
