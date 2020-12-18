@@ -3103,10 +3103,9 @@ int act_wrapdetect_ini(smrule_t *UNUSED(r))
 
 int act_wrapdetect_main(smrule_t *UNUSED(r), osm_way_t *w)
 {
-#define MAX_DLAT 90
 #define MAX_DLON 180
    osm_node_t *n[2];
-   double dlat, dlon;
+   double dlon;
    int i;
 
    if (w->obj.type != OSM_WAY)
@@ -3127,10 +3126,9 @@ int act_wrapdetect_main(smrule_t *UNUSED(r), osm_way_t *w)
       if (!i)
          continue;
 
-      dlat = fabs(n[1]->lat - n[0]->lat);
       dlon = fabs(n[1]->lon - n[0]->lon);
 
-      if (dlat > MAX_DLAT || dlon > MAX_DLON)
+      if (dlon > MAX_DLON)
       {
          log_debug("allocating tag for node %"PRId64, n[1]->obj.id);
          if (realloc_tags(&n[0]->obj, n[0]->obj.tag_cnt + 1) == -1)
