@@ -2250,6 +2250,7 @@ int act_split_main(smrule_t *r, osm_node_t *n)
    osm_obj_t **optr;
    osm_way_t *w;
    int i, rs, refs;
+   char buf[32];
 
    if (n->obj.type != OSM_NODE)
    {
@@ -2296,12 +2297,16 @@ int act_split_main(smrule_t *r, osm_node_t *n)
       w = NULL;
       if ((refs = ((osm_way_t*) (*optr))->ref_cnt - i + 1 - rs) > 1)
       {
-         w = malloc_way((*optr)->tag_cnt, refs);
+         w = malloc_way((*optr)->tag_cnt + 1, refs);
          osm_way_default(w);
          // copy all tags
          memcpy(w->obj.otag, (*optr)->otag, (*optr)->tag_cnt * sizeof(*(*optr)->otag));
          // copy all refs from this node up to the last node
          memcpy(w->ref, ((osm_way_t*) (*optr))->ref + i - 1 + rs, refs * sizeof(*((osm_way_t*) (*optr))->ref));
+         // set reference tag to original way
+         snprintf(buf, sizeof(buf), "%"PRId64, (*optr)->id);
+         set_const_tag(&w->obj.otag[w->obj.tag_cnt - 1], "smrender:split:id", strdup(buf));
+
          // store new way
          put_object(&w->obj);
       }
