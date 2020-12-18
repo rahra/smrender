@@ -460,7 +460,7 @@ char *init_rd_paper(struct rdata *rd, const char *paper)
 
 static void print_version(void)
 {
-   printf("Seamark renderer V" PACKAGE_VERSION ", (c) 2011-2018, Bernhard R. Fischer, 4096R/8E24F29D <bf@abenteuerland.at>.\n"
+   printf("Seamark renderer V" PACKAGE_VERSION ", (c) 2011-2020, Bernhard R. Fischer, 4096R/8E24F29D <bf@abenteuerland.at>.\n"
           "See http://www.abenteuerland.at/smrender/ for more information.\n");
 #ifdef HAVE_CAIRO
    printf("Using libcairo %s.\n", cairo_version_string());
@@ -513,6 +513,7 @@ void usage(const char *s)
          "   -o <image file> ..... Name of output file. The extensions determines the output format.\n"
          "                         Currently supported formats: .PDF, .PNG, .SVG.\n"
          "   -O <pdf file> ....... Filename of output PDF file (DEPRECATED).\n"
+         "   -p <projection> ..... Chart projection, either 'mercator' (default) or 'adams2'.\n"
          "   -P <page format> .... Select output page format.\n"
          "   -u .................. Output URLs suitable for OSM data download and\n"
          "                         exit.\n"
