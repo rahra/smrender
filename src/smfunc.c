@@ -3238,3 +3238,49 @@ int act_virtclosed_fini(smrule_t *UNUSED(r))
    return 0;
 }
 
+
+int act_fixbordernodes_ini(smrule_t *UNUSED(r))
+{
+   return 0;
+}
+
+
+int act_fixbordernodes_main(smrule_t *UNUSED(r), osm_node_t *n)
+{
+#define GRID_SEC (1.0/3600)
+   if (n->obj.type != OSM_NODE)
+   {
+      log_msg(LOG_WARN, "can be applied to ways only");
+      return 1;
+   }
+
+   if (n->lat >= 90)
+   {
+      log_debug("fixing latitude of node %"PRId64, n->obj.id);
+      n->lat = 90.0 - GRID_SEC;
+   }
+   if (n->lat <= -90)
+   {
+      log_debug("fixing latitude of node %"PRId64, n->obj.id);
+      n->lat = GRID_SEC - 90.0;
+   }
+   if (n->lon >= 180)
+   {
+      log_debug("fixing longitude of node %"PRId64, n->obj.id);
+      n->lon = 180.0 - GRID_SEC;
+   }
+   if (n->lon <= -180)
+   {
+      log_debug("fixing longitude of node %"PRId64, n->obj.id);
+      n->lon = GRID_SEC - 180.0;
+   }
+
+   return 0;
+}
+
+
+int act_fixbordernodes_fini(smrule_t *UNUSED(r))
+{
+   return 0;
+}
+
