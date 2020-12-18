@@ -1,3 +1,28 @@
+/* Copyright 2020 Bernhard R. Fischer, 4096R/8E24F29D <bf@abenteuerland.at>
+ *
+ * This file is part of smrender.
+ *
+ * Smrender is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, version 3 of the License.
+ *
+ * Smrender is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with smrender. If not, see <http://www.gnu.org/licenses/>.
+ */
+
+/*! \file adams.h
+ * This is the header file to adams.c.
+ * See there for futher details.
+ *
+ * \author Bernhard R. Fischer
+ * \date 2020/12/18
+ */
+
 #ifndef ADAMS_H
 #define ADAMS_H
 
@@ -18,8 +43,7 @@ xy_t adams_square_i(double lamda, double phi);
 xy_t adams_square_i_invert(double x, double y);
 xy_t adams_square_ii(double lamda, double phi);
 xy_t adams_square_ii_invert(double x, double y);
-xy_t spilhaus_square(double lambda, double phi);
-xy_t spilhaus_square_invert(double x, double y);
+void adams_square_ii_smr(double lambda, double phi, double *x, double *y);
 
 #endif
 

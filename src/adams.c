@@ -1,3 +1,34 @@
+/* Copyright 2020 Bernhard R. Fischer, 4096R/8E24F29D <bf@abenteuerland.at>
+ *
+ * This file is part of smrender.
+ *
+ * Smrender is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, version 3 of the License.
+ *
+ * Smrender is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with smrender. If not, see <http://www.gnu.org/licenses/>.
+ */
+
+/*! \file adams.c
+ * This file implements the Adams Square I+II projections.
+ * As of today (2020/12/18) only the function adams_square_ii() (and
+ * adams_square_ii_smr()) is checked to work properly.
+ * See code remarks below for further implementation details about how the code
+ * was derived.
+ *
+ * \author Bernhard R. Fischer
+ * \date 2020/12/18
+ */
+
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -6,42 +37,15 @@
 #include "adams.h"
 
 
-xy_t spilhaus_square(double lambda, double phi)
+void adams_square_ii_smr(double lambda, double phi, double *x, double *y)
 {
-   double a, b, sm, sn, sp;
+   xy_t xy;
 
-   sp = tan(0.5 * phi);
-   a = cos(asin(sp)) * sin(0.5 * lambda);
-   sm = (sp + a) < 0;
-   sn = (sp - a) < 0;
-   b = acos(sp);
-   a = acos(a);
-
-   return elliptic_factory(a, b, sm, sn);
-}
-
-/*
-return () => d3.geoProjection(spilhausSquareRaw)
-   .rotate([-66.94970198, 49.56371678, 40.17823482])
-   .scale(134.838125);
-
-latlon =
-  Array(2) [
-  0: -65.08076472399027
-  1: -29.706594889899357
-]
-
-
-*/
-
-xy_t spilhaus_square_invert(double x, double y)
-{
-   double phi, lam;
-
-   phi = fmax(fmin(y / 1.8540746957596883, 1), -1) * M_PI_2;
-   lam = fabs(phi) < M_PI ? fmax(fmin(x / 1.854074716833181, 1), -1) * M_PI : 0;
-
-   return inverse(x, y, lam, phi, spilhaus_square);
+   xy = adams_square_ii(lambda, phi);
+   if (x != NULL)
+      *x = xy.x;
+   if (y != NULL)
+      *y = xy.y;
 }
 
 
@@ -116,9 +120,12 @@ xy_t elliptic_factory(double a, double b, double sm, double sn)
 }
 
 
-/*!
- * https://observablehq.com/@toja/adams-world-in-a-square-i-ii
+/*! This function calculates the elliptic integral. It is derived from Torben
+ * Janson's code (here
+ * https://observablehq.com/@toja/adams-world-in-a-square-i-ii) and checked
+ * against his implementation literature (citation see below).
  *
+ * This is the original remark ab T. Janson:
  * Computes the elliptic integral of the first kind.
  * Algorithm from Bulirsch(1965), the implementation follows Snyder(1989), p. 239.
  * A faster alternative for m = 0.5 is presented in:
@@ -182,7 +189,7 @@ double elliptic_f(double phi, double m)
          y -= p / y;
 
          // FIXME: although this is exactly in the original algorithm by Snyder
-         // (1989), it does not make sense to me.
+         // (1989), it can never be <0, only ==0.
          if (fabs(y) <= 0)
             y = C2 * sqrt(p);
       }
@@ -208,6 +215,15 @@ static double limit(double a, double b)
 }
 
 
+/*! This function is the inverse of elliptic_f(). The code was translated from
+ * the Torben Jansons's code (see above at elliptic_f()).
+ *
+ * FIXME: It is not yet checked if it works.
+ *
+ * Original remark by T. Janson:
+ * Newton-Raphson inversion, based on code from PROJ written by Gerald Evenden.
+ * https://github.com/OSGeo/PROJ/blob/master/src/projections/adams.cpp
+ */
 xy_t inverse(double x, double y, double lam, double phi, xy_t (*proj)(double, double))
 {
    double lam2, phi2, dlam0, dphi0, det;
@@ -269,15 +285,4 @@ xy_t inverse(double x, double y, double lam, double phi, xy_t (*proj)(double, do
 
    return (xy_t) {lam, phi};
 }
-
-
-
-
-
-
-
-
-
-
-
 
