@@ -118,6 +118,11 @@ struct random
    char *key;
 };
 
+struct transcoord_data
+{
+   double tlat, tlon;
+};
+
 
 #define NODE_MIN_DIST (1.0 / 60)
 #define MASK_NODE -1.0
@@ -2153,7 +2158,7 @@ int act_split_ini(smrule_t *r)
 {
    // force Smrender to create reverse pointers
    get_rdata()->need_index++;
-   r->data = get_rdata();
+   r->data = get_param_bool("remsegment", r->act) ? "remsegment" : NULL;
    return 0;
 }
 
@@ -2241,9 +2246,10 @@ static int update_rev_ptr(bx_node_t **idx_root, const osm_way_t *org, const osm_
 
 int act_split_main(smrule_t *r, osm_node_t *n)
 {
+   struct rdata *rd = get_rdata();
    osm_obj_t **optr;
    osm_way_t *w;
-   int i;
+   int i, rs, refs;
 
    if (n->obj.type != OSM_NODE)
    {
@@ -2251,8 +2257,10 @@ int act_split_main(smrule_t *r, osm_node_t *n)
       return 1;
    }
 
-   if ((optr = get_object0(((struct rdata*) r->data)->index, n->obj.id, n->obj.type - 1)) == NULL)
+   if ((optr = get_object0(rd->index, n->obj.id, n->obj.type - 1)) == NULL)
       return 0;
+
+   rs = r->data != NULL;
 
    // loop over all reverse pointers
    for (; *optr != NULL; optr++)
@@ -2275,29 +2283,37 @@ int act_split_main(smrule_t *r, osm_node_t *n)
       }
 
       // continue to next rev ptr if node is first/last
-      if (!i || i == ((osm_way_t*) (*optr))->ref_cnt - 1)
+      if (!rs && (!i || i == ((osm_way_t*) (*optr))->ref_cnt - 1))
       {
-         log_msg(LOG_INFO, "way cannot be split at first/last node");
+         log_msg(LOG_INFO, "way cannot be split at first/last (forelast) node");
          continue;
       }
 
       /* split way */
       log_debug("splitting way %ld at ref index %d", (long) (*optr)->id, i);
       i++;
-      // allocate new way
-      w = malloc_way((*optr)->tag_cnt, ((osm_way_t*) (*optr))->ref_cnt - i + 1);
-      osm_way_default(w);
-      // copy all tags
-      memcpy(w->obj.otag, (*optr)->otag, (*optr)->tag_cnt * sizeof(*(*optr)->otag));
-      // copy all refs from this node up to the last node
-      memcpy(w->ref, ((osm_way_t*) (*optr))->ref + i - 1, (((osm_way_t*) (*optr))->ref_cnt - i + 1) * sizeof(*((osm_way_t*) (*optr))->ref));
-      // store new way
-      put_object(&w->obj);
+      // allocate new way if there are at least 2 nodes left
+      w = NULL;
+      if ((refs = ((osm_way_t*) (*optr))->ref_cnt - i + 1 - rs) > 1)
+      {
+         w = malloc_way((*optr)->tag_cnt, refs);
+         osm_way_default(w);
+         // copy all tags
+         memcpy(w->obj.otag, (*optr)->otag, (*optr)->tag_cnt * sizeof(*(*optr)->otag));
+         // copy all refs from this node up to the last node
+         memcpy(w->ref, ((osm_way_t*) (*optr))->ref + i - 1 + rs, refs * sizeof(*((osm_way_t*) (*optr))->ref));
+         // store new way
+         put_object(&w->obj);
+      }
       // short original way
       ((osm_way_t*) (*optr))->ref_cnt = i;
 
+      // continue of no new way was created
+      if (w == NULL)
+         continue;
+
       // update rev ptrs of nodes of new way
-      switch (update_rev_ptr(&((struct rdata*) r->data)->index, (osm_way_t*) *optr, w))
+      switch (update_rev_ptr(&rd->index, (osm_way_t*) *optr, w))
       {
          case -1:
             return -1;
@@ -2305,7 +2321,7 @@ int act_split_main(smrule_t *r, osm_node_t *n)
             break;
          default:
             log_debug("reloading optr");
-            if ((optr = get_object0(((struct rdata*) r->data)->index, n->obj.id, n->obj.type - 1)) == NULL)
+            if ((optr = get_object0(rd->index, n->obj.id, n->obj.type - 1)) == NULL)
             {
                log_msg(LOG_EMERG, "something fatally went wrong...");
                return -1;
@@ -3016,6 +3032,122 @@ int act_random_main(smrule_t *r, osm_obj_t *o)
 int act_random_fini(smrule_t *r)
 {
    free(r->data);
+   return 0;
+}
+
+
+int act_transcoord_ini(smrule_t *r)
+{
+   struct transcoord_data *td;
+
+   if ((td = calloc(1, sizeof(*td))) == NULL)
+   {
+      log_msg(LOG_ERR, "calloc() failed: %s", strerror(errno));
+      return -1;
+   }
+
+   if (get_param("tlat", &td->tlat, r->act) == NULL)
+   {
+      log_msg(LOG_WARN, "parameter 'tlat' missing");
+      goto ati_err;
+   }
+
+   if (get_param("tlon", &td->tlon, r->act) == NULL)
+   {
+      log_msg(LOG_WARN, "parameter 'tlat' missing");
+      goto ati_err;
+   }
+
+   if (td->tlon != 0)
+      td->tlon = 180 - td->tlon;
+
+   log_debug("tlat = %.3f, tlon = %.3f", td->tlat, td->tlon);
+   r->data = td;
+   return 0;
+
+ati_err:
+   free(td);
+   return 1;
+}
+
+
+int act_transcoord_main(smrule_t *r, osm_obj_t *o)
+{
+   struct transcoord_data *td = (struct transcoord_data*) r->data;
+
+   if (o->type != OSM_NODE)
+   {
+      log_msg(LOG_WARN, "may be applied to nodes only!");
+      return 1;
+   }
+
+   //FIXME: dont know why this does not work in one step
+   trans_coord(0, td->tlon, &((osm_node_t*) o)->lat, &((osm_node_t*) o)->lon);
+   trans_coord(td->tlat, 0, &((osm_node_t*) o)->lat, &((osm_node_t*) o)->lon);
+   return 0;
+}
+
+
+int act_transcoord_fini(smrule_t *r)
+{
+   free(r->data);
+   return 0;
+}
+
+
+int act_wrapdetect_ini(smrule_t *UNUSED(r))
+{
+   return 0;
+}
+
+
+int act_wrapdetect_main(smrule_t *UNUSED(r), osm_way_t *w)
+{
+#define MAX_DLAT 90
+#define MAX_DLON 180
+   osm_node_t *n[2];
+   double dlat, dlon;
+   int i;
+
+   if (w->obj.type != OSM_WAY)
+   {
+      log_msg(LOG_WARN, "may be applied to ways only!");
+      return 1;
+   }
+
+   for (i = 0; i < w->ref_cnt; n[0] = n[1])
+   {
+      // find first valid point
+      if ((n[1] = next_available_node(w, &i)) == NULL)
+      {
+         log_msg(LOG_WARN, "no nodes of way available");
+         return 1;
+      }
+
+      if (!i)
+         continue;
+
+      dlat = fabs(n[1]->lat - n[0]->lat);
+      dlon = fabs(n[1]->lon - n[0]->lon);
+
+      if (dlat > MAX_DLAT || dlon > MAX_DLON)
+      {
+         log_debug("allocating tag for node %"PRId64, n[1]->obj.id);
+         if (realloc_tags(&n[0]->obj, n[0]->obj.tag_cnt + 1) == -1)
+         {
+            log_errno(LOG_ERR, "realloc_tags()");
+            return -1;
+         }
+         set_const_tag(&n[0]->obj.otag[n[0]->obj.tag_cnt - 1], "smrender:wrapdetect", "split");
+      }
+   }
+
+   return 0;
+}
+
+
+int act_wrapdetect_fini(smrule_t *UNUSED(r))
+{
    return 0;
 }
 
