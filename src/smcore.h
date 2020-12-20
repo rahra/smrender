@@ -45,6 +45,7 @@ int execute_rules(bx_node_t *, int );
 int rev_index_way_nodes(osm_way_t *, bx_node_t **);
 int rev_index_rel_nodes(osm_rel_t *, bx_node_t **);
 int get_rev_index(osm_obj_t**, const osm_obj_t*);
+int insert_refs(osm_way_t *, osm_node_t **, int, int);
 
 /* smthread.c */
 void sm_wait_threads(void);

@@ -638,3 +638,23 @@ int rev_index_rel_nodes(osm_rel_t *r, bx_node_t **idx_root)
    return 0;
 }
 
+
+int insert_refs(osm_way_t *w, osm_node_t **n, int n_cnt, int pos)
+{
+   log_debug("inserting nodes into way %"PRId64" at index %d", w->obj.id, pos);
+   // reallocate ref list for new nodes
+   if (realloc_refs(w, w->ref_cnt + n_cnt) == -1)
+      return -1;
+
+   // insert new nodes into ref list
+   memmove(&w->ref[pos + n_cnt], &w->ref[pos], (w->ref_cnt - pos - n_cnt) * sizeof(*w->ref));
+   for (int i = 0; i < n_cnt; i++)
+   {
+      w->ref[i + pos] = n[i]->obj.id;
+      if (add_rev_ptr(&get_rdata()->index, w->ref[i + pos], IDX_NODE, (osm_obj_t*) w) == -1)
+         return -1;
+   }
+
+   return 0;
+}
+
