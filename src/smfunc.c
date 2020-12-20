@@ -138,6 +138,18 @@ typedef struct node_list
 static struct out_handle *oh_ = NULL;
 
 
+void node_diff(const osm_node_t *n0, const osm_node_t *n1, struct pcoord *pc)
+{
+   struct coord sc, dc;
+
+   sc.lat = n0->lat;
+   sc.lon = n0->lon;
+   dc.lat = n1->lat;
+   dc.lon = n1->lon;
+   *pc = coord_diff(&sc, &dc);
+}
+
+
 int act_out_ini(smrule_t *r)
 {
    struct out_handle **oh;
@@ -997,6 +1009,8 @@ int ins_eqdist(osm_way_t *w, double dist)
          sc.lat = s->lat;
          sc.lon = s->lon;
          ddist = dist;
+
+         // FIXME: does not update rev pointers, should call int insert_refs() instead
 
          // add node reference to way
          if ((ref = realloc(w->ref, sizeof(int64_t) * (w->ref_cnt + 1))) == NULL)
@@ -2376,17 +2390,39 @@ int act_incomplete_ini(smrule_t *r)
 }
 
 
-int act_incomplete_main(smrule_t *r, osm_rel_t *rel)
+int act_incomplete_main(smrule_t *r, osm_obj_t *o)
 {
-   if (rel->obj.type != OSM_REL)
-   {
-      log_msg(LOG_WARN, "incomplete() is only appicaple to relations");
-      return 1;
-   }
+   osm_rel_t *rel;
+   osm_way_t *w;
 
-   for (int i = 0; i < rel->mem_cnt; i++)
-      if (get_object(rel->mem[i].type, rel->mem[i].id) == NULL)
-         fprintf(r->data, "%s/%"PRId64"\n", type_str(rel->mem[i].type), rel->mem[i].id);
+   switch (o->type)
+   {
+      case OSM_NODE:
+         log_msg(LOG_WARN, "cannot be applied to nodes");
+         return 1;
+
+      case OSM_REL:
+         rel = (osm_rel_t*) o;
+         if (rel->obj.type != OSM_REL)
+         {
+            log_msg(LOG_WARN, "incomplete() is only appicaple to relations");
+            return 1;
+         }
+
+         for (int i = 0; i < rel->mem_cnt; i++)
+            if (get_object(rel->mem[i].type, rel->mem[i].id) == NULL)
+               fprintf(r->data, "%s/%"PRId64"\n", type_str(rel->mem[i].type), rel->mem[i].id);
+
+         break;
+
+      case OSM_WAY:
+         w = (osm_way_t*) o;
+         for (int i = 0; i < w->ref_cnt; i++)
+            if (get_object(OSM_NODE, w->ref[i]) == NULL)
+               fprintf(r->data, "%s/%"PRId64"\n", type_str(OSM_WAY), w->ref[i]);
+
+         break;
+   }
 
    return 0;
 }
@@ -2854,6 +2890,15 @@ int act_del_match_tags_fini(smrule_t *r)
 }
 
 
+/*! This function returns the next available node of a way starting at the
+ * index kept within ref.
+ * @param w Pointer to an OSM way.
+ * @param ref Pointer to the index at which to search for the next node. The
+ * value is updated and contains the next index behind the node which was
+ * found. I.e. if a node was found at index i, *ref is set to i + 1.
+ * @return The function returns a pointer to the OSM node. If no node is found
+ * or in case of error, NULL is returned.
+ */
 osm_node_t *next_available_node(const osm_way_t *w, int *ref)
 {
    osm_node_t *n = NULL;
@@ -2862,6 +2907,11 @@ osm_node_t *next_available_node(const osm_way_t *w, int *ref)
    if (w == NULL || ref == NULL)
    {
       log_msg(LOG_EMERG, "NULL pointer caught");
+      return NULL;
+   }
+   if (*ref < 0 || *ref >= w->ref_cnt)
+   {
+      log_msg(LOG_EMERG, "ill ref value %d", *ref);
       return NULL;
    }
 
@@ -3117,11 +3167,27 @@ int act_wrapdetect_ini(smrule_t *UNUSED(r))
 }
 
 
+double lat_dest_lon(const struct coord *sc, const struct coord *dc, double dlon)
+{
+   double dx, dy;
+
+   dx = dc->lon - sc->lon;
+   // avoid DIV0
+   if (dx == 0)
+      return dc->lat;
+   dy = dc->lat - sc->lat;
+
+   return (dlon - sc->lon) * dy / dx + sc->lat;
+}
+
+
 int act_wrapdetect_main(smrule_t *UNUSED(r), osm_way_t *w)
 {
 #define MAX_DLON 180
    osm_node_t *n[2];
-   double dlon;
+   struct coord sc, dc;
+   struct pcoord pc;
+   double dlon, dlat;
    int i, j;
 
    if (w->obj.type != OSM_WAY)
@@ -3136,25 +3202,61 @@ int act_wrapdetect_main(smrule_t *UNUSED(r), osm_way_t *w)
       // find first valid point
       if ((n[1] = next_available_node(w, &i)) == NULL)
       {
-         log_msg(LOG_WARN, "no nodes of way available");
+         log_msg(LOG_WARN, "no nodes of way available i = %d, j = %d", i, j);
          return 1;
       }
+
+      //safety check
+      if (i > j + 1)
+         log_msg(LOG_WARN, "Missing nodes in way %"PRId64", probably unexpected results!", w->obj.id);
 
       if (!j)
          continue;
 
-      dlon = fabs(n[1]->lon - n[0]->lon);
+      dlon = n[1]->lon - n[0]->lon;
 
-      if (dlon > MAX_DLON)
+      // continue at next node if no wrap occurs
+      if (fabs(dlon) <= MAX_DLON)
+         continue;
+
+      // wrap detected, calculate intermediate node at the date line
+      sc.lat = n[0]->lat;
+      sc.lon = n[0]->lon;
+      dc.lat = n[1]->lat;
+      dc.lon = n[1]->lon;
+      dc.lon += dlon > 0 ? -360 : 360;
+      pc = coord_diff(&sc, &dc);
+      dlon = dlon > 0 ? -180 : 180;
+      dlat = lat_dest_lon(&sc, &dc, dlon);
+      log_debug("sc.lat = %f, sc.lon = %f, dc.lat = %f, dc.lon = %f (%f), pc.bearing = %f, pc.dist = %f, dlat = %f, dlon = %f",
+            sc.lat, sc.lon, dc.lat, dc.lon, n[1]->lon, pc.bearing, pc.dist, dlat, dlon);
+
+      // allocate new nodes on each side (East and West) of the date line
+      log_debug("allocating new node");
+      n[0] = malloc_node(2);
+      osm_node_default(n[0]);
+      n[0]->lat = dlat;
+      n[0]->lon = dlon;
+      set_const_tag(&n[0]->obj.otag[0], "generator", "smrender");
+      set_const_tag(&n[0]->obj.otag[1], "smrender:wrapdetect", "split");
+      put_object((osm_obj_t*) n[0]);
+      log_debug("created nodes n[0] %"PRId64" (%f/%f)", n[0]->obj.id, n[0]->lat, n[0]->lon);
+      n[1] = malloc_node(1);
+      osm_node_default(n[1]);
+      n[1]->lat = dlat;
+      n[1]->lon = -dlon;
+      set_const_tag(&n[1]->obj.otag[0], "generator", "smrender");
+      put_object((osm_obj_t*) n[1]);
+      log_debug("created nodes n[1] %"PRId64" (%f/%f)", n[1]->obj.id, n[1]->lat, n[1]->lon);
+
+      if (insert_refs(w, n, 2, j) == -1)
       {
-         log_debug("allocating tag for node %"PRId64, n[1]->obj.id);
-         if (realloc_tags(&n[0]->obj, n[0]->obj.tag_cnt + 1) == -1)
-         {
-            log_errno(LOG_ERR, "realloc_tags()");
-            return -1;
-         }
-         set_const_tag(&n[0]->obj.otag[n[0]->obj.tag_cnt - 1], "smrender:wrapdetect", "split");
+         log_msg(LOG_ERR, "insert_refs() failed");
+         return -1;
       }
+
+      // continue at next node behind the newly inserted ones (because the way may wrap again)
+      i += 2;
    }
 
    return 0;
@@ -3179,7 +3281,6 @@ int act_virtclosed_ini(smrule_t *UNUSED(r))
 int act_virtclosed_main(smrule_t *UNUSED(r), osm_way_t *w)
 {
    struct pcoord pc;
-   struct coord sc, dc;
    osm_node_t *n[2];
 
    // safety check
@@ -3218,11 +3319,7 @@ int act_virtclosed_main(smrule_t *UNUSED(r), osm_way_t *w)
       return 1;
    }
 
-   sc.lat = n[0]->lat;
-   sc.lon = n[0]->lon;
-   dc.lat = n[1]->lat;
-   dc.lon = n[1]->lon;
-   pc = coord_diff(&sc, &dc);
+   node_diff(n[0], n[1], &pc);
 
    if (pc.dist < VC_DIST)
    {
