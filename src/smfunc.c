@@ -33,6 +33,7 @@
 #include "smrender_dev.h"
 #include "smcore.h"
 #include "smloadosm.h"
+#include "smcoast.h"
 
 
 #define DIR_CW 0
@@ -136,18 +137,6 @@ typedef struct node_list
 
 
 static struct out_handle *oh_ = NULL;
-
-
-void node_diff(const osm_node_t *n0, const osm_node_t *n1, struct pcoord *pc)
-{
-   struct coord sc, dc;
-
-   sc.lat = n0->lat;
-   sc.lon = n0->lon;
-   dc.lat = n1->lat;
-   dc.lon = n1->lon;
-   *pc = coord_diff(&sc, &dc);
-}
 
 
 int act_out_ini(smrule_t *r)
@@ -3269,9 +3258,6 @@ int act_wrapdetect_fini(smrule_t *UNUSED(r))
 }
 
 
-// maximum distance to be considered as equal (0.1m)
-#define VC_DIST (0.1/1852/60)
-
 int act_virtclosed_ini(smrule_t *UNUSED(r))
 {
    return 0;
@@ -3280,9 +3266,6 @@ int act_virtclosed_ini(smrule_t *UNUSED(r))
 
 int act_virtclosed_main(smrule_t *UNUSED(r), osm_way_t *w)
 {
-   struct pcoord pc;
-   osm_node_t *n[2];
-
    // safety check
    if (w->obj.type != OSM_WAY)
    {
@@ -3301,36 +3284,7 @@ int act_virtclosed_main(smrule_t *UNUSED(r), osm_way_t *w)
       return 0;
    }
 
-   if (w->ref[0] == w->ref[w->ref_cnt - 1])
-   {
-      log_debug("ignorin 0-length mini way %"PRId64, w->obj.id);
-      return 0;
-   }
-
-   if ((n[0] = get_object(OSM_NODE, w->ref[0])) == NULL)
-   {
-      log_msg(LOG_WARN, "first node %"PRId64" of way %"PRId64" does not exist", w->ref[0], w->obj.id);
-      return 1;
-   }
-
-   if ((n[1] = get_object(OSM_NODE, w->ref[w->ref_cnt - 1])) == NULL)
-   {
-      log_msg(LOG_WARN, "last node %"PRId64" of way %"PRId64" does not exist", w->ref[w->ref_cnt - 1], w->obj.id);
-      return 1;
-   }
-
-   node_diff(n[0], n[1], &pc);
-
-   if (pc.dist < VC_DIST)
-   {
-      log_debug("minimum distance in way %"PRId64" (ref_cnt = %d) found between %"PRId64" and %"PRId64,
-            w->obj.id, w->ref_cnt, w->ref[0], w->ref[w->ref_cnt - 1]);
-
-      if (realloc_refs(w, w->ref_cnt + 1) == -1)
-         return -1;
-      w->ref[w->ref_cnt - 1] = w->ref[0];
-   }
-
+   connect_almost_closed_way(w, VC_DIST);
    return 0;
 }
 
