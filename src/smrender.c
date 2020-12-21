@@ -1143,7 +1143,8 @@ int main(int argc, char *argv[])
    }
 
    install_sigint();
-   init_cat_poly(rd);
+   //FIXME: this is now called in act_cat_poly_ini() -- not sure if this is too late
+   //init_cat_poly(rd);
 
    for (n = 0; (n < rstats.ver_cnt) && !int_ && (rstats.ver[n] < SUBROUTINE_VERSION); n++)
    {
