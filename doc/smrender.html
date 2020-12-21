@@ -229,7 +229,7 @@ of the output image (page format).<br />
 <div class="p"><!----></div>
 If it is chosen to use a bounding box specification then the coordinates of the
 left lower (southern western) and the right upper (northern eastern) point
-shall be specified. Because of the projection the bounding box must not
+shall be specified. Because of the projection the bounding box may not
 necessarily fit to the page dimension in which case <span style="font-family:helvetica"><i><span class="small">Smrender</span></i></span> will
 automatically resize the bounding box to fit to the page.  If a fixed bounding
 box is desired the option <span style="font-family:helvetica"><span class="small"><b>-P</b></span></span> is needed with either the width or the
@@ -365,6 +365,11 @@ option <span style="font-family:helvetica"><span class="small"><b>-a</b></span><
 
 <div class="p"><!----></div>
    Create output PDF file. This option is <em>deprecated</em>. See option <span style="font-family:helvetica"><span class="small"><b>-o</b></span></span>.
+<br /><span style="font-family:helvetica"><span class="small"><b>-p</b></span></span> <span style="font-family:helvetica"><span class="small"><u>projection</u></span></span>
+
+<div class="p"><!----></div>
+   Select the chart projection. This could either be <span style="font-family:helvetica">mercator</span> or
+   <span style="font-family:helvetica">adams2</span>, the 1st being the default value if the options is omitted.
 <br /><span style="font-family:helvetica"><span class="small"><b>-P</b></span></span> <span style="font-family:helvetica"><span class="small"><u>fmt geom</u></span></span>
 
 <div class="p"><!----></div>
@@ -1676,7 +1681,7 @@ rendered in the second rule.
       The newly inserted nodes inherit all tags from the way and additionally
       the tags <span style="font-family:helvetica">generator=smrender</span>, and <span style="font-family:helvetica">distance=*</span>, and
       <span style="font-family:helvetica">bearing=*</span> are added. The latter two tags are set to the
-      appropriate values. The bearing my be used by the function <span style="font-family:helvetica">shape</span>
+      appropriate values. The bearing may be used by the function <span style="font-family:helvetica">shape</span>
       (see Section <a href="#sec:shape">6.2.3</a>) to create appropriate rotated shapes.
 <div class="p"><!----></div>
 </li>
@@ -1737,7 +1742,15 @@ rendered in the second rule.
 
 <div class="p"><!----></div>
       This action can be applied to nodes only. It splits all ways at the
-      matching node into two parts.
+      matching node into two parts. As a result two ways exist: the 1st one
+      ends at the specific node and the 2nd one begins at the same node.
+
+<div class="p"><!----></div>
+      The function <span style="font-family:helvetica">split()</span> has the options boolean argument
+      <span style="font-family:helvetica"><span class="small"><u>remsegment</u></span></span>. If it is set to <span style="font-family:helvetica">true</span> the way will be split at
+      the matching node but the following segment will be removed. As a result
+      there will also be two ways but they are seperated by one segment, the
+      one which follows the matching node in the original way.
 <div class="p"><!----></div>
 </li>
 
@@ -1756,6 +1769,68 @@ rendered in the second rule.
 
 <div class="p"><!----></div>
       This function always reverses a way independent of its current direction.
+<div class="p"><!----></div>
+</li>
+
+<li> <span style="font-family:helvetica">transcoord</span>
+
+<div class="p"><!----></div>
+      This function takes the two arguments <span style="font-family:helvetica"><span class="small"><u>tlat</u></span></span> and <span style="font-family:helvetica"><span class="small"><u>tlon</u></span></span> which
+      translates the point of reference. I.e. it rotates the surface of the
+      world.
+
+<div class="p"><!----></div>
+      This is necessary to implement the Spilhaus projection which rotates the
+      point of reference to 49.56371678 South and 66.94970198 East. This can be
+      accomplished with the following rule:
+
+<div class="p"><!----></div>
+
+<pre>
+&nbsp;&nbsp;&nbsp;&lt;node&nbsp;version='-20'&nbsp;visible='true'&#62;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&lt;tag
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;k='_action_'
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;v='transcoord:tlat=-49.56371678;tlon=66.94970198'
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;/&#62;
+&nbsp;&nbsp;&nbsp;&lt;/node&#62;
+
+</pre>
+<div class="p"><!----></div>
+</li>
+
+<li> <span style="font-family:helvetica">wrapdetect</span>
+
+<div class="p"><!----></div>
+      This function detects if a way wraps from East to West or from West to
+      East across the 180th degree Meridian (West or East).
+
+<div class="p"><!----></div>
+      If such a wrapping is detected it adds the tag
+      <span style="font-family:helvetica">smrender:wrapdetect=split</span> to the node before the wrap. This
+      could be used in a consecutive step to call the function
+      <span style="font-family:helvetica">split()</span>.
+
+<div class="p"><!----></div>
+      This may be desireable because a lot of chart software (such as
+      <em>Josm</em> and <span style="font-family:helvetica"><i><span class="small">Smrender</span></i></span> itself) cannot handle such situations
+      properly.
+
+<div class="p"><!----></div>
+      The ruleset could look like the following:
+
+<div class="p"><!----></div>
+
+<pre>
+&nbsp;&nbsp;&nbsp;&lt;way&nbsp;version='-15'&#62;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&lt;tag&nbsp;k='_action_'&nbsp;v='wrapdetect'/&#62;
+&nbsp;&nbsp;&nbsp;&lt;/way&#62;
+
+&nbsp;&nbsp;&nbsp;&lt;node&nbsp;version='-15'&nbsp;visible='true'&#62;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&lt;tag&nbsp;k='smrender:wrapdetect'&nbsp;v='split'/&#62;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&lt;tag&nbsp;k='_action_'&nbsp;v='split:remsegment=1'/&#62;
+&nbsp;&nbsp;&nbsp;&lt;/node&#62;
+
+</pre>
 <div class="p"><!----></div>
 </li>
 
@@ -2126,7 +2201,7 @@ The following commands are currently implemented:
       It takes the single parameter <span style="font-family:helvetica"><span class="small"><u>file</u></span></span> which specifies the
       name of the output file to which it will write the types and ids of all
       objects which are listed as members of the relation but are not found in
-      the input data. This may be useful to download this objects to complete
+      the input data. This may be useful to download these objects to complete
       the input data if necessary.
 
 <div class="p"><!----></div>
