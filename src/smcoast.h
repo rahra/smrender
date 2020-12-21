@@ -30,6 +30,9 @@
 #define INIT_MAX_REF 20
 #define MAX_OPEN_POLY 32
 
+//! maximum distance to be considered as equal (0.1m)
+#define VC_DIST (1.0/1852*60)
+
 
 struct corner_point
 {
@@ -81,6 +84,9 @@ int compare_poly_area(const struct poly*, const struct poly*);
 int gather_poly0(osm_way_t *, struct wlist **);
 struct wlist *init_wlist(void);
 const osm_way_t *page_way(void);
+void node_diff(const osm_node_t *, const osm_node_t *, struct pcoord *);
+double end_node_dist(const osm_way_t *);
+int connect_almost_closed_way(osm_way_t *, double);
 
 
 #endif

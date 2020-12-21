@@ -864,10 +864,121 @@ static int connect_open(struct pdef *pd, struct wlist *wl, int ocnt, short no_co
 }
 
 
+void node_diff(const osm_node_t *n0, const osm_node_t *n1, struct pcoord *pc)
+{
+   struct coord sc, dc;
+
+   sc.lat = n0->lat;
+   sc.lon = n0->lon;
+   dc.lat = n1->lat;
+   dc.lon = n1->lon;
+   *pc = coord_diff(&sc, &dc);
+}
+
+
+/*! Calculate the distance between the end nodes of a way.
+ * @param w Pointer to the way.
+ * @return Returns the distance in degrees between the ways. The distance is
+ * always >= 0. In case of error -1 is returned.
+ */
+double end_node_dist(const osm_way_t *w)
+{
+   osm_node_t *n[2];
+   struct pcoord pc;
+
+   if ((n[0] = get_object(OSM_NODE, w->ref[0])) == NULL)
+   {
+      log_msg(LOG_WARN, "first node %"PRId64" of way %"PRId64" does not exist", w->ref[0], w->obj.id);
+      return -1;
+   }
+
+   if ((n[1] = get_object(OSM_NODE, w->ref[w->ref_cnt - 1])) == NULL)
+   {
+      log_msg(LOG_WARN, "last node %"PRId64" of way %"PRId64" does not exist", w->ref[w->ref_cnt - 1], w->obj.id);
+      return -1;
+   }
+
+   node_diff(n[0], n[1], &pc);
+   return pc.dist;
+}
+
+
+/*! This function calculates of the distance of the end nodes of the way w are
+ * nearer than max_dist. In this case the way will be closed, i.e. the first
+ * node is inserted at the end.
+ * @param w Pointer to the way.
+ * @param max_dist Maximum distance between the end nodes up to which the way
+ * will be closed.
+ * @return The function returns 1 of the way was closed. 0 is returned if it
+ * was not closed because the end nodes are too far aways (>= max_dist). In
+ * case of error, -1 is returned.
+ */
+int connect_almost_closed_way(osm_way_t *w, double max_dist)
+{
+   double dist;
+
+   if ((dist = end_node_dist(w)) < 0)
+      return -1;
+
+   log_debug("dist = %f (max_dist = %f)", dist, max_dist);
+
+   if (dist < max_dist)
+   {
+      log_debug("minimum distance in way %"PRId64" (ref_cnt = %d) found between %"PRId64" and %"PRId64,
+            w->obj.id, w->ref_cnt, w->ref[0], w->ref[w->ref_cnt - 1]);
+
+      if (realloc_refs(w, w->ref_cnt + 1) == -1)
+         return -1;
+
+      w->ref[w->ref_cnt - 1] = w->ref[0];
+      return 1;
+   }
+
+   return 0;
+}
+
+
+/*! This function closes all "almost" closed ways in the way list wl.
+ * @param wl Pointer to a way list.
+ * @return The function returns the number of ways which where closed.
+ */
+int connect_almost_closed(struct wlist *wl, double max_dist)
+{
+   int i, cnt, e;
+
+   for (i = 0, cnt = 0; i < wl->ref_cnt; i++)
+   {
+      if (!wl->ref[i].open)
+         continue;
+
+      if ((e = connect_almost_closed_way(wl->ref[i].w, max_dist)) == -1 )
+      {
+         log_msg(LOG_ERR, "connect_almost_closed_way() failed");
+         continue;
+      }
+
+      if (!e)
+         continue;
+
+      wl->ref[i].open = 0;
+      cnt++;
+   }
+
+   log_debug("closed %d ways", cnt);
+   return cnt;
+}
+
+
 /*! Initialization function for center and corner points.
  */
 void init_cat_poly(struct rdata *rd)
 {
+   static int _called = 0;
+
+   if (_called)
+      return;
+   _called++;
+
    center_.lat = rd->mean_lat;
    center_.lon = rd->mean_lon;
    //FIXME: if cat_poly is called with no_corner, co_pt_ is still used in
@@ -1009,6 +1120,9 @@ static int cat_poly_fini(smrule_t *r)
    struct pdef *pd;
    int i, ocnt;
 
+   // init corner points
+   init_cat_poly(get_rdata());
+
    pd = poly_get_node_ids(wl);
    qsort(pd, wl->ref_cnt * 2, sizeof(struct pdef), (int(*)(const void *, const void *)) compare_pdef_nid);
    poly_find_adj2(wl, pd);
@@ -1016,6 +1130,9 @@ static int cat_poly_fini(smrule_t *r)
    free(pd);
 
    poly_join_tags(wl, r);
+
+   log_debug("closing almost closed ways, ocnt = %d", ocnt);
+   ocnt -= connect_almost_closed(wl, VC_DIST);
 
    log_debug("trimming ways, open_count = %d", ocnt);
    ocnt = trim_ways(wl);
