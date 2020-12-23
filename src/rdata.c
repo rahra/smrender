@@ -155,7 +155,7 @@ void trans_coord(double theta, double phi, double *lat0, double *lon0)
  */
 void geo2pxf(double lon, double lat, double *x, double *y)
 {
-   if (rd_.proj == 1)
+   if (rd_.proj == PROJ_ADAMS2)
    {
 //#define SPILDEBUG
 #ifdef SPILDEBUG

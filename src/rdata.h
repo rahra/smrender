@@ -46,6 +46,8 @@
 #define MM2LON(x) ((x) * (rd->bb.ru.lon - rd->bb.ll.lon) / PX2MM(rd->w))
 
 
+typedef enum {PROJ_MERC, PROJ_ADAMS2} proj_t;
+
 typedef enum
 {
    // unit "1"
@@ -139,7 +141,7 @@ struct rdata
    //! default image scale
    double img_scale;
    //! projection type (0 = default, i.e. Mercator)
-   int proj;
+   proj_t proj;
 };
 
 

@@ -310,22 +310,25 @@ void init_bbox_mll(struct rdata *rd)
 
    // estimate latitudes on upper on lower border of the chart
    rd->hc = rd->mean_lat_len * rd->h / rd->w;
-   rd->bb.ru.lat = rd->mean_lat + rd->hc / 2.0;
-   rd->bb.ll.lat = rd->mean_lat - rd->hc / 2.0;
-
-   // iteratively approximate latitudes
-   for (int i = 0; i < 3; i++)
+   if (rd->proj == PROJ_MERC)
    {
-      // calculate hyperbolic distoration factors
-      rd->lath = asinh(tan(DEG2RAD(rd->mean_lat)));
-      rd->lath_len = asinh(tan(DEG2RAD(rd->bb.ru.lat))) - asinh(tan(DEG2RAD(rd->bb.ll.lat)));
+      rd->bb.ru.lat = rd->mean_lat + rd->hc / 2.0;
+      rd->bb.ll.lat = rd->mean_lat - rd->hc / 2.0;
 
-      // recalculate northern and southern latitude
-      pxf2geo(0.0, 0.0, &lon, &lat);
-      rd->bb.ru.lat = lat;
-      pxf2geo(0.0, rd->h, &lon, &lat);
-      rd->bb.ll.lat = lat;
-      rd->hc = rd->bb.ru.lat - rd->bb.ll.lat;
+      // iteratively approximate latitudes
+      for (int i = 0; i < 3; i++)
+      {
+         // calculate hyperbolic distoration factors
+         rd->lath = asinh(tan(DEG2RAD(rd->mean_lat)));
+         rd->lath_len = asinh(tan(DEG2RAD(rd->bb.ru.lat))) - asinh(tan(DEG2RAD(rd->bb.ll.lat)));
+
+         // recalculate northern and southern latitude
+         pxf2geo(0.0, 0.0, &lon, &lat);
+         rd->bb.ru.lat = lat;
+         pxf2geo(0.0, rd->h, &lon, &lat);
+         rd->bb.ll.lat = lat;
+         rd->hc = rd->bb.ru.lat - rd->bb.ll.lat;
+      }
    }
 }
 
@@ -756,21 +759,37 @@ void init_rendering_window(struct rdata *rd, char *win, const char *paper)
       rd->mean_lat_len = (rd->bb.ru.lon - rd->bb.ll.lon) * cos(DEG2RAD(rd->mean_lat));
 
       // autofit page
-      if (!rd->w)
-         rd->w = rd->h * rd->mean_lat_len / (rd->bb.ru.lat - rd->bb.ll.lat);
-      else if (!rd->h)
-         rd->h = rd->w * (rd->bb.ru.lat - rd->bb.ll.lat) / rd->mean_lat_len;
-
-      if (rd->mean_lat_len * rd->h / rd->w < rd->bb.ru.lat - rd->bb.ll.lat)
+      switch (rd->proj)
       {
-         rd->mean_lat_len = (rd->bb.ru.lat - rd->bb.ll.lat) * rd->w / rd->h;
-         //log_msg(LOG_INFO, "bbox widened from %.2f to %.2f nm", (rd->bb.ru.lon - rd->bb.ll.lon) * cos(DEG2RAD(rd->mean_lat)) * 60, rd->mean_lat_len * 60);
+         case PROJ_MERC:
+            if (!rd->w)
+               rd->w = rd->h * rd->mean_lat_len / (rd->bb.ru.lat - rd->bb.ll.lat);
+            else if (!rd->h)
+               rd->h = rd->w * (rd->bb.ru.lat - rd->bb.ll.lat) / rd->mean_lat_len;
+
+            if (rd->mean_lat_len * rd->h / rd->w < rd->bb.ru.lat - rd->bb.ll.lat)
+            {
+               rd->mean_lat_len = (rd->bb.ru.lat - rd->bb.ll.lat) * rd->w / rd->h;
+               //log_msg(LOG_INFO, "bbox widened from %.2f to %.2f nm", (rd->bb.ru.lon - rd->bb.ll.lon) * cos(DEG2RAD(rd->mean_lat)) * 60, rd->mean_lat_len * 60);
+            }
+            break;
+
+         case PROJ_ADAMS2:
+            if (!rd->w)
+               rd->w = rd->h;
+            else if (!rd->h)
+               rd->h = rd->w;
+            break;
+
+         default:
+            log_msg(LOG_EMERG, "no such projection, this should never happen...");
+            exit(1);
       }
    }
 
+   page_rotate(rd, angle);
    rd->pgw = rd->w;
    rd->pgh = rd->h;
-   page_rotate(rd, angle);
 
    init_bbox_mll(rd);
 }
@@ -945,13 +964,13 @@ int main(int argc, char *argv[])
 
          case 'p':
             if (!strcasecmp(optarg, "adams2"))
-               rd->proj = 1;
+               rd->proj = PROJ_ADAMS2;
             else if (!strcasecmp(optarg, "mercator"))
-               rd->proj = 0;
+               rd->proj = PROJ_MERC;
             else
             {
                log_msg(LOG_WARN, "unknown projection '%s', defaulting to Mercator", optarg);
-               rd->proj = 0;
+               rd->proj = PROJ_MERC;
             }
             break;
 
