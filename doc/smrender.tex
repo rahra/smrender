@@ -326,7 +326,7 @@ option \optk{a} is set implicitly.
    Select the chart projection. This could either be \textsf{mercator} or
    \textsf{adams2}, the 1st being the default value if the options is omitted.
 
-\item[\optk{P}] \optv{fmt\textbar geom}
+\item[\optk{P}] \optv{fmt\textbar geom}[:\optv{angle}{]}
 
    Select the page format of the output image. The format can be set either named format \optv{fmt} which
    has a specific dimension or as geometry \optv{geom} which contains the width and height of the page
@@ -341,6 +341,11 @@ option \optk{a} is set implicitly.
    the \optv{height} (but never both) is set to zero then \smrender{} will
    calculate the missing dimension according to the bounding box and the
    projection.
+
+   The parameter \optv{angle} (prepended by a colon) is optional and by default
+   set to 0. With this the whole page may be rotated. The rotation is defined
+   clockwise in degrees. Internally, the rotation is not applied before saving
+   the final documents.
 
 \item[\optk{m}] Disable memory mapping (see option \optk{M}).
 
@@ -1403,6 +1408,16 @@ rendered in the second rule.
       It adds the tag \textsf{smrender:dist\_median=*}. The value of the tag
       contains the result of the calculation.
 
+   \item {\sffamily fixbordernodes}
+
+      It turned out that some charting software, at least the in other respects
+      very good chart editing tool
+      \textsf{Josm},\footnote{\url{https://josm.openstreetmap.de/}} does not
+      handle points at the "edge of the world" properly. These are points with
+      latitudes of exactly ±90 degrees or longitudes of ±180 degrees.
+
+      This function reduces the coordinates of such points by 1 arc second.
+
    \item {\sffamily ins\_eqdist} (\textsc{experimental})
 
       This function inserts nodes along a way with equal distances. The
@@ -1451,6 +1466,13 @@ rendered in the second rule.
       Those functions set the direction of a closed way to either clockwise
       (``cw'') or counterclockwise (``ccw'').
 
+   \item {\sffamily simplify}
+
+      This function has the mandatory argument \textsf{dist}. It simplifies
+      ways, i.e. it reduced the number of nodes in a way such that the distance
+      between the nodes is greater than \textsf{dist}. By default \textsf{dist}
+      is set in nautical miles.
+
    \item {\sffamily split}
 
       This action can be applied to nodes only. It splits all ways at the
@@ -1493,6 +1515,18 @@ rendered in the second rule.
       />
    </node>
 \end{verbatim}
+
+   \item {\sffamily virtclosed}
+
+      This function closes ways which are virtually closed. It takes the
+      optional argument \textsf{dist} which defines the maximum distance at
+      which a way is considered as closed. By default it is set to
+      \textsf{VC\_DIST} which is defined in \textsf{smcoast.h} (which is 0.1
+      meters).
+
+      The function calculates the distance between the 1st and the last node of
+      a way. If this distance is lower than \textsf{dist} it closes the way by
+      appending the first node to the end of the way.
 
    \item {\sffamily wrapdetect}
 
