@@ -3266,14 +3266,42 @@ int act_wrapdetect_fini(smrule_t *UNUSED(r))
 }
 
 
-int act_virtclosed_ini(smrule_t *UNUSED(r))
+int act_virtclosed_ini(smrule_t *r)
 {
+   double dist;
+
+   //FIXME: parse_length_def() should be used
+   if (get_param("dist", &dist, r->act) == NULL)
+   {
+      dist = VC_DIST;
+      log_msg(LOG_WARN, "parameter 'dist' missing, setting to default value %f nm", dist);
+   }
+   else
+   {
+      dist /= 60;
+      if (dist <= 0)
+      {
+         log_msg(LOG_ERR, "dist must be > 0 (dist = %f)", dist);
+         return 1;
+      }
+   }
+
+   if ((r->data = malloc(sizeof(dist))) == NULL)
+   {
+      log_errno(LOG_ERR, "failed to get memory");
+      return -1;
+   }
+
+   log_debug("dist = %f", dist);
+   *((double*) r->data) = dist;
    return 0;
 }
 
 
-int act_virtclosed_main(smrule_t *UNUSED(r), osm_way_t *w)
+int act_virtclosed_main(smrule_t *r, osm_way_t *w)
 {
+   double dist = *((double*) r->data);
+
    // safety check
    if (w->obj.type != OSM_WAY)
    {
@@ -3292,13 +3320,15 @@ int act_virtclosed_main(smrule_t *UNUSED(r), osm_way_t *w)
       return 0;
    }
 
-   connect_almost_closed_way(w, VC_DIST);
+   connect_almost_closed_way(w, dist);
    return 0;
 }
 
 
-int act_virtclosed_fini(smrule_t *UNUSED(r))
+int act_virtclosed_fini(smrule_t *r)
 {
+   free(r->data);
+   r->data = NULL;
    return 0;
 }
 
