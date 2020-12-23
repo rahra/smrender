@@ -1815,12 +1815,12 @@ The following commands are currently implemented:
 
    \item {\sffamily incomplete} (\textsc{experimental})
 
-      This action can be applied to relations only.
+      This action can be applied to relations andy ways.
       It takes the single parameter \optv{file} which specifies the
       name of the output file to which it will write the types and ids of all
-      objects which are listed as members of the relation but are not found in
-      the input data. This may be useful to download these objects to complete
-      the input data if necessary.
+      objects which are listed as members of the relation, or nodes which are
+      referred to by a way, but are not found in the input data. This may be
+      useful to download these objects to complete the input data if necessary.
 
       Please note that this currently may not work properly if you specify the
       same file name in several \textsf{incomplete}-rules.
