@@ -84,7 +84,7 @@ int compare_poly_area(const struct poly*, const struct poly*);
 int gather_poly0(osm_way_t *, struct wlist **);
 struct wlist *init_wlist(void);
 const osm_way_t *page_way(void);
-void node_diff(const osm_node_t *, const osm_node_t *, struct pcoord *);
+double node_diff(const osm_node_t *, const osm_node_t *, struct pcoord *);
 double end_node_dist(const osm_way_t *);
 int connect_almost_closed_way(osm_way_t *, double);
 

@@ -864,15 +864,21 @@ static int connect_open(struct pdef *pd, struct wlist *wl, int ocnt, short no_co
 }
 
 
-void node_diff(const osm_node_t *n0, const osm_node_t *n1, struct pcoord *pc)
+double node_diff(const osm_node_t *n0, const osm_node_t *n1, struct pcoord *pc)
 {
    struct coord sc, dc;
+   struct pcoord pc0;
 
    sc.lat = n0->lat;
    sc.lon = n0->lon;
    dc.lat = n1->lat;
    dc.lon = n1->lon;
-   *pc = coord_diff(&sc, &dc);
+
+   pc0 = coord_diff(&sc, &dc);
+   if (pc != NULL)
+      *pc = pc0;
+
+   return pc0.dist;
 }
 
 
