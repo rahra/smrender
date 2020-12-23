@@ -45,17 +45,15 @@ PKG_CHECK_MODULES([LIBJPEG], [libjpeg],
 
 AS_IF([test "x$with_cairo" != "xno"], [
 PKG_CHECK_MODULES([CAIRO], [cairo],
-                  [AC_DEFINE([HAVE_CAIRO], [1], [compile with support for libcairo.])],
-                  []
+                  [
+                   AC_DEFINE([HAVE_CAIRO], [1], [compile with support for libcairo.])
+                   AC_DEFINE([image_t], [cairo_surface_t], [default type of image_t])
+                   ],
+                  [AC_DEFINE([image_t], [void], [default type of image_t])]
                   )
 # this should be done just for the src directory
 #AC_SUBST([CAIRO_CFLAGS])
 #AC_SUBST([CAIRO_LIBS])
-AC_DEFINE([image_t], [cairo_surface_t], [default type of image_t])
-])
-
-AS_IF([test "x$with_cairo" = "xno"], [
-AC_DEFINE([image_t], [void], [default type of image_t])
 ])
 
 AS_IF([test "x$with_librsvg" != "xno"], [
