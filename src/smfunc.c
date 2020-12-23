@@ -1265,6 +1265,13 @@ int act_poly_len_ini(smrule_t *r)
 }
 
 
+/*! This function calculates the length of a way.
+ * @param w Pointer to a osm_way_t object.
+ * @param dist Pointer to a variable which will receive the result. The result
+ * is measured in nautical miles, i.e. arc minutes.
+ * @return On success the function returns 0. In case of error, -1 on is
+ * returned.
+ */
 int poly_len(const osm_way_t *w, double *dist)
 {
    osm_node_t *n;
@@ -1290,6 +1297,7 @@ int poly_len(const osm_way_t *w, double *dist)
    for (i = 0; i < w->ref_cnt - 1; i++)
    {
       c[0] = c[1];
+      //FIXME: the newer function node_diff() could be used
       if ((n = get_object(OSM_NODE, w->ref[i + 1])) == NULL)
       {
          log_msg(LOG_WARN, "way %ld has no such node with id %ld, ignoring", w->obj.id, w->ref[i + 1]);
@@ -3337,6 +3345,89 @@ int act_fixbordernodes_main(smrule_t *UNUSED(r), osm_node_t *n)
 
 int act_fixbordernodes_fini(smrule_t *UNUSED(r))
 {
+   return 0;
+}
+
+
+int act_simplify_ini(smrule_t *r)
+{
+   double dist;
+
+   //FIXME: parse_length_def() should be used
+   if (get_param("dist", &dist, r->act) == NULL)
+   {
+      log_msg(LOG_ERR, "mandatory parameter 'dist' missing");
+      return 1;
+   }
+   dist /= 60;
+
+   if (dist <= 0)
+   {
+      log_msg(LOG_ERR, "dist must be > 0 (dist = %f)", dist);
+      return 1;
+   }
+
+   if ((r->data = malloc(sizeof(dist))) == NULL)
+   {
+      log_errno(LOG_ERR, "failed to get memory");
+      return -1;
+   }
+
+   log_debug("dist = %f", dist);
+   *((double*) r->data) = dist;
+   return 0;
+}
+
+
+
+int act_simplify_main(smrule_t *r, osm_way_t *w)
+{
+   double mindist = *((double*) r->data);
+   osm_node_t *n[2];
+   int i, j;
+
+   if (w->obj.type != OSM_WAY)
+   {
+      log_msg(LOG_WARN, "rule can only be applied to ways");
+      return 1;
+   }
+
+   log_debug("checking way %"PRId64", ref_cnt = %d", w->obj.id, w->ref_cnt);
+   i = 0;
+   if ((n[0] = next_available_node(w, &i)) == NULL)
+   {
+      log_msg(LOG_WARN, "no nodes available in way %"PRId64, w->obj.id);
+      return 1;
+   }
+
+   for (j = i; i < w->ref_cnt;)
+   {
+      n[1] = next_available_node(w, &i);
+      if (node_diff(n[0], n[1], NULL) <= mindist)
+         continue;
+
+      w->ref[j] = w->ref[i - 1];
+      n[0] = n[1];
+      j++;
+   }
+
+   if (j < w->ref_cnt)
+   {
+      w->ref[j] = w->ref[i - 1];
+      j++;
+   }
+
+   w->ref_cnt = j;
+
+   log_debug("simplified way %"PRId64", ref_cnt = %d", w->obj.id, w->ref_cnt);
+   return 0;
+}
+
+
+int act_simplify_fini(smrule_t *r)
+{
+   free(r->data);
+   r->data = NULL;
    return 0;
 }
 
