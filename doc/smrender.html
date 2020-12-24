@@ -370,7 +370,7 @@ option <span style="font-family:helvetica"><span class="small"><b>-a</b></span><
 <div class="p"><!----></div>
    Select the chart projection. This could either be <span style="font-family:helvetica">mercator</span> or
    <span style="font-family:helvetica">adams2</span>, the 1st being the default value if the options is omitted.
-<br /><span style="font-family:helvetica"><span class="small"><b>-P</b></span></span> <span style="font-family:helvetica"><span class="small"><u>fmt geom</u></span></span>
+<br /><span style="font-family:helvetica"><span class="small"><b>-P</b></span></span> <span style="font-family:helvetica"><span class="small"><u>fmt geom</u></span></span>[:<span style="font-family:helvetica"><span class="small"><u>angle</u></span></span>]
 
 <div class="p"><!----></div>
    Select the page format of the output image. The format can be set either named format <span style="font-family:helvetica"><span class="small"><u>fmt</u></span></span> which
@@ -387,6 +387,12 @@ option <span style="font-family:helvetica"><span class="small"><b>-a</b></span><
    the <span style="font-family:helvetica"><span class="small"><u>height</u></span></span> (but never both) is set to zero then <span style="font-family:helvetica"><i><span class="small">Smrender</span></i></span> will
    calculate the missing dimension according to the bounding box and the
    projection.
+
+<div class="p"><!----></div>
+   The parameter <span style="font-family:helvetica"><span class="small"><u>angle</u></span></span> (prepended by a colon) is optional and by default
+   set to 0. With this the whole page may be rotated. The rotation is defined
+   clockwise in degrees. Internally, the rotation is not applied before saving
+   the final documents.
 <br /><span style="font-family:helvetica"><span class="small"><b>-m</b></span></span> Disable memory mapping (see option <span style="font-family:helvetica"><span class="small"><b>-M</b></span></span>).
 <br /><span style="font-family:helvetica"><span class="small"><b>-M</b></span></span>
 
@@ -1671,6 +1677,20 @@ rendered in the second rule.
 <div class="p"><!----></div>
 </li>
 
+<li> <span style="font-family:helvetica">fixbordernodes</span>
+
+<div class="p"><!----></div>
+      It turned out that some charting software, at least the in other respects
+      very good chart editing tool
+      <span style="font-family:helvetica">Josm</span>,<a href="#tthFtNtABF" id="tthFrefABF"><sup>15</sup></a> does not
+      handle points at the &#235;dge of the world" properly. These are points with
+      latitudes of exactly ±90 degrees or longitudes of ±180 degrees.
+
+<div class="p"><!----></div>
+      This function reduces the coordinates of such points by 1 arc second.
+<div class="p"><!----></div>
+</li>
+
 <li> <span style="font-family:helvetica">ins_eqdist</span> ( <span style="font-size:x-small">EXPERIMENTAL</span>)
 
 <div class="p"><!----></div>
@@ -1738,6 +1758,16 @@ rendered in the second rule.
 <div class="p"><!----></div>
 </li>
 
+<li> <span style="font-family:helvetica">simplify</span>
+
+<div class="p"><!----></div>
+      This function has the mandatory argument <span style="font-family:helvetica">dist</span>. It simplifies
+      ways, i.e. it reduced the number of nodes in a way such that the distance
+      between the nodes is greater than <span style="font-family:helvetica">dist</span>. By default <span style="font-family:helvetica">dist</span>
+      is set in nautical miles.
+<div class="p"><!----></div>
+</li>
+
 <li> <span style="font-family:helvetica">split</span>
 
 <div class="p"><!----></div>
@@ -1795,6 +1825,22 @@ rendered in the second rule.
 &nbsp;&nbsp;&nbsp;&lt;/node&#62;
 
 </pre>
+<div class="p"><!----></div>
+</li>
+
+<li> <span style="font-family:helvetica">virtclosed</span>
+
+<div class="p"><!----></div>
+      This function closes ways which are virtually closed. It takes the
+      optional argument <span style="font-family:helvetica">dist</span> which defines the maximum distance at
+      which a way is considered as closed. By default it is set to
+      <span style="font-family:helvetica">VC_DIST</span> which is defined in <span style="font-family:helvetica">smcoast.h</span> (which is 0.1
+      meters).
+
+<div class="p"><!----></div>
+      The function calculates the distance between the 1st and the last node of
+      a way. If this distance is lower than <span style="font-family:helvetica">dist</span> it closes the way by
+      appending the first node to the end of the way.
 <div class="p"><!----></div>
 </li>
 
@@ -1881,7 +1927,7 @@ object <span style="font-family:helvetica"><span class="small"><u>library</u></s
 "<span style="font-family:helvetica">act_</span>" and suffixed by "<span style="font-family:helvetica">_main</span>".  If <span style="font-family:helvetica"><span class="small"><u>library</u></span></span> contains a <span style="font-family:helvetica">'/'</span>, the path is
 resolved and the shared object loaded from that location.  Otherwise the
 dynamic linker tries to find the library in the appropriate system
-directories.<a href="#tthFtNtABF" id="tthFrefABF"><sup>15</sup></a>
+directories.<a href="#tthFtNtABG" id="tthFrefABG"><sup>16</sup></a>
 
 <div class="p"><!----></div>
 Beside linking the function itself, <span style="font-family:helvetica"><i><span class="small">Smrender</span></i></span> tries to import the optional
@@ -2197,12 +2243,12 @@ The following commands are currently implemented:
 <li> <span style="font-family:helvetica">incomplete</span> ( <span style="font-size:x-small">EXPERIMENTAL</span>)
 
 <div class="p"><!----></div>
-      This action can be applied to relations only.
+      This action can be applied to relations andy ways.
       It takes the single parameter <span style="font-family:helvetica"><span class="small"><u>file</u></span></span> which specifies the
       name of the output file to which it will write the types and ids of all
-      objects which are listed as members of the relation but are not found in
-      the input data. This may be useful to download these objects to complete
-      the input data if necessary.
+      objects which are listed as members of the relation, or nodes which are
+      referred to by a way, but are not found in the input data. This may be
+      useful to download these objects to complete the input data if necessary.
 
 <div class="p"><!----></div>
       Please note that this currently may not work properly if you specify the
@@ -2261,7 +2307,7 @@ additional library which is <span style="font-family:helvetica">libsmfilter</spa
 </a>
 
 <div class="p"><!----></div>
-<span style="font-family:helvetica">Smfilter</span><a href="#tthFtNtABG" id="tthFrefABG"><sup>16</sup></a> is
+<span style="font-family:helvetica">Smfilter</span><a href="#tthFtNtABH" id="tthFrefABH"><sup>17</sup></a> is
 a preprocessor for Osmarender.  It adds some sea chart specific virtual nodes
 and ways to simplify the rendering process.  The functionality of
 <span style="font-family:helvetica">smfilter</span> is now integrated into <span style="font-family:helvetica"><i><span class="small">Smrender</span></i></span> with
@@ -2285,7 +2331,7 @@ those objects on the page.
 
 <div class="p"><!----></div>
 This function is a full replacement for <span style="font-family:helvetica">smfilter</span>.
-<span style="font-family:helvetica">Smfilter</span> took several options<a href="#tthFtNtABH" id="tthFrefABH"><sup>17</sup></a> to adjust the
+<span style="font-family:helvetica">Smfilter</span> took several options<a href="#tthFtNtABI" id="tthFrefABI"><sup>18</sup></a> to adjust the
 rendering behavior. These are the options <span style="font-family:helvetica"><span class="small"><b>-a</b></span></span>, <span style="font-family:helvetica"><span class="small"><b>-b</b></span></span>, <span style="font-family:helvetica"><span class="small"><b>-d</b></span></span>, and
 <span style="font-family:helvetica"><span class="small"><b>-r</b></span></span> in particular.  <span style="font-family:helvetica">Libsmfilter</span> now takes exactly the same
 parameters since it is just a port.  The parameters must be fed to it within
@@ -2355,8 +2401,8 @@ This is an example for calling <span style="font-family:helvetica">vsector()</sp
 <div class="p"><!----></div>
 A full description of the output produced by <span style="font-family:helvetica">vsector()</span> is found in the
 <span style="font-family:helvetica">smfilter(1)</span> man
-page<a href="#tthFtNtABI" id="tthFrefABI"><sup>18</sup></a> and in the
-OSM wiki.<a href="#tthFtNtABJ" id="tthFrefABJ"><sup>19</sup></a>
+page<a href="#tthFtNtABJ" id="tthFrefABJ"><sup>19</sup></a> and in the
+OSM wiki.<a href="#tthFtNtACA" id="tthFrefACA"><sup>20</sup></a>
 
 <div class="p"><!----></div>
       <a id="tth_sEc8.1.2"></a><h4>
@@ -2403,11 +2449,11 @@ other rendering rules.
 <span style="font-family:helvetica">Pchar()</span> generates a string which contains the characteristics of the
 light as it is used in official sea charts and the <em>List of Lights</em>. See
 Section P and P.16 in particular if the <em>Chart No.
-1</em>.<a href="#tthFtNtACA" id="tthFrefACA"><sup>20</sup></a>
+1</em>.<a href="#tthFtNtACB" id="tthFrefACB"><sup>21</sup></a>
 
 <div class="p"><!----></div>
 The function analyzes the tags of an object. If it contains valid
-<em>OpenSeamap</em> tags<a href="#tthFtNtACB" id="tthFrefACB"><sup>21</sup></a> it
+<em>OpenSeamap</em> tags<a href="#tthFtNtACC" id="tthFrefACC"><sup>22</sup></a> it
 generates the light string and adds the new OSM tag
 <span style="font-family:helvetica">seamark:ligh_character=*</span> to the object. The value of the tag contains
 the string which may be rendered by a subsequent rule.
@@ -2459,7 +2505,7 @@ r45mm
 </a>
 </div>
 The parameter <span style="font-family:helvetica"><span class="small"><u>radius</u></span></span> is mandatory and defines the outer radius of the
-compass. It is given as degrees on a Meridian.<a href="#tthFtNtACC" id="tthFrefACC"><sup>22</sup></a> 
+compass. It is given as degrees on a Meridian.<a href="#tthFtNtACD" id="tthFrefACD"><sup>23</sup></a> 
 <div class="p"><!----></div>
 The parameter <span style="font-family:helvetica"><span class="small"><u>variation</u></span></span> sets the variation, i.e. the amount of degress
 to which the crosslines will be rotated. It is set in degrees. A positive value
@@ -2494,7 +2540,7 @@ depths (I.31).
 <div class="p"><!----></div>
 Tags use for it is <span style="font-family:helvetica">seamark:sounding=*</span> containing the depth in meters,
 and optional <span style="font-family:helvetica">seamark:sounding: quality = {approx | reported_unconfirmed}</span>.
-See <a href="http://www.cypherpunk.at/2012/03/11/rendering-depths-with-smrender/">"Rendering Depths with <span style="font-family:helvetica"><i><span class="small">Smrender</span></i></span>"</a><a href="#tthFtNtACD" id="tthFrefACD"><sup>23</sup></a> for 
+See <a href="http://www.cypherpunk.at/2012/03/11/rendering-depths-with-smrender/">"Rendering Depths with <span style="font-family:helvetica"><i><span class="small">Smrender</span></i></span>"</a><a href="#tthFtNtACE" id="tthFrefACE"><sup>24</sup></a> for 
 more details.
 
 <div class="p"><!----></div>
@@ -2508,7 +2554,7 @@ compile, and install <span style="font-family:helvetica"><i><span class="small">
 
 <div class="p"><!----></div>
 Create a working directory somewhere.
-From the <span style="font-family:helvetica"><i><span class="small">Smrender</span></i></span> download URL<a href="#tthFtNtACE" id="tthFrefACE"><sup>24</sup></a> get the seamap icons package (<span style="font-family:helvetica">icons.tbz2</span>) and
+From the <span style="font-family:helvetica"><i><span class="small">Smrender</span></i></span> download URL<a href="#tthFtNtACF" id="tthFrefACF"><sup>25</sup></a> get the seamap icons package (<span style="font-family:helvetica">icons.tbz2</span>) and
 extract it.
 
 <div class="p"><!----></div>
@@ -2519,7 +2565,7 @@ tar&nbsp;xvfj&nbsp;icons.tbz2
 </pre>
 
 <div class="p"><!----></div>
-Now we have to get some OSM data. We just use the Overpass API<a href="#tthFtNtACF" id="tthFrefACF"><sup>25</sup></a> to get a small window.
+Now we have to get some OSM data. We just use the Overpass API<a href="#tthFtNtACG" id="tthFrefACG"><sup>26</sup></a> to get a small window.
 
 <div class="p"><!----></div>
 
@@ -2802,7 +2848,7 @@ A&nbsp;&nbsp;Compiling and Installing</h2> <a id="sec:compile">
 
 <div class="p"><!----></div>
 <span style="font-family:helvetica"><i><div class="small">Smrender</div></i></span> should be simple to compile. It depends on
-<span style="font-family:helvetica">libcairo</span><a href="#tthFtNtACG" id="tthFrefACG"><sup>26</sup></a> and optionally
+<span style="font-family:helvetica">libcairo</span><a href="#tthFtNtACH" id="tthFrefACH"><sup>27</sup></a> and optionally
 on <span style="font-family:helvetica">fontconfig</span> and <span style="font-family:helvetica">librsvg2</span>. Although they are not mandatory
 it is still suggested to use those packages. With <span style="font-family:helvetica">fontconfig</span> you can
 specify simple font faces such as e.g. <span style="font-family:helvetica">sans-serif</span> or
@@ -2820,7 +2866,7 @@ it can be used for OSM data processing but not for rendering charts (graphics
 output).
 
 <div class="p"><!----></div>
-Download the most recent <span style="font-family:helvetica"><i><span class="small">Smrender</span></i></span> package from its main URL.<a href="#tthFtNtACH" id="tthFrefACH"><sup>27</sup></a>
+Download the most recent <span style="font-family:helvetica"><i><span class="small">Smrender</span></i></span> package from its main URL.<a href="#tthFtNtACI" id="tthFrefACI"><sup>28</sup></a>
 The packages includes the source code, some sea chart rulesets and a few
 ruleset examples, and a skelleton library (<span style="font-family:helvetica">libskel</span>) to show how to
 implement an own library with extension functions. It further includes
@@ -2833,7 +2879,7 @@ directory.
 Then run the configure script <span style="font-family:helvetica">./configure</span>, then build it with <span style="font-family:helvetica">make</span>. It should compile fine. Finally, there is the executable <span style="font-family:helvetica">smrender</span> and
 the <span style="font-family:helvetica">libsmfilter.so</span>. The latter is not mandatory for running <span style="font-family:helvetica"><i><span class="small">Smrender</span></i></span> since it
 may just be loaded dynamically by the rule set (see Section <a href="#sec:smfilter">8.1</a>). Those files
-may be installed into the appropriate directories on your system with <span style="font-family:helvetica">sudo make install</span>.<a href="#tthFtNtACI" id="tthFrefACI"><sup>28</sup></a>
+may be installed into the appropriate directories on your system with <span style="font-family:helvetica">sudo make install</span>.<a href="#tthFtNtACJ" id="tthFrefACJ"><sup>29</sup></a>
 
 <div class="p"><!----></div>
 <span style="font-family:helvetica"><i><div class="small">Smrender</div></i></span> is known to compile with <span style="font-family:helvetica">gcc 4.x</span> on Debian Linux (Lenny,
@@ -3004,36 +3050,38 @@ and
 <div class="p"><!----></div>
 <a id="tthFtNtABE"></a><a href="#tthFrefABE"><sup>14</sup></a><a href="https://en.wikipedia.org/wiki/Clipping_%28computer_graphics%29"><tt>https://en.wikipedia.org/wiki/Clipping_\%28computer_graphics\%29</tt></a>
 <div class="p"><!----></div>
-<a id="tthFtNtABF"></a><a href="#tthFrefABF"><sup>15</sup></a>See <span style="font-family:helvetica">dlopen(3)</span> for details.
+<a id="tthFtNtABF"></a><a href="#tthFrefABF"><sup>15</sup></a><a href="https://josm.openstreetmap.de/"><tt>https://josm.openstreetmap.de/</tt></a>
 <div class="p"><!----></div>
-<a id="tthFtNtABG"></a><a href="#tthFrefABG"><sup>16</sup></a>See <a href="http://www.abenteuerland.at/smfilter/"><tt>http://www.abenteuerland.at/smfilter/</tt></a>
+<a id="tthFtNtABG"></a><a href="#tthFrefABG"><sup>16</sup></a>See <span style="font-family:helvetica">dlopen(3)</span> for details.
 <div class="p"><!----></div>
-<a id="tthFtNtABH"></a><a href="#tthFrefABH"><sup>17</sup></a>See
+<a id="tthFtNtABH"></a><a href="#tthFrefABH"><sup>17</sup></a>See <a href="http://www.abenteuerland.at/smfilter/"><tt>http://www.abenteuerland.at/smfilter/</tt></a>
+<div class="p"><!----></div>
+<a id="tthFtNtABI"></a><a href="#tthFrefABI"><sup>18</sup></a>See
 <a href="http://www.abenteuerland.at/smfilter/smfilter.html"><tt>http://www.abenteuerland.at/smfilter/smfilter.html</tt></a>
 <div class="p"><!----></div>
-<a id="tthFtNtABI"></a><a href="#tthFrefABI"><sup>18</sup></a><a href="http://www.abenteuerland.at/smfilter/smfilter.html"><tt>http://www.abenteuerland.at/smfilter/smfilter.html</tt></a>
+<a id="tthFtNtABJ"></a><a href="#tthFrefABJ"><sup>19</sup></a><a href="http://www.abenteuerland.at/smfilter/smfilter.html"><tt>http://www.abenteuerland.at/smfilter/smfilter.html</tt></a>
 <div class="p"><!----></div>
-<a id="tthFtNtABJ"></a><a href="#tthFrefABJ"><sup>19</sup></a><a href="http://wiki.openstreetmap.org/wiki/OpenSeaMap/smfilter"><tt>http://wiki.openstreetmap.org/wiki/OpenSeaMap/smfilter</tt></a>
+<a id="tthFtNtACA"></a><a href="#tthFrefACA"><sup>20</sup></a><a href="http://wiki.openstreetmap.org/wiki/OpenSeaMap/smfilter"><tt>http://wiki.openstreetmap.org/wiki/OpenSeaMap/smfilter</tt></a>
 <div class="p"><!----></div>
-<a id="tthFtNtACA"></a><a href="#tthFrefACA"><sup>20</sup></a><a href="http://www.nauticalcharts.noaa.gov/mcd/chart1/ChartNo1.pdf"><tt>http://www.nauticalcharts.noaa.gov/mcd/chart1/ChartNo1.pdf</tt></a>
+<a id="tthFtNtACB"></a><a href="#tthFrefACB"><sup>21</sup></a><a href="http://www.nauticalcharts.noaa.gov/mcd/chart1/ChartNo1.pdf"><tt>http://www.nauticalcharts.noaa.gov/mcd/chart1/ChartNo1.pdf</tt></a>
 <div class="p"><!----></div>
-<a id="tthFtNtACB"></a><a href="#tthFrefACB"><sup>21</sup></a>See
+<a id="tthFtNtACC"></a><a href="#tthFrefACC"><sup>22</sup></a>See
 <a href="http://wiki.openstreetmap.org/wiki/OpenSeaMap/Lights_Data_Model"><tt>http://wiki.openstreetmap.org/wiki/OpenSeaMap/Lights_Data_Model</tt></a>.
 <div class="p"><!----></div>
-<a id="tthFtNtACC"></a><a href="#tthFrefACC"><sup>22</sup></a>This is subject to being
+<a id="tthFtNtACD"></a><a href="#tthFrefACD"><sup>23</sup></a>This is subject to being
 improved in future releases.
 <div class="p"><!----></div>
-<a id="tthFtNtACD"></a><a href="#tthFrefACD"><sup>23</sup></a><a href="http://www.cypherpunk.at/2012/03/11/rendering-depths-with-smrender/"><tt>http://www.cypherpunk.at/2012/03/11/rendering-depths-with-smrender/</tt></a>
+<a id="tthFtNtACE"></a><a href="#tthFrefACE"><sup>24</sup></a><a href="http://www.cypherpunk.at/2012/03/11/rendering-depths-with-smrender/"><tt>http://www.cypherpunk.at/2012/03/11/rendering-depths-with-smrender/</tt></a>
 <div class="p"><!----></div>
-<a id="tthFtNtACE"></a><a href="#tthFrefACE"><sup>24</sup></a><a href="http://www.abenteuerland.at/smrender/download/"><tt>http://www.abenteuerland.at/smrender/download/</tt></a>
+<a id="tthFtNtACF"></a><a href="#tthFrefACF"><sup>25</sup></a><a href="http://www.abenteuerland.at/smrender/download/"><tt>http://www.abenteuerland.at/smrender/download/</tt></a>
 <div class="p"><!----></div>
-<a id="tthFtNtACF"></a><a href="#tthFrefACF"><sup>25</sup></a><a href="http://wiki.openstreetmap.org/wiki/Overpass_API"><tt>http://wiki.openstreetmap.org/wiki/Overpass_API</tt></a>.
+<a id="tthFtNtACG"></a><a href="#tthFrefACG"><sup>26</sup></a><a href="http://wiki.openstreetmap.org/wiki/Overpass_API"><tt>http://wiki.openstreetmap.org/wiki/Overpass_API</tt></a>.
 <div class="p"><!----></div>
-<a id="tthFtNtACG"></a><a href="#tthFrefACG"><sup>26</sup></a><a href="http://www.cairographics.org/"><tt>http://www.cairographics.org/</tt></a>
+<a id="tthFtNtACH"></a><a href="#tthFrefACH"><sup>27</sup></a><a href="http://www.cairographics.org/"><tt>http://www.cairographics.org/</tt></a>
 <div class="p"><!----></div>
-<a id="tthFtNtACH"></a><a href="#tthFrefACH"><sup>27</sup></a><a href="http://www.abenteuerland.at/download/smrender/"><tt>http://www.abenteuerland.at/download/smrender/</tt></a>
+<a id="tthFtNtACI"></a><a href="#tthFrefACI"><sup>28</sup></a><a href="http://www.abenteuerland.at/download/smrender/"><tt>http://www.abenteuerland.at/download/smrender/</tt></a>
 <div class="p"><!----></div>
-<a id="tthFtNtACI"></a><a href="#tthFrefACI"><sup>28</sup></a>Root privileges are required to install.
+<a id="tthFtNtACJ"></a><a href="#tthFrefACJ"><sup>29</sup></a>Root privileges are required to install.
 <br /><br /><hr /><small>File translated from
 T<sub><span class="small">E</span></sub>X
 by <a href="http://hutchinson.belmont.ma.us/tth/">
