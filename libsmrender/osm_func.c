@@ -310,3 +310,59 @@ const char *type_str(int type)
    }
 }
 
+
+/*! Reallocate tag memory for cnt number of tags. The newly added tags (if cnt
+ * > o->tag_cnt) are NOT initialized!
+ * @param o Pointer to OSM object.
+ * @param cnt Total number of tags.
+ * @return The function returns the number of tags before the reallocation. The
+ * member o->tag_cnt is set to cnt. On error -1 is returned. See realloc(3) for
+ * possible errors.
+ */
+int realloc_tags(osm_obj_t *o, int cnt)
+{
+   struct otag *new_tags;
+   int ocnt;
+
+   if ((new_tags = realloc(o->otag, cnt * sizeof(*o->otag))) == NULL)
+      return -1;
+   o->otag = new_tags;
+   ocnt = o->tag_cnt;
+   o->tag_cnt = cnt;
+   mem_usage_ += (cnt - ocnt) * sizeof(*o->otag);
+   return ocnt;
+}
+
+
+/*! This function reallocates the ref memory of ways. The newly allocated refs
+ * are NOT initialized!
+ * @param w Pointer to osm_way_t.
+ * @param cnt Total number of refs.
+ * @return In case of error -1 is returned, otherwise the old ref_cnt is
+ * returned.
+ */
+int realloc_refs(osm_way_t *w, int cnt)
+{
+   int64_t *ref;
+   int ocnt;
+
+   // safety checks
+   if (w == NULL || cnt < 0)
+   {
+      log_msg(LOG_EMERG, "parameter error");
+      return -1;
+   }
+
+   if ((ref = realloc(w->ref, cnt * sizeof(*ref))) == NULL)
+   {
+      log_errno(LOG_EMERG, "could not realloc refs");
+      return -1;
+   }
+
+   w->ref = ref;
+   ocnt = w->ref_cnt;
+   w->ref_cnt = cnt;
+   mem_usage_ += (cnt - ocnt) * sizeof(*ref);
+   return cnt;
+}
+
