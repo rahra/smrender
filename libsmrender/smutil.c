@@ -174,6 +174,24 @@ void *get_object(int type, int64_t id)
 }
 
 
+/*! This function removes an object from the tree.
+ * @param type Type of object (OSM_NODE, OSM_WAY, or OSM_REL).
+ * @param id Object id.
+ * @return The function returns a pointer to the OSM object. If the object did
+ * not exist in the tree, NULL is returned.
+ */
+void *rem_object(int type, int64_t id)
+{
+   void *o;
+
+   if ((o = get_object(type, id)) == NULL)
+      return NULL;
+
+   put_object0(&obj_tree_, id, NULL, type - 1);
+   return o;
+}
+
+
 /***** The following functions should be moved to different file. *****/
 
 
