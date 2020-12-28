@@ -1269,8 +1269,7 @@ int act_poly_len_ini(smrule_t *r)
  * @param w Pointer to a osm_way_t object.
  * @param dist Pointer to a variable which will receive the result. The result
  * is measured in nautical miles, i.e. arc minutes.
- * @return On success the function returns 0. In case of error, -1 on is
- * returned.
+ * @return On success the function returns 0. In case of error, -1 is returned.
  */
 int poly_len(const osm_way_t *w, double *dist)
 {
@@ -3409,17 +3408,35 @@ int act_simplify_ini(smrule_t *r)
 }
 
 
-
 int act_simplify_main(smrule_t *r, osm_way_t *w)
 {
    double mindist = *((double*) r->data);
    osm_node_t *n[2];
+   double len;
    int i, j;
 
+   // safety check
    if (w->obj.type != OSM_WAY)
    {
       log_msg(LOG_WARN, "rule can only be applied to ways");
       return 1;
+   }
+
+   // calculate overall length of way
+   if (poly_len(w, &len))
+   {
+      log_msg(LOG_WARN, "way %"PRId64" should be deleted", w->obj.id);
+      return 1;
+   }
+
+   // check if way is shorter than the minimum distance
+   if (len / 60 < mindist)
+      goto asm_exit;
+
+   if (len / 60 < 4 * mindist)
+   {
+      mindist = len / 60 / 4;
+      log_debug("reducint mindist to %f", mindist);
    }
 
    log_debug("checking way %"PRId64", ref_cnt = %d", w->obj.id, w->ref_cnt);
@@ -3433,7 +3450,7 @@ int act_simplify_main(smrule_t *r, osm_way_t *w)
    for (j = i; i < w->ref_cnt;)
    {
       n[1] = next_available_node(w, &i);
-      if (node_diff(n[0], n[1], NULL) <= mindist)
+      if (node_diff(n[0], n[1], NULL) < mindist)
          continue;
 
       w->ref[j] = w->ref[i - 1];
@@ -3449,7 +3466,20 @@ int act_simplify_main(smrule_t *r, osm_way_t *w)
 
    w->ref_cnt = j;
 
+   // do safety check
+   if (check_way(w))
+   {
+      len = 0;
+      goto asm_exit;
+   }
+
    log_debug("simplified way %"PRId64", ref_cnt = %d", w->obj.id, w->ref_cnt);
+   return 0;
+
+asm_exit:
+   log_debug("deleting short way %"PRId64" (len = %f)", w->obj.id, len);
+   rem_object(OSM_WAY, w->obj.id);
+   free_obj(&w->obj);
    return 0;
 }
 
@@ -3458,6 +3488,44 @@ int act_simplify_fini(smrule_t *r)
 {
    free(r->data);
    r->data = NULL;
+   return 0;
+}
+
+
+int act_check_ini(smrule_t *UNUSED(r))
+{
+   return 0;
+}
+
+
+int act_check_main(smrule_t *UNUSED(r), osm_obj_t *o)
+{
+   switch (o->type)
+   {
+      case OSM_NODE:
+      case OSM_REL:
+         log_msg(LOG_INFO, "not implemented yet");
+         break;
+
+      case OSM_WAY:
+         if (check_way((osm_way_t*) o))
+         {
+            log_msg(LOG_INFO, "removing way %"PRId64, o->id);
+            rem_object(o->type, o->id);
+            free_obj(o);
+         }
+         break;
+
+      default:
+         log_msg(LOG_EMERG, "this should never happen");
+   }
+
+   return 0;
+}
+
+
+int act_check_fini(smrule_t *UNUSED(r))
+{
    return 0;
 }
 

@@ -1101,6 +1101,18 @@ int act_cat_poly_ini(smrule_t *r)
 }
 
 
+int check_way(const osm_way_t *w)
+{
+   int i;
+
+   for (i = 1; i < w->ref_cnt; i++)
+      if (w->ref[i] != w->ref[0])
+         break;
+
+   return i == w->ref_cnt;
+}
+
+
 static int cat_poly(smrule_t *r, osm_obj_t *o)
 {
    // safety check: ignore illegal ways
@@ -1113,6 +1125,15 @@ static int cat_poly(smrule_t *r, osm_obj_t *o)
 // safety check was added to count_poly_refs().
 //   if (((osm_way_t*) o)->ref[0] == ((osm_way_t*) o)->ref[((osm_way_t*) o)->ref_cnt - 1])
 //      return 0;
+
+   //safety check, 0-length may ways cause chaos..
+   for (int i = 0; i < ((osm_way_t*) o)->ref_cnt; i++)
+
+   if (check_way((osm_way_t*) o))
+   {
+      log_debug("ignoring 0-length way %"PRId64", ref_cnt = %d", o->id, ((osm_way_t*) o)->ref_cnt);
+      return 0;
+   }
 
    return gather_poly0((osm_way_t*) o, &((struct catpoly*)r->data)->wl);
 
