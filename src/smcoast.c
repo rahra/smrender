@@ -1064,22 +1064,35 @@ static int cat_poly_ini(smrule_t *r)
    if ((cp->obj.otag = malloc(sizeof(*cp->obj.otag) * r->oo->tag_cnt)) == NULL)
    {
       log_msg(LOG_ERR, "malloc() failed in cat_poly_ini(): %s", strerror(errno));
-      free(cp);
-      return -1;
+      goto cpi_exit;
    }
    memcpy(cp->obj.otag, r->oo->otag, sizeof(*cp->obj.otag) * r->oo->tag_cnt);
    cp->obj.tag_cnt = r->oo->tag_cnt;
 
    // read 'copy' parameters
    if (cat_poly_ini_copy(r->act->fp, &cp->obj) == -1)
-   {
-      free(cp);
-      return -1;
-   }
+         goto cpi_exit;
 
-   log_msg(LOG_DEBUG, "ign_incomplete = %d, no_corner = %d", cp->ign_incomplete, cp->no_corner);
+   //FIXME: parse_length_def() should be used
+   if (get_param("vcdist", &cp->vcdist, r->act) != NULL)
+   {
+      cp->vcdist /= 60;
+      if (cp->vcdist < 0)
+      {
+         log_msg(LOG_ERR, "vcdist must be >= 0 (dist = %f)", cp->vcdist);
+         goto cpi_exit;
+      }
+   }
+   else
+      cp->vcdist = VC_DIST;
+
+   log_msg(LOG_DEBUG, "ign_incomplete = %d, no_corner = %d, vcdist = %f", cp->ign_incomplete, cp->no_corner, cp->vcdist * 60);
    r->data = cp;
    return 0;
+
+cpi_exit:
+   free(cp);
+   return -1;
 }
 
 
@@ -1159,7 +1172,7 @@ static int cat_poly_fini(smrule_t *r)
    poly_join_tags(wl, r);
 
    log_debug("closing almost closed ways, ocnt = %d", ocnt);
-   ocnt -= connect_almost_closed(wl, VC_DIST);
+   ocnt -= connect_almost_closed(wl, cp->vcdist);
 
    log_debug("trimming ways, open_count = %d", ocnt);
    ocnt = trim_ways(wl);
