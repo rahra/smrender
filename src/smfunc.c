@@ -3157,12 +3157,15 @@ int act_transcoord_fini(smrule_t *r)
 }
 
 
-int act_wrapdetect_ini(smrule_t *UNUSED(r))
+int act_wrapdetect_ini(smrule_t *r)
 {
+   r->data = get_param_bool("noinsert", r->act) ? (void*) 1 : NULL;
    return 0;
 }
 
 
+/*! Calculate the latitude between 2 coordinates at a given latitude.
+ */
 double lat_dest_lon(const struct coord *sc, const struct coord *dc, double dlon)
 {
    double dx, dy;
@@ -3177,20 +3180,22 @@ double lat_dest_lon(const struct coord *sc, const struct coord *dc, double dlon)
 }
 
 
-int act_wrapdetect_main(smrule_t *UNUSED(r), osm_way_t *w)
+int act_wrapdetect_main(smrule_t *r, osm_way_t *w)
 {
 #define MAX_DLON 180
    osm_node_t *n[2];
    struct coord sc, dc;
    struct pcoord pc;
    double dlon, dlat;
-   int i, j;
+   int i, j, noinsert;
 
    if (w->obj.type != OSM_WAY)
    {
       log_msg(LOG_WARN, "may be applied to ways only!");
       return 1;
    }
+
+   noinsert = r->data != NULL;
 
    for (i = 0; i < w->ref_cnt; n[0] = n[1])
    {
@@ -3214,6 +3219,18 @@ int act_wrapdetect_main(smrule_t *UNUSED(r), osm_way_t *w)
       // continue at next node if no wrap occurs
       if (fabs(dlon) <= MAX_DLON)
          continue;
+
+      if (noinsert)
+      {
+         log_debug("adding tag to node %"PRId64, n[0]->obj.id);
+         if (realloc_tags(&n[0]->obj, n[0]->obj.tag_cnt + 1) == -1)
+         {
+            log_errno(LOG_ERR, "realloc_tags()");
+            return -1;
+         }
+         set_const_tag(&n[0]->obj.otag[n[0]->obj.tag_cnt - 1], "smrender:wrapdetect", "split");
+         continue;
+      }
 
       // wrap detected, calculate intermediate node at the date line
       sc.lat = n[0]->lat;
