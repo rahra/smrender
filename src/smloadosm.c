@@ -47,7 +47,7 @@ static volatile sig_atomic_t usr1_ = 0;
 
 static int proc_osm_node(const hpx_tag_t *tag, osm_obj_t *o)
 {
-   int i;
+   int i, action = 0;
 
    if (!bs_cmp(tag->tag, "node"))
       o->type = OSM_NODE;
@@ -82,13 +82,19 @@ static int proc_osm_node(const hpx_tag_t *tag, osm_obj_t *o)
       else if (!bs_cmp(tag->attr[i].name, "timestamp"))
          o->tim = parse_time(tag->attr[i].value);
       else if (!bs_cmp(tag->attr[i].name, "visible") && !bs_cmp(tag->attr[i].value, "false"))
-            o->vis = 0;
+         o->vis = 0;
+      else if (!bs_cmp(tag->attr[i].name, "action") && !bs_cmp(tag->attr[i].value, "delete"))
+         action = 1;
    }
 
    if (!o->ver)
       o->ver = 1;
    if (!o->tim)
       o->tim = time(NULL);
+
+   // set objects marked for deletion to invisible
+   if (action)
+      o->vis = 0;
 
    return tag->type;
 }
@@ -357,7 +363,7 @@ int read_osm_obj(hpx_ctrl_t *ctl, hpx_tree_t **tlistptr, osm_obj_t **obj)
                      log_msg(LOG_WARN, "single <relation/>?");
                      *obj = (osm_obj_t*) malloc_rel(0, 0);
                      break;
-                     
+
                   default:
                      log_msg(LOG_ERR, "type %d no implemented yet", o.o.type);
                      clear_ostor(&o);
@@ -396,7 +402,7 @@ int read_osm_obj(hpx_ctrl_t *ctl, hpx_tree_t **tlistptr, osm_obj_t **obj)
                   case OSM_REL:
                      *obj = (osm_obj_t*) malloc_rel(o.o.tag_cnt, o.r.mem_cnt);
                      break;
- 
+
                   default:
                      log_msg(LOG_EMERG, "this should never happen! type %d no implemented yet", o.o.type);
                      clear_ostor(&o);
