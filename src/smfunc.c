@@ -3475,7 +3475,7 @@ int act_simplify_main(smrule_t *r, osm_way_t *w)
       j++;
    }
 
-   if (j < w->ref_cnt)
+   if (j < w->ref_cnt - 1)
    {
       w->ref[j] = w->ref[i - 1];
       j++;
