@@ -88,7 +88,7 @@ const osm_way_t *page_way(void);
 double node_diff(const osm_node_t *, const osm_node_t *, struct pcoord *);
 double end_node_dist(const osm_way_t *);
 int connect_almost_closed_way(osm_way_t *, double);
-int check_way(const osm_way_t *);
+int check_way(osm_way_t *);
 
 
 #endif

@@ -1114,7 +1114,17 @@ int act_cat_poly_ini(smrule_t *r)
 }
 
 
-int check_way(const osm_way_t *w)
+/*! This function does some data checks on a way's references. If the first or
+ * last node appears multiple times at the beginning or end, the nodes are
+ * eliminated. If a way consists only of nodes with the same id it actually has
+ * 0 length. In this case 1 is returned and the way may be removed.
+ * @param w Pointer to the way to check.
+ * @return The function returns 1 if it is a 0-length way, meaning all nodes
+ * have the same id. Otherwise 0 is returned. Nevertheless, if 0 is returned
+ * some nodes may still have been removed at the beginning and/or the end. A
+ * different ref_cnt before and after the call indicates this.
+ */
+int check_way(osm_way_t *w)
 {
    int i;
 
@@ -1122,7 +1132,38 @@ int check_way(const osm_way_t *w)
       if (w->ref[i] != w->ref[0])
          break;
 
-   return i == w->ref_cnt;
+   // all nodes are the same
+   if (i >= w->ref_cnt)
+      goto cn_err_exit;
+
+   // first node appears multiple times
+   if (i > 1)
+   {
+      log_debug("eliminating duplicate starting nodes 1 - %d in way %"PRId64, i - 1, w->obj.id);
+      memmove(&w->ref[1], &w->ref[i], (w->ref_cnt - i) * sizeof(*w->ref));
+      w->ref_cnt -= i - 1;
+   }
+
+   // check nodes from the back of the list
+   for (i = w->ref_cnt - 2; i >= 0; i--)
+      if (w->ref[i] != w->ref[w->ref_cnt - 1])
+         break;
+
+   // all nodes are the same
+   if (i <= -1)
+      goto cn_err_exit;
+
+   if (i < w->ref_cnt - 2)
+   {
+      log_debug("shortening way %"PRId64" from %d to %d", w->obj.id, w->ref_cnt, i + 2);
+      w->ref_cnt = i + 2;
+   }
+
+   return 0;
+
+cn_err_exit:
+   log_debug("all nodes of way %"PRId64" have the same id", w->obj.id);
+   return 1;
 }
 
 
