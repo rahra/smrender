@@ -756,24 +756,25 @@ static int node_brg(struct pcoord *pc, const struct coord *src, int64_t nid)
  *  @param wl Pointer to list of open ways.
  *  @param ocnt number of end points within pd. Obviously, ocnt MUST be an even number.
  *  @param no_corner Set to 1 if no corner points should be inserted, otherwise set to 0.
- *  @return 0 On success, -1 if connect_open() should be recalled with pd being resorted.
+ *  @return The function returns the number of ways which have been connected.
+ *  If no open ways remain, 0 is returned.
  */
 static int connect_open(struct pdef *pd, struct wlist *wl, int ocnt, short no_corner)
 {
-   int i, j, k, l;
+   int i, j, k, l, cnt;
    int64_t *ref;
    const struct corner_point *co_pt = co_pt_;
 
-   for (i = 0; i < ocnt; i++)
+   for (i = 0, cnt = 0; i < ocnt; i++)
    {
       // skip end points and loops
       if (pd[i].pn || !wl->ref[pd[i].wl_index].open)
       {
-         log_debug("skipping i = %d", i);
+         //log_debug("skipping i = %d", i);
          continue;
       }
 
-      for (j = i + 1; j <= ocnt; j++)
+      for (j = i + 1; j < i + ocnt; j++)
       {
          // skip start points
          if (!pd[j % ocnt].pn || !wl->ref[pd[j % ocnt].wl_index].open)
@@ -794,7 +795,7 @@ static int connect_open(struct pdef *pd, struct wlist *wl, int ocnt, short no_co
                   break;
             // if the 2nd corner point is before the first or if the last point
             // is the first in the list, wrap around "360 degrees".
-            if (l < k || j == ocnt)
+            if (l < k || j >= ocnt)
                l += 4;
             // add corner points to way
             for (; k < l; k++)
@@ -821,6 +822,7 @@ static int connect_open(struct pdef *pd, struct wlist *wl, int ocnt, short no_co
             wl->ref[pd[i].wl_index].nw->ref = ref;
             wl->ref[pd[i].wl_index].nw->ref_cnt++;
             wl->ref[pd[i].wl_index].open = 0;
+            cnt++;
             log_debug("way %"PRId64" (wl_index = %d) is now closed", wl->ref[pd[i].wl_index].nw->obj.id, pd[i].wl_index);
          }
          else
@@ -838,6 +840,7 @@ static int connect_open(struct pdef *pd, struct wlist *wl, int ocnt, short no_co
             // (pseudo) close j^th way
             // FIXME: onode and its refs should be free()'d and removed from tree
             wl->ref[pd[j % ocnt].wl_index].open = 0;
+            cnt++;
             // find end-point of i^th way
             for (k = 0; k < ocnt; k++)
                if ((pd[i].wl_index == pd[k].wl_index) && pd[k].pn)
@@ -855,12 +858,15 @@ static int connect_open(struct pdef *pd, struct wlist *wl, int ocnt, short no_co
                   break;
                }
             log_debug("way %"PRId64" (wl_index = %d) marked as closed, resorting pdef", wl->ref[pd[j % ocnt].wl_index].nw->obj.id, pd[j % ocnt].wl_index);
-            return -1;
+            goto co_exit;
          }
          break;
       } // for (j = i + 1; j <= ocnt; j++)
    } // for (i = 0; i < ocnt; i++)
-   return 0;
+
+co_exit:
+   log_debug("%d ways connected", cnt);
+   return cnt;
 }
 
 
