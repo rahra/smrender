@@ -131,7 +131,7 @@ int put_object0(bx_node_t **tree, int64_t id, void *p, int idx)
       return -1;
    }
 
-   if (bn->next[idx] != NULL && tree == &obj_tree_)
+   if (bn->next[idx] != NULL && p != NULL && tree == &obj_tree_)
       log_msg(LOG_WARN, "nt->next[%d] contains valid pointer, overwriting.", idx);
 
    bn->next[idx] = p;
