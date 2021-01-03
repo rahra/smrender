@@ -204,11 +204,46 @@ static int bits(int64_t n)
 }
 
 
+/*! This function tests if both variables a and b have the same sign.
+ * @param a 1st number to test.
+ * @param b 2nd number to test.
+ * @return If a and b are both equal or greater than 0, 1 is returned. If a and
+ * be are both lower than 0 (i.e. negative), -1 is returned. In all other cases
+ * (i.e. if the differ in signedness), 0 is returned.
+ */
+static int same_sgn(int64_t a, int64_t b)
+{
+   if (a >= 0 && b >= 0)
+      return 1;
+   if (a < 0 && b < 0)
+      return -1;
+   return 0;
+}
+
+
 static void fin_stats(struct dstats *ds)
 {
+   int d;
+
    for (int i = 1; i < 4; i++)
    {
-      ds->id_bits[i] = bits(ds->max_id[i]);
+      switch (same_sgn(ds->max_id[i], ds->min_id[i]))
+      {
+         case 1:
+            d = ds->max_id[i];
+            break;
+         case -1:
+            d = ds->min_id[i];
+            break;
+         case 0:
+            d = ds->max_id[i] - ds->min_id[i];
+            break;
+         default:
+            log_msg(LOG_EMERG, "this should never happen...");
+            exit(1);
+      }
+
+      ds->id_bits[i] = bits(d);
       ds->id_mask[i] = ((int64_t) 1 << ds->id_bits[i]) - 1;
    }
 }
