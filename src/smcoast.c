@@ -644,7 +644,7 @@ static int loop_detect(struct wlist *wl)
          continue;
       }
 
-      log_debug("waylist: wl_index %d (start = %p, cnt = %d, loop = %d)", i, &wl->ref[i], cnt, ret);
+      log_debug("waylist: wl_index %d (cnt = %d, loop = %d)", i, cnt, ret);
       w = malloc_way(1, cnt);
       osm_way_default(w);
       wl->ref[i].nw = w;
