@@ -115,11 +115,9 @@ int put_object0(bx_node_t **tree, int64_t id, void *p, int idx)
       log_msg(LOG_ERR, "bx_add_node() failed in put_object0()");
       return -1;
    }
-   /* too much debugging....
-   if (bn->next[0] != NULL)
-   {
-      log_msg(LOG_DEBUG, "nt->next[0] contains valid pointer, overwriting.");
-   }*/
+
+   if (bn->next[idx] != NULL && tree == &obj_tree_)
+      log_msg(LOG_WARN, "nt->next[%d] contains valid pointer, overwriting.", idx);
 
    bn->next[idx] = p;
    return 0;
