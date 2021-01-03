@@ -795,6 +795,40 @@ void init_rendering_window(struct rdata *rd, char *win, const char *paper)
 }
 
 
+/*! This function splits the string of the form "<filename>[:<option>]" and
+ * determines its values. <Filename> is directly copied into the argument name.
+ * <option> is chcompared to "nologtime" or "logtime". If <option> is set to
+ * "nologtime", 0 is returned. If <option> is set to "logtime", or if it is
+ * omitted, 1 is returned. In case of any other value, 1 is returned as well,
+ * but a warning will be logged.
+ */
+static int proc_logfile_name(char *arg)
+{
+   char *s;
+
+   // safety check
+   if (arg == NULL)
+      return 1;
+
+   // tokenize
+   s = strtok(arg, ":");
+
+   // check if first toke was empty
+   if (arg[0] == ':')
+      arg[0] = '\0';
+
+   // check options 'logtime' | 'nologtime'
+   if (s == NULL || !strcasecmp(s, "logtime"))
+      return 1;
+   if (!strcasecmp(s, "nologtime"))
+      return 0;
+
+   // unknown option
+   log_msg(LOG_WARN, "unknown value '%s', ignoring", s);
+   return 1;
+}
+
+
 int main(int argc, char *argv[])
 {
    hpx_ctrl_t *ctl, *cfctl;
@@ -903,8 +937,12 @@ int main(int argc, char *argv[])
             break;
 
          case 'L':
-            logfile = optarg;
-            init_log(logfile, level);
+            set_log_time(proc_logfile_name(optarg));
+            if (optarg[0] != '\0')
+            {
+               logfile = optarg;
+               init_log(logfile, level);
+            }
             break;
 
          case 'l':

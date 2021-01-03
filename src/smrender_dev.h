@@ -274,6 +274,7 @@ void *cairo_smr_image_surface_from_bg(cairo_format_t, cairo_antialias_t);
 
 /* smlog.c */
 FILE *init_log(const char*, int);
+void set_log_time(int);
 
 /* smrparse.c */
 int set_color(const char *, int);

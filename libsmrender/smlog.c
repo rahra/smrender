@@ -56,12 +56,24 @@ static const char *flty_[8] = {"emerg", "alert", "crit", "err", "warning", "noti
 //! FILE pointer to log
 static FILE *log_ = NULL;
 static int level_ = LOG_INFO;
+static int logtime_ = 1;
 
 
 void __attribute__((constructor)) init_log0(void)
 {
    log_ = stderr; 
    (void) sm_thread_id();
+}
+
+
+/*! Enable (a != 0) or disable (a == ) logging of timestamp. By default
+ * timestamp logging is enabled.
+ * @param a Set to true to enable timestamp logging or false (a == 0) to
+ * disable it.
+ */
+void set_log_time(int a)
+{
+   logtime_ = a;
 }
 
 
@@ -126,6 +138,9 @@ int vlog_msgf(FILE *out, int lf, const char *fmt, va_list ap)
 
    if (out != NULL)
    {
+      len = 0;
+      if (logtime_)
+      {
 #ifdef WITH_THREADS
       int id = sm_thread_id();
       pthread_mutex_lock(&mutex);
@@ -133,6 +148,7 @@ int vlog_msgf(FILE *out, int lf, const char *fmt, va_list ap)
 #else
       len = fprintf(out, "%s.%03d %s (+%2d.%03d) [%7s] ", timestr, (int) (tv.tv_usec / 1000), timez, (int) tr.tv_sec, (int) (tr.tv_usec / 1000), flty_[level]);
 #endif
+      }
       len += vfprintf(out, fmt, ap);
       len += fprintf(out, "\n");
 #ifdef WITH_THREADS
