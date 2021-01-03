@@ -159,6 +159,7 @@ static int update_stats(const osm_obj_t *o, struct dstats *ds)
    {
       case OSM_NODE:
          update_node_stats((osm_node_t*) o, ds);
+         // intentionally there's no break
       case OSM_WAY:
       case OSM_REL:
          ds->cnt[o->type]++;
@@ -246,6 +247,9 @@ static void fin_stats(struct dstats *ds)
       ds->id_bits[i] = bits(d);
       ds->id_mask[i] = ((int64_t) 1 << ds->id_bits[i]) - 1;
    }
+
+   set_unique_node_id(ds->min_id[OSM_NODE] - 1);
+   set_unique_way_id(ds->min_id[OSM_WAY] - 1);
 }
 
 

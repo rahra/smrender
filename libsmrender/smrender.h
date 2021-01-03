@@ -74,6 +74,8 @@ int put_object(osm_obj_t*);
 void *get_object(int, int64_t);
 int64_t unique_node_id(void);
 int64_t unique_way_id(void);
+void set_unique_node_id(int64_t);
+void set_unique_way_id(int64_t);
 void set_const_tag(struct otag*, char*, char*);
 int bs_match_attr(const osm_obj_t*, const struct otag *, const struct stag*);
 int bs_match(const bstring_t *, const bstring_t *, const struct specialTag *);

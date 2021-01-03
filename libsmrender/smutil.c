@@ -47,7 +47,11 @@
 #include "smaction.h"
 
 
+#define UNIQUE_ID_START UINT64_C(-100000000000)
+
 static bx_node_t *obj_tree_ = NULL;
+static int64_t uwid_ = UNIQUE_ID_START;
+static int64_t unid_ = UNIQUE_ID_START;
 
 
 bx_node_t **get_objtree(void)
@@ -65,38 +69,49 @@ void set_const_tag(struct otag *tag, char *k, char *v)
 }
 
 
-#define UNIQUE_ID_START UINT64_C(-100000000000)
 int64_t unique_node_id(void)
 {
-   static int64_t uid = UNIQUE_ID_START;
 #ifdef WITH_THREADS
    static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
    int64_t id;
 
    pthread_mutex_lock(&mutex);
-   id = uid--;
+   id = unid_--;
    pthread_mutex_unlock(&mutex);
    return id;
 #else
-   return uid--;
+   return unid_--;
 #endif
 }
 
 
 int64_t unique_way_id(void)
 {
-   static int64_t uid = UNIQUE_ID_START;
 #ifdef WITH_THREADS
    static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
    int64_t id;
 
    pthread_mutex_lock(&mutex);
-   id = uid--;
+   id = uwid_--;
    pthread_mutex_unlock(&mutex);
    return id;
 #else
-   return uid--;
+   return uwid_--;
 #endif
+}
+
+
+void set_unique_node_id(int64_t id)
+{
+   if (id < unid_)
+      unid_ = id;
+}
+
+
+void set_unique_way_id(int64_t id)
+{
+   if (id < uwid_)
+      uwid_ = id;
 }
 
 
