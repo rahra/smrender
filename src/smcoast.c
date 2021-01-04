@@ -932,8 +932,6 @@ int connect_almost_closed_way(osm_way_t *w, double max_dist)
    if ((dist = end_node_dist(w)) < 0)
       return -1;
 
-   log_debug("dist = %f (max_dist = %f)", dist, max_dist);
-
    if (dist < max_dist)
    {
       log_debug("minimum distance in way %"PRId64" (ref_cnt = %d) found between %"PRId64" and %"PRId64,
