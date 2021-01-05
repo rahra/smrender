@@ -6,7 +6,7 @@ NODESTEP=2
 # grid step in degrees
 GRIDSTEP=10
 # append to ids
-IDTR="000000"
+IDTR="00000"
 
 echo "<?xml version='1.0' encoding='UTF-8'?>"
 echo "<osm version='0.6' generator='smrender-mkgrid'>"
@@ -43,8 +43,18 @@ ewcard()
    fi
 }
 
+nodetags()
+{
+   if test $(( $lon % 5 )) -eq 0 -a $(( $lat % 5 )) -eq 0 ; then
+      ewcard $lon
+      echo -n "<tag k='grid:lon' v='$lon'/>"
+      echo -n "<tag k='grid:lon:name' v='${V}${NS}'/>"
 
-tmpf=$(mktemp)
+      nscard $lat
+      echo -n "<tag k='grid:lat' v='$lat'/>"
+      echo -n "<tag k='grid:lat:name ' v='${V}${NS}'/>"
+   fi
+}
 
 # generate lat node ids
 for lat in $( seq -90 $GRIDSTEP 90 )
@@ -53,7 +63,9 @@ do
    do
       genid $lat $lon
       id=$?
-      echo "<node id='$id$IDTR' version='1' lat='$lat' lon='$lon'/>" >>$tmpf
+      echo -n "<node id='$id${IDTR}0' version='1' lat='$lat' lon='$lon'>"
+      nodetags
+      echo "</node>"
    done
 done
 
@@ -64,13 +76,11 @@ do
    do
       genid $lat $lon
       id=$?
-      echo "<node id='$id$IDTR' version='1' lat='$lat' lon='$lon'/>" >>$tmpf
+      echo -n "<node id='$id${IDTR}1' version='1' lat='$lat' lon='$lon'/>"
+      nodetags
+      echo "</node>"
    done
 done
-
-# generate nodes
-cat $tmpf | sort | uniq
-rm $tmpf
 
 # generate lat grid lines
 for lat in $( seq -80 $GRIDSTEP 80 )
@@ -85,7 +95,7 @@ do
    do
       genid $lat $lon
       id=$?
-      echo "<nd ref='$id$IDTR'/>"
+      echo "<nd ref='$id${IDTR}0'/>"
    done
    echo "</way>"
 done
@@ -104,7 +114,7 @@ do
    do
       genid $lat $lon
       id=$?
-      echo "<nd ref='$id$IDTR'/>"
+      echo "<nd ref='$id${IDTR}1'/>"
    done
    echo "</way>"
 done
