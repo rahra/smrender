@@ -2941,13 +2941,34 @@ int act_bearings_ini(smrule_t *UNUSED(r))
 }
 
 
+int set_ftag(osm_obj_t *o, char *key, double f)
+{
+   char buf[32];
+   int m;
+
+   if ((m = match_attr(o, key, NULL)) < 0)
+   {
+      log_debug("allocating %d for node %"PRId64, o->tag_cnt + 1, o->id);
+      if (realloc_tags(o, o->tag_cnt + 1) == -1)
+      {
+         log_errno(LOG_ERR, "realloc_tags()");
+         return -1;
+      }
+      m = o->tag_cnt - 1;
+   }
+
+   snprintf(buf, sizeof(buf), "%.1f", f);
+   set_const_tag(&o->otag[m], key, strdup(buf));
+   return 0;
+}
+
+
 int act_bearings_main(smrule_t *UNUSED(r), osm_way_t *w)
 {
    struct pcoord pc[2];
    struct coord sc, dc;
    osm_node_t *n[3];
    double cd, pk;
-   char buf[32];
    int i;
 
    if (w->obj.type != OSM_WAY)
@@ -2983,13 +3004,6 @@ int act_bearings_main(smrule_t *UNUSED(r), osm_way_t *w)
          return 1;
       }
 
-      log_debug("allocating %d at %p for node %"PRId64, n[1]->obj.tag_cnt + 3, n[1]->obj.otag, n[1]->obj.id);
-      if (realloc_tags(&n[1]->obj, n[1]->obj.tag_cnt + 3) == -1)
-      {
-         log_errno(LOG_ERR, "realloc_tags()");
-         return -1;
-      }
-
       sc.lat = n[0]->lat;
       sc.lon = n[0]->lon;
       dc.lat = n[1]->lat;
@@ -3003,14 +3017,9 @@ int act_bearings_main(smrule_t *UNUSED(r), osm_way_t *w)
       cd = course_diff(pc[0].bearing, pc[1].bearing);
       pk = fmod2(pc[0].bearing - (180 - cd) / 2 + (cd < 0) * 180, 360);
 
-      snprintf(buf, sizeof(buf), "%.1f", pc[1].bearing);
-      set_const_tag(&n[1]->obj.otag[n[1]->obj.tag_cnt - 1], "smrender:bearing", strdup(buf));
-
-      snprintf(buf, sizeof(buf), "%.1f", cd);
-      set_const_tag(&n[1]->obj.otag[n[1]->obj.tag_cnt - 2], "smrender:coursedev", strdup(buf));
-
-      snprintf(buf, sizeof(buf), "%.1f", pk);
-      set_const_tag(&n[1]->obj.otag[n[1]->obj.tag_cnt - 3], "smrender:peakdir", strdup(buf));
+      set_ftag(&n[1]->obj, "smrender:bearing", pc[1].bearing);
+      set_ftag(&n[1]->obj, "smrender:coursedev", cd);
+      set_ftag(&n[1]->obj, "smrender:peakdir", pk);
    }
 
    return 0;
