@@ -721,7 +721,8 @@ looks like the following.
    <fontname> := 'font' '=' <string>
    <fontsize> := 'size' '=' decimal value
    <color>    := 'color' '=' <coldef>
-   <coldef>   := X11 color name or HTML specification "#xxxxxx".
+   <coldef>   := <colspec> | '%' <key>
+   <colspec>  := X11 color name or HTML specification "#xxxxxx".
 
    <key>      := 'key' '=' <string>
 
@@ -782,6 +783,11 @@ one of \optv{north} or \optv{south}. If no alignment is specified the caption wi
 \optv{Color} defines the color in which the caption should be set. This is
 either an X11 color preset\footnote{\url{http://en.wikipedia.org/wiki/X11_color_names}} such as \textsf{``white''}, \textsf{``yellow''}, \textsf{``darkgreen''} \ldots,
 or a color definition similar to the HTML standard.
+The color may also be set dynamically based on the tag of an object. This is
+achieved by setting \optv{color} to the name of the key whose value should be
+used, prepended by the \texttt{'\%'} character. The value of the key is then
+inpreted exactly as if it would have been set in the rule set. This means it
+can be any X11 color name or the HTML color representation, as explained below.
 The color presets reflect the colors of traditional sea charts. The HTML-style color definition has the pattern
 \texttt{\#$[$aa$]$rrggbb}. The values \textsf{rr}, \textsf{gg}, and \textsf{bb} reflect the RGB values as a hexadecimal
 number from \textsf{00} to \textsf{ff}. Optionally a transparency may be specified with \textsf{aa}. It ranges from
@@ -890,9 +896,10 @@ river) or a polygon (closed way, i.e. an area, e.g. a lake).
 
 Independently if it is an open or a closed polygon there is always a filled
 part which is enclosed with a border.  The filled part is defined by
-\optv{color}, \optv{width}, and \optv{style} at which just \optv{color} is
-honored for closed polygons.  The border part is defined by \optv{bcolor},
-\optv{bwidth}, and \optv{bstyle}.
+\optv{color}, \optv{width}, and \optv{style} of which just \optv{color} is
+honored for closed polygons. The border part is defined by \optv{bcolor},
+\optv{bwidth}, and \optv{bstyle}. The color definition is explained in Section
+\ref{sec:cap} on page \pageref{sec:cap}.
 
 The arguments to \optv{style} and \optv{bstyle} are one of \textsf{dashed},
 \textsf{dotted}, \textsf{solid}, \textsf{transparent}, \textsf{pipe}, or
