@@ -944,6 +944,11 @@ static void render_poly_line(cairo_t *ctx, const struct actDraw *d, const osm_wa
 {
    // safety check
    if (w == NULL) { log_msg(LOG_ERR, "NULL pointer to way"); return; }
+   if (w->ref_cnt < 2)
+   {
+      log_msg(LOG_WARN, "ignoring short way %"PRId64" (len = %d)", w->obj.id, w->ref_cnt);
+      return;
+   }
 
    if (d->border.used)
    {
@@ -1227,7 +1232,12 @@ int act_cap_ini(smrule_t *r)
       return 1;
    }
    if ((s = get_param("color", NULL, r->act)) != NULL)
-      cap.col = parse_color(s);
+   {
+      if (*s == '%')
+         cap.cs.key = s + 1;
+      else
+         cap.cs.col = parse_color(s);
+   }
 
    (void) get_param("min_size", &cap.scl.min_auto_size, r->act);
    (void) get_param("max_size", &cap.scl.max_auto_size, r->act);
@@ -1284,7 +1294,7 @@ int act_cap_ini(smrule_t *r)
    cairo_select_font_face (cap.ctx, cap.font, 0, 0);
 #endif
 
-   cairo_smr_set_source_color(cap.ctx, cap.col);
+   cairo_smr_set_source_color(cap.ctx, cap.cs.col);
    cairo_set_line_width(cap.ctx, THINLINE);
 #ifdef PUSH_GROUP
    cairo_push_group(cap.ctx);
@@ -1301,8 +1311,8 @@ int act_cap_ini(smrule_t *r)
    if (!isnan(cap.angle))
       sm_threaded(r);
 
-   log_debug("%04x, %08x, '%s', '%s', %.1f, {%.1f, %.1f, %.1f, %.2f}, %.1f, %.1f, %.1f, {%.1f, %08x, %.1f}",
-         cap.pos, cap.col, cap.font, cap.key, cap.size,
+   log_debug("%04x, %08x, '%s', '%s', '%s', %.1f, {%.1f, %.1f, %.1f, %.2f}, %.1f, %.1f, %.1f, {%.1f, %08x, %.1f}",
+         cap.pos, cap.cs.col, safe_null_str(cap.cs.key), cap.font, cap.key, cap.size,
          cap.scl.max_auto_size, cap.scl.min_auto_size, cap.scl.min_area_size, cap.scl.auto_scale,
          cap.angle, cap.xoff, cap.yoff,
          cap.rot.phase, cap.rot.autocol, cap.rot.weight);
@@ -1936,6 +1946,53 @@ static const char *pos_to_str(int pos)
 }
 
 
+/*! This function returns a color value based on the col_spec cs. If cs->key ==
+ * NULL, cs->col is returned. If cs->key != NULL, it searches for a tag with
+ * the given key in the object o and parses the color color value accordingly.
+ * If o == NULL, always cs->col is returned.
+ * @param o Pointer to the object.
+ * @param cs Pointer to the col_spec structure.
+ * @return Returns a color value. In case of any error, 0 is returned. Please
+ * not that this cannot be used to distinguish between an error and the regular
+ * selection of the color black.
+ */
+int color_by_cs(const osm_obj_t *o, const struct col_spec *cs)
+{
+   char buf[32];
+   int n;
+
+   // safety check
+   if (cs == NULL)
+   {
+      log_msg(LOG_EMERG, "this should never happen");
+      return 0;
+   }
+
+   // check if color key is specified
+   if (cs->key == NULL || o == NULL)
+      return cs->col;
+
+   // check if object has color key
+   if ((n = match_attr(o, cs->key, NULL)) == -1)
+   {
+      log_msg(LOG_WARN, "object %d/%"PRId64" has no color key '%s'", o->type, o->id, cs->key);
+      return 0;
+   }
+
+   // basic check on color value
+   if (o->otag[n].v.len > (int) sizeof(buf) - 1)
+   {
+      log_msg(LOG_WARN, "object %d/%"PRId64" seems to have ill color value '%.*s'", o->type, o->id, o->otag[n].v.len, o->otag[n].v.buf);
+      return 0;
+   }
+
+   memcpy(buf, o->otag[n].v.buf, o->otag[n].v.len);
+   buf[o->otag[n].v.len] = '\0';
+
+   return parse_color(buf);
+}
+
+
 /*! This function looks up the tag with the key 'key' in the object o and
  * interpretes its value as alignment parameter (north, east,...).
  * @param o Pointer to object.
@@ -1980,7 +2037,7 @@ static int cap_coord(const struct actCaption *cap, const struct coord *c, const 
    double x, y, a, r;
    double width, height;
    short pos;
-   int n;
+   int n, col;
 
    if (cap->size == 0.0)
       return 0;
@@ -2036,15 +2093,16 @@ static int cap_coord(const struct actCaption *cap, const struct coord *c, const 
       r = hypot(tx.width + tx.x_bearing + cap->xoff, fe.ascent / 2 + cap->yoff);
       width = tx.width + tx.x_bearing + cap->xoff;
       height = fe.ascent;
+      col = color_by_cs(o, &cap->cs);
       if (cap->pos & 0xc)
       {
          r *= 2;
-         if ((pat = cairo_smr_plane(width * 2, height, width, cap->col)) == NULL)
+         if ((pat = cairo_smr_plane(width * 2, height, width, col)) == NULL)
             return -1;
       }
       else
       {
-         if ((pat = cairo_smr_plane(width, height, 0, cap->col)) == NULL)
+         if ((pat = cairo_smr_plane(width, height, 0, col)) == NULL)
             return -1;
       }
 
@@ -2218,7 +2276,7 @@ int act_cap_main(smrule_t *r, osm_obj_t *o)
    {
       cap->auto_sfc = cairo_smr_recording_surface_from_bg();
       cap->auto_ctx = cairo_create(cap->auto_sfc);
-      cairo_smr_set_source_color(cap->auto_ctx, cap->col);
+      cairo_smr_set_source_color(cap->auto_ctx, color_by_cs(o, &cap->cs));
    }
 #endif
 

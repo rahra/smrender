@@ -155,10 +155,16 @@ struct cap_data
    int offset;
 };
 
+struct col_spec
+{
+   int col;          // color code
+   char *key;        // name of color key (or NULL if not used)
+};
+
 struct actCaption
 {
    short pos;        // position, or'd POS_x macros
-   int col;          // caption color
+   struct col_spec cs;  // caption color
    char *font;       // pointer to font filename
    char *key;        // pointer to caption string
    double size;      // font size in mm
