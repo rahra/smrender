@@ -372,37 +372,86 @@ void auto_grid(const struct rdata *rd, struct grid *grd)
 }
 
 
-int act_grid_ini(smrule_t *r)
+int grid0(smrule_t *r, struct grid *grd)
 {
    struct rdata *rd = get_rdata();
    double ticks, sticks, g;
-   struct grid grd;
 
-   init_grid(&grd);
-   auto_grid(rd, &grd);
+   init_grid(grd);
+   auto_grid(rd, grd);
 
    log_debug("parsing grid params");
-   (void) get_param("margin", &grd.g_margin, r->act);
-   (void) get_param("tickswidth", &grd.g_tw, r->act);
-   grd.g_tw = grd.g_tw <= 0.0 ? G_TW : grd.g_tw;
-   (void) get_param("subtickswidth", &grd.g_stw, r->act);
-   grd.g_stw = grd.g_stw <= 0.0 ? G_STW : grd.g_stw;
+   (void) get_param("margin", &grd->g_margin, r->act);
+   (void) get_param("tickswidth", &grd->g_tw, r->act);
+   grd->g_tw = grd->g_tw <= 0.0 ? G_TW : grd->g_tw;
+   (void) get_param("subtickswidth", &grd->g_stw, r->act);
+   grd->g_stw = grd->g_stw <= 0.0 ? G_STW : grd->g_stw;
    ticks = sticks = g = 0.0;
    (void) get_param("grid", &g, r->act);
    if (g > 0.0)
-      grd.lat_g = grd.lon_g = MIN2DEG(g);
+      grd->lat_g = grd->lon_g = MIN2DEG(g);
    (void) get_param("ticks", &ticks, r->act);
    if (ticks > 0.0)
-      grd.lat_ticks = grd.lon_ticks = MIN2DEG(ticks);
+      grd->lat_ticks = grd->lon_ticks = MIN2DEG(ticks);
    (void) get_param("subticks", &sticks, r->act);
    if (sticks > 0.0)
-      grd.lat_sticks = grd.lon_sticks = MIN2DEG(sticks);
+      grd->lat_sticks = grd->lon_sticks = MIN2DEG(sticks);
 
-   (void) get_parami("copyright", &grd.copyright, r->act);
-   (void) get_parami("cmdline", &grd.cmdline, r->act);
+   (void) get_parami("copyright", &grd->copyright, r->act);
+   (void) get_parami("cmdline", &grd->cmdline, r->act);
 
-   grid(rd, &grd);
+   return 0;
+}
 
+
+int act_grid_ini(smrule_t *r)
+{
+   struct grid grd;
+
+   grid0(r, &grd);
+   grid(get_rdata(), &grd);
+
+   return 0;
+}
+
+
+int act_grid2_ini(smrule_t *r)
+{
+   struct grid *grd;
+
+   if ((grd = malloc(sizeof(*grd))) == NULL)
+   {
+      log_errno(LOG_ERR, "failed to get mem for grid data");
+      return -1;
+   }
+
+   grid0(r, grd);
+   r->data = grd;
+
+   return 0;
+}
+
+
+int act_grid2_main(smrule_t *r, osm_obj_t *UNUSED(o))
+{
+   static int _once = 0;
+
+   if (_once)
+   {
+      log_msg(LOG_INFO, "grid2() is always just called once");
+      return 1;
+   }
+
+   grid(get_rdata(), r->data);
+   _once++;
+   return 1;
+}
+
+
+int act_grid2_fini(smrule_t *r)
+{
+   free(r->data);
+   r->data = NULL;
    return 0;
 }
 
