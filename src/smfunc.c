@@ -3066,6 +3066,10 @@ int act_random_ini(smrule_t *r)
 }
 
 
+/*! This function inserts a tag into the an object having a random value. This
+ * may be useful for random selection of a set of nodes by the ruleset. E.g. if
+ * you want to select random 10% of any objects, let's say mountain summits.
+ */
 int act_random_main(smrule_t *r, osm_obj_t *o)
 {
    struct random *rnd = r->data;
@@ -3136,6 +3140,13 @@ ati_err:
 }
 
 
+/*! This function translates the reference point of the coordinate system. It
+ * could be seen as to move the whole surface of the earth to different
+ * coordinates. This is necessary for the Spilhaus projection and it is useful
+ * if one wants to work at the region of the anti meridian. This is (at least
+ * in Josm) sometimes difficult. So translate the longitude, edit the data, and
+ * translate it back.
+ */
 int act_transcoord_main(smrule_t *r, osm_obj_t *o)
 {
    struct transcoord_data *td = (struct transcoord_data*) r->data;
@@ -3183,6 +3194,11 @@ double lat_dest_lon(const struct coord *sc, const struct coord *dc, double dlon)
 }
 
 
+/*! This function detects if a way crosses the anti meridian in which case it
+ * will insert two nodes exactly at the anti meridian, one with a longitude of
+ * +180 and the other with -180 degrees. This could be further used to split
+ * the way with act_split_main().
+ */
 int act_wrapdetect_main(smrule_t *r, osm_way_t *w)
 {
 #define MAX_DLON 180
@@ -3315,6 +3331,9 @@ int act_virtclosed_ini(smrule_t *r)
 }
 
 
+/*! This function closes ways which are virtually closed. This is if the
+ * distance between the first and the last node is smaller than a given amount.
+ */
 int act_virtclosed_main(smrule_t *r, osm_way_t *w)
 {
    double dist = *((double*) r->data);
@@ -3356,6 +3375,10 @@ int act_fixbordernodes_ini(smrule_t *UNUSED(r))
 }
 
 
+/*! This function moves nodes which are on the "edge of the world" to the inner
+ * side by 1 arc second. It turned out the at least Josm has problems with
+ * nodes which are exactly on (or out of) the anti meridian.
+ */
 int act_fixbordernodes_main(smrule_t *UNUSED(r), osm_node_t *n)
 {
 #define GRID_SEC (1.0/3600)
@@ -3426,6 +3449,10 @@ int act_simplify_ini(smrule_t *r)
 }
 
 
+/*! This function simplifies a way, i.e. it reduces the number of nodes. The
+ * maximum distance is configured. If the length of the way is smaller than the
+ * maximum distance, the way will be removed completely.
+ * */
 int act_simplify_main(smrule_t *r, osm_way_t *w)
 {
    double mindist = *((double*) r->data);
@@ -3516,6 +3543,10 @@ int act_check_ini(smrule_t *UNUSED(r))
 }
 
 
+/*! This function makes a data check on ways. It calls the function check_way()
+ * (in smcoast.c) which checks for duplicate nodes in the ref list of a way. If
+ * the resulting way has 0-length, act_check_main() will delete the way.
+ */
 int act_check_main(smrule_t *UNUSED(r), osm_obj_t *o)
 {
    switch (o->type)
