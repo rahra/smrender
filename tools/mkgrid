@@ -52,7 +52,7 @@ nodetags()
 
       nscard $lat
       echo -n "<tag k='grid:lat' v='$lat'/>"
-      echo -n "<tag k='grid:lat:name ' v='${V}${NS}'/>"
+      echo -n "<tag k='grid:lat:name' v='${V}${NS}'/>"
    fi
 }
 
