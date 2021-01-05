@@ -161,6 +161,16 @@ struct col_spec
    char *key;        // name of color key (or NULL if not used)
 };
 
+struct drawStyle
+{
+   struct col_spec cs;
+   double width;
+   short style;
+   short used;
+   int dashlen;
+   double dash[MAX_DASHLEN];
+};
+
 struct actCaption
 {
    short pos;        // position, or'd POS_x macros
@@ -177,21 +187,12 @@ struct actCaption
    double xoff, yoff;   //!< x/y offset from origin
    int hide;         // if set to 1 do everything except showing the caption
    struct auto_rot rot;
+   struct drawStyle fill;
 #ifdef HAVE_CAIRO
    cairo_t *ctx;
    cairo_surface_t *auto_sfc;
    cairo_t *auto_ctx;
 #endif
-};
-
-struct drawStyle
-{
-   struct col_spec cs;
-   double width;
-   short style;
-   short used;
-   int dashlen;
-   double dash[MAX_DASHLEN];
 };
 
 struct actDraw

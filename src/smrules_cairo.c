@@ -1287,6 +1287,13 @@ int act_cap_ini(smrule_t *r)
  
    cap.hide = get_param_bool("hide", r->act);
 
+   // parameters for filling of background rectangle
+   if ((s = get_param("fillcolor", NULL, r->act)) != NULL)
+   {
+      parse_col_spec(s, &cap.fill.cs);
+      cap.fill.used = 1;
+   }
+
    cap.ctx = cairo_create(sfc_);
    if (cairo_smr_log_status(cap.ctx) != CAIRO_STATUS_SUCCESS)
       return -1;
@@ -2195,14 +2202,21 @@ static int cap_coord(const struct actCaption *cap, const struct coord *c, const 
       a += DEG2RAD(360 - cap->angle);
    }
 
+   // set color of caption of color is derived dynamically from object key
+   if (cap->cs.key != NULL)
+      cairo_smr_set_source_color(cap->ctx, color_by_cs(o, &cap->cs));
+
    cairo_rotate(cap->ctx, a);
    pos_offset(pos, tx.width + tx.x_bearing, fe.ascent, cap->xoff, cap->yoff, &x, &y);
-   /* debugging
-   if (isnan(cap->angle))
+   if (cap->fill.used)
    {
-      cairo_rectangle(cap->ctx, x, y, tx.width + tx.x_bearing + cap->xoff, -fe.ascent);
-      cairo_stroke(cap->ctx);
-   }*/
+      cairo_save(cap->ctx);
+      cairo_translate(cap->ctx, -cap->xoff/2, cap->yoff/2); // FIXME: not sure if translation is correct
+      cairo_smr_set_source_color(cap->ctx, color_by_cs(o, &cap->fill.cs));
+      cairo_rectangle(cap->ctx, x, y, tx.width + tx.x_bearing + cap->xoff, -fe.ascent * 1.2);
+      cairo_fill(cap->ctx);
+      cairo_restore(cap->ctx);
+   }
 #ifdef AUTOSFC
    if (isnan(cap->angle))
    {
