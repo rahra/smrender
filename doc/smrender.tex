@@ -714,7 +714,7 @@ looks like the following.
 \begin{verbatim}
    <action>   := 'cap:' <param> [ ';' <param> ]
    <param>    := <fontdef> | <angledef> | <aligndef> | <wcapopt>
-                 | <fopt> | <hide>
+                 | <fopt> | <hide> | <bground>
 
    <fontdef>  := <fontname> | <fontsize> | <color> | <fopt>
                  | <key>
@@ -727,7 +727,8 @@ looks like the following.
    <key>      := 'key' '=' <string>
 
    <angledef> := <angle> | <anglekey>
-   <angle>    := 'auto' | decimal value
+   <angle>    := 'angle' '=' <angleval>
+   <angleval> := 'auto' | decimal value
    <anglekey> := 'anglekey' '=' <string>
 
    <fopt>     := <foptname> '=' decimal value
@@ -754,6 +755,8 @@ looks like the following.
    <dvalgn>   := 'valignkey' '=' <lat_alg>
 
    <hide>     := 'hide' '=' <bool>
+
+   <bground>  := 'fillcolor' '=' <coldef>
 \end{verbatim}
 
 %FIXME: 'min_size' | 'max_size' | 'min_area' | 'auto_scale' not described yet!
@@ -788,6 +791,8 @@ achieved by setting \optv{color} to the name of the key whose value should be
 used, prepended by the \texttt{'\%'} character. The value of the key is then
 inpreted exactly as if it would have been set in the rule set. This means it
 can be any X11 color name or the HTML color representation, as explained below.
+The parameter \optv{fillcolor} let's you specify the background of the caption.
+If it is set, a box with the given color is drawn below the tex.
 The color presets reflect the colors of traditional sea charts. The HTML-style color definition has the pattern
 \texttt{\#$[$aa$]$rrggbb}. The values \textsf{rr}, \textsf{gg}, and \textsf{bb} reflect the RGB values as a hexadecimal
 number from \textsf{00} to \textsf{ff}. Optionally a transparency may be specified with \textsf{aa}. It ranges from
