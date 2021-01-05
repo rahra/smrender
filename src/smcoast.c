@@ -1088,7 +1088,8 @@ static int cat_poly_ini(smrule_t *r)
       }
    }
    else
-      cp->vcdist = VC_DIST;
+      //cp->vcdist = VC_DIST; //FIXME: that does not work always, so set to 0 again
+      cp->vcdist = 0;
 
    log_msg(LOG_DEBUG, "ign_incomplete = %d, no_corner = %d, vcdist = %f", cp->ign_incomplete, cp->no_corner, cp->vcdist * 60);
    r->data = cp;
