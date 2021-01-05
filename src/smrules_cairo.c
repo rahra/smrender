@@ -148,6 +148,8 @@ typedef struct cartesian
 } cartesian_t;
 
 
+int color_by_cs(const osm_obj_t *o, const struct col_spec *cs);
+
 static cairo_surface_t *sfc_;
 static cairo_rectangle_t ext_;
 
@@ -614,7 +616,7 @@ int act_draw_ini(smrule_t *r)
    // parse fill settings
    if ((s = get_param("color", NULL, r->act)) != NULL)
    {
-      d->fill.col = parse_color(s);
+      parse_col_spec(s, &d->fill.cs);
       d->fill.used = 1;
    }
    if (get_param("width", &d->fill.width, r->act) == NULL)
@@ -624,7 +626,7 @@ int act_draw_ini(smrule_t *r)
    // parse border settings
    if ((s = get_param("bcolor", NULL, r->act)) != NULL)
    {
-      d->border.col = parse_color(s);
+      parse_col_spec(s, &d->border.cs);
       d->border.used = 1;
    }
    if (get_param("bwidth", &d->border.width, r->act) == NULL)
@@ -675,8 +677,8 @@ int act_draw_ini(smrule_t *r)
 
    //log_msg(LOG_DEBUG, "directional = %d, ignore_open = %d", d->directional, !d->collect_open);
    log_msg(LOG_DEBUG, "{%08x, %.1f, %d, %d, %d, {%.1f, %.1f}}, {%08x, %.1f, %d, %d, %d, {%.1f, %.1f}}, %d, %d, %p",
-        d->fill.col, d->fill.width, d->fill.style, d->fill.used, d->fill.dashlen, d->fill.dash[0], d->fill.dash[1],
-        d->border.col, d->border.width, d->border.style, d->border.used, d->border.dashlen, d->border.dash[0], d->border.dash[1],
+        d->fill.cs.col, d->fill.width, d->fill.style, d->fill.used, d->fill.dashlen, d->fill.dash[0], d->fill.dash[1],
+        d->border.cs.col, d->border.width, d->border.style, d->border.used, d->border.dashlen, d->border.dash[0], d->border.dash[1],
         d->directional, d->collect_open, d->wl);
 
    return 0;
@@ -952,7 +954,7 @@ static void render_poly_line(cairo_t *ctx, const struct actDraw *d, const osm_wa
 
    if (d->border.used)
    {
-      cairo_smr_set_source_color(ctx, d->border.col);
+      cairo_smr_set_source_color(ctx, color_by_cs(&w->obj, &d->border.cs));
       // The pipe is a special case: it is a combination of a dashed and a
       // dotted line, the dots are place at the beginning of each dash.
       cairo_set_line_width(ctx, cairo_smr_border_width(d, is_closed_poly(w)));
@@ -974,7 +976,7 @@ static void render_poly_line(cairo_t *ctx, const struct actDraw *d, const osm_wa
    if (d->fill.used)
    {
       cairo_smr_poly(ctx, d, w);
-      cairo_smr_set_source_color(ctx, d->fill.col);
+      cairo_smr_set_source_color(ctx, color_by_cs(&w->obj, &d->fill.cs));
       if (!is_closed_poly(w))
       {
          cairo_set_line_width(ctx, cairo_smr_fill_width(d));
@@ -1091,7 +1093,21 @@ int act_draw_fini(smrule_t *r)
          log_debug("id = %"PRId64", cw = %d, area = %f", d->wl->ref[i].w->obj.id, d->wl->ref[i].cw, d->wl->ref[i].area);
          render_poly_line(d->ctx, d, d->wl->ref[i].w, CREATE_PATH);
       }
-      cairo_smr_set_source_color(d->ctx, d->fill.col);
+
+      // select fill color based on the key of the first ccw way (if key coloring is chosen)
+      if (d->fill.cs.key != NULL)
+      {
+         for (i = 0; i < d->wl->ref_cnt; i++)
+            if (d->wl->ref_cnt && !d->wl->ref[0].cw)
+            {
+               cairo_smr_set_source_color(d->ctx, color_by_cs(&d->wl->ref[i].w->obj, &d->fill.cs));
+               break;
+            }
+      }
+      else
+      {
+         cairo_smr_set_source_color(d->ctx, d->fill.cs.col);
+      }
       cairo_fill(d->ctx);
       cairo_pop_group_to_source(d->ctx);
       CSS_INC(CSS_POP);
@@ -1232,12 +1248,7 @@ int act_cap_ini(smrule_t *r)
       return 1;
    }
    if ((s = get_param("color", NULL, r->act)) != NULL)
-   {
-      if (*s == '%')
-         cap.cs.key = s + 1;
-      else
-         cap.cs.col = parse_color(s);
-   }
+      parse_col_spec(s, &cap.cs);
 
    (void) get_param("min_size", &cap.scl.min_auto_size, r->act);
    (void) get_param("max_size", &cap.scl.max_auto_size, r->act);

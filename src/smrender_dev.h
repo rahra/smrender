@@ -186,7 +186,7 @@ struct actCaption
 
 struct drawStyle
 {
-   int col;
+   struct col_spec cs;
    double width;
    short style;
    short used;
@@ -286,6 +286,7 @@ void set_log_time(int);
 int set_color(const char *, int);
 int get_color(int);
 int parse_color(const char *);
+void parse_col_spec(char *, struct col_spec *);
 int parse_style(const char *s);
 int parse_matchtag(struct otag *, struct stag *);
 int init_rules(osm_obj_t*, void*);

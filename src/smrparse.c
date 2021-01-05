@@ -226,6 +226,15 @@ int parse_color(const char *s)
 }
 
 
+void parse_col_spec(char *s, struct col_spec *cs)
+{
+   if (*s == '%')
+      cs->key = s + 1;
+   else
+      cs->col = parse_color(s);
+}
+
+
 int parse_style(const char *s)
 {
    if (s == NULL)
