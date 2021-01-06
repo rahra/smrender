@@ -852,19 +852,21 @@ looks like the following.
 <pre>
 &nbsp;&nbsp;&nbsp;&lt;action&#62;&nbsp;&nbsp;&nbsp;:=&nbsp;'cap:'&nbsp;&lt;param&#62;&nbsp;[&nbsp;';'&nbsp;&lt;param&#62;&nbsp;]
 &nbsp;&nbsp;&nbsp;&lt;param&#62;&nbsp;&nbsp;&nbsp;&nbsp;:=&nbsp;&lt;fontdef&#62;&nbsp;|&nbsp;&lt;angledef&#62;&nbsp;|&nbsp;&lt;aligndef&#62;&nbsp;|&nbsp;&lt;wcapopt&#62;
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;|&nbsp;&lt;fopt&#62;&nbsp;|&nbsp;&lt;hide&#62;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;|&nbsp;&lt;fopt&#62;&nbsp;|&nbsp;&lt;hide&#62;&nbsp;|&nbsp;&lt;bground&#62;
 
 &nbsp;&nbsp;&nbsp;&lt;fontdef&#62;&nbsp;&nbsp;:=&nbsp;&lt;fontname&#62;&nbsp;|&nbsp;&lt;fontsize&#62;&nbsp;|&nbsp;&lt;color&#62;&nbsp;|&nbsp;&lt;fopt&#62;
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;|&nbsp;&lt;key&#62;
 &nbsp;&nbsp;&nbsp;&lt;fontname&#62;&nbsp;:=&nbsp;'font'&nbsp;'='&nbsp;&lt;string&#62;
 &nbsp;&nbsp;&nbsp;&lt;fontsize&#62;&nbsp;:=&nbsp;'size'&nbsp;'='&nbsp;decimal&nbsp;value
 &nbsp;&nbsp;&nbsp;&lt;color&#62;&nbsp;&nbsp;&nbsp;&nbsp;:=&nbsp;'color'&nbsp;'='&nbsp;&lt;coldef&#62;
-&nbsp;&nbsp;&nbsp;&lt;coldef&#62;&nbsp;&nbsp;&nbsp;:=&nbsp;X11&nbsp;color&nbsp;name&nbsp;or&nbsp;HTML&nbsp;specification&nbsp;"#xxxxxx".
+&nbsp;&nbsp;&nbsp;&lt;coldef&#62;&nbsp;&nbsp;&nbsp;:=&nbsp;&lt;colspec&#62;&nbsp;|&nbsp;'%'&nbsp;&lt;key&#62;
+&nbsp;&nbsp;&nbsp;&lt;colspec&#62;&nbsp;&nbsp;:=&nbsp;X11&nbsp;color&nbsp;name&nbsp;or&nbsp;HTML&nbsp;specification&nbsp;"#xxxxxx".
 
 &nbsp;&nbsp;&nbsp;&lt;key&#62;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;:=&nbsp;'key'&nbsp;'='&nbsp;&lt;string&#62;
 
 &nbsp;&nbsp;&nbsp;&lt;angledef&#62;&nbsp;:=&nbsp;&lt;angle&#62;&nbsp;|&nbsp;&lt;anglekey&#62;
-&nbsp;&nbsp;&nbsp;&lt;angle&#62;&nbsp;&nbsp;&nbsp;&nbsp;:=&nbsp;'auto'&nbsp;|&nbsp;decimal&nbsp;value
+&nbsp;&nbsp;&nbsp;&lt;angle&#62;&nbsp;&nbsp;&nbsp;&nbsp;:=&nbsp;'angle'&nbsp;'='&nbsp;&lt;angleval&#62;
+&nbsp;&nbsp;&nbsp;&lt;angleval&#62;&nbsp;:=&nbsp;'auto'&nbsp;|&nbsp;decimal&nbsp;value
 &nbsp;&nbsp;&nbsp;&lt;anglekey&#62;&nbsp;:=&nbsp;'anglekey'&nbsp;'='&nbsp;&lt;string&#62;
 
 &nbsp;&nbsp;&nbsp;&lt;fopt&#62;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;:=&nbsp;&lt;foptname&#62;&nbsp;'='&nbsp;decimal&nbsp;value
@@ -891,6 +893,8 @@ looks like the following.
 &nbsp;&nbsp;&nbsp;&lt;dvalgn&#62;&nbsp;&nbsp;&nbsp;:=&nbsp;'valignkey'&nbsp;'='&nbsp;&lt;lat_alg&#62;
 
 &nbsp;&nbsp;&nbsp;&lt;hide&#62;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;:=&nbsp;'hide'&nbsp;'='&nbsp;&lt;bool&#62;
+
+&nbsp;&nbsp;&nbsp;&lt;bground&#62;&nbsp;&nbsp;:=&nbsp;'fillcolor'&nbsp;'='&nbsp;&lt;coldef&#62;
 
 </pre>
 
@@ -925,6 +929,13 @@ one of <span style="font-family:helvetica"><span class="small"><u>north</u></spa
 <span style="font-family:helvetica"><div class="small"><u>Color</u></div></span> defines the color in which the caption should be set. This is
 either an X11 color preset<a href="#tthFtNtAAH" id="tthFrefAAH"><sup>7</sup></a> such as <span style="font-family:helvetica">"white"</span>, <span style="font-family:helvetica">"yellow"</span>, <span style="font-family:helvetica">"darkgreen"</span> ...,
 or a color definition similar to the HTML standard.
+The color may also be set dynamically based on the tag of an object. This is
+achieved by setting <span style="font-family:helvetica"><span class="small"><u>color</u></span></span> to the name of the key whose value should be
+used, prepended by the <tt>'%'</tt> character. The value of the key is then
+inpreted exactly as if it would have been set in the rule set. This means it
+can be any X11 color name or the HTML color representation, as explained below.
+The parameter <span style="font-family:helvetica"><span class="small"><u>fillcolor</u></span></span> let's you specify the background of the caption.
+If it is set, a box with the given color is drawn below the tex.
 The color presets reflect the colors of traditional sea charts. The HTML-style color definition has the pattern
 <tt>#[aa]rrggbb</tt>. The values <span style="font-family:helvetica">rr</span>, <span style="font-family:helvetica">gg</span>, and <span style="font-family:helvetica">bb</span> reflect the RGB values as a hexadecimal
 number from <span style="font-family:helvetica">00</span> to <span style="font-family:helvetica">ff</span>. Optionally a transparency may be specified with <span style="font-family:helvetica">aa</span>. It ranges from
@@ -1048,9 +1059,10 @@ river) or a polygon (closed way, i.e. an area, e.g. a lake).
 <div class="p"><!----></div>
 Independently if it is an open or a closed polygon there is always a filled
 part which is enclosed with a border.  The filled part is defined by
-<span style="font-family:helvetica"><span class="small"><u>color</u></span></span>, <span style="font-family:helvetica"><span class="small"><u>width</u></span></span>, and <span style="font-family:helvetica"><span class="small"><u>style</u></span></span> at which just <span style="font-family:helvetica"><span class="small"><u>color</u></span></span> is
-honored for closed polygons.  The border part is defined by <span style="font-family:helvetica"><span class="small"><u>bcolor</u></span></span>,
-<span style="font-family:helvetica"><span class="small"><u>bwidth</u></span></span>, and <span style="font-family:helvetica"><span class="small"><u>bstyle</u></span></span>.
+<span style="font-family:helvetica"><span class="small"><u>color</u></span></span>, <span style="font-family:helvetica"><span class="small"><u>width</u></span></span>, and <span style="font-family:helvetica"><span class="small"><u>style</u></span></span> of which just <span style="font-family:helvetica"><span class="small"><u>color</u></span></span> is
+honored for closed polygons. The border part is defined by <span style="font-family:helvetica"><span class="small"><u>bcolor</u></span></span>,
+<span style="font-family:helvetica"><span class="small"><u>bwidth</u></span></span>, and <span style="font-family:helvetica"><span class="small"><u>bstyle</u></span></span>. The color definition is explained in Section
+<a href="#sec:cap">6.1.1</a> on page <a href="#sec:cap">pageref</a>.
 
 <div class="p"><!----></div>
 The arguments to <span style="font-family:helvetica"><span class="small"><u>style</u></span></span> and <span style="font-family:helvetica"><span class="small"><u>bstyle</u></span></span> are one of <span style="font-family:helvetica">dashed</span>,
