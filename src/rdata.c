@@ -130,7 +130,7 @@ double lonmod(double lon)
  * @param lat0 Pointer to the latitude to tranlate.
  * @param loni0 Pointer to the longitude to translate.
  */
-void trans_coord(double theta, double phi, double *lat0, double *lon0)
+void transcoord(double theta, double phi, double *lat0, double *lon0)
 {
    double lat, lon;
 

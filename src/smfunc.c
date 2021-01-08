@@ -3167,8 +3167,8 @@ int act_transcoord_main(smrule_t *r, osm_obj_t *o)
    }
 
    //FIXME: dont know why this does not work in one step
-   trans_coord(0, td->tlon, &((osm_node_t*) o)->lat, &((osm_node_t*) o)->lon);
-   trans_coord(td->tlat, 0, &((osm_node_t*) o)->lat, &((osm_node_t*) o)->lon);
+   transcoord(0, td->tlon, &((osm_node_t*) o)->lat, &((osm_node_t*) o)->lon);
+   transcoord(td->tlat, 0, &((osm_node_t*) o)->lat, &((osm_node_t*) o)->lon);
    return 0;
 }
 
