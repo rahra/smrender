@@ -3136,9 +3136,6 @@ int act_transcoord_ini(smrule_t *r)
       goto ati_err;
    }
 
-   if (td->tlon != 0)
-      td->tlon = 180 - td->tlon;
-
    log_debug("tlat = %.3f, tlon = %.3f", td->tlat, td->tlon);
    r->data = td;
    return 0;
