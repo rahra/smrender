@@ -3152,6 +3152,8 @@ ati_err:
  * if one wants to work at the region of the anti meridian. This is (at least
  * in Josm) sometimes difficult. So translate the longitude, edit the data, and
  * translate it back.
+ * Since coordinate translation depends on each other, this function 1st
+ * translates the longitude and then the latitude.
  */
 int act_transcoord_main(smrule_t *r, osm_obj_t *o)
 {
@@ -3163,7 +3165,7 @@ int act_transcoord_main(smrule_t *r, osm_obj_t *o)
       return 1;
    }
 
-   //FIXME: dont know why this does not work in one step
+   // the order of rotation makes a difference, since they depend on each other
    transcoord(0, td->tlon, &((osm_node_t*) o)->lat, &((osm_node_t*) o)->lon);
    transcoord(td->tlat, 0, &((osm_node_t*) o)->lat, &((osm_node_t*) o)->lon);
    return 0;
