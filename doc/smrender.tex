@@ -1396,6 +1396,74 @@ rendered in the second rule.
 
    Have a look at Section \ref{sec:transexample} for a detailed example.
 
+      \subsubsection{Translate Reference Point of Chart}
+
+\begin{verbatim}
+   <action>    := 'transcoord:' [ <param> [ ';' <param> ] ]
+   <param>     := <xdef> | <zdef>
+   <xdef>      := 'tlat' '=' decimal value
+   <zdef>      := 'tlon' '=' decimal value
+\end{verbatim}
+
+      This function takes the two arguments \optv{tlat} and \optv{tlon} which
+      translates the point of reference. I.e. it rotates the surface of the
+      world.
+
+      The values are given in degrees and are used as usual in the navigation.
+      This means that positiv values rotate to the North and East and negative
+      values rotate to the South and West.
+
+      Please note that the order of rotation is highly important. This means
+      that the result is different if you rotate 1st longitude then latitude or
+      vice versa. If both parameters \optv{tlat} and \optv{tlon} are set,
+      \optv{tlon} is applied 1st and \optv{tlat} 2nd. If you need a different
+      order create to separate rules.
+
+      This implementation is a spherical rotation. Since the Earth and WGS84
+      are based on an ellipsoid, this rotation will produced slightly incorrect
+      results.
+
+      Further note that a sphere is a 3-dimensional object, thus there are
+      actually 3 rotation axis, x, y, and z, and not just two. The longitude
+      rotation with \optv{tlon} rotate by the z-axis, which is the axis of the
+      Earth and the latitude \optv{tlat} rotation corresponds to the x-axis.
+      Although there is no 3rd parameter, a rotation along the y-axis can still
+      be done since they depend on each other on the surface of a sphere.
+      To accomplish a rotation along the y-axis, first rotate \textsf{x}
+      (\optv{tlat}) up North by 90 degrees, then rotate by \textsf{z}
+      (\optv{tlon}) with the desired angle, and finally rotate back South by 90
+      degrees again.
+
+      The translation of the reference point is necessary to implement the
+      Spilhaus projection.  It rotates the longitude (\textsf{z}) by
+      66.94970198 degrees to the East, the latitude (\textsf{x}) by 49.56371678
+      degrees to the South and finally rotates the \textsf{y}-axis by 40.18
+      degrees. As explained above, because of this rotation by all 3 axis we
+      need several steps for a correct result. The following rules will
+      accomplished this:
+
+      {\small
+\begin{verbatim}
+   <!-- transform chart reference point -->
+   <!-- 1. rotate longitude -->
+   <node version='-20'>
+      <tag k='_action_' v='transcoord:tlat=0;tlon=66.94970198'/>
+   </node>
+   <!-- 2. rotate latitude, but in the opposite direction,
+      this is 90 - 49.56371678. -->
+   <node version='-20'>
+      <tag k='_action_' v='transcoord:tlat=40.43628322;tlon=0'/>
+   </node>
+   <!-- 3. rotate lon again which now corresponds to the y-axis -->
+   <node version='-20'>
+      <tag k='_action_' v='transcoord:tlat=0;tlon=40.18'/>
+   </node>
+   <!-- 4. finally rotate latitude back South by 90 degrees -->
+   <node version='-20'>
+      <tag k='_action_' v='transcoord:tlat=-90;tlon=0'/>
+   </node>
+\end{verbatim}
+      }
 
       \subsubsection{Special Data Manipulation Functions}
 
@@ -1508,25 +1576,6 @@ rendered in the second rule.
    \item {\sffamily reverse\_way}
 
       This function always reverses a way independent of its current direction.
-
-   \item {\sffamily transcoord}
-
-      This function takes the two arguments \optv{tlat} and \optv{tlon} which
-      translates the point of reference. I.e. it rotates the surface of the
-      world.
-
-      This is necessary to implement the Spilhaus projection which rotates the
-      point of reference to 49.56371678 South and 66.94970198 East. This can be
-      accomplished with the following rule:
-
-\begin{verbatim}
-   <node version='-20' visible='true'>
-      <tag
-         k='_action_'
-         v='transcoord:tlat=-49.56371678;tlon=66.94970198'
-      />
-   </node>
-\end{verbatim}
 
    \item {\sffamily virtclosed}
 
