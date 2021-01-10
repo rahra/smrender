@@ -74,6 +74,18 @@
 #include "smrender_dev.h"
 #include "smcoast.h"
 
+#define DODECANT
+#ifdef DODECANT
+//! number of "corner" points
+#define NUM_CO 8
+enum {I_NE, I_E, I_SE, I_S, I_SW, I_W, I_NW, I_N};
+#else
+//! number of "corner" points
+#define NUM_CO 4
+enum {I_NE, I_SE, I_SW, I_NW};
+#endif
+
+
 struct refine
 {
    double deviation;
@@ -84,7 +96,7 @@ struct refine
 static int node_brg(struct pcoord*, const struct coord*, int64_t);
 
 
-static struct corner_point co_pt_[4];
+static struct corner_point co_pt_[NUM_CO];
 static struct coord center_;
 static osm_way_t *page_way_;
 
@@ -214,17 +226,71 @@ static int octant(const struct coord *crd)
 {
    int pos = 0;
 
-   if (crd->lat > co_pt_[0].n->lat)
+   if (crd->lat > co_pt_[I_NE].n->lat)
       pos |= POS_N;
-   else if (crd->lat < co_pt_[1].n->lat)
+   else if (crd->lat < co_pt_[I_SE].n->lat)
       pos |= POS_S;
 
-   if (crd->lon > co_pt_[0].n->lon)
+   if (crd->lon > co_pt_[I_NE].n->lon)
       pos |= POS_E;
-   else if (crd->lon < co_pt_[3].n->lon)
+   else if (crd->lon < co_pt_[I_NW].n->lon)
       pos |= POS_W;
 
    return pos;
+}
+
+
+#ifdef DODECANT
+static int dodecant(const struct coord *crd)
+{
+   int pos = 0;
+
+   if (!(pos = octant(crd)))
+      return 0;
+
+   switch (pos)
+   {
+      case POS_N:
+         if (crd->lon > co_pt_[I_N].n->lon)
+            pos |= POS_1;
+         break;
+
+      case POS_E:
+         if (crd->lat < co_pt_[I_E].n->lat)
+            pos |= POS_1;
+         break;
+
+      case POS_S:
+         if (crd->lon < co_pt_[I_S].n->lon)
+            pos |= POS_1;
+         break;
+
+      case POS_W:
+         if (crd->lat > co_pt_[I_W].n->lat)
+            pos |= POS_1;
+         break;
+
+      case POS_NE:
+      case POS_SE:
+      case POS_SW:
+      case POS_NW:
+         return pos;
+
+      default:
+         log_msg(LOG_EMERG, "this should never happen");
+   }
+
+   return pos;
+}
+#endif
+
+
+/*! This function tests of all bits in tst are set in pos. It returns 1 if they
+ * are set, otherwise 0 is returned.
+ */
+int check_bits(int pos, int tst)
+{
+   return (pos & tst) == tst;
 }
 
 
@@ -236,59 +302,49 @@ static int64_t edge_point(struct coord crd, int pos, int64_t nid)
    // FIXME: inserting corner points is not really correct
    // Bearing between inner point and out pointer should be compare to
    // the bearing from the inner point to the corner point.
-   if ((pos & POS_N) && (pos & POS_E))
+   if (check_bits(pos, POS_NE))
+      return co_pt_[I_NE].n->obj.id;
+   if (check_bits(pos, POS_SE))
+      return co_pt_[I_SE].n->obj.id;
+   if (check_bits(pos, POS_SW))
+      return co_pt_[I_SW].n->obj.id;
+   if (check_bits(pos, POS_NW))
+      return co_pt_[I_NW].n->obj.id;
+
+   // FIXME: coordinates of new edge points are not correct. They deviate from
+   // their intended location.
+   n = get_object(OSM_NODE, nid);
+   switch (pos & POS_DIR_MSK)
    {
-      return co_pt_[0].n->obj.id;
+      case POS_N:
+         crd.lon += (n->lon - crd.lon) * (n->lat - co_pt_[I_NE].n->lat) / (n->lat - crd.lat);
+         crd.lat = co_pt_[I_NE].n->lat;
+         break;
+      case POS_S:
+         crd.lon += (n->lon - crd.lon) * (n->lat - co_pt_[I_SE].n->lat) / (n->lat - crd.lat);
+         crd.lat = co_pt_[I_SW].n->lat;
+         break;
+      case POS_E:
+         crd.lat += (n->lat - crd.lat) * (n->lon - co_pt_[I_NE].n->lon) / (n->lon - crd.lon);
+         crd.lon = co_pt_[I_NE].n->lon;
+         break;
+      case POS_W:
+         crd.lat += (n->lat - crd.lat) * (n->lon - co_pt_[I_NW].n->lon) / (n->lon - crd.lon);
+         crd.lon = co_pt_[I_NW].n->lon;
+         break;
+      default:
+         log_msg(LOG_EMERG, "octant not allowed: 0x%02x", pos);
+         return 0;
    }
-   else if ((pos & POS_S) && (pos & POS_E))
-   {
-      return co_pt_[1].n->obj.id;
-   }
-   else if ((pos & POS_S) && (pos & POS_W))
-   {
-      return co_pt_[2].n->obj.id;
-   }
-   else if ((pos & POS_N) && (pos & POS_W))
-   {
-      return co_pt_[3].n->obj.id;
-   }
-   else 
-   {
-      // FIXME: coordinates of new edge points are not correct. They deviate from
-      // their intended location.
-      n = get_object(OSM_NODE, nid);
-      switch (pos)
-      {
-         case POS_N:
-            crd.lon += (n->lon - crd.lon) * (n->lat - co_pt_[0].n->lat) / (n->lat - crd.lat);
-            crd.lat = co_pt_[0].n->lat;
-            break;
-         case POS_S:
-            crd.lon += (n->lon - crd.lon) * (n->lat - co_pt_[1].n->lat) / (n->lat - crd.lat);
-            crd.lat = co_pt_[1].n->lat;
-            break;
-         case POS_E:
-            crd.lat += (n->lat - crd.lat) * (n->lon - co_pt_[0].n->lon) / (n->lon - crd.lon);
-            crd.lon = co_pt_[0].n->lon;
-            break;
-         case POS_W:
-            crd.lat += (n->lat - crd.lat) * (n->lon - co_pt_[3].n->lon) / (n->lon - crd.lon);
-            crd.lon = co_pt_[3].n->lon;
-            break;
-         default:
-            log_msg(LOG_EMERG, "octant not allowed: 0x%02x", pos);
-            return 0;
-      }
-      n = malloc_node(2);
-      osm_node_default(n);
-      set_const_tag(&n->obj.otag[1], "smrender:cat_poly", "edge_point");
-      n->lat = crd.lat;
-      n->lon = crd.lon;
-      put_object((osm_obj_t*) n);
+   n = malloc_node(2);
+   osm_node_default(n);
+   set_const_tag(&n->obj.otag[1], "smrender:cat_poly", "edge_point");
+   n->lat = crd.lat;
+   n->lon = crd.lon;
+   put_object((osm_obj_t*) n);
 //        w->ref[0] = n->obj.id;
 //         log_debug("added new edge point %ld at lat = %f, lon = %f", (long) n->obj.id, n->lat, n->lon);
-      return n->obj.id;
-   }
+   return n->obj.id;
 }
 
 
@@ -340,7 +396,11 @@ static int trim_way(osm_way_t *w, int rev)
       crd.lat = n->lat;
       crd.lon = n->lon;
       p[0] = p[1];
+#ifndef DODECANT
       if (!(p[1] = octant(&crd)))
+#else
+      if (!(p[1] = dodecant(&crd)))
+#endif
          break;
    }
 
@@ -698,13 +758,20 @@ static int compare_pdef(const struct pdef *p1, const struct pdef *p2)
  */
 static void init_corner_brg(const struct rdata *rd, const struct coord *src, struct corner_point *co_pt)
 {
-   struct coord corner_coord[4] = {rd->bb.ru, {rd->bb.ll.lat, rd->bb.ru.lon}, rd->bb.ll, {rd->bb.ru.lat, rd->bb.ll.lon}};
+#ifndef DODECANT
+   struct coord corner_coord[NUM_CO] = {rd->bb.ru, {rd->bb.ll.lat, rd->bb.ru.lon}, rd->bb.ll, {rd->bb.ru.lat, rd->bb.ll.lon}};
+#else
+   struct coord corner_coord[NUM_CO] = {rd->bb.ru, {0, rd->bb.ru.lon}, {rd->bb.ll.lat, rd->bb.ru.lon}, {rd->bb.ll.lat, 0}, rd->bb.ll, {0, rd->bb.ll.lon}, {rd->bb.ru.lat, rd->bb.ll.lon}, {rd->bb.ru.lat, 0}};
+   corner_coord[I_E].lat = corner_coord[I_W].lat = (rd->bb.ru.lat + rd->bb.ll.lat) / 2;
+   corner_coord[I_S].lon = corner_coord[I_N].lon = (rd->bb.ru.lon + rd->bb.ll.lon) / 2;
+#endif
    osm_way_t *w;
    int i;
 
-   w = malloc_way(2, 5);
+
+   w = malloc_way(2, NUM_CO + 1);
    osm_way_default(w);
-   for (i = 0; i < 4; i++)
+   for (i = 0; i < NUM_CO; i++)
    {
       co_pt[i].pc = coord_diff(src, &corner_coord[i]);
       co_pt[i].n = malloc_node(2);
@@ -715,11 +782,11 @@ static void init_corner_brg(const struct rdata *rd, const struct coord *src, str
       put_object((osm_obj_t*) co_pt[i].n);
       log_msg(LOG_DEBUG, "corner_point[%d].bearing = %f (id = %"PRId64")", i, co_pt[i].pc.bearing, co_pt[i].n->obj.id);
 
-      w->ref[3 - i] = co_pt[i].n->obj.id;
+      w->ref[NUM_CO - 1 - i] = co_pt[i].n->obj.id;
    }
 
-   w->ref[4] = w->ref[0];
-   w->ref_cnt = 5;
+   w->ref[NUM_CO] = w->ref[0];
+   w->ref_cnt = NUM_CO + 1;
    set_const_tag(&w->obj.otag[1], "border", "page");
    put_object((osm_obj_t*) w);
    page_way_ = w;
@@ -786,17 +853,17 @@ static int connect_open(struct pdef *pd, struct wlist *wl, int ocnt, short no_co
          if (!no_corner)
          {
             // find next corner point for i
-            for (k = 0; k < 4; k++)
+            for (k = 0; k < NUM_CO; k++)
                if (pd[i].pc.bearing < co_pt[k].pc.bearing)
                   break;
             // find next corner point for j
-            for (l = 0; l < 4; l++)
+            for (l = 0; l < NUM_CO; l++)
                if (pd[j % ocnt].pc.bearing < co_pt[l].pc.bearing)
                   break;
             // if the 2nd corner point is before the first or if the last point
             // is the first in the list, wrap around "360 degrees".
             if (l < k || j >= ocnt)
-               l += 4;
+               l += NUM_CO;
             // add corner points to way
             for (; k < l; k++)
             {
@@ -805,10 +872,10 @@ static int connect_open(struct pdef *pd, struct wlist *wl, int ocnt, short no_co
                   log_msg(LOG_ERR, "realloc() failed: %s", strerror(errno)), exit(EXIT_FAILURE);
 
                memmove(&ref[1], &ref[0], sizeof(int64_t) * wl->ref[pd[i].wl_index].nw->ref_cnt); 
-               ref[0] = co_pt[k % 4].n->obj.id;
+               ref[0] = co_pt[k % NUM_CO].n->obj.id;
                wl->ref[pd[i].wl_index].nw->ref = ref;
                wl->ref[pd[i].wl_index].nw->ref_cnt++;
-               log_debug("added corner point %d (id = %"PRId64")", k % 4, co_pt[k % 4].n->obj.id);
+               log_debug("added corner point %d (id = %"PRId64")", k % NUM_CO, co_pt[k % NUM_CO].n->obj.id);
             }
          } //if (!no_corner)
 

@@ -53,6 +53,15 @@
 #define POS_E 4
 #define POS_W 8
 #define POS_UC 16
+#define POS_1 32
+#define POS_NE (POS_N | POS_E)
+#define POS_SE (POS_S | POS_E)
+#define POS_SW (POS_S | POS_W)
+#define POS_NW (POS_N | POS_W)
+#define POS_N1 (POS_N | POS_1)
+#define POS_E1 (POS_E | POS_1)
+#define POS_S1 (POS_S | POS_1)
+#define POS_W1 (POS_W | POS_1)
 #define POS_DIR_MSK (POS_N | POS_S | POS_E | POS_W)
 
 // macro to convert minutes to degrees
