@@ -217,6 +217,16 @@ static int poly_get_brg(struct pdef *pd, const struct wlist *wl, int ocnt)
 
 /*! Returns the octant of a position outside the rendering window. This is one
  * of N, NE, E, SE, S, SW, W, NW.
+ *
+ *   NW |  N  | N|1 | NE
+ *  ---------------------
+ *  W|1 |           | E
+ *  -----           -----
+ *    W |           | E|1
+ *  ---------------------
+ *   SW | S|1 |  S  | SE
+ *
+ *
  * @param crd Pointer to position.
  * @return Returns Octant as a combination of the logical or'ed flags  POS_N,
  * POS_S, POS_E, POS_W. If the position is inside the rendering window 0 is
@@ -241,6 +251,19 @@ static int octant(const struct coord *crd)
 
 
 #ifdef DODECANT
+/*! This function returns the position of the coordinates given by crd as being
+ * in the location of one of 12 areas. This is similar to the function octant()
+ * but with 12 instead of just 8 areas. These areas are NE, SE, SW, and NW, and
+ * the for main directions N, E, S, and W are split into half. This is the
+ * difference to octant(). If the coordinates lie in the higher range in
+ * respect to the bearing, the flag POS_1 is set additionally. E.g. if the
+ * coordinates are located above the page on the right half, the flags POS_N |
+ * POS_1 are set. On the left half just POS_N would be set.
+ * @param crd Pointer to the coordinates to test.
+ * @return the function returns a valid combination of the flags POS_N, POS_E,
+ * POS_S, POS_W, and POS_1. If the coordinates are within the page range, 0 is
+ * returned.
+ */
 static int dodecant(const struct coord *crd)
 {
    int pos = 0;
@@ -294,6 +317,17 @@ int check_bits(int pos, int tst)
 }
 
 
+/*! This function returns the nearest edgepoint to the coordinates crd, the
+ * outside position are pos, and the inside node given by nid. If the area
+ * location is one of POS_NE, POS_SE, POS_SW, or POS_NW, the global corner
+ * point of the page is returned.
+ * In all other cases a new node is created with approx. positions exactly at
+ * the edge of the page to the desired area (octant or dodecant).
+ * @param crd
+ * @param pos
+ * @param nid
+ * @return The function returns a suitable node id.
+ */
 static int64_t edge_point(struct coord crd, int pos, int64_t nid)
 {
    osm_node_t *n;
@@ -368,12 +402,11 @@ static int windex(const osm_way_t *w, int idx, int rev)
  * outside the rendering window. This means shortening the way by removing
  * those which are outside up to the first node which is inside.
  * @param w Pointer to way which should be trimmed.
- * @return It returns the index of the of the original reference list of the
- * way of the first node which was inside. This node is at index 1 after
- * modification and at index 0 a newly generated edge point was inserted.
- * If 0 is returned the way was not modified, i.e. even the first point is
- * inside. -1 is returned in case of error which occures if all nodes are
- * outside.
+ * @return It returns the index of the first node within the original reference
+ * list of the way which was inside. This node is at index 1 after modification
+ * and at index 0 if a newly generated edge point was inserted. If 0 is
+ * returned the way was not modified, i.e. even the first point is inside. -1
+ * is returned in case of error which occures if all nodes are outside.
  */
 static int trim_way(osm_way_t *w, int rev)
 {
@@ -482,21 +515,35 @@ static int trim_ways(struct wlist *wl)
 }
 
 
+/*! This function finds adjacent ways. If two different ways share the same 1st
+ * or last node, they are considered to be adjacent (and can be connected in a
+ * further step). The list of nodes defined by pd has to be sorted ascendingly
+ * by their node ids for poly_find_adj2() to work properly.
+ * @param wl Pointer to the way list.
+ * @param pd Pointer to the node list, which obviously has to have twice as
+ * much entries as the way list.
+ * @return The function returnes to number of nodes that are found to be used
+ * by the different ways. I.e. if 1 is returned, there are two ways which share
+ * one node.
+ */
 static int poly_find_adj2(struct wlist *wl, struct pdef *pd)
 {
-   int i, n;
+   int i, j, n;
 
    log_debug("%d unconnected ends", wl->ref_cnt * 2);
    for (i = 0, n = 0; i < wl->ref_cnt * 2 - 1; i++)
    {
       if (pd[i].nid == pd[i + 1].nid)
       {
+         // safety check for more than 2 ways sharing the same 1st/last node
+         for (j = 2; j + i < wl->ref_cnt * 2 && pd[i].nid == pd[i + j].nid; j++);
+         if (j > 2)
+            log_msg(LOG_WARN, "possible data error: end node %"PRId64 " is shared by %d ways", pd[i].nid, j);
+
          // detect improper way direction
          if ((!pd[i].pn && !pd[i + 1].pn) || (pd[i].pn && pd[i + 1].pn))
-         {
             log_msg(LOG_WARN, "possible data error: either way %"PRId64" or %"PRId64" has wrong direction",
                   wl->ref[pd[i].wl_index].w->obj.id, wl->ref[pd[i + 1].wl_index].w->obj.id);
-         }
 
          //log_debug("wl_index %d to %d belong together", i, i + 1);
          wl->ref[pd[i + 1].wl_index].next = &wl->ref[pd[i].wl_index];
