@@ -1247,6 +1247,47 @@ int check_way(osm_way_t *w)
 {
    int i;
 
+#if 1
+   // this is the code before 9f46c03 which seems to have worked better
+   for (i = 1; i < w->ref_cnt; i++)
+      if (w->ref[i] != w->ref[0])
+         break;
+
+   // all nodes are the same
+   if (i >= w->ref_cnt)
+      goto cn_err_exit;
+
+   // first node appears multiple times
+   if (i > 1)
+   {
+      log_debug("eliminating duplicate starting nodes 1 - %d in way %"PRId64, i - 1, w->obj.id);
+      memmove(&w->ref[1], &w->ref[i], (w->ref_cnt - i) * sizeof(*w->ref));
+      w->ref_cnt -= i - 1;
+   }
+
+   // check nodes from the back of the list
+   for (i = w->ref_cnt - 2; i >= 0; i--)
+      if (w->ref[i] != w->ref[w->ref_cnt - 1])
+         break;
+
+   // all nodes are the same
+   if (i <= -1)
+      goto cn_err_exit;
+
+   if (i < w->ref_cnt - 2)
+   {
+      log_debug("shortening way %"PRId64" from %d to %d", w->obj.id, w->ref_cnt, i + 2);
+      w->ref_cnt = i + 2;
+   }
+
+   return 0;
+
+cn_err_exit:
+   log_debug("all nodes of way %"PRId64" have the same id", w->obj.id);
+   return 1;
+
+#else
+   // this is the code since revision 9f46c03 which seems to have a bug
    for (i = 0; i < w->ref_cnt - 1;)
    {
       // check if consecutive nodes are equal
@@ -1265,6 +1306,7 @@ int check_way(osm_way_t *w)
       w->ref_cnt = 0;
 
    return w->ref_cnt == 0;
+#endif
 }
 
 
