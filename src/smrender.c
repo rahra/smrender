@@ -463,7 +463,7 @@ char *init_rd_paper(struct rdata *rd, const char *paper)
 
 static void print_version(void)
 {
-   printf("Seamark renderer V" PACKAGE_VERSION ", (c) 2011-2020, Bernhard R. Fischer, 4096R/8E24F29D <bf@abenteuerland.at>.\n"
+   printf("Seamark renderer V" PACKAGE_VERSION ", (c) 2011-2021, Bernhard R. Fischer, 4096R/8E24F29D <bf@abenteuerland.at>.\n"
           "See http://www.abenteuerland.at/smrender/ for more information.\n");
 #ifdef HAVE_CAIRO
    printf("Using libcairo %s.\n", cairo_version_string());
@@ -619,6 +619,13 @@ int parse_tile_info(char *tstr, struct tile_info *ti)
       ti->ftype = 1;
 
    return 0;
+}
+
+
+static double sqr_angle(double a)
+{
+   a = fmod2(a, M_PI_2);
+   return a < M_PI_4 ? a : M_PI_2 - a;
 }
 
 
@@ -790,6 +797,14 @@ void init_rendering_window(struct rdata *rd, char *win, const char *paper)
    page_rotate(rd, angle);
    rd->pgw = rd->w;
    rd->pgh = rd->h;
+
+   if (rd->proj == PROJ_ADAMS2)
+   {
+      double s = cos(sqr_angle(rd->rot));
+      rd->pgw *= s;
+      rd->pgh *= s;
+      log_debug("final page scaled by %f", s);
+   }
 
    init_bbox_mll(rd);
 }
