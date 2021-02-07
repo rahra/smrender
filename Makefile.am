@@ -17,7 +17,8 @@ dist_available_rules_DATA = \
 	rules/available/seamark_rocks.osm \
 	rules/available/seamark_topmark.osm \
 	rules/available/soundings.osm \
-	rules/available/translation.osm
+	rules/available/translation.osm \
+	rules/available/tides.osm
 
 rules_100000dir = $(smrender_datadir)/rules_100000
 r100k_yedir = $(smrender_datadir)/r100k_ye
@@ -40,6 +41,7 @@ install-data-hook:
 		$(LN_S) ../available/seamark_beacon.osm 030beacon.osm && \
 		$(LN_S) ../available/seamark_topmark.osm 031topmark.osm && \
 		$(LN_S) ../available/soundings.osm 032soundings.osm && \
+		$(LN_S) ../available/tides.osm 033tides.osm && \
 		$(LN_S) ../available/legend.osm 900legend.osm
 	if test -e $(DESTDIR)$(rules_100000dir) ; then \
 		rm -r $(DESTDIR)$(rules_100000dir) ; \
@@ -160,6 +162,9 @@ SeaMapSymbols/Float_Yellow_Black_Yellow.svg \
 SeaMapSymbols/Float_Yellow.svg \
 SeaMapSymbols/Fog_Signal.svg \
 SeaMapSymbols/Fuel.svg \
+SeaMapSymbols/H45.svg \
+SeaMapSymbols/H46_empty.svg \
+SeaMapSymbols/H46.svg \
 SeaMapSymbols/harbour_master.svg \
 SeaMapSymbols/HarbourMaster.svg \
 SeaMapSymbols/Harbour.svg \

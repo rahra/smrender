@@ -1,0 +1,20 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<osm version='0.6' generator='Bernhard R. Fischer'>
+
+   <node>
+      <tag k='seamark:type' v='water_turbulence'/>
+      <tag k='seamark:water_turbulence' v='eddies'/>
+      <tag k='_action_' v='img:file=SeaMapSymbols/H45.svg;scale=0.2'/>
+   </node>
+
+   <node version='1'>
+      <tag k='seamark:type' v='tidal_stream_data'/>
+      <tag k='_action_' v='img:file=SeaMapSymbols/H46_empty.svg;scale=0.25'/>
+   </node>
+   <node version='1'>
+      <tag k='seamark:type' v='tidal_stream_data'/>
+      <tag k='_action_' v='cap:font=sans-serif;size=3;key=seamark:tidal_stream_data;color=magenta'/>
+   </node>
+
+</osm>
+

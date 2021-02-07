@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
+   xmlns:dc="http://purl.org/dc/elements/1.1/"
+   xmlns:cc="http://creativecommons.org/ns#"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   width="357.97888"
+   height="373.61615"
+   id="svg2"
+   sodipodi:version="0.32"
+   inkscape:version="0.48.2 r9819"
+   sodipodi:modified="true"
+   version="1.0"
+   sodipodi:docname="H45.svg">
+  <title
+     id="title2983">H45: Eddie</title>
+  <defs
+     id="defs4" />
+  <sodipodi:namedview
+     id="base"
+     pagecolor="#ffffff"
+     bordercolor="#666666"
+     borderopacity="1.0"
+     inkscape:pageopacity="0.0"
+     inkscape:pageshadow="2"
+     inkscape:zoom="1.009057"
+     inkscape:cx="-169.85111"
+     inkscape:cy="186.80807"
+     inkscape:document-units="px"
+     inkscape:current-layer="layer1"
+     inkscape:window-width="802"
+     inkscape:window-height="575"
+     inkscape:window-x="301"
+     inkscape:window-y="30"
+     showgrid="false"
+     inkscape:window-maximized="0" />
+  <metadata
+     id="metadata7">
+    <rdf:RDF>
+      <cc:Work
+         rdf:about="">
+        <dc:format>image/svg+xml</dc:format>
+        <dc:type
+           rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
+        <dc:title>H45: Eddie</dc:title>
+        <cc:license
+           rdf:resource="http://creativecommons.org/licenses/publicdomain/" />
+      </cc:Work>
+      <cc:License
+         rdf:about="http://creativecommons.org/licenses/publicdomain/">
+        <cc:permits
+           rdf:resource="http://creativecommons.org/ns#Reproduction" />
+        <cc:permits
+           rdf:resource="http://creativecommons.org/ns#Distribution" />
+        <cc:permits
+           rdf:resource="http://creativecommons.org/ns#DerivativeWorks" />
+      </cc:License>
+    </rdf:RDF>
+  </metadata>
+  <g
+     inkscape:label="Camada 1"
+     inkscape:groupmode="layer"
+     id="layer1"
+     transform="translate(-123.11894,-127.76051)">
+    <path
+       sodipodi:type="spiral"
+       style="fill:none;fill-rule:evenodd;stroke:#000000;stroke-width:20;stroke-linecap:round;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
+       id="path2160"
+       sodipodi:cx="294.28571"
+       sodipodi:cy="332.36218"
+       sodipodi:expansion="1"
+       sodipodi:revolution="2.8"
+       sodipodi:radius="200.50955"
+       sodipodi:argument="-17.993568"
+       sodipodi:t0="0"
+       d="m 294.28571,332.36218 c 7.0603,8.1347 -7.48211,13.53053 -13.52041,11.7347 -16.36342,-4.86659 -17.53028,-26.34935 -9.94899,-38.77551 13.56116,-22.22748 44.73157,-22.73979 64.03061,-8.16328 28.32212,21.39162 28.12409,63.37053 6.37757,89.28571 -28.98468,34.54087 -82.10157,33.58407 -114.54081,4.59187 -40.82147,-36.48372 -39.08345,-100.87676 -2.80616,-139.79592 43.93666,-47.13631 119.67685,-44.60569 165.05102,-1.02045 53.47189,51.3637 50.14229,138.49247 -0.76526,190.30612 -58.77477,59.82092 -157.31846,55.68848 -215.56122,-2.55096 -66.17913,-66.17535 -61.24135,-176.15173 4.33667,-240.81633 73.56864,-72.54391 194.99031,-66.79909 266.07143,6.12238 14.55389,14.93071 26.69871,32.17455 35.90629,50.87957"
+       transform="matrix(0,-1,1,0,-12.460191,616.67696)" />
+  </g>
+</svg>
