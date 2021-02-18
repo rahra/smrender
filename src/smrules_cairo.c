@@ -352,7 +352,16 @@ void save_main_image(FILE *f, int ftype)
    switch (ftype)
    {
       case FTYPE_PNG:
-         sfc = cairo_smr_image_surface_from_bg(CAIRO_FORMAT_ARGB32, CAIRO_ANTIALIAS_DEFAULT);
+         log_debug("PNG: width = %d px, height = %d pt", (int) round(rdata_page_width(U_PX)), (int) round(rdata_page_height(U_PX)));
+         sfc = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, round(rdata_page_width(U_PX)), round(rdata_page_height(U_PX)));
+         dst = cairo_create(sfc);
+         cairo_smr_log_status(dst);
+         cairo_scale(dst, (double) rdata_dpi() / 72, (double) rdata_dpi() / 72);
+         cairo_translate(dst, rdata_page_width(U_PT) / 2, rdata_page_height(U_PT) / 2);
+         cairo_smr_page_rotate(dst);
+         cairo_set_source_surface(dst, sfc_, rdata_width(U_PT) / -2, rdata_height(U_PT) / -2);
+         cairo_paint(dst);
+         cairo_destroy(dst);
          if ((e = cairo_surface_write_to_png_stream(sfc, cairo_smr_write_func, f)) != CAIRO_STATUS_SUCCESS)
             log_msg(LOG_ERR, "failed to save png image: %s", cairo_status_to_string(e));
          cairo_surface_destroy(sfc);
