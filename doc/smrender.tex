@@ -1082,7 +1082,7 @@ right and above of the lower left page corner.
 The action \textsf{set\_tags} allows to add an arbitrary number of OSM tags to an
 object. The tags have to be defined through an object within the rules file.
 This object may have no action tag. The template should have an id because
-the action \textsf{set\_tags} needs to have a reference to it. To format simple
+the action \textsf{set\_tags} needs to have a reference to it. The format simply
 looks like the following.
 
 \begin{verbatim}
@@ -1093,6 +1093,22 @@ looks like the following.
 
 Please note that the object type of the rule must be the same as the object
 type of the template.
+
+\paragraph{Example} The following example adds the tags
+\textsf{natural=coastline} and \textsf{foo=bar} to all ways which have the tags
+\textsf{border=page} and \textsf{generator=smrender}.
+
+\begin{verbatim}
+<way version="-100" id="115">
+   <tag k='natural' v='coastline'/>
+   <tag k='foo' v='bar'/>
+</way>
+<way version="-100">
+   <tag k='border' v='page'/>
+   <tag k='generator' v='smrender'/>
+   <tag k='_action_' v='set_tags:id=115'/>
+</way>
+\end{verbatim}
 
 \subsubsection{Standard Shapes} \label{sec:shape}
 
