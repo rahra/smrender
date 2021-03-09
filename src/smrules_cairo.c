@@ -2405,7 +2405,8 @@ int act_img_ini(smrule_t *r)
          return -1;
       }
 
-      //rsvg_handle_set_dpi(rh, 72);
+      // FIXME: dpi setting orginally was commented out and set to 72, not sure about consquences
+      rsvg_handle_set_dpi(rh, rdata_dpi());
       rsvg_handle_get_dimensions(rh, &dd);
       log_debug("svg dimension: w = %d, h = %d", dd.width, dd.height);
 
