@@ -490,6 +490,7 @@ void usage(const char *s)
          "                        nautical miles ('m')\n"
          "   -a .................. Render all nodes, otherwise only nodes which are\n"
          "                         on the page are rendered.\n"
+         "   -B <border> ......... Add an additional border to the page.\n"
          "   -b <color> .......... Choose background color ('white' is default).\n"
          "   -D .................. Increase verbosity (can be specified multiple times).\n"
          "   -d <density> ........ Set image density (300 is default).\n"
@@ -810,6 +811,46 @@ void init_rendering_window(struct rdata *rd, char *win, const char *paper)
 }
 
 
+/*! Increase page size by border given by the string border. The border shall
+ * contain a decimal number. Incorrect values are ignored.
+ * The value will be added twice to rd->pgw und rd->pgh.
+ * @param rd Pointer to struct rdata global rendering data structure.
+ * @param border Pointer to string with decimal number of size of page border.
+ * @return If conversion and adding of page border was successfull 0 is
+ * returned. In case of error, -1 is returned.
+ */
+int add_page_border(struct rdata *rd, const char *border)
+{
+   char *endptr;
+   double b;
+
+   // safety check
+   if (rd == NULL || border == NULL)
+      return -1;
+
+   errno = 0;
+   b = strtod(border, &endptr);
+
+   if (b == 0 && border == endptr)
+   {
+      log_msg(LOG_ERR, "ignoring illegal border value '%s'", border);
+      return -1;
+   }
+
+   if (errno)
+   {
+      log_errno(LOG_ERR, "ignoring illegal border value");
+      return -1;
+   }
+
+   log_debug("adding page border of %.1f px (%.1f mm)", b, MM2PX(b));
+   rd->pgw += MM2PX(b * 2);
+   rd->pgh += MM2PX(b * 2);
+
+   return 0;
+}
+
+
 /*! This function splits the string of the form "<filename>[:<option>]" and
  * determines its values. <Filename> is directly copied into the argument name.
  * <option> is chcompared to "nologtime" or "logtime". If <option> is set to
@@ -855,7 +896,7 @@ int main(int argc, char *argv[])
    struct rdata *rd;
    struct timeval tv_start, tv_end;
    int w_mmap = 1, load_filter = 0, init_exit = 0, gen_grid = AUTO_GRID, prt_url = 0;
-   char *paper = "A3", *bg = NULL;
+   char *paper = "A3", *bg = NULL, *border = NULL;
    struct filter fi;
    struct dstats rstats;
    struct grid grd;
@@ -876,11 +917,15 @@ int main(int argc, char *argv[])
    if (setlocale(LC_CTYPE, "") == NULL)
       log_msg(LOG_WARN, "setlocale() failed");
 
-   while ((n = getopt(argc, argv, "ab:Dd:fg:Ghi:k:K:lL:MmN:no:O:p:P:r:R:s:t:T:uVvw:")) != -1)
+   while ((n = getopt(argc, argv, "ab:B:Dd:fg:Ghi:k:K:lL:MmN:no:O:p:P:r:R:s:t:T:uVvw:")) != -1)
       switch (n)
       {
          case 'a':
             render_all_nodes_ = 1;
+            break;
+
+         case 'B':
+            border = optarg;
             break;
 
          case 'b':
@@ -1083,6 +1128,7 @@ int main(int argc, char *argv[])
    log_debug("args: %s", rd->cmdline);
 
    init_rendering_window(rd, argv[optind], paper);
+   add_page_border(rd, border);
 
    if (prt_url)
    {

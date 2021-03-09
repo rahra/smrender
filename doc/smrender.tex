@@ -216,6 +216,15 @@ option \optk{a} is set implicitly.
       version 3.0.  With this option set \smrender{} processes all nodes
       independently of their location.
 
+   \item[\optk{B}] \optv{border}
+
+      Add an additional border to the page on all edges. This may be useful to
+      add e.g. a bleed margin for printing. Rendering is always done in respect
+      to the page size as defined by option \optk{P} but the final page size
+      will be larger by twice the value defined by option \optk{B}. The value
+      \optv{border} is given in millimeters. If this option is omitted, no
+      border is added.
+
    \item[\optk{b}] \optv{color}
 
       This option allows to set a background color. The color may be define either as a color preset
