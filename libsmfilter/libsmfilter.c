@@ -214,7 +214,7 @@ char *bs_dup(const bstring_t *b)
 int act_pchar_main(smrule_t *r, osm_obj_t *o)
 {
    struct pchar_data *pd = r->data;
-   char lchar[8] = "", group[8] = "", period[8] = "", range[8] = "", col[32] = "", buf[256];
+   char lchar[8] = "", group[8] = "", period[8] = "", range[8] = "", col[32] = "", height[32] = "", buf[256];
    int col_mask[COL_CNT];
    struct otag *ot;
    char *s;
@@ -248,6 +248,14 @@ int act_pchar_main(smrule_t *r, osm_obj_t *o)
          default:
             snprintf(lchar, sizeof(lchar), "%.*s%s", o->otag[n].v.len, o->otag[n].v.buf, group[0] == '\0' ? "." : "");
       }
+   }
+   if ((n = match_attr(o, "seamark:light:height", NULL)) != -1 ||
+         (n = match_attr(o, "seamark:light:1:height", NULL)) != -1)
+   {
+      if (((struct pchar_data*) r->data)->lang == LANG_GR)
+         snprintf(height, sizeof(height), " %.*sµ", o->otag[n].v.len, o->otag[n].v.buf);
+      else
+         snprintf(height, sizeof(height), " %.*sm", o->otag[n].v.len, o->otag[n].v.buf);
    }
 
    memset(&col_mask, 0, sizeof(col_mask));
@@ -290,15 +298,15 @@ int act_pchar_main(smrule_t *r, osm_obj_t *o)
    switch (((struct pchar_data*) r->data)->lang)
    {
       case LANG_HR:
-         if (!snprintf(buf, sizeof(buf), "%s%s%s%s%s", col, lchar, group, period, range))
+         if (!snprintf(buf, sizeof(buf), "%s%s%s%s%s%s", col, lchar, group, period, height, range))
             return 0;
          break;
       case LANG_GR:
-         if (!snprintf(buf, sizeof(buf), "%s %s%s%s %s", lchar, group, col, period, range))
+         if (!snprintf(buf, sizeof(buf), "%s %s%s%s %s%s", lchar, group, col, period, height, range))
             return 0;
          break;
       default:
-         if (!snprintf(buf, sizeof(buf), "%s%s%s.%s%s", lchar, group, col, period, range))
+         if (!snprintf(buf, sizeof(buf), "%s%s%s.%s%s%s", lchar, group, col, period, height, range))
             return 0;
    }
 
