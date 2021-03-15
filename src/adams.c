@@ -242,7 +242,7 @@ xy_t inverse(double x, double y, double lam, double phi, xy_t (*proj)(double, do
       if (fabs(d.x) < 1e-10 && fabs(d.y) < 1e-10)
          return (xy_t) {lam, phi};
 
-      if (fabs(d.x > 1e-6 || fabs(d.y) > 1e-6))
+      if (fabs(d.x) > 1e-6 || fabs(d.y) > 1e-6)
       {
          dlam0 = lam > 0 ? -1e-6 : 1e-6;
          lam2 = lam + dlam0;
