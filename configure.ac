@@ -1,13 +1,13 @@
-AC_PREREQ(2.67)
-define([svnversion], esyscmd([sh -c "echo -n `git log --oneline | wc -l`"]))dnl
-AC_INIT([smrender], [[4.2.g]svnversion], [bf@abenteuerland.at])
+AC_PREREQ([2.71])
+#define([svnversion], esyscmd([sh -c "echo -n `git log --oneline | wc -l`"]))dnl
+AC_INIT([smrender],[[4.3.0]],[bf@abenteuerland.at])
 AC_CONFIG_MACRO_DIR([m4])
 AM_INIT_AUTOMAKE([foreign -Wall -Werror])
 AM_PROG_AR
 LT_INIT
 AC_SUBST([CFLAGS], [["$CFLAGS -Wall -Wextra"]])
 #AC_SUBST([CFLAGS], [["-g -Wall"]])
-AC_PROG_CC_C99
+AC_PROG_CC
 AC_PROG_LN_S
 AC_PROG_MKDIR_P
 AC_CONFIG_HEADERS([config.h])

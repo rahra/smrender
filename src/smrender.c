@@ -1,4 +1,4 @@
-/* Copyright 2011-2021 Bernhard R. Fischer, 4096R/8E24F29D <bf@abenteuerland.at>
+/* Copyright 2011-2022 Bernhard R. Fischer, 4096R/8E24F29D <bf@abenteuerland.at>
  *
  * This file is part of smrender.
  *
@@ -18,7 +18,8 @@
 /*! \file smrender.c
  * This file contains the main() function and main initialization functions.
  *
- *  @author Bernhard R. Fischer
+ *  \author Bernhard R. Fischer, <bf@abenteuerland.at>
+ *  \date 2022/03/08
  */
 
 #ifdef HAVE_CONFIG_H
@@ -463,7 +464,7 @@ char *init_rd_paper(struct rdata *rd, const char *paper)
 
 static void print_version(void)
 {
-   printf("Seamark renderer V" PACKAGE_VERSION ", (c) 2011-2021, Bernhard R. Fischer, 4096R/8E24F29D <bf@abenteuerland.at>.\n"
+   printf("Seamark renderer V" PACKAGE_VERSION ", (c) 2011-2022, Bernhard R. Fischer, 4096R/8E24F29D <bf@abenteuerland.at>.\n"
           "See http://www.abenteuerland.at/smrender/ for more information.\n");
 #ifdef HAVE_CAIRO
    printf("Using libcairo %s.\n", cairo_version_string());
@@ -1250,7 +1251,7 @@ int main(int argc, char *argv[])
    {
       case AUTO_GRID:
          auto_grid(rd, &grd);
-         // intentionally, there's no break
+         /* fall through */
 
       case USER_GRID:
          grid(rd, &grd);
