@@ -1,4 +1,4 @@
-/* Copyright 2011-2021 Bernhard R. Fischer, 4096R/8E24F29D <bf@abenteuerland.at>
+/* Copyright 2011-2022 Bernhard R. Fischer, 4096R/8E24F29D <bf@abenteuerland.at>
  *
  * This file is part of Smrender.
  *
@@ -15,10 +15,12 @@
  * along with Smrender. If not, see <http://www.gnu.org/licenses/>.
  */
 
-/*! This program reads an OSM/XML file and parses it into an object tree.
+/*! \file smloadosm.c
+ * This program reads an OSM/XML file and parses it into an object tree.
  * Originally it was written for smfilter and was reused and adapted.
  *
- *  @author Bernhard R. Fischer
+ * \author Bernhard R. Fischer, <bf@abenteuerland.at>
+ * \date 2022/03/08
  */
 #include <stdio.h>
 #include <stdlib.h>
@@ -159,7 +161,7 @@ static int update_stats(const osm_obj_t *o, struct dstats *ds)
    {
       case OSM_NODE:
          update_node_stats((osm_node_t*) o, ds);
-         // intentionally there's no break
+         /* fall through */
       case OSM_WAY:
       case OSM_REL:
          ds->cnt[o->type]++;
@@ -622,7 +624,7 @@ int read_osm_file(hpx_ctrl_t *ctl, bx_node_t **tree, const struct filter *fi, st
 
                case OSM_REL:
                   for (int i = 0; i < ((osm_rel_t*) obj)->mem_cnt; i++)
-                     if (get_object(((osm_rel_t*) obj)->mem[i].type, ((osm_rel_t*) obj)->mem[i].type) == NULL)
+                     if (get_object(((osm_rel_t*) obj)->mem[i].type, ((osm_rel_t*) obj)->mem[i].id) == NULL)
                      {
                         memmove(&((osm_rel_t*) obj)->mem[i], &((osm_rel_t*) obj)->mem[i + 1],
                               (((osm_rel_t*) obj)->mem_cnt - i - 1) * sizeof(*((osm_rel_t*) obj)->mem));
