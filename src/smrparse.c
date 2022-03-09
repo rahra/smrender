@@ -681,7 +681,7 @@ unit_t parse_unit(const char *uptr)
       return U_FT;
    if (!strcasecmp(uptr, "mm"))
       return U_MM;
-   if (!strcasecmp(uptr, "°") || !strcasecmp(uptr, "deg") || !strcasecmp(uptr, "degrees"))
+   if (!strcasecmp(uptr, "degrees") || !strcasecmp(uptr, "deg") || !strcmp(uptr, "\u00b0") || !strcmp(uptr, "\xb0"))
       return U_DEG;
    if (!strcasecmp(uptr, "'") || !strcasecmp(uptr, "min"))
       return U_MIN;
