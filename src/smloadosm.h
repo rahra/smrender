@@ -1,6 +1,8 @@
 #ifndef SMLOADOSM_H
 #define SMLOADOSM_H
 
+#define READ_STATS_TIME 15
+
 #include "libhpxml.h"
 //#include "rdata.h"
 

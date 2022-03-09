@@ -276,21 +276,16 @@ void osm_read_exit(void)
 }
 
 
-static void usr1_handler(int UNUSED(sig))
+static void usr1_handler(int sig)
 {
-   usr1_++;
+   usr1_ = sig;
 }
 
 
 void __attribute__((constructor)) install_sigusr1(void)
 {
    struct sigaction sa;
-   //static int sig_inst = 0;
 
-   //if (sig_inst)
-   //   return;
-
-   //sig_inst++;
    memset(&sa, 0, sizeof(sa));
    sa.sa_handler = usr1_handler;
 
@@ -298,6 +293,9 @@ void __attribute__((constructor)) install_sigusr1(void)
       log_msg(LOG_WARNING, "SIGUSR1 handler cannot be installed: %s", strerror(errno));
    else
       log_debug("SIGUSR1 installed (pid = %ld)", (long) getpid());
+
+   if (sigaction(SIGALRM, &sa, NULL) == -1)
+      log_msg(LOG_WARNING, "SIGALRM handler cannot be installed: %s", strerror(errno));
 }
 
 
@@ -563,7 +561,6 @@ int read_osm_file(hpx_ctrl_t *ctl, bx_node_t **tree, const struct filter *fi, st
    int e, dup_cnt = 0;
 
    log_debug("revision >= 1593");
-   //install_sigusr1();
 
    if (hpx_tree_resize(&tlist, 0) == -1)
       perror("hpx_tree_resize"), exit(EXIT_FAILURE);
@@ -576,14 +573,20 @@ int read_osm_file(hpx_ctrl_t *ctl, bx_node_t **tree, const struct filter *fi, st
    if (ds != NULL)
       init_stats(ds);
 
+   // set stats timer
+   alarm(READ_STATS_TIME);
+
    while ((e = read_osm_obj(ctl, &tlist, &obj)) > 0)
    {
       if (usr1_)
       {
+         if (usr1_ == SIGALRM)
+            alarm(READ_STATS_TIME);
+
          usr1_ = 0;
-         log_msg(LOG_INFO, "onode_memory: %ld kByte, line %ld, %.2f MByte/s",
+         log_msg(LOG_INFO, "progress %ld %%, onode_memory: %ld kByte, line %ld, %.2f MByte/s", ctl->pos * 100 / ctl->len,
                (long) onode_mem() / 1024, oline_, ((double) ctl->pos / (double) (time(NULL) - tim)) / (double) (1024 * 1024));
-         log_msg(LOG_INFO, "ctl->pos = %ld (%ld %%), ctl->len = %ld, ctl->buf.len = %ld", ctl->pos, ctl->pos * 100 / ctl->len, ctl->len, ctl->buf.len);
+         log_msg(LOG_DEBUG, "ctl->pos = %ld, ctl->len = %ld, ctl->buf.len = %ld", ctl->pos, ctl->len, ctl->buf.len);
       }
 
       if (obj != NULL)
