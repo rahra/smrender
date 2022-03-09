@@ -2396,7 +2396,7 @@ int act_img_ini(smrule_t *r)
       log_debug("opening SVG '%s'", name);
 
       cairo_rectangle_t rect;
-      RsvgDimensionData dd;
+      gdouble d_w, d_h;
       RsvgHandle *rh;
 
       if ((rh = rsvg_handle_new_from_file(name, NULL)) == NULL)
@@ -2407,11 +2407,23 @@ int act_img_ini(smrule_t *r)
 
       // FIXME: dpi setting orginally was commented out and set to 72, not sure about consquences
       rsvg_handle_set_dpi(rh, rdata_dpi());
+#if LIBRSVG_MAJOR_VERSION >= 2 && LIBRSVG_MINOR_VERSION >= 46
+      if (!rsvg_handle_get_intrinsic_size_in_pixels(rh, &d_w, &d_h))
+      {
+         log_msg(LOG_WARN, "rsvg_handle_get_intrinsic_size_in_pixels() failed");
+         // set some default values > 0
+         d_w = d_h = 32;
+      }
+#else
+      RsvgDimensionData dd;
       rsvg_handle_get_dimensions(rh, &dd);
-      log_debug("svg dimension: w = %d, h = %d", dd.width, dd.height);
+      d_w = dd.width;
+      d_h = dd.height;
+#endif
+      log_debug("svg dimension: w = %.1f, h = %.1f", d_w, d_h);
 
-      img.w = dd.width * img.scale;
-      img.h = dd.height * img.scale;
+      img.w = d_w * img.scale;
+      img.h = d_h * img.scale;
       rect.x = 0;
       rect.y = 0;
       rect.width = img.w;
@@ -2419,11 +2431,21 @@ int act_img_ini(smrule_t *r)
       img.img = cairo_recording_surface_create(CAIRO_CONTENT_COLOR_ALPHA, &rect);
       ctx = cairo_create(img.img);
       cairo_scale(ctx, img.scale, img.scale);
+#if LIBRSVG_MAJOR_VERSION >= 2 && LIBRSVG_MINOR_VERSION >= 52
+      RsvgRectangle vp = {0, 0, d_w, d_h};
+
+      if (!rsvg_handle_render_document(rh, ctx, &vp, NULL))
+      {
+         log_msg(LOG_ERR, "rsvg_handle_render_document() failed");
+         return -1;
+      }
+#else
       if (!rsvg_handle_render_cairo(rh, ctx))
       {
          log_msg(LOG_ERR, "rsvg_handle_render_cairo() failed");
          return -1;
       }
+#endif
       cairo_destroy(ctx);
 
       g_object_unref(rh);
