@@ -2407,7 +2407,7 @@ int act_img_ini(smrule_t *r)
 
       // FIXME: dpi setting orginally was commented out and set to 72, not sure about consquences
       rsvg_handle_set_dpi(rh, rdata_dpi());
-#if LIBRSVG_MAJOR_VERSION >= 2 && LIBRSVG_MINOR_VERSION >= 46
+#if LIBRSVG_MAJOR_VERSION >= 2 && LIBRSVG_MINOR_VERSION >= 52
       if (!rsvg_handle_get_intrinsic_size_in_pixels(rh, &d_w, &d_h))
       {
          log_msg(LOG_WARN, "rsvg_handle_get_intrinsic_size_in_pixels() failed");
