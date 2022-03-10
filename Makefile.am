@@ -603,3 +603,5 @@ SeaMapSymbols/WreckS.svg
 
 dist_noinst_DATA = test/Makefile test/testdata.osm test/rules
 
+dist_doc_DATA = README README.md doc/smrender.html doc/smrender.pdf
+
