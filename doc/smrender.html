@@ -1,7 +1,7 @@
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN"
            "http://www.w3.org/TR/REC-html40/loose.dtd">
 <html>
-<meta name="GENERATOR" content="TtH 4.12">
+<meta name="GENERATOR" content="TtH 4.15">
  <style type="text/css"> div.p { margin-top: 7pt;}</style>
  <style type="text/css"><!--
  td div.comp { margin-top: -0.6ex; margin-bottom: -1ex;}
@@ -35,7 +35,7 @@
 
 <div class="p"><!----></div>
                                                                             
-<h1>Contents </h1> american
+<h1>Contents </h1> american 
 <a href="#tth_sEc1"
 >1&nbsp; Release Notes</a><br /><a href="#tth_sEc2"
 >2&nbsp; Name</a><br /><a href="#tth_sEc3"
@@ -63,7 +63,8 @@
 >6.2.7&nbsp; Generating a Grid</a><br />&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#tth_sEc6.2.8"
 >6.2.8&nbsp; Create a Ruler</a><br />&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#tth_sEc6.2.9"
 >6.2.9&nbsp; Text Translation</a><br />&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#tth_sEc6.2.10"
->6.2.10&nbsp; Special Data Manipulation Functions</a><br />&nbsp;&nbsp;&nbsp;&nbsp;<a href="#tth_sEc6.3"
+>6.2.10&nbsp; Translate Reference Point of Chart</a><br />&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#tth_sEc6.2.11"
+>6.2.11&nbsp; Special Data Manipulation Functions</a><br />&nbsp;&nbsp;&nbsp;&nbsp;<a href="#tth_sEc6.3"
 >6.3&nbsp; Special Purpose Functions</a><br />&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#tth_sEc6.3.1"
 >6.3.1&nbsp; Calling External Functions</a><br />&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#tth_sEc6.3.2"
 >6.3.2&nbsp; Output of OSM Data</a><br />&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#tth_sEc6.3.3"
@@ -78,7 +79,7 @@
 >8.1.4&nbsp; Generating a Magnetic Variation Compass</a><br />&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#tth_sEc8.1.5"
 >8.1.5&nbsp; Generating Circles around Depth Soundings</a><br /><a href="#tth_sEc9"
 >9&nbsp; Usage Examples</a><br />&nbsp;&nbsp;&nbsp;&nbsp;<a href="#tth_sEc9.1"
->9.1&nbsp; Generating a PDF</a><br />&nbsp;&nbsp;&nbsp;&nbsp;<a href="#tth_sEc9.2"
+>9.1&nbsp; Generating a PNG or PDF</a><br />&nbsp;&nbsp;&nbsp;&nbsp;<a href="#tth_sEc9.2"
 >9.2&nbsp; Generating a KAP File</a><br /><a href="#tth_sEc10"
 >10&nbsp; Ruleset Examples</a><br />&nbsp;&nbsp;&nbsp;&nbsp;<a href="#tth_sEc10.1"
 >10.1&nbsp; Creating a Magnetic Variation Compass</a><br />&nbsp;&nbsp;&nbsp;&nbsp;<a href="#tth_sEc10.2"
@@ -92,10 +93,7 @@
 >C&nbsp; FAQ</a><br />&nbsp;&nbsp;&nbsp;&nbsp;<a href="#tth_sEcC.1"
 >C.1&nbsp; Why is Smrender not written in C++?</a><br />&nbsp;&nbsp;&nbsp;&nbsp;<a href="#tth_sEcC.2"
 >C.2&nbsp; Is it possible to create other maps, such as road maps?</a><br /><a href="#tth_sEcD"
->D&nbsp; ToDo</a><br />
-
-<div class="p"><!----></div>
- <div align="right"><a href="inc/schneggendier_600dpi_16mm">Figure</a>
+>D&nbsp; ToDo</a><br /> <div align="right"><a href="inc/schneggendier_600dpi_16mm">Figure</a>
 
 <div class="p"><!----></div>
 </div> <a id="tth_sEc1"></a><h2>
@@ -255,6 +253,15 @@ option <span style="font-family:helvetica"><span class="small"><b>-a</b></span><
       the window of rendering (see Section <a href="#sec:window">4.1</a>). This behavior is new with
       version 3.0.  With this option set <span style="font-family:helvetica"><i><span class="small">Smrender</span></i></span> processes all nodes
       independently of their location.
+<br /><span style="font-family:helvetica"><span class="small"><b>-B</b></span></span> <span style="font-family:helvetica"><span class="small"><u>border</u></span></span>
+
+<div class="p"><!----></div>
+      Add an additional border to the page on all edges. This may be useful to
+      add e.g. a bleed margin for printing. Rendering is always done in respect
+      to the page size as defined by option <span style="font-family:helvetica"><span class="small"><b>-P</b></span></span> but the final page size
+      will be larger by twice the value defined by option <span style="font-family:helvetica"><span class="small"><b>-B</b></span></span>. The value
+      <span style="font-family:helvetica"><span class="small"><u>border</u></span></span> is given in millimeters. If this option is omitted, no
+      border is added.
 <br /><span style="font-family:helvetica"><span class="small"><b>-b</b></span></span> <span style="font-family:helvetica"><span class="small"><u>color</u></span></span>
 
 <div class="p"><!----></div>
@@ -1123,7 +1130,7 @@ r55mm
    <a href="inc/depth_cont">Figure</a>
 
 <div class="p"><!----></div>
-   #1Directional filling.<a id="fig:dir">
+   Directional filling.<a id="fig:dir">
 </a>
 </div>
 
@@ -1273,7 +1280,7 @@ right and above of the lower left page corner.
 The action <span style="font-family:helvetica">set_tags</span> allows to add an arbitrary number of OSM tags to an
 object. The tags have to be defined through an object within the rules file.
 This object may have no action tag. The template should have an id because
-the action <span style="font-family:helvetica">set_tags</span> needs to have a reference to it. To format simple
+the action <span style="font-family:helvetica">set_tags</span> needs to have a reference to it. The format simply
 looks like the following.
 
 <div class="p"><!----></div>
@@ -1288,6 +1295,27 @@ looks like the following.
 <div class="p"><!----></div>
 Please note that the object type of the rule must be the same as the object
 type of the template.
+
+<div class="p"><!----></div>
+
+<b>Example&nbsp;&nbsp;</b> The following example adds the tags
+<span style="font-family:helvetica">natural=coastline</span> and <span style="font-family:helvetica">foo=bar</span> to all ways which have the tags
+<span style="font-family:helvetica">border=page</span> and <span style="font-family:helvetica">generator=smrender</span>.
+
+<div class="p"><!----></div>
+
+<pre>
+&lt;way&nbsp;version="-100"&nbsp;id="115"&#62;
+&nbsp;&nbsp;&nbsp;&lt;tag&nbsp;k='natural'&nbsp;v='coastline'/&#62;
+&nbsp;&nbsp;&nbsp;&lt;tag&nbsp;k='foo'&nbsp;v='bar'/&#62;
+&lt;/way&#62;
+&lt;way&nbsp;version="-100"&#62;
+&nbsp;&nbsp;&nbsp;&lt;tag&nbsp;k='border'&nbsp;v='page'/&#62;
+&nbsp;&nbsp;&nbsp;&lt;tag&nbsp;k='generator'&nbsp;v='smrender'/&#62;
+&nbsp;&nbsp;&nbsp;&lt;tag&nbsp;k='_action_'&nbsp;v='set_tags:id=115'/&#62;
+&lt;/way&#62;
+
+</pre>
 
 <div class="p"><!----></div>
       <a id="tth_sEc6.2.3"></a><h4>
@@ -1658,7 +1686,89 @@ rendered in the second rule.
 
 <div class="p"><!----></div>
             <a id="tth_sEc6.2.10"></a><h4>
-6.2.10&nbsp;&nbsp;Special Data Manipulation Functions</h4>
+6.2.10&nbsp;&nbsp;Translate Reference Point of Chart</h4>
+
+<div class="p"><!----></div>
+
+<pre>
+&nbsp;&nbsp;&nbsp;&lt;action&#62;&nbsp;&nbsp;&nbsp;&nbsp;:=&nbsp;'transcoord:'&nbsp;[&nbsp;&lt;param&#62;&nbsp;[&nbsp;';'&nbsp;&lt;param&#62;&nbsp;]&nbsp;]
+&nbsp;&nbsp;&nbsp;&lt;param&#62;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;:=&nbsp;&lt;xdef&#62;&nbsp;|&nbsp;&lt;zdef&#62;
+&nbsp;&nbsp;&nbsp;&lt;xdef&#62;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;:=&nbsp;'tlat'&nbsp;'='&nbsp;decimal&nbsp;value
+&nbsp;&nbsp;&nbsp;&lt;zdef&#62;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;:=&nbsp;'tlon'&nbsp;'='&nbsp;decimal&nbsp;value
+
+</pre>
+
+<div class="p"><!----></div>
+      This function takes the two arguments <span style="font-family:helvetica"><span class="small"><u>tlat</u></span></span> and <span style="font-family:helvetica"><span class="small"><u>tlon</u></span></span> which
+      translates the point of reference. I.e. it rotates the surface of the
+      world.
+
+<div class="p"><!----></div>
+      The values are given in degrees and are used as usual in the navigation.
+      This means that positiv values rotate to the North and East and negative
+      values rotate to the South and West.
+
+<div class="p"><!----></div>
+      Please note that the order of rotation is highly important. This means
+      that the result is different if you rotate 1st longitude then latitude or
+      vice versa. If both parameters <span style="font-family:helvetica"><span class="small"><u>tlat</u></span></span> and <span style="font-family:helvetica"><span class="small"><u>tlon</u></span></span> are set,
+      <span style="font-family:helvetica"><span class="small"><u>tlon</u></span></span> is applied 1st and <span style="font-family:helvetica"><span class="small"><u>tlat</u></span></span> 2nd. If you need a different
+      order create to separate rules.
+
+<div class="p"><!----></div>
+      This implementation is a spherical rotation. Since the Earth and WGS84
+      are based on an ellipsoid, this rotation will produced slightly incorrect
+      results.
+
+<div class="p"><!----></div>
+      Further note that a sphere is a 3-dimensional object, thus there are
+      actually 3 rotation axis, x, y, and z, and not just two. The longitude
+      rotation with <span style="font-family:helvetica"><span class="small"><u>tlon</u></span></span> rotate by the z-axis, which is the axis of the
+      Earth and the latitude <span style="font-family:helvetica"><span class="small"><u>tlat</u></span></span> rotation corresponds to the x-axis.
+      Although there is no 3rd parameter, a rotation along the y-axis can still
+      be done since they depend on each other on the surface of a sphere.
+      To accomplish a rotation along the y-axis, first rotate <span style="font-family:helvetica">x</span>
+      (<span style="font-family:helvetica"><span class="small"><u>tlat</u></span></span>) up North by 90 degrees, then rotate by <span style="font-family:helvetica">z</span>
+      (<span style="font-family:helvetica"><span class="small"><u>tlon</u></span></span>) with the desired angle, and finally rotate back South by 90
+      degrees again.
+
+<div class="p"><!----></div>
+      The translation of the reference point is necessary to implement the
+      Spilhaus projection.  It rotates the longitude (<span style="font-family:helvetica">z</span>) by
+      66.94970198 degrees to the East, the latitude (<span style="font-family:helvetica">x</span>) by 49.56371678
+      degrees to the South and finally rotates the <span style="font-family:helvetica">y</span>-axis by 40.18
+      degrees. As explained above, because of this rotation by all 3 axis we
+      need several steps for a correct result. The following rules will
+      accomplished this:
+
+<div class="p"><!----></div>
+      <div class="small">
+<pre>
+&nbsp;&nbsp;&nbsp;&lt;!--&nbsp;transform&nbsp;chart&nbsp;reference&nbsp;point&nbsp;--&#62;
+&nbsp;&nbsp;&nbsp;&lt;!--&nbsp;1.&nbsp;rotate&nbsp;longitude&nbsp;--&#62;
+&nbsp;&nbsp;&nbsp;&lt;node&nbsp;version='-20'&#62;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&lt;tag&nbsp;k='_action_'&nbsp;v='transcoord:tlat=0;tlon=66.94970198'/&#62;
+&nbsp;&nbsp;&nbsp;&lt;/node&#62;
+&nbsp;&nbsp;&nbsp;&lt;!--&nbsp;2.&nbsp;rotate&nbsp;latitude,&nbsp;but&nbsp;in&nbsp;the&nbsp;opposite&nbsp;direction,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;this&nbsp;is&nbsp;90&nbsp;-&nbsp;49.56371678.&nbsp;--&#62;
+&nbsp;&nbsp;&nbsp;&lt;node&nbsp;version='-20'&#62;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&lt;tag&nbsp;k='_action_'&nbsp;v='transcoord:tlat=40.43628322;tlon=0'/&#62;
+&nbsp;&nbsp;&nbsp;&lt;/node&#62;
+&nbsp;&nbsp;&nbsp;&lt;!--&nbsp;3.&nbsp;rotate&nbsp;lon&nbsp;again&nbsp;which&nbsp;now&nbsp;corresponds&nbsp;to&nbsp;the&nbsp;y-axis&nbsp;--&#62;
+&nbsp;&nbsp;&nbsp;&lt;node&nbsp;version='-20'&#62;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&lt;tag&nbsp;k='_action_'&nbsp;v='transcoord:tlat=0;tlon=40.18'/&#62;
+&nbsp;&nbsp;&nbsp;&lt;/node&#62;
+&nbsp;&nbsp;&nbsp;&lt;!--&nbsp;4.&nbsp;finally&nbsp;rotate&nbsp;latitude&nbsp;back&nbsp;South&nbsp;by&nbsp;90&nbsp;degrees&nbsp;--&#62;
+&nbsp;&nbsp;&nbsp;&lt;node&nbsp;version='-20'&#62;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&lt;tag&nbsp;k='_action_'&nbsp;v='transcoord:tlat=-90;tlon=0'/&#62;
+&nbsp;&nbsp;&nbsp;&lt;/node&#62;
+
+</pre>
+      </div>
+
+<div class="p"><!----></div>
+            <a id="tth_sEc6.2.11"></a><h4>
+6.2.11&nbsp;&nbsp;Special Data Manipulation Functions</h4>
 
 <div class="p"><!----></div>
    
@@ -1811,32 +1921,6 @@ rendered in the second rule.
 
 <div class="p"><!----></div>
       This function always reverses a way independent of its current direction.
-<div class="p"><!----></div>
-</li>
-
-<li> <span style="font-family:helvetica">transcoord</span>
-
-<div class="p"><!----></div>
-      This function takes the two arguments <span style="font-family:helvetica"><span class="small"><u>tlat</u></span></span> and <span style="font-family:helvetica"><span class="small"><u>tlon</u></span></span> which
-      translates the point of reference. I.e. it rotates the surface of the
-      world.
-
-<div class="p"><!----></div>
-      This is necessary to implement the Spilhaus projection which rotates the
-      point of reference to 49.56371678 South and 66.94970198 East. This can be
-      accomplished with the following rule:
-
-<div class="p"><!----></div>
-
-<pre>
-&nbsp;&nbsp;&nbsp;&lt;node&nbsp;version='-20'&nbsp;visible='true'&#62;
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&lt;tag
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;k='_action_'
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;v='transcoord:tlat=-49.56371678;tlon=66.94970198'
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;/&#62;
-&nbsp;&nbsp;&nbsp;&lt;/node&#62;
-
-</pre>
 <div class="p"><!----></div>
 </li>
 
@@ -2513,7 +2597,7 @@ r45mm
    <a href="inc/compass">Figure</a>
 
 <div class="p"><!----></div>
-   #1Magnetic variation.<a id="fig:compass">
+   Magnetic variation.<a id="fig:compass">
 </a>
 </div>
 The parameter <span style="font-family:helvetica"><span class="small"><u>radius</u></span></span> is mandatory and defines the outer radius of the
@@ -2565,19 +2649,33 @@ There is a very simple example for your first rendered map. Before, download,
 compile, and install <span style="font-family:helvetica"><i><span class="small">Smrender</span></i></span> as explained in Section <a href="#sec:compile">A</a>.
 
 <div class="p"><!----></div>
-Create a working directory somewhere.
-From the <span style="font-family:helvetica"><i><span class="small">Smrender</span></i></span> download URL<a href="#tthFtNtACF" id="tthFrefACF"><sup>25</sup></a> get the seamap icons package (<span style="font-family:helvetica">icons.tbz2</span>) and
-extract it.
+Create a working directory somewhere and change into it.
 
 <div class="p"><!----></div>
 
 <pre>
-tar&nbsp;xvfj&nbsp;icons.tbz2
+mkdir&nbsp;mychart
+cd&nbsp;mychart
 
 </pre>
 
 <div class="p"><!----></div>
-Now we have to get some OSM data. We just use the Overpass API<a href="#tthFtNtACG" id="tthFrefACG"><sup>26</sup></a> to get a small window.
+Now symlink the chart symbols which are included in the installation package
+and copy one of the default rulesets.
+
+<div class="p"><!----></div>
+
+<pre>
+ln&nbsp;-s&nbsp;/usr/local/share/smrender/SeaMapSymbols
+mkdir&nbsp;rules.osm
+cp&nbsp;/usr/local/share/smrender/r100k_ye/*&nbsp;rules.osm
+
+</pre>
+
+<div class="p"><!----></div>
+Now we have to get some OSM data. We just use the Overpass
+API<a href="#tthFtNtACF" id="tthFrefACF"><sup>25</sup></a> to get a
+small window.
 
 <div class="p"><!----></div>
 
@@ -2588,40 +2686,49 @@ wget&nbsp;-O&nbsp;cr.osm&nbsp;\
 </pre>
 
 <div class="p"><!----></div>
-Now we can start <span style="font-family:helvetica"><i><span class="small">Smrender</span></i></span> by using the rule set <span style="font-family:helvetica">rules.osm</span> which comes
-with the <span style="font-family:helvetica"><i><span class="small">Smrender</span></i></span> package. Copy it to your working directory. By default it is installed into <span style="font-family:helvetica">/usr/local/share/smrender</span>.
+Now we can run <span style="font-family:helvetica"><i><span class="small">Smrender</span></i></span> as explained in the following sections.
 
 <div class="p"><!----></div>
      <a id="tth_sEc9.1"></a><h3>
-9.1&nbsp;&nbsp;Generating a PDF</h3> <a id="sec:genpdf">
+9.1&nbsp;&nbsp;Generating a PNG or PDF</h3> <a id="sec:genpdf">
 </a>
 
 <div class="p"><!----></div>
-PDF files are the best choice if you intend to print something.
-The following command line renders the OSM file <span style="font-family:helvetica">cr.osm</span>
-to the output image <span style="font-family:helvetica">cr.png</span> having the dimension of an A4 landscape page. 43° N 52.8' 
-15° E 12.8' are the center coordinates and the scale is chosen to be 1:100000 which is typical for sea charts.
+PDF files are the best choice if you intend to print the result. The following
+command line renders the OSM file <span style="font-family:helvetica">cr.osm</span> to the output image
+<span style="font-family:helvetica">cr.png</span> having the dimension of an A4 landscape page.
+
+<div class="p"><!----></div>
+43° N 52.8' 015° E 12.8' are the center coordinates and the scale is chosen to
+be 1:100000 which is typical for sea charts. Option <span style="font-family:helvetica"><span class="small"><b>-s</b></span></span> <span style="font-family:helvetica"><span class="small"><u>0.33</u></span></span> scales
+all icons by 0.33.
 
 <div class="p"><!----></div>
 
 <pre>
-smrender&nbsp;-i&nbsp;cr.osm&nbsp;-o&nbsp;cr.png&nbsp;-P&nbsp;A4&nbsp;-l&nbsp;43N52.8:15E12.8:100000
+smrender&nbsp;-i&nbsp;cr.osm&nbsp;-o&nbsp;cr.png&nbsp;-P&nbsp;A4&nbsp;-l&nbsp;-s&nbsp;0.33&nbsp;43N52.8:15E12.8:100000
 
 </pre>
 
 <div class="p"><!----></div>
 The result is the PNG image <span style="font-family:helvetica">cr.png</span>. You may look at it using your
-favorite image viewer. To get a correct non-distorted print-out it usually is a
-good idea to use the PDF format instead. If you try to print the image with a
-graphics program it most probably will be rescaled to fit the print margins.
-This will usually not happen if you print a PDF which has valid paper
-dimensions.
-To create a PDF file use the option <span style="font-family:helvetica"><span class="small"><b>-O</b></span></span> instead.
+favorite image viewer.
+
+<div class="p"><!----></div>
+To get a correct non-distorted print-out it usually is a good idea to use the
+PDF format instead. If you try to print the image with a graphics program it
+most probably will be rescaled to fit the print margins.  This will usually not
+happen if you print a PDF which has valid paper dimensions.
+
+<div class="p"><!----></div>
+To create a PDF file just used <tt>.pdf</tt> as extension for the output
+filename. You could specifiy the option <span style="font-family:helvetica"><span class="small"><b>-o</b></span></span> to create several output
+files at once.
 
 <div class="p"><!----></div>
 
 <pre>
-smrender&nbsp;-i&nbsp;cr.osm&nbsp;-O&nbsp;cr.pdf&nbsp;-P&nbsp;A4&nbsp;-l&nbsp;43N52.8:15E12.8:100000
+smrender&nbsp;-i&nbsp;cr.osm&nbsp;-o&nbsp;cr.pdf&nbsp;-P&nbsp;A4&nbsp;-l&nbsp;-s&nbsp;0.33&nbsp;43N52.8:15E12.8:100000
 
 </pre>
 
@@ -2644,19 +2751,17 @@ Section (Section <a href="#sec:samples">9</a>) on how to retrieve it. The densit
 reduced to 200 dpi (option <span style="font-family:helvetica"><span class="small"><b>-d</b></span></span>) to save resources of your smart phone or
 chart plotter.  Option <span style="font-family:helvetica"><span class="small"><b>-G</b></span></span> disables the grid since most applications are
 able to generate a grid on their own. The KAP file is saved to <span style="font-family:helvetica">cr.kap</span>.
-The option <span style="font-family:helvetica"><span class="small"><b>-s</b></span></span> <span style="font-family:helvetica"><span class="small"><u>1</u></span></span> disables antialiasing. This also reduces resource
-usage because it limits the color space.  Many plotting applications may have
-their built-in antialiasing.
 
 <div class="p"><!----></div>
 
 <pre>
-smrender&nbsp;-i&nbsp;cr.osm&nbsp;-d&nbsp;200&nbsp;-G&nbsp;-k&nbsp;cr.kap&nbsp;-s&nbsp;1&nbsp;43N52.8:15E12.8:100000
+smrender&nbsp;-i&nbsp;cr.osm&nbsp;-k&nbsp;cr.kap&nbsp;-s&nbsp;0.33&nbsp;-G&nbsp;-d&nbsp;200&nbsp;43N52.8:15E12.8:100000
 
 </pre>
 
 <div class="p"><!----></div>
-Please note that a PNG file and a KAP file may be generated at the same time by simply adding option <span style="font-family:helvetica"><span class="small"><b>-o</b></span></span>.
+Please note that a PNG file, a PDF file, and a KAP file may be generated at the
+same time by simply adding option <span style="font-family:helvetica"><span class="small"><b>-o</b></span></span>.
 The file <span style="font-family:helvetica">cr.kap</span> can be used by your favorite application. If you use
 e.g. <em>Marine Navigator</em> on Android you have to copy the file to a folder
 named <span style="font-family:helvetica">BSB_ROOT</span> in the root directory of your SD card.
@@ -2815,9 +2920,6 @@ provided with <span style="font-family:helvetica"><i><span class="small">Smrende
 format is incorrect.
 
 <div class="p"><!----></div>
-For more information please look at the project homepage at <a href="http://www.abenteuerland.at/smrender/"><tt>http://www.abenteuerland.at/smrender/</tt></a>.
-
-<div class="p"><!----></div>
  <a id="tth_sEc13"></a><h2>
 13&nbsp;&nbsp;Author</h2>
 
@@ -2830,7 +2932,7 @@ in summer of 2010.  The actual development started in October of 2011.
 14&nbsp;&nbsp;Copyright</h2>
 
 <div class="p"><!----></div>
-<span style="font-family:helvetica">       Copyright 2011-2015 Bernhard R. Fischer.<br />
+<span style="font-family:helvetica">       Copyright 2011-2022 Bernhard R. Fischer.<br />
 
 <div class="p"><!----></div>
        This file is part of <span style="font-family:helvetica"><i><span class="small">Smrender</span></i></span>.<br />
@@ -2860,7 +2962,7 @@ A&nbsp;&nbsp;Compiling and Installing</h2> <a id="sec:compile">
 
 <div class="p"><!----></div>
 <span style="font-family:helvetica"><i><div class="small">Smrender</div></i></span> should be simple to compile. It depends on
-<span style="font-family:helvetica">libcairo</span><a href="#tthFtNtACH" id="tthFrefACH"><sup>27</sup></a> and optionally
+<span style="font-family:helvetica">libcairo</span><a href="#tthFtNtACG" id="tthFrefACG"><sup>26</sup></a> and optionally
 on <span style="font-family:helvetica">fontconfig</span> and <span style="font-family:helvetica">librsvg2</span>. Although they are not mandatory
 it is still suggested to use those packages. With <span style="font-family:helvetica">fontconfig</span> you can
 specify simple font faces such as e.g. <span style="font-family:helvetica">sans-serif</span> or
@@ -2878,7 +2980,7 @@ it can be used for OSM data processing but not for rendering charts (graphics
 output).
 
 <div class="p"><!----></div>
-Download the most recent <span style="font-family:helvetica"><i><span class="small">Smrender</span></i></span> package from its main URL.<a href="#tthFtNtACI" id="tthFrefACI"><sup>28</sup></a>
+Download the most recent <span style="font-family:helvetica"><i><span class="small">Smrender</span></i></span> package from its main URL.<a href="#tthFtNtACH" id="tthFrefACH"><sup>27</sup></a>
 The packages includes the source code, some sea chart rulesets and a few
 ruleset examples, and a skelleton library (<span style="font-family:helvetica">libskel</span>) to show how to
 implement an own library with extension functions. It further includes
@@ -2891,7 +2993,7 @@ directory.
 Then run the configure script <span style="font-family:helvetica">./configure</span>, then build it with <span style="font-family:helvetica">make</span>. It should compile fine. Finally, there is the executable <span style="font-family:helvetica">smrender</span> and
 the <span style="font-family:helvetica">libsmfilter.so</span>. The latter is not mandatory for running <span style="font-family:helvetica"><i><span class="small">Smrender</span></i></span> since it
 may just be loaded dynamically by the rule set (see Section <a href="#sec:smfilter">8.1</a>). Those files
-may be installed into the appropriate directories on your system with <span style="font-family:helvetica">sudo make install</span>.<a href="#tthFtNtACJ" id="tthFrefACJ"><sup>29</sup></a>
+may be installed into the appropriate directories on your system with <span style="font-family:helvetica">sudo make install</span>.<a href="#tthFtNtACI" id="tthFrefACI"><sup>28</sup></a>
 
 <div class="p"><!----></div>
 <span style="font-family:helvetica"><i><div class="small">Smrender</div></i></span> is known to compile with <span style="font-family:helvetica">gcc 4.x</span> on Debian Linux (Lenny,
@@ -3085,18 +3187,16 @@ improved in future releases.
 <div class="p"><!----></div>
 <a id="tthFtNtACE"></a><a href="#tthFrefACE"><sup>24</sup></a><a href="http://www.cypherpunk.at/2012/03/11/rendering-depths-with-smrender/"><tt>http://www.cypherpunk.at/2012/03/11/rendering-depths-with-smrender/</tt></a>
 <div class="p"><!----></div>
-<a id="tthFtNtACF"></a><a href="#tthFrefACF"><sup>25</sup></a><a href="http://www.abenteuerland.at/smrender/download/"><tt>http://www.abenteuerland.at/smrender/download/</tt></a>
+<a id="tthFtNtACF"></a><a href="#tthFrefACF"><sup>25</sup></a><a href="http://wiki.openstreetmap.org/wiki/Overpass_API"><tt>http://wiki.openstreetmap.org/wiki/Overpass_API</tt></a>.
 <div class="p"><!----></div>
-<a id="tthFtNtACG"></a><a href="#tthFrefACG"><sup>26</sup></a><a href="http://wiki.openstreetmap.org/wiki/Overpass_API"><tt>http://wiki.openstreetmap.org/wiki/Overpass_API</tt></a>.
+<a id="tthFtNtACG"></a><a href="#tthFrefACG"><sup>26</sup></a><a href="http://www.cairographics.org/"><tt>http://www.cairographics.org/</tt></a>
 <div class="p"><!----></div>
-<a id="tthFtNtACH"></a><a href="#tthFrefACH"><sup>27</sup></a><a href="http://www.cairographics.org/"><tt>http://www.cairographics.org/</tt></a>
+<a id="tthFtNtACH"></a><a href="#tthFrefACH"><sup>27</sup></a><a href="http://www.abenteuerland.at/download/smrender/"><tt>http://www.abenteuerland.at/download/smrender/</tt></a>
 <div class="p"><!----></div>
-<a id="tthFtNtACI"></a><a href="#tthFrefACI"><sup>28</sup></a><a href="http://www.abenteuerland.at/download/smrender/"><tt>http://www.abenteuerland.at/download/smrender/</tt></a>
-<div class="p"><!----></div>
-<a id="tthFtNtACJ"></a><a href="#tthFrefACJ"><sup>29</sup></a>Root privileges are required to install.
+<a id="tthFtNtACI"></a><a href="#tthFrefACI"><sup>28</sup></a>Root privileges are required to install.
 <br /><br /><hr /><small>File translated from
 T<sub><span class="small">E</span></sub>X
 by <a href="http://hutchinson.belmont.ma.us/tth/">
 T<sub><span class="small">T</span></sub>H</a>,
-version 4.12.</small>
+version 4.15.</small>
 </html>

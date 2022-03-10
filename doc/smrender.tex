@@ -2157,47 +2157,62 @@ more details.
 There is a very simple example for your first rendered map. Before, download,
 compile, and install \smrender{} as explained in Section \ref{sec:compile}.
 
-Create a working directory somewhere.
-From the \smrender{} download URL\footnote{\url{http://www.abenteuerland.at/smrender/download/}} get the seamap icons package (\textsf{icons.tbz2}) and
-extract it.
+Create a working directory somewhere and change into it.
 
 \begin{verbatim}
-tar xvfj icons.tbz2
+mkdir mychart
+cd mychart
 \end{verbatim}
 
-Now we have to get some OSM data. We just use the Overpass API\footnote{\url{http://wiki.openstreetmap.org/wiki/Overpass_API}.} to get a small window.
+Now symlink the chart symbols which are included in the installation package
+and copy one of the default rulesets.
+
+\begin{verbatim}
+ln -s /usr/local/share/smrender/SeaMapSymbols
+mkdir rules.osm
+cp /usr/local/share/smrender/r100k_ye/* rules.osm
+\end{verbatim}
+
+Now we have to get some OSM data. We just use the Overpass
+API\footnote{\url{http://wiki.openstreetmap.org/wiki/Overpass_API}.} to get a
+small window.
 
 \begin{verbatim}
 wget -O cr.osm \
    'http://www.overpass-api.de/api/xapi?map?bbox=15,43.7,15.4,44'
 \end{verbatim}
 
-Now we can start \smrender{} by using the rule set \textsf{rules.osm} which comes
-with the \smrender{} package. Copy it to your working directory. By default it is installed into \textsf{/usr/local/share/smrender}.
+Now we can run \smrender{} as explained in the following sections.
 
-\subsection{Generating a PDF} \label{sec:genpdf}
+\subsection{Generating a PNG or PDF} \label{sec:genpdf}
 
-PDF files are the best choice if you intend to print something.
-The following command line renders the OSM file \textsf{cr.osm}
-to the output image \textsf{cr.png} having the dimension of an A4 landscape page. 43° N 52.8' 
-15° E 12.8' are the center coordinates and the scale is chosen to be 1:100000 which is typical for sea charts.
+PDF files are the best choice if you intend to print the result. The following
+command line renders the OSM file \textsf{cr.osm} to the output image
+\textsf{cr.png} having the dimension of an A4 landscape page.
+
+43° N 52.8' 015° E 12.8' are the center coordinates and the scale is chosen to
+be 1:100000 which is typical for sea charts. Option \optk{-s} \optv{0.33} scales
+all icons by 0.33.
 
 \begin{verbatim}
-smrender -i cr.osm -o cr.png -P A4 -l 43N52.8:15E12.8:100000
+smrender -i cr.osm -o cr.png -P A4 -l -s 0.33 43N52.8:15E12.8:100000
 \end{verbatim}
 
 The result is the PNG image \textsf{cr.png}. You may look at it using your
-favorite image viewer. To get a correct non-distorted print-out it usually is a
-good idea to use the PDF format instead. If you try to print the image with a
-graphics program it most probably will be rescaled to fit the print margins.
-This will usually not happen if you print a PDF which has valid paper
-dimensions.
-To create a PDF file use the option \optk{O} instead.
+favorite image viewer.
+
+To get a correct non-distorted print-out it usually is a good idea to use the
+PDF format instead. If you try to print the image with a graphics program it
+most probably will be rescaled to fit the print margins.  This will usually not
+happen if you print a PDF which has valid paper dimensions.
+
+To create a PDF file just used \texttt{.pdf} as extension for the output
+filename. You could specifiy the option \optk{-o} to create several output
+files at once.
 
 \begin{verbatim}
-smrender -i cr.osm -O cr.pdf -P A4 -l 43N52.8:15E12.8:100000
+smrender -i cr.osm -o cr.pdf -P A4 -l -s 0.33 43N52.8:15E12.8:100000
 \end{verbatim}
-
 
 \subsection{Generating a KAP File} \label{sec:genkap}
 
@@ -2213,15 +2228,13 @@ Section (Section \ref{sec:samples}) on how to retrieve it. The density is
 reduced to 200 dpi (option \optk{d}) to save resources of your smart phone or
 chart plotter.  Option \optk{G} disables the grid since most applications are
 able to generate a grid on their own. The KAP file is saved to \textsf{cr.kap}.
-The option \optk{s} \optv{1} disables antialiasing. This also reduces resource
-usage because it limits the color space.  Many plotting applications may have
-their built-in antialiasing.
 
 \begin{verbatim}
-smrender -i cr.osm -d 200 -G -k cr.kap -s 1 43N52.8:15E12.8:100000
+smrender -i cr.osm -k cr.kap -s 0.33 -G -d 200 43N52.8:15E12.8:100000
 \end{verbatim}
 
-Please note that a PNG file and a KAP file may be generated at the same time by simply adding option \optk{o}.
+Please note that a PNG file, a PDF file, and a KAP file may be generated at the
+same time by simply adding option \optk{o}.
 The file \textsf{cr.kap} can be used by your favorite application. If you use
 e.g. \emph{Marine Navigator} on Android you have to copy the file to a folder
 named \textsf{BSB\_ROOT} in the root directory of your SD card.
@@ -2348,8 +2361,6 @@ provided with \smrender.
 \smrender{} does not validate the well-formedness of the OSM files. Thus, you may get unexpected rendering results if the file
 format is incorrect.
 
-For more information please look at the project homepage at \url{http://www.abenteuerland.at/smrender/}.
-
 \section{Author}
 
 \smrender{} is written by Bernhard R. Fischer, \url{mailto:bf@abenteuerland.at}. The idea of the project was born
@@ -2358,7 +2369,7 @@ in summer of 2010.  The actual development started in October of 2011.
 \section{Copyright}
 
 {\sffamily
-       Copyright 2011-2015 Bernhard R. Fischer.\\
+       Copyright 2011-2022 Bernhard R. Fischer.\\
 
        This file is part of \smrender{}.\\
 
