@@ -1,4 +1,4 @@
-AC_PREREQ([2.71])
+AC_PREREQ([2.69])
 #define([svnversion], esyscmd([sh -c "echo -n `git log --oneline | wc -l`"]))dnl
 AC_INIT([smrender],[[4.3.1]],[bf@abenteuerland.at])
 AC_CONFIG_MACRO_DIR([m4])
