@@ -380,18 +380,23 @@ option <span style="font-family:helvetica"><span class="small"><b>-a</b></span><
 <br /><span style="font-family:helvetica"><span class="small"><b>-P</b></span></span> <span style="font-family:helvetica"><span class="small"><u>fmt geom</u></span></span>[:<span style="font-family:helvetica"><span class="small"><u>angle</u></span></span>]
 
 <div class="p"><!----></div>
-   Select the page format of the output image. The format can be set either named format <span style="font-family:helvetica"><span class="small"><u>fmt</u></span></span> which
-   has a specific dimension or as geometry <span style="font-family:helvetica"><span class="small"><u>geom</u></span></span> which contains the width and height of the page
-   in millimeters in the format <span style="font-family:helvetica"><span class="small"><u>width</u></span></span><span style="font-family:helvetica">x</span><span style="font-family:helvetica"><span class="small"><u>height</u></span></span>.
-   <span style="font-family:helvetica"><span class="small"><u>Fmt</u></span></span> currently supports the values <span style="font-family:helvetica">A4</span> up to <span style="font-family:helvetica">A0</span>.
-   If this option is omitted, <span style="font-family:helvetica">A3</span> format is selected by default.
+   Select the page format of the output image. The format can be set to either
+   a named format <span style="font-family:helvetica"><span class="small"><u>fmt</u></span></span> which has a predefined dimension or as a geometry
+   <span style="font-family:helvetica"><span class="small"><u>geom</u></span></span> which contains the width and height of the page in millimeters
+   in the format <span style="font-family:helvetica"><span class="small"><u>width</u></span></span><span style="font-family:helvetica">x</span><span style="font-family:helvetica"><span class="small"><u>height</u></span></span>.
+
+<div class="p"><!----></div>
+   <span style="font-family:helvetica"><div class="small"><u>Fmt</u></div></span> currently supports the ISO formats <span style="font-family:helvetica">A4</span> up to <span style="font-family:helvetica">A0</span>,
+   and the ANSI formats <span style="font-family:helvetica">A</span> to <span style="font-family:helvetica">E</span>, <span style="font-family:helvetica">letter</span>,
+   <span style="font-family:helvetica">legal</span>, and <span style="font-family:helvetica">ledger</span>. If this option is omitted the format
+   <span style="font-family:helvetica">A3</span> is selected by default.
 
 <div class="p"><!----></div>
    If the area to be rendered is specified as bounding box (see Section
    <a href="#sec:window">4.1</a>) this will most probably colide with the dimension of the
    page because of the requirements of the projection in which case <span style="font-family:helvetica"><i><span class="small">Smrender</span></i></span>
    will resize the bounding box appropriately. If either the <span style="font-family:helvetica"><span class="small"><u>width</u></span></span> or
-   the <span style="font-family:helvetica"><span class="small"><u>height</u></span></span> (but never both) is set to zero then <span style="font-family:helvetica"><i><span class="small">Smrender</span></i></span> will
+   the <span style="font-family:helvetica"><span class="small"><u>height</u></span></span> (but never both) is set to zero, <span style="font-family:helvetica"><i><span class="small">Smrender</span></i></span> will
    calculate the missing dimension according to the bounding box and the
    projection.
 

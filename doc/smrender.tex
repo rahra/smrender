@@ -337,17 +337,21 @@ option \optk{a} is set implicitly.
 
 \item[\optk{P}] \optv{fmt\textbar geom}[:\optv{angle}{]}
 
-   Select the page format of the output image. The format can be set either named format \optv{fmt} which
-   has a specific dimension or as geometry \optv{geom} which contains the width and height of the page
-   in millimeters in the format \optv{width}\textsf{x}\optv{height}.
-   \optv{Fmt} currently supports the values \textsf{A4} up to \textsf{A0}.
-   If this option is omitted, \textsf{A3} format is selected by default.
+   Select the page format of the output image. The format can be set to either
+   a named format \optv{fmt} which has a predefined dimension or as a geometry
+   \optv{geom} which contains the width and height of the page in millimeters
+   in the format \optv{width}\textsf{x}\optv{height}.
+
+   \optv{Fmt} currently supports the ISO formats \textsf{A4} up to \textsf{A0},
+   and the ANSI formats \textsf{A} to \textsf{E}, \textsf{letter},
+   \textsf{legal}, and \textsf{ledger}. If this option is omitted the format
+   \textsf{A3} is selected by default.
 
    If the area to be rendered is specified as bounding box (see Section
    \ref{sec:window}) this will most probably colide with the dimension of the
    page because of the requirements of the projection in which case \smrender{}
    will resize the bounding box appropriately. If either the \optv{width} or
-   the \optv{height} (but never both) is set to zero then \smrender{} will
+   the \optv{height} (but never both) is set to zero, \smrender{} will
    calculate the missing dimension according to the bounding box and the
    projection.
 

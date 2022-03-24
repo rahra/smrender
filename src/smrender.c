@@ -19,7 +19,7 @@
  * This file contains the main() function and main initialization functions.
  *
  *  \author Bernhard R. Fischer, <bf@abenteuerland.at>
- *  \date 2022/03/08
+ *  \date 2022/03/24
  */
 
 #ifdef HAVE_CONFIG_H
@@ -391,72 +391,91 @@ static void page_rotate(struct rdata *rd, const char *angle)
 char *init_rd_paper(struct rdata *rd, const char *paper)
 {
    char buf[strlen(paper) + 1], *s, *angle;
-   double a4_w, a4_h;
+   double width = 0.;
+   double height = 0.;  // in mm
 
-   a4_w = MM2PX(210);
-   a4_h = MM2PX(297);
+   struct PAPERSIZE {
+     const char  * const name;
+     const double w;
+     const double h;
+   };
+   // all in mm
+   const float A4_W = 210;
+   const float A4_H = 297;
+   const float A_W = 8.5 * 25.4; // ANSI A
+   const float A_H = 11. * 25.4;
+   const float L_H = 14. * 25.4; // legal
+
+   const struct PAPERSIZE papersize[] = {
+     { "A4", A4_W,      A4_H },
+     { "A3", A4_H,      A4_W * 2. },
+     { "A2", A4_W * 2., A4_H * 2. },
+     { "A1", A4_H * 2., A4_W * 4. },
+     { "A0", A4_W * 4., A4_H * 4. },
+     { "A",  A_W,       A_H },
+     { "B",  A_H,       A_W * 2. },
+     { "C",  A_W * 2.,  A_H * 2. },
+     { "D",  A_H * 2.,  A_W * 4. },
+     { "E",  A_W * 4.,  A_H * 4. },
+     { "letter", A_W,   A_H },
+     { "legal",  A_W,   L_H },
+     { "ledger", A_H,   A_W * 2. },
+     { NULL, 0., 0. }
+   };
 
    strcpy(buf, paper);
    strtok(buf, ":");
    angle = strtok(NULL, ":");
 
+   // check if format is given as WxH
    if (strchr(buf, 'x'))
    {
       if ((s = strtok(buf, "x")) == NULL)
          log_msg(LOG_ERR, "strtok returned NULL"),
             exit(EXIT_FAILURE);
-      rd->w = MM2PX(atof(s));
+      width = atof(s);
       if ((s = strtok(NULL, "x")) == NULL)
          log_msg(LOG_ERR, "format error in page size: '%s'", buf),
             exit(EXIT_FAILURE);
-      rd->h = MM2PX(atof(s));
-      
-      if ((rd->w < 0) || (rd->h < 0))
-         log_msg(LOG_ERR, "page width and height must be a decimal value greater than 0"),
-            exit(EXIT_FAILURE);
-
-      if (!rd->w && !rd->h)
-         log_msg(LOG_ERR, "width and height cannot both be 0"),
-            exit(EXIT_FAILURE);
-   } 
-   else if (!strcasecmp(buf, "A4"))
-   {
-      rd->w = a4_w;
-      rd->h = a4_h;
+      height = atof(s);
    }
-   else if (!strcasecmp(buf, "A3"))
-   {
-      rd->w = a4_h;
-      rd->h = a4_w * 2;
-   }
-   else if (!strcasecmp(buf, "A2"))
-   {
-      rd->w = a4_w * 2;
-      rd->h = a4_h * 2;
-   }
-   else if (!strcasecmp(buf, "A1"))
-   {
-      rd->w = a4_h * 2;
-      rd->h = a4_w * 4;
-   }
-   else if (!strcasecmp(buf, "A0"))
-   {
-      rd->w = a4_w * 4;
-      rd->h = a4_h * 4;
-   }
+   // test if format is one of the preset formats
    else
    {
-      log_msg(LOG_WARN, "unknown page size %s, defaulting to A4", buf);
-      rd->w = a4_w;
-      rd->h = a4_h;
-   }
+      struct PAPERSIZE const * sizeptr = papersize + 0;
+      while ( sizeptr->name != NULL )
+      {
+         if ( !strcasecmp(buf, sizeptr->name))
+         {
+            width = sizeptr->w;
+            height = sizeptr->h;
+            break;
+         } // end if
+         ++sizeptr;
+      } //end while
 
+      // set default size if specified format is unknown
+      if ( sizeptr->name == NULL ) {
+         log_msg(LOG_WARN, "unknown page size %s, defaulting to A3", buf);
+         width = A4_H;
+         height = A4_W * 2.;
+      } // end if
+   } // end else
+
+   if ( (width <= 0.) || (height <= 0.) )  {
+      log_msg(LOG_ERR, "page width and height must be a decimal value greater than 0"),
+         exit(EXIT_FAILURE);
+   } // end if
+
+   // set final width and height to config structure of renderer
    if (rd->flags & RD_LANDSCAPE)
    {
-      a4_w = rd->w;
-      rd->w = rd->h;
-      rd->h = a4_w;
-   }
+      rd->w = MM2PX(height);
+      rd->h = MM2PX(width);
+   } else {
+      rd->w = MM2PX(width );
+      rd->h = MM2PX(height);
+   } // end else
 
    return angle;
 }
