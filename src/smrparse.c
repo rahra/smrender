@@ -1,4 +1,4 @@
-/* Copyright 2011-2021 Bernhard R. Fischer, 4096R/8E24F29D <bf@abenteuerland.at>
+/* Copyright 2011-2022 Bernhard R. Fischer, 4096R/8E24F29D <bf@abenteuerland.at>
  *
  * This file is part of smrender.
  *
@@ -19,7 +19,8 @@
  * This file contains the code of the rule parser and main loop of the render
  * as well as the code for traversing the object (nodes/ways) tree.
  *
- *  @author Bernhard R. Fischer
+ *  \author Bernhard R. Fischer
+ *  \date 2022/03/25
  */
 #include <string.h>
 #include <errno.h>
@@ -483,10 +484,14 @@ static void strtrunc(char *first, char *last)
 }
 
 
-/*! Parse a string. The string may either be delimited by '\'' or '"' or by any
+/*! Parse a string. The string may be delimited either by '\'' or '"' or by any
  * character in the string delim. It returns a pointer to the tokenized string
  * and the character which actually delimited it. If the string is not enclosed
  * in one of "'\"" leading and trailing spaces are removed.
+ * The function unescapes characters which are escaped by a backslash but only
+ * these which are necessary to be unescaped. These are the characters found
+ * within the parameter 'delim', the delimiter ' or " if they are used as
+ * beginning delimiter and \n.
  * @param src Pointer to a string pointer. This string will be parsed and the
  * pointer thereby is increased. After the call to this function it points to
  * the first parsable character of the next token.
@@ -517,13 +522,16 @@ static char *parse_string(char **src, const char *delim, char *nextchar)
 
    for (s = *src; **src && strchr(delim, **src) == NULL && *sep != **src; (*src)++)
       // unescape characters if necessary
-      if (**src == '\\')
+      if (**src == '\\' && (strchr(delim, (*src)[1]) != NULL || strchr("n\\", (*src)[1]) != NULL || (*sep != '\0' && (*src)[1] == *sep)))
       {
          memmove(*src, *src + 1, strlen(*src));
          switch (**src)
          {
             case 'n':
                **src = '\n';
+               break;
+            case '\\':
+               (*src)++;
                break;
          }
       }
@@ -765,5 +773,105 @@ int parse_length_mm_array(const char *s, double *val, int len)
    }
 
    return cnt;
+}
+
+
+/*! This function counts the number of elements separated by a separator.
+ * @return Returns the number of keys which is always >= 1.
+ */
+static int count_keys(const char *key, char sep)
+{
+   int c;
+
+   for (c = 1; *key != '\0'; key++)
+   {
+      // check for escaped '|'
+      if (key[0] == '\\' && key[1] == sep)
+      {
+         key++;
+         continue;
+      }
+      if (key[0] == sep)
+         c++;
+   }
+
+   return c;
+}
+
+
+/*! Parse filter string of format '(' key [ '|' key [ ... ] ] ')' (e.g.
+ * "(key1|key2|key3)") into a keylist_t. keylist_t points to an array of char*
+ * for which this function parse_keylist() reserves the memory using malloc().
+ * This memory has to be freed by the caller if the keylist isn't used any
+ * more.
+ * @param key Pointer to filter string.
+ * @param keylist Pointer to keylist_t structure. The structure will be
+ * initialized properly if the call to parse_keylist() was successfull.
+ * @return On success, the function returns the number of keys found in the
+ * filter expression which is >= 0. On error, -1 is returned and the keylist
+ * remains untouched.
+ */
+int parse_keylist(const char *key, keylist_t *keylist)
+{
+   int filter = 0;
+   int c, count;
+   char *dst;
+
+   // safety check
+   if (key == NULL || keylist == NULL)
+      return -1;
+
+   // check if it is a filter expression
+   if (strlen(key) > 1 && key[0] == '(' && key[strlen(key) - 1] == ')')
+   {
+      count = count_keys(key, '|');
+      filter = 1;
+   }
+   // otherwise it is just a literal string
+   else
+   {
+      count = 1;
+   }
+
+   // malloc space for count char* and strings and count times terminating '\0'
+   if ((keylist->key = malloc(sizeof(char*) * count + strlen(key) + count)) == NULL)
+   {
+      log_errno(LOG_ERR, "malloc() failed");
+      return -1;
+   }
+
+   keylist->count = count;
+   keylist->key[0] = (char*) (keylist->key + count);
+
+   // still init struct for literal strings but don't unescape
+   if (!filter)
+   {
+      strcpy(keylist->key[0], key);
+      return keylist->count;
+   }
+
+   // fill list with filter keywords
+   for (c = 0, dst = keylist->key[0], key++; *key != '\0'; key++)
+   {
+      // keyword terminator
+      if (*key == '|')
+      {
+         *dst++ = '\0';
+         c++;
+         keylist->key[c] = dst;
+         continue;
+      }
+
+      // escaped keyword terminator, treat as literal (i.e. unescape it)
+      if (*key == '\\' && key[1] == '|')
+         key++;
+
+      *dst++ = *key;
+   }
+
+   // terminate last key, i.e. overwrite ')'
+   *(dst - 1) = '\0';
+
+   return keylist->count;
 }
 

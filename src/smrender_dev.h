@@ -123,6 +123,12 @@ enum {LAT, LON};
 enum {DRAW_SOLID, DRAW_DASHED, DRAW_DOTTED, DRAW_TRANSPARENT, DRAW_PIPE, DRAW_ROUNDDOT};
 enum {SHAPE_REGULAR, SHAPE_SECTORED, SHAPE_STARED};
 
+typedef struct keylist
+{
+   int count;
+   char **key;
+} keylist_t;
+
 struct auto_rot
 {
    double phase;     // phase of weighting function. 0 degress means east (0)
@@ -186,6 +192,7 @@ struct actCaption
    struct col_spec cs;  // caption color
    char *font;       // pointer to font filename
    char *key;        // pointer to caption string
+   keylist_t klist;  // keylist for filter
    double size;      // font size in mm
    struct auto_scale scl;
    double angle;     // angle to rotate caption. 0 degress equals east,
@@ -307,6 +314,7 @@ int parse_alignment_str(const char *);
 int parse_length(const char *, value_t *);
 int parse_length_def(const char *, value_t *, unit_t );
 int parse_length_mm_array(const char *, double *, int );
+int parse_keylist(const char *, keylist_t *);
 
 /* smkap.c */
 int save_kap(FILE *, struct rdata *);

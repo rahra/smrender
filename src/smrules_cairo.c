@@ -1293,7 +1293,13 @@ int act_cap_ini(smrule_t *r)
       cap.key++;
       cap.pos |= POS_UC;
    }
- 
+
+   if (parse_keylist(cap.key, &cap.klist) == -1)
+   {
+      log_msg(LOG_WARN, "something went wrong with key filter");
+      return 1;
+   }
+
    cap.hide = get_param_bool("hide", r->act);
 
    // parameters for filling of background rectangle
@@ -1343,6 +1349,8 @@ int act_cap_ini(smrule_t *r)
          cap.scl.max_auto_size, cap.scl.min_auto_size, cap.scl.min_area_size, cap.scl.auto_scale,
          cap.angle, cap.xoff, cap.yoff,
          cap.rot.phase, cap.rot.autocol, cap.rot.weight);
+   for (int i = 0; i < cap.klist.count; i++)
+      log_debug("filter[%d] = '%s'", i, cap.klist.key[i]);
    memcpy(r->data, &cap, sizeof(cap));
    return 0;
 }
@@ -2300,11 +2308,11 @@ static int cap_way(const struct actCaption *cap, osm_way_t *w, const bstring_t *
 
 int act_cap_main(smrule_t *r, osm_obj_t *o)
 {
+   struct actCaption *cap = (struct actCaption*) r->data;
    struct coord c;
-   int n;
+   int i, n;
 
 #ifdef AUTOSFC
-   struct actCaption *cap = (struct actCaption*) r->data;
    // create temporary background surface at first call to cap_main()
    if (isnan(cap->angle) && (cap->auto_sfc == NULL))
    {
@@ -2314,11 +2322,14 @@ int act_cap_main(smrule_t *r, osm_obj_t *o)
    }
 #endif
 
-   if ((n = match_attr(o, ((struct actCaption*) r->data)->key, NULL)) == -1)
-   {
-      //log_debug("node %ld has no caption tag '%s'", nd->nd.id, rl->rule.cap.key);
+   // sequentially match all keys in key list
+   for (i = 0, n = -1; i < cap->klist.count; i++)
+      if ((n = match_attr(o, cap->klist.key[i], NULL)) >= 0)
+         break;
+
+   // return if no key match
+   if (n == -1)
       return 0;
-   }
 
    switch (o->type)
    {
@@ -2357,6 +2368,7 @@ int act_cap_fini(smrule_t *r)
    }
 #endif
 
+   free(cap->klist.key);
    free(cap);
    r->data = NULL;
 
