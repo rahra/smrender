@@ -41,6 +41,7 @@ enum {IDX_NODE, IDX_WAY, IDX_REL};
 
 /* smcore.c */
 int traverse(const bx_node_t*, int, int, tree_func_t, void*);
+int execute_rules0(bx_node_t *, tree_func_t , void *);
 int execute_rules(bx_node_t *, int );
 int rev_index_way_nodes(osm_way_t *, bx_node_t **);
 int rev_index_rel_nodes(osm_rel_t *, bx_node_t **);

@@ -1,4 +1,4 @@
-/* Copyright 2011-2021 Bernhard R. Fischer, 4096R/8E24F29D <bf@abenteuerland.at>
+/* Copyright 2011-2022 Bernhard R. Fischer, 4096R/8E24F29D <bf@abenteuerland.at>
  *
  * This file is part of smrender.
  *
@@ -18,7 +18,8 @@
 /*! \file smcore.c
  * This file contains the code of the main execution process.
  *
- *  @author Bernhard R. Fischer
+ *  \author Bernhard R. Fischer, <bf@abenteuerland.at>
+ *  \date 2022/03/29
  */
 
 #ifdef HAVE_CONFIG_H
@@ -436,23 +437,23 @@ int apply_smrules(smrule_t *r, long ver)
 }
 
 
-int execute_rules(bx_node_t *rules, int version)
+int execute_rules0(bx_node_t *rules, tree_func_t func, void *p)
 {
    // FIXME: order rel -> way -> node?
    log_msg(LOG_NOTICE, " relations...");
-   traverse(rules, 0, IDX_REL, (tree_func_t) apply_smrules, (void*) (long) version);
+   traverse(rules, 0, IDX_REL, func, p);
 #ifdef THREADED_RULES
    sm_wait_threads();
    dequeue_fini();
 #endif
    log_msg(LOG_NOTICE, " ways...");
-   traverse(rules, 0, IDX_WAY, (tree_func_t) apply_smrules, (void*) (long) version);
+   traverse(rules, 0, IDX_WAY, func, p);
 #ifdef THREADED_RULES
    sm_wait_threads();
    dequeue_fini();
 #endif
    log_msg(LOG_NOTICE, " nodes...");
-   traverse(rules, 0, IDX_NODE, (tree_func_t) apply_smrules, (void*) (long) version);
+   traverse(rules, 0, IDX_NODE, func, p);
 #ifdef THREADED_RULES
    sm_wait_threads();
    dequeue_fini();
@@ -461,6 +462,12 @@ int execute_rules(bx_node_t *rules, int version)
 }
 
  
+int execute_rules(bx_node_t *rules, int version)
+{
+   return execute_rules0(rules, (tree_func_t) apply_smrules, (void*) (long) version);
+}
+
+
 /*! Recursively traverse tree and call function dhandler for all leaf nodes
  * which are not NULL.
  * @param nt Pointer to tree root.

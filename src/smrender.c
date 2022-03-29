@@ -19,7 +19,7 @@
  * This file contains the main() function and main initialization functions.
  *
  *  \author Bernhard R. Fischer, <bf@abenteuerland.at>
- *  \date 2022/03/24
+ *  \date 2022/03/29
  */
 
 #ifdef HAVE_CONFIG_H
@@ -199,6 +199,7 @@ int norm_rule_node(osm_obj_t *o, void * UNUSED(p))
 #define RULE_LAT_DIFF RULE_LON_DIFF
    static double lon;
 
+   //FIXME: comparison seems to not make sense...
    if ((((osm_node_t*) o)->lon == 0.0) && (((osm_node_t*) o)->lon == 0.0))
    {
       //log_debug("norm %f", lon);
@@ -528,8 +529,9 @@ void usage(const char *s)
          "   -n .................. Output IDs as positive values only.\n"
          "   -r <rules file> ..... Rules file ('rules.osm' is default).\n"
          "                         Set <rules file> to 'none' to run without rules.\n"
-         "   -R <file> ........... Output all rules to <file>.\n"
+         "   -R <file> ........... Output all rules to <file> in OSM format.\n"
          "   -s <img scale> ...... Set global image scale (default = 1).\n"
+         "   -S <file> ........... Output processed rules in rendering order to <file> in JSON format.\n"
          "   -t <title> .......... Set descriptional chart title.\n"
          "   -T <tile_info> ...... Create tiles.\n"
          "      <tile_info> := <zoom_lo> [ '-' <zoom_hi> ] ':' <tile_path> [ ':' <file_type> ]\n"
@@ -912,7 +914,8 @@ int main(int argc, char *argv[])
    struct stat st;
    FILE *f;
    char *cf = "rules.osm", *img_file = NULL, *osm_ifile = NULL, *osm_ofile =
-      NULL, *osm_rfile = NULL, *kap_file = NULL, *kap_hfile = NULL, *pdf_file = NULL, *svg_file = NULL;
+      NULL, *osm_rfile = NULL, *kap_file = NULL, *kap_hfile = NULL, *pdf_file = NULL,
+      *svg_file = NULL, *rinfo_file = NULL;
    struct rdata *rd;
    struct timeval tv_start, tv_end;
    int w_mmap = 1, load_filter = 0, init_exit = 0, gen_grid = AUTO_GRID, prt_url = 0;
@@ -937,7 +940,7 @@ int main(int argc, char *argv[])
    if (setlocale(LC_CTYPE, "") == NULL)
       log_msg(LOG_WARN, "setlocale() failed");
 
-   while ((n = getopt(argc, argv, "ab:B:Dd:fg:Ghi:k:K:lL:MmN:no:O:p:P:r:R:s:t:T:uVvw:")) != -1)
+   while ((n = getopt(argc, argv, "ab:B:Dd:fg:Ghi:k:K:lL:MmN:no:O:p:P:r:R:s:S:t:T:uVvw:")) != -1)
       switch (n)
       {
          case 'a':
@@ -1116,6 +1119,10 @@ int main(int argc, char *argv[])
             }
             break;
 
+         case 'S':
+            rinfo_file = optarg;
+            break;
+
          case 't':
             rd->title = optarg;
             break;
@@ -1190,7 +1197,6 @@ int main(int argc, char *argv[])
    {
       traverse(rd->rules, 0, IDX_NODE, norm_rule_node, NULL);
       traverse(rd->rules, 0, IDX_WAY, norm_rule_way, &rstats);
-      // FIXME: saving relation rules missing
       save_osm(osm_rfile, rd->rules, NULL, NULL);
    }
 
@@ -1208,6 +1214,12 @@ int main(int argc, char *argv[])
       if (traverse(rd->rules, 0, IDX_REL, (tree_func_t) init_rules, rd->rules) < 0)
          log_msg(LOG_ERR, "rule parser failed"),
             exit(EXIT_FAILURE);
+   }
+
+   if (rinfo_file != NULL)
+   {
+      log_msg(LOG_NOTICE, "saving rules info to %s", rinfo_file);
+      rules_info(rd, rinfo_file, &rstats);
    }
 
    if ((osm_ifile != NULL) && ((fd = open(osm_ifile, O_RDONLY)) == -1))

@@ -335,5 +335,8 @@ image_t *smqr_image(void);
 /* smtile.c */
 int create_tiles(const char *, const struct rdata *, int , int );
 
+/* smjson.c */
+int rules_info(const struct rdata *, const char *, const struct dstats *);
+
 #endif
 
