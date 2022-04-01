@@ -123,6 +123,14 @@ enum {LAT, LON};
 enum {DRAW_SOLID, DRAW_DASHED, DRAW_DOTTED, DRAW_TRANSPARENT, DRAW_PIPE, DRAW_ROUNDDOT};
 enum {SHAPE_REGULAR, SHAPE_SECTORED, SHAPE_STARED};
 
+typedef struct rinfo
+{
+   int version;
+   FILE *f;
+   const char *fname;
+   int condensed;
+} rinfo_t;
+
 typedef struct keylist
 {
    int count;
@@ -336,7 +344,7 @@ image_t *smqr_image(void);
 int create_tiles(const char *, const struct rdata *, int , int );
 
 /* smjson.c */
-int rules_info(const struct rdata *, const char *, const struct dstats *);
+int rules_info(const struct rdata *, rinfo_t *, const struct dstats *);
 
 #endif
 

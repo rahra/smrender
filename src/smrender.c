@@ -915,7 +915,7 @@ int main(int argc, char *argv[])
    FILE *f;
    char *cf = "rules.osm", *img_file = NULL, *osm_ifile = NULL, *osm_ofile =
       NULL, *osm_rfile = NULL, *kap_file = NULL, *kap_hfile = NULL, *pdf_file = NULL,
-      *svg_file = NULL, *rinfo_file = NULL;
+      *svg_file = NULL;
    struct rdata *rd;
    struct timeval tv_start, tv_end;
    int w_mmap = 1, load_filter = 0, init_exit = 0, gen_grid = AUTO_GRID, prt_url = 0;
@@ -927,6 +927,7 @@ int main(int argc, char *argv[])
    struct tile_info ti;
    int level = 5;    // default log level: 5 = LOG_NOTICE
    char *logfile = "stderr";
+   rinfo_t ri;
 
    (void) gettimeofday(&tv_start, NULL);
    init_log(logfile, level);
@@ -939,6 +940,9 @@ int main(int argc, char *argv[])
 
    if (setlocale(LC_CTYPE, "") == NULL)
       log_msg(LOG_WARN, "setlocale() failed");
+
+   ri.fname = NULL;
+   ri.condensed = 1;
 
    while ((n = getopt(argc, argv, "ab:B:Dd:fg:Ghi:k:K:lL:MmN:no:O:p:P:r:R:s:S:t:T:uVvw:")) != -1)
       switch (n)
@@ -1120,7 +1124,7 @@ int main(int argc, char *argv[])
             break;
 
          case 'S':
-            rinfo_file = optarg;
+            ri.fname = optarg;
             break;
 
          case 't':
@@ -1216,10 +1220,10 @@ int main(int argc, char *argv[])
             exit(EXIT_FAILURE);
    }
 
-   if (rinfo_file != NULL)
+   if (ri.fname != NULL)
    {
-      log_msg(LOG_NOTICE, "saving rules info to %s", rinfo_file);
-      rules_info(rd, rinfo_file, &rstats);
+      log_msg(LOG_NOTICE, "saving rules info to %s", ri.fname);
+      rules_info(rd, &ri, &rstats);
    }
 
    if ((osm_ifile != NULL) && ((fd = open(osm_ifile, O_RDONLY)) == -1))

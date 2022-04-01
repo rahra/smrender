@@ -37,13 +37,6 @@
 #define CCHAR (condensed_ ? ' ' : '\n')
 
 
-typedef struct rinfo
-{
-   int version;
-   FILE *f;
-} rinfo_t;
-
-
 static int condensed_ = 0;
 static int indent_ = 1;
 
@@ -188,15 +181,14 @@ static int rule_info(const smrule_t *r, const rinfo_t *ri)
    fprintf(ri->f, "{\n");
    fstring(ri->f, "type", type_str(r->oo->type), indent + 1);
    fint(ri->f, "id", r->oo->id, indent + 1);
-   fstring(ri->f, "name", r->act->func_name, indent + 1);
-   if (r->act->func_name == NULL) fstring(ri->f, "note", "template", indent + 1);
+   if (r->act->func_name != NULL)
+      fstring(ri->f, "action", r->act->func_name, indent + 1);
    fint(ri->f, "visible", r->oo->vis, indent + 1);
-   
-   findent(ri->f, indent + 1);
 
-   condensed_ = 1;
    if (r->act->fp != NULL)
    {
+      findent(ri->f, indent + 1);
+      condensed_ = ri->condensed;
       fprintf(ri->f, "\"params\":%c", CCHAR);
       fparams(ri->f, r->act->fp, indent + 1);
    }
@@ -204,7 +196,7 @@ static int rule_info(const smrule_t *r, const rinfo_t *ri)
    condensed_ = 0;
    findent(ri->f, indent + 1);
 
-   condensed_ = 1;
+   condensed_ = ri->condensed;
    fprintf(ri->f, "\"tags\":%c", CCHAR);
    rule_info_tags(ri->f, r, indent + 1);
    condensed_ = 0;
@@ -215,51 +207,49 @@ static int rule_info(const smrule_t *r, const rinfo_t *ri)
 }
 
 
-int rules_info(const struct rdata *rd, const char *fname, const struct dstats *rstats)
+int rules_info(const struct rdata *rd, rinfo_t *ri, const struct dstats *rstats)
 {
-   rinfo_t ri;
-
    // safety check
-   if (fname == NULL || rstats == NULL)
+   if (ri->fname == NULL || rstats == NULL)
    {
       log_msg(LOG_EMERG, "{fname|rstats} == NULL");
       return -1;
    }
 
-   if ((ri.f = fopen(fname, "w")) == NULL)
+   if ((ri->f = fopen(ri->fname, "w")) == NULL)
    {
       log_errno(LOG_ERR, "fopen() failed");
       return -1;
    }
 
-   fprintf(ri.f, "{\n");
+   fprintf(ri->f, "{\n");
    for (int i = 0; i < rstats->ver_cnt; i++)
    {
       log_msg(LOG_NOTICE, "saving pass %d (ver = %d)", i, rstats->ver[i]);
-      ri.version = rstats->ver[i];
-      findent(ri.f, 1);
-      fchar(ri.f, '[');
-      findent(ri.f, 2);
-      fchar(ri.f, '{');
-      findent(ri.f, 3);
-      fprintf(ri.f, "\"version\": %d,\n", ri.version);
-      findent(ri.f, 3);
-      fprintf(ri.f, "\"obj\":\n");
-      findent(ri.f, 3);
-      fchar(ri.f, '[');
-      execute_rules0(rd->rules, (tree_func_t) rule_info, &ri);
-      funsep(ri.f);
-      findent(ri.f, 3);
-      fprintf(ri.f, "]\n");
-      findent(ri.f, 2);
-      fprintf(ri.f, "}\n");
-      findent(ri.f, 1);
-      fprintf(ri.f, "],\n");
+      ri->version = rstats->ver[i];
+      findent(ri->f, 1);
+      fchar(ri->f, '[');
+      findent(ri->f, 2);
+      fchar(ri->f, '{');
+      findent(ri->f, 3);
+      fprintf(ri->f, "\"version\": %d,\n", ri->version);
+      findent(ri->f, 3);
+      fprintf(ri->f, "\"obj\":\n");
+      findent(ri->f, 3);
+      fchar(ri->f, '[');
+      execute_rules0(rd->rules, (tree_func_t) rule_info, ri);
+      funsep(ri->f);
+      findent(ri->f, 3);
+      fprintf(ri->f, "]\n");
+      findent(ri->f, 2);
+      fprintf(ri->f, "}\n");
+      findent(ri->f, 1);
+      fprintf(ri->f, "],\n");
    }
-   funsep(ri.f);
-   fprintf(ri.f, "}\n");
+   funsep(ri->f);
+   fprintf(ri->f, "}\n");
 
-   fclose(ri.f);
+   fclose(ri->f);
    return 0;
 }
 
