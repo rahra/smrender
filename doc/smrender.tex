@@ -414,6 +414,16 @@ option \optk{a} is set implicitly.
    factor \optv{f} (see Section \ref{sec:img}). By default this is 1. This
    factor is applied additionally to a scaling defined in \textsf{img()}.
 
+\item[\optk{S}] \optv{file}
+
+   With this option all rules are saved to a well readable \optv{file} in JSON
+   format. All rules are saved in exactly the same order as they are rendered.
+
+   The main purpose of this is for debugging of the ruleset. Specifically when
+   writing a ruleset spread over several files one may quickly loose the
+   overview about the order of the rules. Since the order is highly important,
+   this helps you debugging it.
+
 \item[\optk{t}] \optv{title}
 
    This option generates a descriptional title node which can be rendered onto the
@@ -737,7 +747,8 @@ looks like the following.
    <coldef>   := <colspec> | '%' <key>
    <colspec>  := X11 color name or HTML specification "#xxxxxx".
 
-   <key>      := 'key' '=' <string>
+   <key>      := 'key' '=' [ '*' ] <string> | <filter>
+   <filter>   := '(' <string [ '|' <string> [ ... ] ] ')'
 
    <angledef> := <angle> | <anglekey>
    <angle>    := 'angle' '=' <angleval>
@@ -789,6 +800,32 @@ If \textsf{fontconfig} is available, \optv{font} is defined as specified by
 If a caption rule is applied to a node which does not have such a key, the rule
 simply does nothing. If the \optv{key} is preceded by an asterisk \textsf{'*'},
 all letters are capitalized.
+
+The \optv{key} may be specified directly as a string or as a filter. The filter
+has to be enclosed in brackets and is a list of strings separated by a
+\texttt{'|'} charachter. If several strings are given in such a filter
+expression, the strings are matched against the object in exaclty the order as
+they appear in the list. Once a string matched, it is used to render the
+caption.
+
+The main purpose of this is to choose one of several tag candidates dependent
+if they exist in the object's list of tags. This may be useful if you want to
+e.g. render the name of an object in case several name tags exist.
+
+Let's assume you want to place a caption for a place in your language of
+choice. But what if there is no such tag but another one in a different
+language?
+The following rule would render a caption for all nodes tagged as
+\textsf{place=island} in German, or English if German doesn't exist, or the
+default name if there is also no English tag.
+
+\begin{verbatim}
+<node>
+   <tag k='place' v='island'/>
+   <tag k='_action_'
+      v='cap:font=sans-serif;size=3;key=(name:de|name:en|name)'/>
+</node>
+\end{verbatim}
 
 \optv{Valign} and \optv{halign} specify the alignment of the caption in respect to its
 center point which is given by the coordinates of the node. There is a

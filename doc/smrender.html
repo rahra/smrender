@@ -462,6 +462,17 @@ option <span style="font-family:helvetica"><span class="small"><b>-a</b></span><
    This option scales all images used in the <span style="font-family:helvetica">img()</span> function by the
    factor <span style="font-family:helvetica"><span class="small"><u>f</u></span></span> (see Section <a href="#sec:img">6.1.3</a>). By default this is 1. This
    factor is applied additionally to a scaling defined in <span style="font-family:helvetica">img()</span>.
+<br /><span style="font-family:helvetica"><span class="small"><b>-S</b></span></span> <span style="font-family:helvetica"><span class="small"><u>file</u></span></span>
+
+<div class="p"><!----></div>
+   With this option all rules are saved to a well readable <span style="font-family:helvetica"><span class="small"><u>file</u></span></span> in JSON
+   format. All rules are saved in exactly the same order as they are rendered.
+
+<div class="p"><!----></div>
+   The main purpose of this is for debugging of the ruleset. Specifically when
+   writing a ruleset spread over several files one may quickly loose the
+   overview about the order of the rules. Since the order is highly important,
+   this helps you debugging it.
 <br /><span style="font-family:helvetica"><span class="small"><b>-t</b></span></span> <span style="font-family:helvetica"><span class="small"><u>title</u></span></span>
 
 <div class="p"><!----></div>
@@ -874,7 +885,8 @@ looks like the following.
 &nbsp;&nbsp;&nbsp;&lt;coldef&#62;&nbsp;&nbsp;&nbsp;:=&nbsp;&lt;colspec&#62;&nbsp;|&nbsp;'%'&nbsp;&lt;key&#62;
 &nbsp;&nbsp;&nbsp;&lt;colspec&#62;&nbsp;&nbsp;:=&nbsp;X11&nbsp;color&nbsp;name&nbsp;or&nbsp;HTML&nbsp;specification&nbsp;"#xxxxxx".
 
-&nbsp;&nbsp;&nbsp;&lt;key&#62;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;:=&nbsp;'key'&nbsp;'='&nbsp;&lt;string&#62;
+&nbsp;&nbsp;&nbsp;&lt;key&#62;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;:=&nbsp;'key'&nbsp;'='&nbsp;[&nbsp;'*'&nbsp;]&nbsp;&lt;string&#62;&nbsp;|&nbsp;&lt;filter&#62;
+&nbsp;&nbsp;&nbsp;&lt;filter&#62;&nbsp;&nbsp;&nbsp;:=&nbsp;'('&nbsp;&lt;string&nbsp;[&nbsp;'|'&nbsp;&lt;string&#62;&nbsp;[&nbsp;...&nbsp;]&nbsp;]&nbsp;')'
 
 &nbsp;&nbsp;&nbsp;&lt;angledef&#62;&nbsp;:=&nbsp;&lt;angle&#62;&nbsp;|&nbsp;&lt;anglekey&#62;
 &nbsp;&nbsp;&nbsp;&lt;angle&#62;&nbsp;&nbsp;&nbsp;&nbsp;:=&nbsp;'angle'&nbsp;'='&nbsp;&lt;angleval&#62;
@@ -929,6 +941,38 @@ If <span style="font-family:helvetica">fontconfig</span> is available, <span sty
 If a caption rule is applied to a node which does not have such a key, the rule
 simply does nothing. If the <span style="font-family:helvetica"><span class="small"><u>key</u></span></span> is preceded by an asterisk <span style="font-family:helvetica">'*'</span>,
 all letters are capitalized.
+
+<div class="p"><!----></div>
+The <span style="font-family:helvetica"><span class="small"><u>key</u></span></span> may be specified directly as a string or as a filter. The filter
+has to be enclosed in brackets and is a list of strings separated by a
+<tt>' - '</tt> charachter. If several strings are given in such a filter
+expression, the strings are matched against the object in exaclty the order as
+they appear in the list. Once a string matched, it is used to render the
+caption.
+
+<div class="p"><!----></div>
+The main purpose of this is to choose one of several tag candidates dependent
+if they exist in the object's list of tags. This may be useful if you want to
+e.g. render the name of an object in case several name tags exist.
+
+<div class="p"><!----></div>
+Let's assume you want to place a caption for a place in your language of
+choice. But what if there is no such tag but another one in a different
+language?
+The following rule would render a caption for all nodes tagged as
+<span style="font-family:helvetica">place=island</span> in German, or English if German doesn't exist, or the
+default name if there is also no English tag.
+
+<div class="p"><!----></div>
+
+<pre>
+&lt;node&#62;
+&nbsp;&nbsp;&nbsp;&lt;tag&nbsp;k='place'&nbsp;v='island'/&#62;
+&nbsp;&nbsp;&nbsp;&lt;tag&nbsp;k='_action_'
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;v='cap:font=sans-serif;size=3;key=(name:de|name:en|name)'/&#62;
+&lt;/node&#62;
+
+</pre>
 
 <div class="p"><!----></div>
 <span style="font-family:helvetica"><div class="small"><u>Valign</u></div></span> and <span style="font-family:helvetica"><span class="small"><u>halign</u></span></span> specify the alignment of the caption in respect to its
