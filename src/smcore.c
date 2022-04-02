@@ -437,6 +437,13 @@ int apply_smrules(smrule_t *r, long ver)
 }
 
 
+/* Typecasting wrapper for apply_smrules(). */
+static int apply_smrules_w(osm_obj_t *r, void *ver)
+{
+   return apply_smrules((smrule_t*) r, (long) ver);
+}
+
+
 int execute_rules0(bx_node_t *rules, tree_func_t func, void *p)
 {
    // FIXME: order rel -> way -> node?
@@ -464,7 +471,7 @@ int execute_rules0(bx_node_t *rules, tree_func_t func, void *p)
  
 int execute_rules(bx_node_t *rules, int version)
 {
-   return execute_rules0(rules, (tree_func_t) apply_smrules, (void*) (long) version);
+   return execute_rules0(rules, apply_smrules_w, (void*) (long) version);
 }
 
 
