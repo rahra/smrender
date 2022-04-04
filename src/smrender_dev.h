@@ -129,6 +129,7 @@ typedef struct rinfo
    FILE *f;
    const char *fname;
    int condensed;
+   int indent;
 } rinfo_t;
 
 typedef struct keylist
