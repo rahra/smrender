@@ -17,9 +17,11 @@
 
 /*! \file smjson.c
  * This file contains the functions to create rules file in JSON format.
+ * The implementation shall follow the JSON specification:
+ * https://www.json.org/json-en.html
  *
  *  \author Bernhard R. Fischer, <bf@abenteuerland.at>
- *  \date 2022/04/04
+ *  \date 2022/04/06
  */
 
 #ifdef HAVE_CONFIG_H
@@ -86,18 +88,21 @@ int bs_stresc(bstring_t src, char *dst, int dlen, const char *echars, const char
 
    // safety check
    if (src.buf == NULL || echars == NULL || uchars == NULL || strlen(echars) != strlen(uchars))
+   {
+      log_msg(LOG_EMERG, "NULL pointer caught, or strlen(echars) != strlen(uchars))");
       return -1;
+   }
 
    if (dst == NULL)
       dlen = src.len * 2 + 1;
 
    dlen--;
-   for (len = 0; src.len > 0 && len < dlen; src.buf++, src.len--, len++)
+   for (len = 0; src.len > 0 && len < dlen; src.buf++, src.len--, len++, dst++)
    {
       if ((n = strpos(echars, *src.buf)) == -1)
       {
          if (dst != NULL)
-            *dst++ = *src.buf;
+            *dst = *src.buf;
          continue;
       }
 
@@ -130,8 +135,7 @@ int stresc(const char *src, int slen, char *dst, int dlen, const char *echars, c
 
 int jesc(const char *src, int slen, char *dst, int dlen)
 {
-   return stresc(src, slen, dst, dlen, "\b\f\n\r\t\"\\", "bfnrt\"\\");
-
+   return stresc(src, slen, dst, dlen, "\"\\/\b\f\n\r\t", "\"\\/bfnrt");
 }
 
 
@@ -231,7 +235,6 @@ static void fstring(FILE *f, const char *k, const char *v, int indent)
 
    if ((len = jesc(v, strlen(v), buf, sizeof(buf))) == -1)
       return;
-
 
    findent(f, indent);
    fprintf(f, "\"%s\": \"%s\",%c", k, buf, CCHAR);
