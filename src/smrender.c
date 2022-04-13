@@ -463,7 +463,7 @@ char *init_rd_paper(struct rdata *rd, const char *paper)
       } // end if
    } // end else
 
-   if ( (width <= 0.) || (height <= 0.) )  {
+   if ( ((width < 0.) || (height < 0.)) || ((width <= 0.) && (height <= 0.)) )  {
       log_msg(LOG_ERR, "page width and height must be a decimal value greater than 0"),
          exit(EXIT_FAILURE);
    } // end if
