@@ -356,23 +356,11 @@ int free_objects(osm_obj_t *o, void * UNUSED(p))
  * @param rd Pointer to rdata structure.
  * @param angle Pointer to string containing decimal rotation.
  */
-static void page_rotate(struct rdata *rd, const char *angle)
+static void page_rotate(struct rdata *rd, double angle)
 {
    double a, r;
-   char *endptr;
 
-  if (angle == NULL)
-      return;
-
-   errno = 0;
-   rd->rot = strtod(angle, &endptr);
-   if (errno || endptr == angle)
-   {
-      rd->rot = 0;
-      return;
-   }
-
-   rd->rot = fmod(DEG2RAD(rd->rot), 2 * M_PI);
+   rd->rot = fmod(angle, 2 * M_PI);
    if (rd->rot == 0)
       return;
 
@@ -387,11 +375,15 @@ static void page_rotate(struct rdata *rd, const char *angle)
  * structure. rd->dpi must be pre-initialized!
  * @param rd Pointer to the rdata structure.
  * @param paper Pointer to a string containing page dimension information, i.e.
- * "A4", "A3",..., or "<width>x<height>" in millimeters.
+ * "A4", "A3",..., or "<width>x<height>[:angle]" in millimeters, angle in
+ * degrees.
+ * @return The functions returns the angle in radians. If no angle was given, 0
+ * is returned.
  */
-char *init_rd_paper(struct rdata *rd, const char *paper)
+double init_rd_paper(struct rdata *rd, const char *paper)
 {
-   char buf[strlen(paper) + 1], *s, *angle;
+   char buf[strlen(paper) + 1], *s, *endptr;
+   double angle;
    double width = 0.;
    double height = 0.;  // in mm
 
@@ -426,7 +418,18 @@ char *init_rd_paper(struct rdata *rd, const char *paper)
 
    strcpy(buf, paper);
    strtok(buf, ":");
-   angle = strtok(NULL, ":");
+
+   angle = 0;
+   errno = 0;
+   if ((s = strtok(NULL, ":")) != NULL)
+   {
+      angle = DEG2RAD(strtod(s, &endptr));
+      if (errno || endptr == s)
+      {
+         angle = 0;
+         log_msg(LOG_WARN, "invalid angle \"%s\"", s);
+      }
+   }
 
    // check if format is given as WxH
    if (strchr(buf, 'x'))
@@ -662,7 +665,8 @@ static double sqr_angle(double a)
  */
 void init_rendering_window(struct rdata *rd, char *win, const char *paper)
 {
-   char *s, *angle;
+   double angle;
+   char *s;
    int n;
 
    if (win == NULL)
