@@ -19,6 +19,8 @@ charts](https://www.cypherpunk.at/download/smrender/charts/croatia/yellow_map/PD
 You can find some other examples here: [chart
 samples](https://www.cypherpunk.at/download/smrender/samples/).
 
+![sample_cutout.jpg](doc/sample_cutout.jpg)
+
 ## Download
 
 The latest snapshots of version 4.1 of Smrender are found in the
