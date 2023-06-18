@@ -316,8 +316,8 @@ static void close_free_exec_ctrl(struct exec_ctrl *ec)
    fclose(ec->fout);
    eclose(ec->cfd[CHLD_IN]);
    eclose(ec->cfd[CHLD_EIN]);
-   free_exec_ctrl(ec);
    waitpid(ec->pid, &status, 0);
+   free_exec_ctrl(ec);
    log_msg(LOG_INFO, "child exited with %d", WEXITSTATUS(status));
 }
 

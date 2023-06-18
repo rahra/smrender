@@ -341,16 +341,16 @@ int coord_str(double c, int lat_lon, char *buf, int len)
    switch (lat_lon)
    {
       case LAT_CHAR:
-         return snprintf(buf, len, "%02d %c %.1f'", abs(c), c < 0 ? 'S' : 'N', (double) ((int) round(fabs(c) * T_RESCALE) % T_RESCALE) / TM_RESCALE);
+         return snprintf(buf, len, "%02d %c %.1f'", abs((int) c), c < 0 ? 'S' : 'N', (double) ((int) round(fabs(c) * T_RESCALE) % T_RESCALE) / TM_RESCALE);
 
       case LON_CHAR:
-         return snprintf(buf, len, "%03d %c %.1f'", abs(c), c < 0 ? 'W' : 'E', (double) ((int) round(fabs(c) * T_RESCALE) % T_RESCALE) / TM_RESCALE);
+         return snprintf(buf, len, "%03d %c %.1f'", abs((int) c), c < 0 ? 'W' : 'E', (double) ((int) round(fabs(c) * T_RESCALE) % T_RESCALE) / TM_RESCALE);
 
       case LAT_DEG:
-         return snprintf(buf, len, "%02d° %.1f'", abs(c), (double) ((int) round(fabs(c) * T_RESCALE) % T_RESCALE) / TM_RESCALE);
+         return snprintf(buf, len, "%02d° %.1f'", abs((int) c), (double) ((int) round(fabs(c) * T_RESCALE) % T_RESCALE) / TM_RESCALE);
 
       case LON_DEG:
-         return snprintf(buf, len, "%03d° %.1f'", abs(c), (double) ((int) round(fabs(c) * T_RESCALE) % T_RESCALE) / TM_RESCALE);
+         return snprintf(buf, len, "%03d° %.1f'", abs((int) c), (double) ((int) round(fabs(c) * T_RESCALE) % T_RESCALE) / TM_RESCALE);
    }
 
    return -1;
