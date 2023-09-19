@@ -12,26 +12,26 @@ processing and manipulation tasks such as filtering, modification, and
 statistical analysis.
 
 You can find some charts here: [prerendered
-charts](https://www.cypherpunk.at/download/smrender/charts/).  The most
+charts](https://www.abenteuerland.at/download/smrender/charts/).  The most
 accurate charts are the yellow map style charts of Croatia (updated on 29th of
 April 2015), which are based on the official sheet lines: [Croation sea
-charts](https://www.cypherpunk.at/download/smrender/charts/croatia/yellow_map/PDF/).
+charts](https://www.abenteuerland.at/download/smrender/charts/croatia/yellow_map/PDF/).
 You can find some other examples here: [chart
-samples](https://www.cypherpunk.at/download/smrender/samples/).
+samples](https://www.abenteuerland.at/download/smrender/samples/).
 
 ![sample_cutout.jpg](doc/sample_cutout.jpg)
 
 ## Download
 
 The latest snapshots of version 4.1 of Smrender are found in the
-[current/](https://www.cypherpunk.at/download/smrender/current/) directory.
+[current/](https://www.abenteuerland.at/download/smrender/current/) directory.
 
 With February 2016, the primary project page of Smrender was moved to
 [Github](https://github.com/rahra/smrender). The old page is found at
 [Abenteueland](http://www.abenteuerland.at/smrender/) which I will keep up for
 a while.
 
-Older versions of Smrender have been moved to the [archive/](https://www.cypherpunk.at/download/smrender/archive/) directory.
+Older versions of Smrender have been moved to the [archive/](https://www.abenteuerland.at/download/smrender/archive/) directory.
 
 ## Documentation
 
@@ -61,10 +61,6 @@ If it was checked out from SVN or GIT: run `/autoconf.sh` first (you have to
 have the *GNU Autotools* installed in this case.).
 
 See documentation for more information.
-
-## See Also
-
-* Postings on Smrender at the [Bernhard's blog](https://www.cypherpunk.at/tag/smrender/)
 
 ## Bugs
 
