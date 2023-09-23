@@ -21,7 +21,7 @@
  * https://www.json.org/json-en.html
  *
  *  \author Bernhard R. Fischer, <bf@abenteuerland.at>
- *  \date 2022/04/06
+ *  \date 2023/09/23
  */
 
 #ifdef HAVE_CONFIG_H
@@ -37,11 +37,6 @@
 
 
 #define INDENT 3
-#define CCHAR (condensed_ ? ' ' : '\n')
-
-
-static int condensed_ = 0;
-static int indent_ = 1;
 
 
 /*! This function returns the index of the first occurence if c in the string
@@ -176,46 +171,82 @@ static const char *op_str(int n)
 }
 
 
-static void findent(FILE *f, int n)
+static void findent(const rinfo_t *ri)
 {
-   if (condensed_ || !indent_)
+   if (ri->condensed)
       return;
 
-   int len = n * INDENT;
-   char buf[n * INDENT];
+   int len = ri->indent * INDENT;
+   char buf[ri->indent * INDENT];
 
    memset(buf, ' ', len);
-   fwrite(buf, len, 1, f);
+   fwrite(buf, len, 1, ri->f);
 }
 
 
-static void funsep(FILE *f)
+static void fcondchar(const rinfo_t *ri, char c)
 {
-   fseek(f, -2, SEEK_CUR);
-   fprintf(f, "%c", CCHAR);
+   if (!ri->condensed)
+      fprintf(ri->f, "%c", c);
 }
 
 
-static void fochar(FILE *f, char c)
+static void fspace(const rinfo_t *ri)
 {
-   fprintf(f, "%c%c", c, CCHAR);
+   fcondchar(ri, ' ');
 }
 
 
-static void fcchar(FILE *f, char c)
+static void fnl(const rinfo_t *ri)
 {
-   fprintf(f, "%c,%c", c, CCHAR);
+   fcondchar(ri, '\n');
 }
 
 
-static void fint(FILE *f, const char *k, long v, int indent)
+static void funsep(const rinfo_t *ri)
 {
-   findent(f, indent);
-   fprintf(f, "\"%s\": %ld,%c", k, v, CCHAR);
+   fseek(ri->f, ri->condensed ? -1 : -2, SEEK_CUR);
+   fnl(ri);
 }
 
 
-static void fbstring(FILE *f, const char *k, const bstring_t *v, int indent)
+static void fochar(rinfo_t *ri, char c)
+{
+   findent(ri);
+   fprintf(ri->f, "%c", c);
+   fnl(ri);
+   ri->indent++;
+}
+
+
+static void fcchar(rinfo_t *ri, char c)
+{
+   ri->indent--;
+   findent(ri);
+   fprintf(ri->f, "%c,", c);
+   fnl(ri);
+}
+
+
+static void fkey(const rinfo_t *ri, const char *k)
+{
+   findent(ri);
+   fprintf(ri->f, "\"%s\":", k);
+   fspace(ri);
+}
+
+
+static void fint(const rinfo_t *ri, const char *k, long v)
+{
+   fkey(ri, k);
+   fprintf(ri->f, "%ld,", v);
+   fnl(ri);
+}
+
+
+
+
+static void fbstring(const rinfo_t *ri, const char *k, const bstring_t *v)
 {
    char buf[v->len * 2 + 2];
    int len;
@@ -223,12 +254,13 @@ static void fbstring(FILE *f, const char *k, const bstring_t *v, int indent)
    if ((len = jesc(v->buf, v->len, buf, sizeof(buf))) == -1)
       return;
 
-   findent(f, indent);
-   fprintf(f, "\"%s\": \"%.*s\",%c", k, len, buf, CCHAR);
+   fkey(ri, k);
+   fprintf(ri->f, "\"%.*s\",", len, buf);
+   fnl(ri);
 }
 
 
-static void fstring(FILE *f, const char *k, const char *v, int indent)
+static void fstring(const rinfo_t *ri, const char *k, const char *v)
 {
    char buf[strlen(v) * 2 + 2];
    int len;
@@ -236,107 +268,98 @@ static void fstring(FILE *f, const char *k, const char *v, int indent)
    if ((len = jesc(v, strlen(v), buf, sizeof(buf))) == -1)
       return;
 
-   findent(f, indent);
-   fprintf(f, "\"%s\": \"%s\",%c", k, buf, CCHAR);
+   fkey(ri, k);
+   fprintf(ri->f, "\"%s\",", buf);
+   fnl(ri);
 }
 
 
-static void ftag1(FILE *f, const char *k, const bstring_t *b, int type, int indent)
+static void ftag1(rinfo_t *ri, const char *k, const bstring_t *b, int type)
 {
-   findent(f, indent);
-   fprintf(f, "\"%s\": ", k);
-   fochar(f, '{');
-   fbstring(f, "str", b, indent);
-   fstring(f, "op", op_str(type), indent);
+   fkey(ri, k);
+   fnl(ri);
+   fochar(ri, '{');
+   fbstring(ri, "str", b);
+   fstring(ri, "op", op_str(type));
 
    if (type & ~SPECIAL_MASK)
-      fstring(f, "mod", mod_str(type), indent);
+      fstring(ri, "mod", mod_str(type));
 
-   funsep(f);
-   findent(f, indent);
-   fcchar(f, '}');
+   funsep(ri);
+   fcchar(ri, '}');
 }
 
 
-static void ftag(FILE *f, const struct otag *ot, const struct stag *st, int indent)
+static void ftag(rinfo_t *ri, const struct otag *ot, const struct stag *st)
 {
-   ftag1(f, "k", &ot->k, st->stk.type, indent);
-   ftag1(f, "v", &ot->v, st->stv.type, indent);
-   funsep(f);
+   ftag1(ri, "k", &ot->k, st->stk.type);
+   ftag1(ri, "v", &ot->v, st->stv.type);
+   funsep(ri);
 }
 
 
-static void rule_info_tags(FILE *f, const smrule_t *r, int indent)
+static void rule_info_tags(rinfo_t *ri, const smrule_t *r)
 {
-   findent(f, indent);
-   fochar(f, '[');
+   fochar(ri, '[');
    for (int i = 0; i < r->oo->tag_cnt; i++)
    {
-      findent(f, indent + 1);
-      fochar(f, '{');
-      ftag(f, &r->oo->otag[i], &r->act->stag[i], indent + 2);
-      findent(f, indent + 1);
-      fcchar(f, '}');
+      fochar(ri, '{');
+      ftag(ri, &r->oo->otag[i], &r->act->stag[i]);
+      fcchar(ri, '}');
    }
-   funsep(f);
-   findent(f, indent);
-   fcchar(f, ']');
+   funsep(ri);
+   fcchar(ri, ']');
 }
 
 
-static void fparams(FILE *f, fparam_t **fp, int indent)
+static void fparams(rinfo_t *ri, fparam_t **fp)
 {
-   findent(f, indent);
-   fochar(f, '{');
+   fochar(ri, '{');
    for (; *fp != NULL; fp++)
    {
-      fstring(f, (*fp)->attr, (*fp)->val, indent + 1);
+      fstring(ri, (*fp)->attr, (*fp)->val);
    }
-   funsep(f);
-   findent(f, indent);
-   fcchar(f, '}');
+   funsep(ri);
+   fcchar(ri, '}');
 }
 
 
-static int rule_info(const smrule_t *r, const rinfo_t *ri)
+static int rule_info(const smrule_t *r, const rinfo_t *ri0)
 {
+   rinfo_t _ri, *ri = &_ri;
+
    //safety check
    if (r == NULL || ri == NULL) return -1;
+
+   *ri = *ri0;
 
    if (r->oo->ver != ri->version)
       return 0;
 
-   findent(ri->f, ri->indent);
-   fochar(ri->f, '{');
-   fstring(ri->f, "type", type_str(r->oo->type), ri->indent + 1);
-   fint(ri->f, "version", r->oo->ver, ri->indent + 1);
-   fint(ri->f, "id", r->oo->id, ri->indent + 1);
+   fochar(ri, '{');
+   fstring(ri, "type", type_str(r->oo->type));
+   fint(ri, "version", r->oo->ver);
+   fint(ri, "id", r->oo->id);
    if (r->act->func_name != NULL)
-      fstring(ri->f, "action", r->act->func_name, ri->indent + 1);
-   fint(ri->f, "visible", r->oo->vis, ri->indent + 1);
+      fstring(ri, "action", r->act->func_name);
+   fint(ri, "visible", r->oo->vis);
 
    if (r->act->fp != NULL)
    {
-      findent(ri->f, ri->indent + 1);
-      condensed_ = ri->condensed;
-      fprintf(ri->f, "\"params\":%c", CCHAR);
-      fparams(ri->f, r->act->fp, ri->indent + 1);
-      condensed_ = 0;
-      fprintf(ri->f, "\n");
+      fkey(ri, "params");
+      fnl(ri);
+      fparams(ri, r->act->fp);
    }
 
    if (r->oo->tag_cnt)
    {
-      findent(ri->f, ri->indent + 1);
-      condensed_ = ri->condensed;
-      fprintf(ri->f, "\"tags\":%c", CCHAR);
-      rule_info_tags(ri->f, r, ri->indent + 1);
-      condensed_ = 0;
+      fkey(ri, "tags");
+      fnl(ri);
+      rule_info_tags(ri, r);
    }
 
-   funsep(ri->f);
-   findent(ri->f, ri->indent);
-   fcchar(ri->f, '}');
+   funsep(ri);
+   fcchar(ri, '}');
    return 0;
 }
 
@@ -356,22 +379,69 @@ int rules_info(const struct rdata *rd, rinfo_t *ri, const struct dstats *rstats)
       return -1;
    }
 
-   fprintf(ri->f, "{\n");
-   findent(ri->f, 1);
-   fochar(ri->f, '[');
+   fochar(ri, '[');
    for (int i = 0; i < rstats->ver_cnt; i++)
    {
       log_msg(LOG_NOTICE, "saving pass %d (ver = %d)", i, rstats->ver[i]);
       ri->version = rstats->ver[i];
-      ri->indent = 2;
       execute_rules0(rd->rules, (tree_func_t) rule_info, ri);
    }
-   funsep(ri->f);
-   findent(ri->f, 1);
+   funsep(ri);
    fprintf(ri->f, "]\n");
-   fprintf(ri->f, "}\n");
 
    fclose(ri->f);
    return 0;
+}
+
+
+static void onode_info_tags(rinfo_t *ri, const osm_obj_t *o)
+{
+   fochar(ri, '[');
+   for (int i = 0; i < o->tag_cnt; i++)
+   {
+      fochar(ri, '{');
+      //ftag(f, &o->otag[i], &r->act->stag[i], indent + 2);
+      fcchar(ri, '}');
+   }
+   funsep(ri);
+   fcchar(ri, ']');
+}
+
+
+static int print_onode_json0(rinfo_t *ri, const osm_obj_t *o)
+{
+   fochar(ri, '{');
+   fstring(ri, "type", type_str(o->type));
+   fint(ri, "version", o->ver);
+   fint(ri, "id", o->id);
+   fint(ri, "visible", o->vis);
+
+   if (o->tag_cnt)
+   {
+      fkey(ri, "tags");
+      onode_info_tags(ri, o);
+   }
+
+   funsep(ri);
+   fcchar(ri, '}');
+   return 0;
+}
+
+
+int print_onode_json(FILE *f, const osm_obj_t *o, int condensed)
+{
+   rinfo_t ri;
+
+   if (f == NULL || o == NULL)
+   {
+      log_warn("NULL pointer caught");
+      return -1;
+   }
+
+   memset(&ri, 0, sizeof(ri));
+   ri.f = f;
+   ri.condensed = condensed;
+
+   return print_onode_json0(&ri, o);
 }
 
