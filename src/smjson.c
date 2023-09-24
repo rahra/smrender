@@ -442,12 +442,31 @@ int rules_info(const struct rdata *rd, rinfo_t *ri, const struct dstats *rstats)
 }
 
 
+typedef enum {JTYPE, JVERSION, JID, JVIS, JTAGS, JCOORDS, JREF, J_MAX} jkey_t;
+
+
+static const char *jkeystr(const rinfo_t *ri, jkey_t k)
+{
+   const char *jstr[2][J_MAX] =
+   {
+      {"type", "version", "id", "visible", "tags", "coords", "ref"},
+      {"t", "v", "i", "s", "t", "c", "r"}
+   };
+
+   // safety check
+   if (k < 0 || k >= J_MAX)
+      return "";
+
+   return jstr[(ri->flags & RI_SHORT) == RI_SHORT][k];
+}
+
+
 static void onode_info_tags(rinfo_t *ri, const osm_obj_t *o)
 {
    if (!o->tag_cnt)
       return;
 
-   fkeyblock(ri, "tags");
+   fkeyblock(ri, jkeystr(ri, JTAGS));
    fochar(ri, '[');
    for (int i = 0; i < o->tag_cnt; i++)
       fbbstring(ri, &o->otag[i].k, &o->otag[i].v);
@@ -461,7 +480,7 @@ static void fwmembers(rinfo_t *ri, const osm_way_t *w)
    if (!w->ref_cnt)
       return;
 
-   fkeyblock(ri, "ref");
+   fkeyblock(ri, jkeystr(ri, JREF));
    fochar(ri, '[');
    for (int i = 0; i < w->ref_cnt; i++)
    {
@@ -480,18 +499,31 @@ static long call_cnt_;
 
 static int print_onode_json(const osm_obj_t *o, rinfo_t *ri)
 {
+   // omit invisible objects if visible-only flag (RI_VISIBLE) is set
+   if ((ri->flags & RI_VISIBLE) && !o->vis)
+      return 0;
+
    call_cnt_++;
    fochar(ri, '{');
-   fstring(ri, "type", type_str(o->type));
-   fint(ri, "version", o->ver);
-   fint(ri, "id", o->id);
-   fbool(ri, "visible", o->vis);
+   if (ri->flags & RI_SHORT)
+      fint(ri, jkeystr(ri, JTYPE), o->type);
+   else
+      fstring(ri, jkeystr(ri, JTYPE), type_str(o->type));
+   fint(ri, jkeystr(ri, JVERSION), o->ver);
+   fint(ri, jkeystr(ri, JID), o->id);
+   if (ri->flags & RI_SHORT)
+   {
+      if (!(ri->flags & RI_VISIBLE))
+         fint(ri, jkeystr(ri, JVIS), o->vis);
+   }
+   else
+      fbool(ri, jkeystr(ri, JVIS), o->vis);
    onode_info_tags(ri, o);
 
    switch (o->type)
    {
       case OSM_NODE:
-         fcoords(ri, "coords", ((osm_node_t*) o)->lat, ((osm_node_t*) o)->lon);
+         fcoords(ri, jkeystr(ri, JCOORDS), ((osm_node_t*) o)->lat, ((osm_node_t*) o)->lon);
          break;
 
       case OSM_WAY:

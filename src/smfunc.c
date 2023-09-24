@@ -187,6 +187,8 @@ int act_out_ini(smrule_t *r)
             (*oh)->flags |= RI_CONDENSED;
          if (get_param_bool("short", r->act))
             (*oh)->flags |= RI_SHORT;
+         if (get_param_bool("visible", r->act))
+            (*oh)->flags |= RI_VISIBLE;
 
          int n = DEFAULT_NINDENT;
          get_parami("nindent", &n, r->act);
