@@ -248,6 +248,18 @@ static void fkeyblock(const rinfo_t *ri, const char *k)
 }
 
 
+static void fbkey(const rinfo_t *ri, const bstring_t *k)
+{
+   char buf[k->len * 2 + 2];
+   int len;
+
+   if ((len = jesc(k->buf, k->len, buf, sizeof(buf))) == -1)
+      return;
+
+   fkey(ri, buf);
+}
+
+
 static void fint(const rinfo_t *ri, const char *k, long v)
 {
    fkey(ri, k);
@@ -273,6 +285,20 @@ static void fbstring(const rinfo_t *ri, const char *k, const bstring_t *v)
       return;
 
    fkey(ri, k);
+   fprintf(ri->f, "\"%.*s\",", len, buf);
+   fnl(ri);
+}
+
+
+static void fbbstring(const rinfo_t *ri, const bstring_t *k, const bstring_t *v)
+{
+   char buf[v->len * 2 + 2];
+   int len;
+
+   if ((len = jesc(v->buf, v->len, buf, sizeof(buf))) == -1)
+      return;
+
+   fbkey(ri, k);
    fprintf(ri->f, "\"%.*s\",", len, buf);
    fnl(ri);
 }
@@ -408,11 +434,15 @@ int rules_info(const struct rdata *rd, rinfo_t *ri, const struct dstats *rstats)
 
 static void onode_info_tags(rinfo_t *ri, const osm_obj_t *o)
 {
+   if (!o->tag_cnt)
+      return;
+
+   fkeyblock(ri, "tags");
    fochar(ri, '[');
    for (int i = 0; i < o->tag_cnt; i++)
    {
       fochar(ri, '{');
-      //ftag(f, &o->otag[i], &r->act->stag[i], indent + 2);
+      fbbstring(ri, &o->otag[i].k, &o->otag[i].v);
       fcchar(ri, '}');
    }
    funsep(ri);
@@ -426,13 +456,9 @@ static int print_onode_json0(rinfo_t *ri, const osm_obj_t *o)
    fstring(ri, "type", type_str(o->type));
    fint(ri, "version", o->ver);
    fint(ri, "id", o->id);
-   fint(ri, "visible", o->vis);
+   fbool(ri, "visible", o->vis);
 
-   if (o->tag_cnt)
-   {
-      fkey(ri, "tags");
-      onode_info_tags(ri, o);
-   }
+   onode_info_tags(ri, o);
 
    funsep(ri);
    fcchar(ri, '}');
