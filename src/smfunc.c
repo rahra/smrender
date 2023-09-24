@@ -49,6 +49,8 @@ struct out_handle
    bx_node_t *tree;
    //! flags used for JSON output 1 CONDENSED, 2 SHORT
    int flags;
+   //! shall objects be renumbered
+   int renum;
 };
 
 
@@ -198,6 +200,8 @@ int act_out_ini(smrule_t *r)
          log_msg(LOG_WARN, "unknown file type \"%s\", defaulting to OSM", s);
    }
 
+   (*oh)->renum = get_param_bool("renumber", r->act);
+
    (*oh)->cnt++;
    r->data = *oh;
 
@@ -254,6 +258,70 @@ int act_out_main(smrule_t *r, osm_obj_t *o)
 }
 
 
+int renumber_obj(osm_obj_t *o, renum_t *rn)
+{
+   // assign new id only in 1st pass
+   if (!rn->pass)
+   {
+      //log_debug("%s %"PRId64" -> %"PRId64, type_str(o->type), o->id, rn->id);
+      o->id = rn->id++;
+   }
+
+   if (o->type == OSM_NODE)
+      return 0;
+
+   if (o->type == OSM_WAY)
+   {
+      //log_debug("renum refs of way %"PRId64, o->id);
+      osm_way_t *w = (osm_way_t*) o;
+      for (int i = 0; i < w->ref_cnt; i++)
+         if ((o = get_object0(rn->tree, w->ref[i], IDX_NODE)) != NULL)
+            w->ref[i] = o->id;
+      return 0;
+   }
+
+   if (o->type == OSM_REL)
+   {
+      // do note renumber members in 1st pass (there may be relations)
+      if (!rn->pass)
+         return 0;
+
+      osm_rel_t *r = (osm_rel_t*) o;
+      for (int i = 0; i < r->mem_cnt; i++)
+         if ((o = get_object0(rn->tree, r->mem[i].id, r->mem[i].type - 1)) != NULL)
+            r->mem[i].id = o->id;
+      return 0;
+   }
+
+   return -1;
+}
+
+
+int renumber(bx_node_t *tree)
+{
+   renum_t _rn, *rn = &_rn;
+
+   log_msg(LOG_INFO, "renumbering objects");
+   memset(&_rn, 0, sizeof(_rn));
+   rn->tree = tree;
+   rn->id = 1;
+   log_debug("renumbering nodes...");
+   traverse(tree, 0, IDX_NODE, (tree_func_t) renumber_obj, rn);
+   rn->id = 1;
+   log_debug("renumbering ways...");
+   traverse(tree, 0, IDX_WAY, (tree_func_t) renumber_obj, rn);
+   rn->id = 1;
+   log_debug("renumbering relations, pass 1...");
+   traverse(tree, 0, IDX_REL, (tree_func_t) renumber_obj, rn);
+   rn->id = 1;
+   rn->pass++;
+   log_debug("renumbering relations, pass 2...");
+   traverse(tree, 0, IDX_REL, (tree_func_t) renumber_obj, rn);
+
+   return 0;
+}
+
+
 int act_out_fini(smrule_t *r)
 {
    struct out_handle *oh = r->data;
@@ -265,6 +333,8 @@ int act_out_fini(smrule_t *r)
       log_debug("file ref count = %d", oh->cnt);
       return 0;
    }
+   if (oh->renum)
+      renumber(oh->tree);
    if (oh->flags & OUT_JSON)
       (void) save_json(oh->name, oh->tree, oh->flags);
    else

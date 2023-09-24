@@ -272,6 +272,13 @@ struct file
    int fd;
 };
 
+typedef struct renum
+{
+   int64_t id;
+   bx_node_t *tree;
+   int pass;
+} renum_t;
+
 /* smrender.c */
 int print_onode(FILE *, const osm_obj_t*);
 int col_freq(struct rdata *, int, int, int, int, double, int);
