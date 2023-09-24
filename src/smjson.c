@@ -21,7 +21,7 @@
  * https://www.json.org/json-en.html
  *
  *  \author Bernhard R. Fischer, <bf@abenteuerland.at>
- *  \date 2023/09/23
+ *  \date 2023/09/24
  */
 
 #ifdef HAVE_CONFIG_H
@@ -442,15 +442,15 @@ int rules_info(const struct rdata *rd, rinfo_t *ri, const struct dstats *rstats)
 }
 
 
-typedef enum {JTYPE, JVERSION, JID, JVIS, JTAGS, JCOORDS, JREF, J_MAX} jkey_t;
+typedef enum {JTYPE, JVERSION, JID, JVIS, JTAGS, JCOORDS, JREF, JMEM, JROLE, J_MAX} jkey_t;
 
 
 static const char *jkeystr(const rinfo_t *ri, jkey_t k)
 {
    const char *jstr[2][J_MAX] =
    {
-      {"type", "version", "id", "visible", "tags", "coords", "ref"},
-      {"t", "v", "i", "s", "t", "c", "r"}
+      {"type", "version", "id", "visible", "tags", "coords", "ref", "members", "role"},
+      {"o", "v", "i", "s", "t", "c", "r", "m", "l"}
    };
 
    // safety check
@@ -475,7 +475,7 @@ static void onode_info_tags(rinfo_t *ri, const osm_obj_t *o)
 }
 
 
-static void fwmembers(rinfo_t *ri, const osm_way_t *w)
+static void fwrefs(rinfo_t *ri, const osm_way_t *w)
 {
    if (!w->ref_cnt)
       return;
@@ -487,6 +487,32 @@ static void fwmembers(rinfo_t *ri, const osm_way_t *w)
       findent(ri);
       fprintf(ri->f, "%"PRId64",", w->ref[i]);
       fnl(ri);
+   }
+   funsep(ri);
+   fcchar(ri, ']');
+}
+
+
+static void frmembers(rinfo_t *ri, const osm_rel_t *r)
+{
+   if (!r->mem_cnt)
+      return;
+
+   fkeyblock(ri, jkeystr(ri, JMEM));
+   fochar(ri, '[');
+   for (int i = 0; i < r->mem_cnt; i++)
+   {
+      fochar(ri, '{');
+
+      if (ri->flags & RI_SHORT)
+         fint(ri, jkeystr(ri, JTYPE), r->mem[i].type);
+      else
+         fstring(ri, jkeystr(ri, JTYPE), type_str(r->mem[i].type));
+
+      fint(ri, jkeystr(ri, JID), r->mem[i].id);
+      fstring(ri, jkeystr(ri, JROLE), role_str(r->mem[i].role));
+      funsep(ri);
+      fcchar(ri, '}');
    }
    funsep(ri);
    fcchar(ri, ']');
@@ -527,10 +553,11 @@ static int print_onode_json(const osm_obj_t *o, rinfo_t *ri)
          break;
 
       case OSM_WAY:
-         fwmembers(ri, (osm_way_t*) o);
+         fwrefs(ri, (osm_way_t*) o);
         break;
 
       case OSM_REL:
+         frmembers(ri, (osm_rel_t*) o);
          break;
 
       default:

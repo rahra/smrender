@@ -1,4 +1,4 @@
-/* Copyright 2011-2021 Bernhard R. Fischer, 4096R/8E24F29D <bf@abenteuerland.at>
+/* Copyright 2011-2023 Bernhard R. Fischer, 4096R/8E24F29D <bf@abenteuerland.at>
  *
  * This file is part of smrender.
  *
@@ -15,6 +15,12 @@
  * along with smrender. If not, see <http://www.gnu.org/licenses/>.
  */
 
+/*! \file smrender_dev.h
+ * This file contains almost all internal declarations.
+ *
+ * \author Bernhard R. Fischer, <bf@abenteuerland.at>
+ * \version 2023/09/24
+ */
 #ifndef SMRENDER_DEV_H
 #define SMRENDER_DEV_H
 
