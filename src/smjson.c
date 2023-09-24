@@ -228,11 +228,23 @@ static void fcchar(rinfo_t *ri, char c)
 }
 
 
-static void fkey(const rinfo_t *ri, const char *k)
+static void fkey0(const rinfo_t *ri, const char *k, void (fsepchar)(const rinfo_t*))
 {
    findent(ri);
    fprintf(ri->f, "\"%s\":", k);
-   fspace(ri);
+   fsepchar(ri);
+}
+
+
+static void fkey(const rinfo_t *ri, const char *k)
+{
+   fkey0(ri, k, fspace);
+}
+
+
+static void fkeyblock(const rinfo_t *ri, const char *k)
+{
+   fkey0(ri, k, fnl);
 }
 
 
@@ -244,6 +256,12 @@ static void fint(const rinfo_t *ri, const char *k, long v)
 }
 
 
+static void fbool(const rinfo_t *ri, const char *k, int v)
+{
+   fkey(ri, k);
+   fprintf(ri->f, "%s,", v ? "true" : "false");
+   fnl(ri);
+}
 
 
 static void fbstring(const rinfo_t *ri, const char *k, const bstring_t *v)
@@ -276,8 +294,7 @@ static void fstring(const rinfo_t *ri, const char *k, const char *v)
 
 static void ftag1(rinfo_t *ri, const char *k, const bstring_t *b, int type)
 {
-   fkey(ri, k);
-   fnl(ri);
+   fkeyblock(ri, k);
    fochar(ri, '{');
    fbstring(ri, "str", b);
    fstring(ri, "op", op_str(type));
@@ -300,6 +317,10 @@ static void ftag(rinfo_t *ri, const struct otag *ot, const struct stag *st)
 
 static void rule_info_tags(rinfo_t *ri, const smrule_t *r)
 {
+   if (!r->oo->tag_cnt)
+      return;
+
+   fkeyblock(ri, "tags");
    fochar(ri, '[');
    for (int i = 0; i < r->oo->tag_cnt; i++)
    {
@@ -314,6 +335,10 @@ static void rule_info_tags(rinfo_t *ri, const smrule_t *r)
 
 static void fparams(rinfo_t *ri, fparam_t **fp)
 {
+   if (fp == NULL)
+      return;
+
+   fkeyblock(ri, "params");
    fochar(ri, '{');
    for (; *fp != NULL; fp++)
    {
@@ -342,22 +367,9 @@ static int rule_info(const smrule_t *r, const rinfo_t *ri0)
    fint(ri, "id", r->oo->id);
    if (r->act->func_name != NULL)
       fstring(ri, "action", r->act->func_name);
-   fint(ri, "visible", r->oo->vis);
-
-   if (r->act->fp != NULL)
-   {
-      fkey(ri, "params");
-      fnl(ri);
-      fparams(ri, r->act->fp);
-   }
-
-   if (r->oo->tag_cnt)
-   {
-      fkey(ri, "tags");
-      fnl(ri);
-      rule_info_tags(ri, r);
-   }
-
+   fbool(ri, "visible", r->oo->vis);
+   fparams(ri, r->act->fp);
+   rule_info_tags(ri, r);
    funsep(ri);
    fcchar(ri, '}');
    return 0;
