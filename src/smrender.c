@@ -946,7 +946,7 @@ int main(int argc, char *argv[])
       log_msg(LOG_WARN, "setlocale() failed");
 
    ri.fname = NULL;
-   ri.condensed = 1;
+   ri.flags = RI_CONDENSED;
 
    while ((n = getopt(argc, argv, "ab:B:Dd:fg:Ghi:k:K:lL:MmN:no:O:p:P:r:R:s:S:t:T:uVvw:")) != -1)
       switch (n)

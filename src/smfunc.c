@@ -38,6 +38,7 @@
 
 #define DIR_CW 0
 #define DIR_CCW 1
+#define OUT_JSON 0x8000
 
 
 struct out_handle
@@ -46,6 +47,8 @@ struct out_handle
    char *name;
    int cnt;
    bx_node_t *tree;
+   //! flags used for JSON output 1 CONDENSED, 2 SHORT
+   int flags;
 };
 
 
@@ -174,6 +177,21 @@ int act_out_ini(smrule_t *r)
       return -1;
    }
 
+   if ((s = get_param("format", NULL, r->act)) != NULL)
+   {
+      if (!strcasecmp(s, "json"))
+      {
+         (*oh)->flags |= OUT_JSON;
+
+         if (get_param_bool("condensed", r->act))
+            (*oh)->flags |= RI_CONDENSED;
+         if (get_param_bool("short", r->act))
+            (*oh)->flags |= RI_SHORT;
+      }
+      else if (strcasecmp(s, "osm"))
+         log_msg(LOG_WARN, "unknown file type \"%s\", defaulting to OSM", s);
+   }
+
    (*oh)->cnt++;
    r->data = *oh;
 
@@ -240,7 +258,10 @@ int act_out_fini(smrule_t *r)
       log_debug("file ref count = %d", oh->cnt);
       return 0;
    }
-   (void) save_osm(oh->name, oh->tree, NULL, NULL);
+   if (oh->flags & OUT_JSON)
+      (void) save_json(oh->name, oh->tree, oh->flags);
+   else
+      (void) save_osm(oh->name, oh->tree, NULL, NULL);
    free(oh->name);
    log_debug("freeing temporary object tree");
    bx_free_tree(oh->tree);

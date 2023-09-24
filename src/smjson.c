@@ -1,4 +1,4 @@
-/* Copyright 2022 Bernhard R. Fischer, 4096R/8E24F29D <bf@abenteuerland.at>
+/* Copyright 2022-2023 Bernhard R. Fischer, 4096R/8E24F29D <bf@abenteuerland.at>
  *
  * This file is part of smrender.
  *
@@ -30,6 +30,9 @@
 
 #include <stdio.h>
 #include <string.h>
+#include <stdint.h>
+#include <inttypes.h>
+#include <errno.h>
 
 #include "smrender_dev.h"
 #include "smcore.h"
@@ -173,7 +176,7 @@ static const char *op_str(int n)
 
 static void findent(const rinfo_t *ri)
 {
-   if (ri->condensed)
+   if (ri->flags & RI_CONDENSED)
       return;
 
    int len = ri->indent * INDENT;
@@ -186,7 +189,7 @@ static void findent(const rinfo_t *ri)
 
 static void fcondchar(const rinfo_t *ri, char c)
 {
-   if (!ri->condensed)
+   if (!ri->flags & RI_CONDENSED)
       fprintf(ri->f, "%c", c);
 }
 
@@ -205,7 +208,7 @@ static void fnl(const rinfo_t *ri)
 
 static void funsep(const rinfo_t *ri)
 {
-   fseek(ri->f, ri->condensed ? -1 : -2, SEEK_CUR);
+   fseek(ri->f, ri->flags & RI_CONDENSED ? -1 : -2, SEEK_CUR);
    fnl(ri);
 }
 
@@ -260,10 +263,10 @@ static void fbkey(const rinfo_t *ri, const bstring_t *k)
 }
 
 
-static void fint(const rinfo_t *ri, const char *k, long v)
+static void fint(const rinfo_t *ri, const char *k, int64_t v)
 {
    fkey(ri, k);
-   fprintf(ri->f, "%ld,", v);
+   fprintf(ri->f, "%"PRId64",", v);
    fnl(ri);
 }
 
@@ -272,6 +275,16 @@ static void fbool(const rinfo_t *ri, const char *k, int v)
 {
    fkey(ri, k);
    fprintf(ri->f, "%s,", v ? "true" : "false");
+   fnl(ri);
+}
+
+
+static void fcoords(const rinfo_t *ri, const char *k, double lat, double lon)
+{
+   fkey(ri, k);
+   fprintf(ri->f, "[%.7f,", lat);
+   fspace(ri);
+   fprintf(ri->f, "%.7f],", lon);
    fnl(ri);
 }
 
@@ -450,15 +463,49 @@ static void onode_info_tags(rinfo_t *ri, const osm_obj_t *o)
 }
 
 
-static int print_onode_json0(rinfo_t *ri, const osm_obj_t *o)
+static void fwmembers(rinfo_t *ri, const osm_way_t *w)
+{
+   if (!w->ref_cnt)
+      return;
+
+   fkeyblock(ri, "ref");
+   fochar(ri, '[');
+   for (int i = 0; i < w->ref_cnt; i++)
+   {
+      findent(ri);
+      fprintf(ri->f, "%"PRId64",", w->ref[i]);
+      fnl(ri);
+   }
+   funsep(ri);
+   fcchar(ri, ']');
+}
+
+
+static int print_onode_json(const osm_obj_t *o, rinfo_t *ri)
 {
    fochar(ri, '{');
    fstring(ri, "type", type_str(o->type));
    fint(ri, "version", o->ver);
    fint(ri, "id", o->id);
    fbool(ri, "visible", o->vis);
-
    onode_info_tags(ri, o);
+
+   switch (o->type)
+   {
+      case OSM_NODE:
+         fcoords(ri, "coords", ((osm_node_t*) o)->lat, ((osm_node_t*) o)->lon);
+         break;
+
+      case OSM_WAY:
+         fwmembers(ri, (osm_way_t*) o);
+        break;
+
+      case OSM_REL:
+         break;
+
+      default:
+         fstring(ri, "note", "*** type unknown");
+   }
 
    funsep(ri);
    fcchar(ri, '}');
@@ -466,20 +513,31 @@ static int print_onode_json0(rinfo_t *ri, const osm_obj_t *o)
 }
 
 
-int print_onode_json(FILE *f, const osm_obj_t *o, int condensed)
+/*! Save OSM data of tree to file s in JSON format.
+ *  @param s Filename of output file.
+ *  @param Pointer to bxtree containing the information.
+ *  @return The function returns 0, or -1 in case of error.
+ */
+size_t save_json(const char *s, bx_node_t *tree, int flags)
 {
    rinfo_t ri;
 
-   if (f == NULL || o == NULL)
+   if (s == NULL)
+      return -1;
+
+   log_msg(LOG_INFO, "saving JSON output to '%s'", s);
+   if ((ri.f = fopen(s, "w")) == NULL)
    {
-      log_warn("NULL pointer caught");
+      log_msg(LOG_WARN, "could not open '%s': %s", s, strerror(errno));
       return -1;
    }
 
-   memset(&ri, 0, sizeof(ri));
-   ri.f = f;
-   ri.condensed = condensed;
+   ri.flags = flags;
 
-   return print_onode_json0(&ri, o);
+   traverse(tree, 0, IDX_NODE, (tree_func_t) print_onode_json, &ri);
+   traverse(tree, 0, IDX_WAY, (tree_func_t) print_onode_json, &ri);
+   traverse(tree, 0, IDX_REL, (tree_func_t) print_onode_json, &ri);
+
+   return 0;
 }
 

@@ -123,12 +123,14 @@ enum {LAT, LON};
 enum {DRAW_SOLID, DRAW_DASHED, DRAW_DOTTED, DRAW_TRANSPARENT, DRAW_PIPE, DRAW_ROUNDDOT};
 enum {SHAPE_REGULAR, SHAPE_SECTORED, SHAPE_STARED};
 
+#define RI_CONDENSED (1 << 0)
+#define RI_SHORT (1 << 1)
 typedef struct rinfo
 {
    int version;
    FILE *f;
    const char *fname;
-   int condensed;
+   int flags;
    int indent;
 } rinfo_t;
 
@@ -346,6 +348,7 @@ int create_tiles(const char *, const struct rdata *, int , int );
 
 /* smjson.c */
 int rules_info(const struct rdata *, rinfo_t *, const struct dstats *);
+size_t save_json(const char *, bx_node_t *, int );
 
 #endif
 
