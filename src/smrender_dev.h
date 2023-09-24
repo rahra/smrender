@@ -123,6 +123,7 @@ enum {LAT, LON};
 enum {DRAW_SOLID, DRAW_DASHED, DRAW_DOTTED, DRAW_TRANSPARENT, DRAW_PIPE, DRAW_ROUNDDOT};
 enum {SHAPE_REGULAR, SHAPE_SECTORED, SHAPE_STARED};
 
+#define DEFAULT_NINDENT 3
 #define RI_CONDENSED (1 << 0)
 #define RI_SHORT (1 << 1)
 typedef struct rinfo
@@ -132,6 +133,7 @@ typedef struct rinfo
    const char *fname;
    int flags;
    int indent;
+   int nindent;
 } rinfo_t;
 
 typedef struct keylist

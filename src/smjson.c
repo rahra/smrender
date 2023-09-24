@@ -39,9 +39,6 @@
 #include "bstring.h"
 
 
-#define INDENT 3
-
-
 /*! This function returns the index of the first occurence if c in the string
  * s.
  * \param s Pointer to string.
@@ -179,8 +176,8 @@ static void findent(const rinfo_t *ri)
    if (ri->flags & RI_CONDENSED)
       return;
 
-   int len = ri->indent * INDENT;
-   char buf[ri->indent * INDENT];
+   int len = ri->indent * ri->nindent;
+   char buf[len];
 
    memset(buf, ' ', len);
    fwrite(buf, len, 1, ri->f);
@@ -189,7 +186,7 @@ static void findent(const rinfo_t *ri)
 
 static void fcondchar(const rinfo_t *ri, char c)
 {
-   if (!ri->flags & RI_CONDENSED)
+   if (!(ri->flags & RI_CONDENSED))
       fprintf(ri->f, "%c", c);
 }
 
@@ -453,11 +450,7 @@ static void onode_info_tags(rinfo_t *ri, const osm_obj_t *o)
    fkeyblock(ri, "tags");
    fochar(ri, '[');
    for (int i = 0; i < o->tag_cnt; i++)
-   {
-      fochar(ri, '{');
       fbbstring(ri, &o->otag[i].k, &o->otag[i].v);
-      fcchar(ri, '}');
-   }
    funsep(ri);
    fcchar(ri, ']');
 }
@@ -481,8 +474,13 @@ static void fwmembers(rinfo_t *ri, const osm_way_t *w)
 }
 
 
+//FIXME: this call counter is not thread safe
+static long call_cnt_;
+
+
 static int print_onode_json(const osm_obj_t *o, rinfo_t *ri)
 {
+   call_cnt_++;
    fochar(ri, '{');
    fstring(ri, "type", type_str(o->type));
    fint(ri, "version", o->ver);
@@ -520,23 +518,51 @@ static int print_onode_json(const osm_obj_t *o, rinfo_t *ri)
  */
 size_t save_json(const char *s, bx_node_t *tree, int flags)
 {
-   rinfo_t ri;
+   rinfo_t _ri, *ri = &_ri;
 
    if (s == NULL)
       return -1;
 
+   memset(&_ri, 0, sizeof(_ri));
+
    log_msg(LOG_INFO, "saving JSON output to '%s'", s);
-   if ((ri.f = fopen(s, "w")) == NULL)
+   if ((ri->f = fopen(s, "w")) == NULL)
    {
       log_msg(LOG_WARN, "could not open '%s': %s", s, strerror(errno));
       return -1;
    }
 
-   ri.flags = flags;
+   ri->flags = flags;
+   ri->nindent = flags >> 16;
 
-   traverse(tree, 0, IDX_NODE, (tree_func_t) print_onode_json, &ri);
-   traverse(tree, 0, IDX_WAY, (tree_func_t) print_onode_json, &ri);
-   traverse(tree, 0, IDX_REL, (tree_func_t) print_onode_json, &ri);
+   fochar(ri, '{');
+   fkeyblock(ri, "node");
+   fochar(ri, '[');
+   call_cnt_ = 0;
+   traverse(tree, 0, IDX_NODE, (tree_func_t) print_onode_json, ri);
+   if (!call_cnt_)
+      fnl(ri);
+   funsep(ri);
+   fcchar(ri, ']');
+   fkeyblock(ri, "way");
+   fochar(ri, '[');
+   call_cnt_ = 0;
+   traverse(tree, 0, IDX_WAY, (tree_func_t) print_onode_json, ri);
+   if (!call_cnt_)
+      fnl(ri);
+   funsep(ri);
+   fcchar(ri, ']');
+   fkeyblock(ri, "relation");
+   fochar(ri, '[');
+   call_cnt_ = 0;
+   traverse(tree, 0, IDX_REL, (tree_func_t) print_onode_json, ri);
+   if (!call_cnt_)
+      fnl(ri);
+   funsep(ri);
+   fcchar(ri, ']');
+   funsep(ri);
+   fcchar(ri, '}');
+   funsep(ri);
 
    return 0;
 }

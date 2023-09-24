@@ -187,6 +187,10 @@ int act_out_ini(smrule_t *r)
             (*oh)->flags |= RI_CONDENSED;
          if (get_param_bool("short", r->act))
             (*oh)->flags |= RI_SHORT;
+
+         int n = DEFAULT_NINDENT;
+         get_parami("nindent", &n, r->act);
+         (*oh)->flags |= n << 16;
       }
       else if (strcasecmp(s, "osm"))
          log_msg(LOG_WARN, "unknown file type \"%s\", defaulting to OSM", s);
@@ -195,6 +199,7 @@ int act_out_ini(smrule_t *r)
    (*oh)->cnt++;
    r->data = *oh;
 
+   log_debug("file = \"%s\", flags = 0x%08x", (*oh)->name, (*oh)->flags);
    return 0;
 }
 
