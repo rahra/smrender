@@ -60,8 +60,6 @@
 #define STATUS_200 "HTTP/1.0 200 OK\r\n"
 #define STATUS_404 "HTTP/1.0 404 Not Found\r\n\r\n<html><body><h1>404 -- NOT FOUND</h1></body></html>\r\n"
 
-//! macro for sending answers to browser
-#define SEND_STATUS(f, s) write(f, s, strlen(s))
 
 
 #define API06_URI "/api/0.6/"

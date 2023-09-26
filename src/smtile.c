@@ -148,7 +148,7 @@ static int check_dir_i(const char *dir, int i)
 
 int create_tiles(const char *tile_path, const struct rdata *rd, int zoom, int ftype)
 {
-   char buf[PBUFSIZE], tbuf[PBUFSIZE];
+   char buf[PBUFSIZE], tbuf[2*PBUFSIZE];
    struct tpoint tp;
    struct coord lu;
    struct bbox bb;

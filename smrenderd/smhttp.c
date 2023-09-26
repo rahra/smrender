@@ -927,6 +927,16 @@ int http_ws_com(int fd, qcache_t *qc)
 }
 
 
+int SEND_STATUS(int f, const char *s)
+{
+   int len;
+
+   if ((len = write(f, s, strlen(s))) == -1)
+      log_errno(LOG_ERR, "write() failed");
+   return len;
+}
+
+
 /*! Handle incoming connection.
  *  @param p Pointer to http_thread_t structure.
  */

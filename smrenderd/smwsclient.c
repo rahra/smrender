@@ -14,6 +14,15 @@
 #include "websocket.h"
 
 
+ssize_t write_log(int fd, const void *buf, size_t len)
+{
+   ssize_t ret;
+   if ((ret = write(fd, buf, len)) == -1)
+      log_errno(LOG_ERR, "write failed");
+   return ret;
+}
+
+
 int ws_connect(void)
 {
    struct sockaddr_in saddr;
@@ -32,18 +41,18 @@ int ws_connect(void)
       log_errno(LOG_ERR, "connect() failed"), exit(1);
 
    // send http message
-   write(fd, buf, strlen(buf));
+   write_log(fd, buf, strlen(buf));
 
    // read answer
    if ((len = read(fd, buf, sizeof(buf))) == -1)
       log_errno(LOG_ERR, "read() failed"), exit(1);
 
-   write(1, buf, len);
+   write_log(1, buf, len);
    return fd;
 }
 
 
-int main(int argc, char ** argv)
+int main(int UNUSED(argc), char **UNUSED(argv))
 {
    char buf[8000];
    websocket_t ws;
@@ -83,7 +92,7 @@ int main(int argc, char ** argv)
       if (!plen)
          break;
 
-      write(1, buf, plen);
+      write_log(1, buf, plen);
    }
 
    ws_free(&ws);
