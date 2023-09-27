@@ -33,6 +33,7 @@
 #include <stdint.h>
 #include <inttypes.h>
 #include <errno.h>
+#include <unistd.h>
 
 #include "smrender_dev.h"
 #include "smcore.h"
@@ -467,11 +468,11 @@ static void onode_info_tags(rinfo_t *ri, const osm_obj_t *o)
       return;
 
    fkeyblock(ri, jkeystr(ri, JTAGS));
-   fochar(ri, '[');
+   fochar(ri, '{');
    for (int i = 0; i < o->tag_cnt; i++)
       fbbstring(ri, &o->otag[i].k, &o->otag[i].v);
    funsep(ri);
-   fcchar(ri, ']');
+   fcchar(ri, '}');
 }
 
 
@@ -622,6 +623,10 @@ size_t save_json(const char *s, bx_node_t *tree, int flags)
    funsep(ri);
    fcchar(ri, '}');
    funsep(ri);
+
+   fflush(ri->f);
+   if (ftruncate(fileno(ri->f), ftell(ri->f)) == -1)
+      log_errno(LOG_ERR, "ftruncate() failed");
 
    return 0;
 }
