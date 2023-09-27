@@ -74,28 +74,24 @@ pdflang={en}
 
 \section{Release Notes}
 
-This document describes the current (2015/08/22) version of \smrender{} which
-is tagged as version 4.0. The document corresponds to the internal SVN revision number 1854
-of \smrender{}. Starting with version 3.0 \smrender{} supports
-\textsf{libcairo}\footnote{\url{http://www.cairographics.org/}} instead of
-\textsf{libgd} as its graphical library.
-There are some major changes after SVN revision 1240, thus this document
-does not apply to revisions 1240 and earlier. The format of the ruleset changed
-and are \textbf{not} compatible.
+This document describes the current (2023/09/27) version of \smrender{}.
 
-Unfortunately, this documentation is not complete yet, but I will continue to
-work on it.
+Although I put a lot of effort into writing this manual it still may be
+incomplete. Please don't hesitate to contact me if there is something unclear
+or some questions arise. You are also very welcome to contribute to this.
 
-%The basic concept of \smrender{} will not change with future versions but there
-%are several constructions which will probably change. This is most notably
-%the format of the actions and their parameters. They just evolved at random
-%during development without any structure. It will be changed to have a
-%well-formed structure also that parts of the code will be rewritten, to be more
-%than just a prototype.
+Please be aware that rendering high quality maps is not a trivial task.
+There is no such out-of-the-box-perfect-map-creation-tool. Thus, \smrender{} is
+a complex software and you will need to go through several iterations to get
+your personal perfect map. But finally you will have something very unique and
+nice.
 
-\smrender{} contains several functions which are experimental. Those functions
-are namely the auto-rotation and the polygon-size dependent captions (see
-Section \ref{sec:cap}).
+\smrender{} has a long history of development. I started writing it in 2011 and
+I still maintain it and do constantantly add new features.
+
+\smrender{} contains several features which are experimental. Those are namely
+the auto-rotation and the polygon-size dependent captions (see Section
+\ref{sec:cap}).
 
 \section{Name}
 
@@ -334,6 +330,11 @@ option \optk{a} is set implicitly.
 
    Select the chart projection. This could either be \textsf{mercator} or
    \textsf{adams2}, the 1st being the default value if the options is omitted.
+   Mercator is the typical projection of most nautical charts.
+
+   Adams II is a very special projection. It is implemented specifically to
+   create the \emph{Spilhaus World Ocean Map} which was developed by
+   \emph{Athelstan Spilhause}.
 
 \item[\optk{P}] \optv{fmt\textbar geom}[:\optv{angle}{]}
 
@@ -614,9 +615,8 @@ The basic format of an action and basic values and types are defined as follows.
 \begin{verbatim}
    <action> := <ref> [ ':' <param> [ ';' <param> [ ... ] ] ]
    <ref>    := <func> [ '@' <library> ]
-   <param>  := <tparam> | <bparam>
-   <tparam> := [ SEP ] <name> [ SEP ] '=' [ SEP ] <value> [ SEP ]
-   <bparam> := [ SEP ] <name> [ SEP ] '=' [ SEP ] <bool> [ SEP ]
+   <param>  := [ SEP ] <name> [ SEP ] '=' [ SEP ] <value> [ SEP ]
+   <value>  := <bool> | <num> | any valid XML string
    <bool>   := 'yes' | 'no' | 'true' | 'false' | <num>
    <num>    := any decimal number
    SEP      := '`' | '"'
@@ -1795,18 +1795,41 @@ attacker with access to your system to compromise it.
 
 \subsubsection{Output of OSM Data} \label{sec:output}
 
-With the action \textsf{out} it is possible to create an OSM file which contains all the
-objects which match.
-\smrender{} will create one file for each action. This means that if the same
-file name is used in several \textsf{out} actions, the latter will overwrite the earlier ones.
-The action takes just one argument, the path to the file.
+The action \textsf{out} outputs all matched OSM objects to a file. The default
+file format is OSM but with the option \textsf{format=json} it is possible to
+output it in JSON format as well. This action has one mandatory option which is
+\textsf{file} to choose the ouput file name. If several \textsf{out} rules with
+the same file name exist, all objects are collected into that single file. As
+shown below there are some additional options but these are honored only in the
+first occurance of several rules which share the same file name.
 
 \begin{verbatim}
    <definition>  := 'out:' [ <param> [ ';' <param> ... ]]
-   <param>       := <name> '=' <value>
-   <name>        := 'file'
+   <param>       := <file> | <format> | <renumber> | <jsonopts>
+   <jsonopts>    := <condensed> | <short> | <visible> | <nindent>
+   <file>        := 'file' '=' <filename>
+   <format>      := 'format' '=' <type>
+   <renumber>    := 'renumber' '=' <bool>
+   <condensed>   := 'condensed' '=' <bool>
+   <short>       := 'short' '=' <bool>
+   <visible>     := 'visible' '=' <bool>
+   <nindent>     := <num>
+   <type>        := 'osm' | 'json'
 \end{verbatim}
 
+With \textsf{renumber} enabled all objects are renumbered ascendingly starting
+with \textsf{id=1}. This may be useful and ease data handling in other
+applications.
+
+The options \textsf{condensed}, \textsf{short}, \textsf{visible}, and
+\textsf{nindent} apply only to the JSON format. \textsf{Condensed} ommits all
+spaces and new lines which makes it more dense. It saves a lot of memory which
+is useful if the data shall be sent over to e.g. a web client. \textsf{Short}
+uses an even more compact format. It abbrevates the keys of the object
+structure to just a single character. \textsf{Visible} outputs only visible
+objects and ommits the \textsf{visible} attribute. This compacts the data even
+more. \textsf{Nindent} selects the default number of spaces to indent the data
+if it is output in non-condensed mode.
 
 
 \subsubsection{Executing Programs and Scripts} \label{sec:exec}
