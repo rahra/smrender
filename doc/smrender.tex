@@ -109,12 +109,13 @@ Smrender reads an OSM file and applies a set of rules to this input data to
 create an output image. The input is an OSM file and a set of files containing
 the rule set. Supported output formats are currently PDF, SVG, PNG, and KAP/BSB\footnote{\url{http://opencpn.org/ocpn/kap_format}}
 having the desired resolution and density. Additionally, some other output
-files may be generated depending in the rule set. The latter is explained
-later.
+files may be generated depending on the rule set. This means that you can
+filter the input data and create output files in OSM or JSON format. This is
+explained in Section \ref{sec:output}.
 
 The primary goal of \smrender{} is to create a sea chart which is well-suited for
 print-out on paper. Nevertheless, it is a universal rendering engine and may be
-used for different tasks.
+used for many different tasks.
 
 The input file should be an OSM/XML file as defined by the OSM standard. The
 file is required to be well-formed in that sense because \smrender{} itself does
@@ -167,12 +168,19 @@ the character used for the cardinal direction.
 
 \optv{Length} defines the length of the mean latitude (parallel) in degrees if
 \textsf{'d'} is appended or in nautical miles if \textsf{'m'} is appended.
-Alternatively, the \optv{scale} of the chart can be specified. \smrender{}
+But typically the \optv{scale} of the chart is specified. \smrender{}
 calculates the size of the area to meet the scale. Obviously, this depends on the size
 of the output image. The height (the length of the mean longitude) is
 calculated automatically by \smrender{} in such a way that the output image is
 projected correctly using a \emph{Mercartor projection}. The height depends on the size
-of the output image (page format).\\
+of the output image (page format).
+
+As an example a typical rendering window specififcation could be\\
+
+\textsf{43N50:15E25:100000}\\
+
+This renders a chart with the center point at 43°50' N 015°25' E at a scale of 1:100000.\\
+
 
 If it is chosen to use a bounding box specification then the coordinates of the
 left lower (southern western) and the right upper (northern eastern) point
@@ -187,6 +195,14 @@ If this argument is omitted The value 0:0:100000 is chosen as default and the
 option \optk{a} is set implicitly.
 
 \subsection{Options} \label{sec:options}
+
+This section explains all options. There are many of them but typically you
+just need \optk{i} for the input file, \optk{r} for the ruleset, \optk{o} for
+the output file, and \optk{P} together with \optk{l} to specify the page
+format. And of course you need to specify the center point of you chart as
+explained in the previous Section \ref{sec:window}.
+
+In the following all options are explained in alphabetical order.
 
 \begin{itemize}
 
@@ -223,7 +239,7 @@ option \optk{a} is set implicitly.
 
    \item[\optk{b}] \optv{color}
 
-      This option allows to set a background color. The color may be define either as a color preset
+      This option allows to set a background color. The color may be defined either as a color preset
       or an HTML-style definition (see Section \ref{sec:cap}). The default color is white.
 
       Please note that some Shells (such as the \textsf{bash}) interpret the
@@ -232,7 +248,7 @@ option \optk{a} is set implicitly.
 
    \item [\optk{D}] 
 
-      \smrender{} outputs a lot of information to stderr to watch the progress of
+      \smrender{} outputs a lot of information to \textsf{stderr} to watch the progress of
       rendering. It uses the same log levels as defined for syslog (see
       \textsf{syslog(3)}). By default it logs all messages of the log level
       \textsf{LOG\_INFO} and above. With this option also debug messages are
@@ -256,7 +272,7 @@ option \optk{a} is set implicitly.
 
    Please note that this option works only correctly if the nodes and ways are
    stored in that order in the input file (first all nodes and then all
-   ways).
+   ways) as specified by OSM format 0.6.
 
 \item[\optk{g}] \optv{d}[:\optv{t}[:\optv{s}{]}{]}
 
