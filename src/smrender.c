@@ -978,6 +978,11 @@ int main(int argc, char *argv[])
             break;
 
          case 'g':
+            if (!strcasecmp(optarg, "none"))
+            {
+               gen_grid = 0;
+               break;
+            }
             gen_grid = USER_GRID;
             if ((s = strtok(optarg, ":")) == NULL)
                log_msg(LOG_ERR, "ill grid parameter"), exit(EXIT_FAILURE);
