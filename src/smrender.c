@@ -19,7 +19,7 @@
  * This file contains the main() function and main initialization functions.
  *
  *  \author Bernhard R. Fischer, <bf@abenteuerland.at>
- *  \date 2023/09/24
+ *  \date 2023/10/05
  */
 
 #ifdef HAVE_CONFIG_H
@@ -487,8 +487,8 @@ double init_rd_paper(struct rdata *rd, const char *paper)
 
 static void print_version(void)
 {
-   printf("Seamark renderer V" PACKAGE_VERSION ", (c) 2011-2022, Bernhard R. Fischer, 4096R/8E24F29D <bf@abenteuerland.at>.\n"
-          "See http://www.abenteuerland.at/smrender/ for more information.\n");
+   printf("Seamark renderer V" PACKAGE_VERSION ", (c) 2011-2023, Bernhard R. Fischer, 4096R/8E24F29D <bf@abenteuerland.at>.\n"
+          "See https://github.com/rahra/smrender for more information.\n");
 #ifdef HAVE_CAIRO
    printf("Using libcairo %s.\n", cairo_version_string());
 #else
