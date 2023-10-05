@@ -532,16 +532,16 @@ void usage(const char *s)
          "   -n .................. Output IDs as positive values only.\n"
          "   -r <rules file> ..... Rules file ('rules.osm' is default).\n"
          "                         Set <rules file> to 'none' to run without rules.\n"
-         "   -R <file> ........... Output all rules to <file> in OSM format.\n"
+         "   -R <file> ........... Output all rules to <file> in OSM or JSON format dependent on its extension..\n"
          "   -s <img scale> ...... Set global image scale (default = 1).\n"
-         "   -S <file> ........... Output processed rules in rendering order to <file> in JSON format.\n"
+         "   -S <file> ........... Output processed rules in rendering order to <file> in JSON format (DEPRECATED: use -R).\n"
          "   -t <title> .......... Set descriptional chart title.\n"
          "   -T <tile_info> ...... Create tiles.\n"
          "      <tile_info> := <zoom_lo> [ '-' <zoom_hi> ] ':' <tile_path> [ ':' <file_type> ]\n"
          "      <file_type> := 'png' | 'jpg'\n"
          "   -o <image file> ..... Name of output file. The extensions determines the output format.\n"
          "                         Currently supported formats: .PDF, .PNG, .SVG.\n"
-         "   -O <pdf file> ....... Filename of output PDF file (DEPRECATED).\n"
+         "   -O <pdf file> ....... Filename of output PDF file (DEPRECATED: use -o).\n"
          "   -p <projection> ..... Chart projection, either 'mercator' (default) or 'adams2'.\n"
          "   -P <page format> .... Select output page format.\n"
          "   -u .................. Output URLs suitable for OSM data download and\n"
@@ -911,6 +911,25 @@ static int proc_logfile_name(char *arg)
 }
 
 
+/*! This function compares the string ext to the end of the string str in a
+ * case-insensitive manner.
+ * @param str String to check.
+ * @param ext String which is matched to the end of str.
+ * @return If ext appears at the end of str 0 is returned. Otherwise a value
+ * according to strcasecmp(3) is returned. If the length of str is shorter than
+ * the length of ext, 0x100 is returned.
+ */
+int strrcasecmp(const char *str, const char *ext)
+{
+   int len = strlen(str) - strlen(ext);
+
+   if (len < 0)
+      return 0x100;
+
+   return strcasecmp(str + len, ext);
+}
+
+
 int main(int argc, char *argv[])
 {
    hpx_ctrl_t *ctl, *cfctl;
@@ -1068,31 +1087,21 @@ int main(int argc, char *argv[])
 
          case 'o':
             log_debug("parsing '-o %s'", optarg);
-            if (strlen(optarg) >= 4)
-            {
-               if (!strcasecmp(optarg + strlen(optarg) - 4, ".png"))
-               {
-                  img_file = optarg;
-               }
-               else if (!strcasecmp(optarg + strlen(optarg) - 4, ".pdf"))
-               {
-                  pdf_file = optarg;
-               }
-               else if (!strcasecmp(optarg + strlen(optarg) - 4, ".svg"))
-               {
-                  svg_file = optarg;
-               }
-               else
-               {
-                  log_msg(LOG_NOTICE, "output file type for %s defaults to PNG", optarg);
-                  img_file = optarg;
-               }
-            }
-            else
+            if (!strrcasecmp(optarg, ".png"))
                img_file = optarg;
+            else if (!strrcasecmp(optarg, ".pdf"))
+               pdf_file = optarg;
+            else if (!strrcasecmp(optarg, ".svg"))
+               svg_file = optarg;
+            else
+            {
+               log_msg(LOG_NOTICE, "output file type for %s defaults to PNG", optarg);
+               img_file = optarg;
+            }
             break;
 
          case 'O':
+            log_msg(LOG_NOTICE, "option -%c deprecated, use -%c instead", n, 'o');
             pdf_file = optarg;
             break;
 
@@ -1119,7 +1128,15 @@ int main(int argc, char *argv[])
             break;
 
          case 'R':
-            osm_rfile = optarg;
+            if (!strrcasecmp(optarg, ".json"))
+               ri.fname = optarg;
+            else if (!strrcasecmp(optarg, ".osm"))
+               osm_rfile = optarg;
+            else
+            {
+               log_msg(LOG_NOTICE, "output file type for %s defaults to OSM", optarg);
+               osm_rfile = optarg;
+            }
             break;
 
          case 's':
@@ -1133,6 +1150,7 @@ int main(int argc, char *argv[])
             break;
 
          case 'S':
+            log_msg(LOG_NOTICE, "option -%c deprecated, use -%c instead", n, 'R');
             ri.fname = optarg;
             break;
 
