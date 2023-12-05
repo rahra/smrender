@@ -188,33 +188,43 @@ void geo_square(struct rdata *rd, double b, char *v)
 }
 
 
-void geo_tick(double lat1, double lon1, double lat2, double lon2, char *v)
+void geo_tick0(double lat1, double lon1, double lat2, double lon2, char *v, int cnt)
 {
+   double dlat, dlon;
    osm_node_t *n;
    osm_way_t *w;
 
-   w = malloc_way(2, 2);
+   // safety check
+   if (cnt < 2)
+      cnt = 2;
+
+   w = malloc_way(2, cnt);
    osm_way_default(w);
    set_const_tag(&w->obj.otag[1], "grid", v);
    put_object((osm_obj_t*) w);
 
-   n = malloc_node(1);
-   osm_node_default(n);
-   w->ref[0] = n->obj.id;
-   n->lat = lat1;
-   n->lon = lon1;
-   put_object((osm_obj_t*) n);
- 
-   n = malloc_node(1);
-   osm_node_default(n);
-   w->ref[1] = n->obj.id;
-   n->lat = lat2;
-   n->lon = lon2;
-   put_object((osm_obj_t*) n);
+   dlat = (lat2 - lat1) / (cnt - 1);
+   dlon = (lon2 - lon1) / (cnt - 1);
+   for (int i = 0; i < cnt; i++)
+   {
+      n = malloc_node(1);
+      osm_node_default(n);
+      w->ref[i] = n->obj.id;
+      n->lat = lat1 + dlat * i;
+      n->lon = lon1 + dlon * i;
+      put_object((osm_obj_t*) n);
+   }
 }
 
 
-/*! @param b Longitude border.
+void geo_tick(double lat1, double lon1, double lat2, double lon2, char *v)
+{
+   geo_tick0(lat1, lon1, lat2, lon2, v, 2);
+}
+
+
+/*! Generate longitude ticks within top and bottom border.
+ *  @param b Longitude border.
  *  @param b1 Outer border (mm)
  *  @param b2 Middle line (mm)
  *  @param b3 Inner border (mm)
@@ -231,14 +241,12 @@ void geo_lon_ticks(struct rdata *rd, double b, double b1, double b2, double b3, 
 
    for (lon = bi + st; lon < (rd->bb.ru.lon - b) * T_RESCALE; lon += st)
    {
-      if (lon % g)
+      geo_tick(rd->bb.ru.lat - b3, (double) lon / T_RESCALE, rd->bb.ru.lat - ((lon % t) ? b2 : b1), (double) lon / T_RESCALE, lon % t ? "subtick" : "tick");
+      geo_tick(rd->bb.ll.lat + b3, (double) lon / T_RESCALE, rd->bb.ll.lat + ((lon % t) ? b2 : b1), (double) lon / T_RESCALE, lon % t ? "subtick" : "tick");
+
+      if (!(lon % g))
       {
-         geo_tick(rd->bb.ru.lat - b3, (double) lon / T_RESCALE, rd->bb.ru.lat - ((lon % t) ? b2 : b1), (double) lon / T_RESCALE, lon % t ? "subtick" : "tick");
-         geo_tick(rd->bb.ll.lat + b3, (double) lon / T_RESCALE, rd->bb.ll.lat + ((lon % t) ? b2 : b1), (double) lon / T_RESCALE, lon % t ? "subtick" : "tick");
-      }
-      else
-      {
-         geo_tick(rd->bb.ll.lat + b1, (double) lon / T_RESCALE, rd->bb.ru.lat - b1, (double) lon / T_RESCALE, "grid");
+         /*geo_tick(rd->bb.ll.lat + b1, (double) lon / T_RESCALE, rd->bb.ru.lat - b1, (double) lon / T_RESCALE, "grid");*/
 
          coord_str((double) lon / T_RESCALE, LON_DEG, buf, sizeof(buf));
          s = strdup(buf);
@@ -250,7 +258,8 @@ void geo_lon_ticks(struct rdata *rd, double b, double b1, double b2, double b3, 
 }
 
 
-/*! @param b Longitude border.
+/*! Generate latitude ticks within left and right border.
+ *  @param b Longitude border.
  *  @param b1 Outer border (mm)
  *  @param b2 Middle line (mm)
  *  @param b3 Inner border (mm)
@@ -267,27 +276,70 @@ void geo_lat_ticks(struct rdata *rd, double b, double b1, double b2, double b3, 
 
    for (lat = bi + st; lat < (rd->bb.ru.lat - b) * T_RESCALE; lat += st)
    {
-      //log_debug("grid: lat = %d", lat);
-      if (lat % g)
+      geo_tick((double) lat / T_RESCALE, rd->bb.ll.lon + b3, (double) lat / T_RESCALE,
+            rd->bb.ll.lon + ((lat % t) ? b2 : b1), lat % t ? "subtick" : "tick");
+      geo_tick((double) lat / T_RESCALE, rd->bb.ru.lon - b3, (double) lat / T_RESCALE,
+            rd->bb.ru.lon - ((lat % t) ? b2 : b1), lat % t ? "subtick" : "tick");
+
+      if (!(lat % g))
       {
-         geo_tick((double) lat / T_RESCALE, rd->bb.ll.lon + b3, (double) lat / T_RESCALE,
-               rd->bb.ll.lon + ((lat % t) ? b2 : b1), lat % t ? "subtick" : "tick");
-         geo_tick((double) lat / T_RESCALE, rd->bb.ru.lon - b3, (double) lat / T_RESCALE,
-               rd->bb.ru.lon - ((lat % t) ? b2 : b1), lat % t ? "subtick" : "tick");
-      }
-      else
-      {
-         geo_tick((double) lat / T_RESCALE, rd->bb.ru.lon - b1, (double) lat / T_RESCALE,
-               rd->bb.ll.lon + b1, "grid");
+         /* geo_tick((double) lat / T_RESCALE, rd->bb.ru.lon - b1, (double) lat / T_RESCALE,
+               rd->bb.ll.lon + b1, "grid");*/
 
          coord_str((double) lat / T_RESCALE, LAT_DEG, buf, sizeof(buf));
          s = strdup(buf);
          geo_description((double) lat / T_RESCALE, rd->bb.ru.lon - b2, s, "right");
          geo_description((double) lat / T_RESCALE, rd->bb.ll.lon + b2, s, "left");
-//         snprintf(buf, sizeof(buf), "%02.1f'", (double) (lat % T_RESCALE) / 10);
-//         s = strdup(buf);
-//         geo_description((double) lat / T_RESCALE, rd->bb.ru.lon - b3, s, "en");
-//         geo_description((double) lat / T_RESCALE, rd->bb.ll.lon + b3, s, "wn");
+      }
+   }
+}
+
+
+/*! Generate longitude grid lines.
+ *  @param b Longitude border.
+ *  @param b1 Outer border (mm)
+ *  @param t Ticks in tenths of a minute (i.e. T_RESCALE = 1').
+ *  @param st subticks in tenths of a minute.
+ *  @param cnt Number of points of each gridline. It must be cnt >= 2.
+ */
+void geo_lon_grid(struct rdata *rd, double b, double b1, int g, int t, int st, int cnt)
+{
+   int bi, lon;
+   //char buf[32], *s;
+
+   bi = (lround((b + rd->bb.ll.lon) * T_RESCALE) / st) * st;
+   log_msg(LOG_DEBUG, "g = %d, t = %d, st = %d, bi = %d", g, t, st, bi);
+
+   for (lon = bi + st; lon < (rd->bb.ru.lon - b) * T_RESCALE; lon += st)
+   {
+      if (!(lon % g))
+      {
+         geo_tick0(rd->bb.ll.lat + b1, (double) lon / T_RESCALE, rd->bb.ru.lat - b1, (double) lon / T_RESCALE, "grid", cnt);
+      }
+   }
+}
+
+
+/*! Generate latitude grid lines.
+ *  @param b Longitude border.
+ *  @param b1 Outer border (mm)
+ *  @param t Ticks in tenths of a minute (i.e. T_RESCALE = 1').
+ *  @param st subticks in tenths of a minute.
+ *  @param cnt Number of points of each gridline. It must be cnt >= 2.
+ */
+void geo_lat_grid(struct rdata *rd, double b, double b1, int g, int t, int st, int cnt)
+{
+   int bi, lat;
+   //char buf[32], *s;
+
+   bi = (lround((b + rd->bb.ll.lat) * T_RESCALE) / st) * st;
+   log_msg(LOG_DEBUG, "g = %d, t = %d, st = %d, bi = %d", g, t, st, bi);
+
+   for (lat = bi + st; lat < (rd->bb.ru.lat - b) * T_RESCALE; lat += st)
+   {
+      if (!(lat % g))
+      {
+         geo_tick0((double) lat / T_RESCALE, rd->bb.ru.lon - b1, (double) lat / T_RESCALE, rd->bb.ll.lon + b1, "grid", cnt);
       }
    }
 }
@@ -333,6 +385,11 @@ void grid(struct rdata *rd, const struct grid *grd)
          MM2LON(grd->g_margin + grd->g_tw), MM2LON(grd->g_margin + grd->g_tw + grd->g_stw),
          MIN10(grd->lat_g), MIN10(grd->lat_ticks), MIN10(grd->lat_sticks));
 
+   geo_lon_grid(rd, MM2LON(grd->g_margin + grd->g_tw + grd->g_stw), MM2LAT(grd->g_margin),
+         MIN10(grd->lon_g), MIN10(grd->lon_ticks), MIN10(grd->lon_sticks), 2);
+   geo_lat_grid(rd, MM2LAT(grd->g_margin + grd->g_tw + grd->g_stw), MM2LON(grd->g_margin),
+         MIN10(grd->lat_g), MIN10(grd->lat_ticks), MIN10(grd->lat_sticks), 2);
+
    geo_legend(rd, grd);
 }
 
@@ -348,6 +405,8 @@ void init_grid(struct grid *grd)
 }
 
 
+/*! Automatically set grid parameters.
+ */
 void auto_grid(const struct rdata *rd, struct grid *grd)
 {
    log_debug("setting auto grid values");
@@ -372,6 +431,9 @@ void auto_grid(const struct rdata *rd, struct grid *grd)
 }
 
 
+/*! Initialize grid structure according to the config parameters in the grid
+ * rule.
+ */
 int grid0(smrule_t *r, struct grid *grd)
 {
    struct rdata *rd = get_rdata();
@@ -404,17 +466,8 @@ int grid0(smrule_t *r, struct grid *grd)
 }
 
 
-int act_grid_ini(smrule_t *r)
-{
-   struct grid grd;
-
-   grid0(r, &grd);
-   grid(get_rdata(), &grd);
-
-   return 0;
-}
-
-
+/*! Initialize grid structure.
+ */
 int act_grid2_ini(smrule_t *r)
 {
    struct grid *grd;
@@ -432,6 +485,10 @@ int act_grid2_ini(smrule_t *r)
 }
 
 
+/*! Generate grid. The grid is always generated just once, independently how
+ * often this function is called. The difference between grid() and grid2() is
+ * only the time when the grid is generated during runtime.
+ */
 int act_grid2_main(smrule_t *r, osm_obj_t *UNUSED(o))
 {
    static int _once = 0;
@@ -453,5 +510,30 @@ int act_grid2_fini(smrule_t *r)
    free(r->data);
    r->data = NULL;
    return 0;
+}
+
+
+/*! Initialize grid structure and generate grid immediately.
+ */
+int act_grid_ini(smrule_t *r)
+{
+   int e;
+
+   if (!(e = act_grid2_ini(r)))
+      grid(get_rdata(), r->data);
+
+   return e;
+}
+
+
+int act_grid_main(smrule_t *UNUSED(r), osm_obj_t *UNUSED(o))
+{
+   return 0;
+}
+
+
+int act_grid_fini(smrule_t *r)
+{
+   return act_grid2_fini(r);
 }
 
