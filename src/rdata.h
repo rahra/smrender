@@ -42,8 +42,8 @@
 #define px2mm(x) rdata_px_unit(x, U_MM)
 #define PX2MM(x) px2mm(x)
 // convert mm to degrees
-#define MM2LAT(x) ((x) * (rd->bb.ru.lat - rd->bb.ll.lat) / PX2MM(rd->h))
-#define MM2LON(x) ((x) * (rd->bb.ru.lon - rd->bb.ll.lon) / PX2MM(rd->w))
+#define MM2LAT(x) ((x) * (rdata_get()->bb.ru.lat - rdata_get()->bb.ll.lat) / PX2MM(rdata_get()->h))
+#define MM2LON(x) ((x) * (rdata_get()->bb.ru.lon - rdata_get()->bb.ll.lon) / PX2MM(rdata_get()->w))
 
 
 typedef enum {PROJ_MERC, PROJ_ADAMS2, PROJ_TRANSVERSAL} proj_t;
@@ -66,14 +66,14 @@ typedef struct value
    double val;
 } value_t;
 
-struct bbox
+typedef struct bbox
 {
    struct coord ll, ru;
-};
+} bbox_t;
 
 struct dstats
 {
-   struct bbox bb;
+   bbox_t bb;
    long cnt[4];
    int64_t min_id[4];
    int64_t max_id[4];
@@ -97,7 +97,7 @@ struct rdata
    //! root node of reverse pointers for OSM objects
    bx_node_t *index;
    //! bounding box (left lower and right upper coordinates)
-   struct bbox bb;
+   bbox_t bb;
    //! polygon window instead of bbox
    int polygon_window;
    //! coordinates of polygon (ll, rl, ru, lu)
