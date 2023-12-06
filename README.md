@@ -23,7 +23,8 @@ samples](https://www.abenteuerland.at/download/smrender/samples/).
 
 ## Download
 
-The latest snapshots of version 4.1 of Smrender are found in the
+The latest releases are found here in [Github releases section](https://github.com/rahra/smrender/releases).
+Older Source packages are also found at
 [current/](https://www.abenteuerland.at/download/smrender/current/) directory.
 
 With February 2016, the primary project page of Smrender was moved to
@@ -31,7 +32,7 @@ With February 2016, the primary project page of Smrender was moved to
 [Abenteueland](http://www.abenteuerland.at/smrender/) which I will keep up for
 a while.
 
-Older versions of Smrender have been moved to the [archive/](https://www.abenteuerland.at/download/smrender/archive/) directory.
+Even older versions of Smrender have been moved to the [archive/](https://www.abenteuerland.at/download/smrender/archive/) directory.
 
 ## Documentation
 
