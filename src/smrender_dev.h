@@ -269,6 +269,8 @@ struct grid
    double lat_g, lon_g;
    double g_margin, g_tw, g_stw;
    int copyright, cmdline;
+   //! number of points per within each grid line (must be >= 2)
+   int gpcnt;
 };
 
 struct file

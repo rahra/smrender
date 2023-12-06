@@ -246,8 +246,6 @@ void geo_lon_ticks(struct rdata *rd, double b, double b1, double b2, double b3, 
 
       if (!(lon % g))
       {
-         /*geo_tick(rd->bb.ll.lat + b1, (double) lon / T_RESCALE, rd->bb.ru.lat - b1, (double) lon / T_RESCALE, "grid");*/
-
          coord_str((double) lon / T_RESCALE, LON_DEG, buf, sizeof(buf));
          s = strdup(buf);
          geo_description(rd->bb.ru.lat - b2, (double) lon / T_RESCALE, s, "top");
@@ -283,9 +281,6 @@ void geo_lat_ticks(struct rdata *rd, double b, double b1, double b2, double b3, 
 
       if (!(lat % g))
       {
-         /* geo_tick((double) lat / T_RESCALE, rd->bb.ru.lon - b1, (double) lat / T_RESCALE,
-               rd->bb.ll.lon + b1, "grid");*/
-
          coord_str((double) lat / T_RESCALE, LAT_DEG, buf, sizeof(buf));
          s = strdup(buf);
          geo_description((double) lat / T_RESCALE, rd->bb.ru.lon - b2, s, "right");
@@ -386,9 +381,9 @@ void grid(struct rdata *rd, const struct grid *grd)
          MIN10(grd->lat_g), MIN10(grd->lat_ticks), MIN10(grd->lat_sticks));
 
    geo_lon_grid(rd, MM2LON(grd->g_margin + grd->g_tw + grd->g_stw), MM2LAT(grd->g_margin),
-         MIN10(grd->lon_g), MIN10(grd->lon_ticks), MIN10(grd->lon_sticks), 2);
+         MIN10(grd->lon_g), MIN10(grd->lon_ticks), MIN10(grd->lon_sticks), grd->gpcnt);
    geo_lat_grid(rd, MM2LAT(grd->g_margin + grd->g_tw + grd->g_stw), MM2LON(grd->g_margin),
-         MIN10(grd->lat_g), MIN10(grd->lat_ticks), MIN10(grd->lat_sticks), 2);
+         MIN10(grd->lat_g), MIN10(grd->lat_ticks), MIN10(grd->lat_sticks), grd->gpcnt);
 
    geo_legend(rd, grd);
 }
@@ -402,6 +397,7 @@ void init_grid(struct grid *grd)
    grd->g_stw = G_STW;
    grd->copyright = 1;
    grd->cmdline = 1;
+   grd->gpcnt = 2;
 }
 
 
@@ -459,8 +455,17 @@ int grid0(smrule_t *r, struct grid *grd)
    if (sticks > 0.0)
       grd->lat_sticks = grd->lon_sticks = MIN2DEG(sticks);
 
-   (void) get_parami("copyright", &grd->copyright, r->act);
-   (void) get_parami("cmdline", &grd->cmdline, r->act);
+   grd->copyright = get_param_bool2("copyright", r->act, grd->copyright);
+   grd->cmdline = get_param_bool2("cmdline", r->act, grd->cmdline);
+
+   get_parami("gridpoints", &grd->gpcnt, r->act);
+   if (grd->gpcnt < 2)
+      grd->gpcnt = 2;
+
+   log_debug("struct grid = {lat(%.1f:%.1f:%.1f), lon(%.1f:%.1f:%.1f), %.1f, %.1f, %.1f, %d, %d, %d}",
+         grd->lat_g, grd->lat_ticks, grd->lat_sticks, grd->lon_g, grd->lon_ticks, grd->lon_sticks,
+         grd->g_margin, grd->g_tw, grd->g_stw,
+         grd->copyright, grd->cmdline, grd->gpcnt);
 
    return 0;
 }
