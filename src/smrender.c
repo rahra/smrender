@@ -160,6 +160,28 @@ int parse_coord(const char *s, double *a)
 }
 
 
+/*! This function behaves exactly like parse_coord() except that it does return
+ * def instead of -1.
+ * @param s Pointer to string.
+ * @param a Pointer to double variable which will receive the converted value.
+ * @return 0 for latitude, 1 for longitude, or the value contained in def
+ * otherwise. In any case a will be set to 0.0.
+ */
+int parse_coord2(const char *s, double *a, int def)
+{
+   int c = parse_coord(s, a);
+
+   switch (c)
+   {
+      case COORD_LAT:
+      case COORD_LON:
+         return c;
+      default:
+         return def;
+   }
+}
+
+
 void int_handler(int sig)
 {
    switch (sig)
@@ -655,6 +677,43 @@ static double sqr_angle(double a)
 }
 
 
+char *parse_coord_tuple(char *s, double *lat, double *lon)
+{
+   int n[2];
+   double p[2];
+   double *d[2] = {lat, lon};
+
+   n[0] = parse_coord2(s, &p[0], COORD_LAT);
+   *d[n[0]] = p[0];
+
+   s = strtok(NULL, ":");
+   n[1] = parse_coord2(s, &p[1], COORD_LON);
+
+   if (n[0] == n[1])
+   {
+      // if both values are 0 lat and lon doesn't matter
+      if (p[0] == 0 && p[1] == 0)
+      {
+         n[1] ^= 1;
+      }
+      else if (p[0] == 0 && p[1] != 0)
+      {
+         *d[n[0] ^ 1] = p[0];
+      }
+      else if (p[0] != 0 && p[1] == 0)
+      {
+         n[1] ^= 1;
+      }
+      else
+         log_msg(LOG_ERR, "you specified the %s twice within the rendering window", n[0] == COORD_LAT ? "latitude" : "longitude"), exit(EXIT_FAILURE);
+   }
+
+   *d[n[1]] = p[1];
+
+   return s;
+}
+
+
 /*! This function initializes all parameters for rendering in dependence of the
  * command line arguments. This is the page dimension, projection parameters
  * and chart scale.
@@ -667,7 +726,6 @@ void init_rendering_window(struct rdata *rd, char *win, const char *paper)
 {
    double angle;
    char *s;
-   int n;
 
    if (win == NULL)
    {
@@ -684,19 +742,7 @@ void init_rendering_window(struct rdata *rd, char *win, const char *paper)
          log_msg(LOG_ERR, "format error in window"), exit(EXIT_FAILURE);
 
       s = strtok(win, ":");
-      n = parse_coord(s, &param);
-      if (n == COORD_LON)
-         rd->mean_lon = param;
-      else
-         rd->mean_lat = param;
-
-      s = strtok(NULL, ":");
-      n = parse_coord(s, &param);
-      if (n == COORD_LAT)
-         rd->mean_lat = param;
-      else
-         rd->mean_lon = param;
-
+      s = parse_coord_tuple(s, &rd->mean_lat, &rd->mean_lon);
       s = strtok(NULL, ":");
       // window contains length of mean latitude
       if (i == 2)
@@ -718,20 +764,8 @@ void init_rendering_window(struct rdata *rd, char *win, const char *paper)
       {
          rd->bb.ll.lon = rd->mean_lon;
          rd->bb.ll.lat = rd->mean_lat;
-   
-         n = parse_coord(s, &param);
-         if (n == COORD_LON)
-            rd->bb.ru.lon = param;
-         else
-            rd->bb.ru.lat = param;
 
-         s = strtok(NULL, ":");
-         n = parse_coord(s, &param);
-         if (n == COORD_LAT)
-            rd->bb.ru.lat = param;
-         else
-            rd->bb.ru.lon = param;
-
+         s = parse_coord_tuple(s, &rd->bb.ru.lat, &rd->bb.ru.lon);
          rd->mean_lon = (rd->bb.ru.lon + rd->bb.ll.lon) / 2.0;
          rd->mean_lat = (rd->bb.ru.lat + rd->bb.ll.lat) / 2.0;
       }
@@ -743,19 +777,7 @@ void init_rendering_window(struct rdata *rd, char *win, const char *paper)
 
          for (i = 1; i < 4; i++)
          {
-            n = parse_coord(s, &param);
-            if (n == COORD_LON)
-               rd->pw[i].lon = param;
-            else
-               rd->pw[i].lat = param;
-
-            s = strtok(NULL, ":");
-            n = parse_coord(s, &param);
-            if (n == COORD_LAT)
-               rd->pw[i].lat = param;
-            else
-               rd->pw[i].lon = param;
-
+            s = parse_coord_tuple(s, &rd->pw[i].lat, &rd->pw[i].lon);
             rd->bb.ll.lon = fmin(rd->bb.ll.lon, rd->pw[i].lon);
             rd->bb.ll.lat = fmin(rd->bb.ll.lat, rd->pw[i].lat);
             rd->bb.ru.lon = fmax(rd->bb.ru.lon, rd->pw[i].lon);
