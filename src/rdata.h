@@ -46,7 +46,7 @@
 #define MM2LON(x) ((x) * (rd->bb.ru.lon - rd->bb.ll.lon) / PX2MM(rd->w))
 
 
-typedef enum {PROJ_MERC, PROJ_ADAMS2} proj_t;
+typedef enum {PROJ_MERC, PROJ_ADAMS2, PROJ_TRANSVERSAL} proj_t;
 
 typedef enum
 {
@@ -110,6 +110,8 @@ struct rdata
           hc;
    //! mean latitude and its length in degrees corresponding to the real nautical miles
    double mean_lat, mean_lat_len;
+   //! latitude for transversial projection
+   double transversal_lat;
    //! mean longitude in degrees
    double mean_lon;
    //! hyperbolic value of mean latitude, necessary for Mercator projection (latitude stretching)

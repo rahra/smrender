@@ -334,7 +334,7 @@ void init_bbox_mll(struct rdata *rd)
 
    // estimate latitudes on upper on lower border of the chart
    rd->hc = rd->mean_lat_len * rd->h / rd->w;
-   if (rd->proj == PROJ_MERC)
+   if (rd->proj == PROJ_MERC || rd->proj == PROJ_TRANSVERSAL)
    {
       rd->bb.ru.lat = rd->mean_lat + rd->hc / 2.0;
       rd->bb.ll.lat = rd->mean_lat - rd->hc / 2.0;
@@ -741,6 +741,9 @@ void init_rendering_window(struct rdata *rd, char *win, const char *paper)
       if (i != 2 && i != 3 && i != 7)
          log_msg(LOG_ERR, "format error in window"), exit(EXIT_FAILURE);
 
+      if (rd->proj == PROJ_TRANSVERSAL && i != 2)
+         log_msg(LOG_ERR, "window format not allow for transversal mercator"), exit(EXIT_FAILURE);
+
       s = strtok(win, ":");
       s = parse_coord_tuple(s, &rd->mean_lat, &rd->mean_lon);
       s = strtok(NULL, ":");
@@ -758,6 +761,12 @@ void init_rendering_window(struct rdata *rd, char *win, const char *paper)
             rd->wc = param;
          else
             log_msg(LOG_ERR, "illegal size parameter"), exit(EXIT_FAILURE);
+
+         if (rd->proj == PROJ_TRANSVERSAL)
+         {
+            rd->transversal_lat = rd->mean_lat;
+            rd->mean_lat = 0;
+         }
       }
       // window is bounding box
       else if (i == 3)
@@ -818,6 +827,7 @@ void init_rendering_window(struct rdata *rd, char *win, const char *paper)
       switch (rd->proj)
       {
          case PROJ_MERC:
+         case PROJ_TRANSVERSAL:
             if (!rd->w)
                rd->w = rd->h * rd->mean_lat_len / (rd->bb.ru.lat - rd->bb.ll.lat);
             else if (!rd->h)
@@ -1132,6 +1142,8 @@ int main(int argc, char *argv[])
                rd->proj = PROJ_ADAMS2;
             else if (!strcasecmp(optarg, "mercator"))
                rd->proj = PROJ_MERC;
+            else if (!strcasecmp(optarg, "transversal"))
+               rd->proj = PROJ_TRANSVERSAL;
             else
             {
                log_msg(LOG_WARN, "unknown projection '%s', defaulting to Mercator", optarg);
