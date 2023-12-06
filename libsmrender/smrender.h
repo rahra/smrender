@@ -83,6 +83,7 @@ int match_attr(const osm_obj_t*, const char *, const char *);
 char *get_param_err(const char *, double *, const action_t *, int *);
 char *get_param(const char*, double*, const action_t*);
 char *get_parami(const char*, int*, const action_t*);
+int get_param_bool2(const char*, const action_t*, int);
 int get_param_bool(const char*, const action_t*);
 //void set_static_obj_tree(bx_node_t **);
 //struct rdata *get_rdata(void);

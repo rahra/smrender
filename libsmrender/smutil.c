@@ -438,17 +438,19 @@ char *get_parami(const char *attr, int *ival, const action_t *act)
 /*! This function tests an attribute to be true or false.
  * @param attr Pointer to attribute key.
  * @param act Pointer to action_t (which contains the list of action parameters).
+ * @param def Default return value.
  * @return The function returns 1 (true) if such an attribute exists and
- * contains the value '1' or 'yes'. If no such attribute exists or if the
- * attribute does not contain a "true" value the function returns 0 (false).
+ * contains the value '1', 'yes', or 'true'. If no such attribute exists or if the
+ * attribute does not contain a "true" value the function returns the default
+ * value def.
  */
-int get_param_bool(const char *attr, const action_t *act)
+int get_param_bool2(const char *attr, const action_t *act, int def)
 {
    double f;
    char *s;
 
    if ((s = get_param(attr, &f, act)) == NULL)
-      return 0;
+      return def;
 
    if ((f != 0) || !strcasecmp(s, "yes") || !strcasecmp(s, "true"))
       return 1;
@@ -456,9 +458,23 @@ int get_param_bool(const char *attr, const action_t *act)
    if (!strcasecmp(s, "no") || !strcasecmp(s, "false") || !strcasecmp(s, "0"))
       return 0;
 
-   return 0;
+   return def;
 }
+ 
 
+/*! This function tests an attribute to be true or false. With a default value
+ * of 0. Internally get_param_bool2() is called (see there).
+ * @param attr Pointer to attribute key.
+ * @param act Pointer to action_t (which contains the list of action parameters).
+ * @return The function returns 1 (true) if such an attribute exists and
+ * contains the value '1' or 'yes'. If no such attribute exists or if the
+ * attribute does not contain a "true" value the function returns 0 (false).
+ */
+int get_param_bool(const char *attr, const action_t *act)
+{
+   return get_param_bool2(attr, act, 0);
+}
+ 
 
 int sm_is_threaded(const smrule_t *r)
 {
