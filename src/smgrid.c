@@ -145,14 +145,15 @@ void grid_date(const bbox_t *bb, const struct grid *grd)
 }
 
 
-void geo_square(const bbox_t *bb, double b, char *v)
+void geo_square(const bbox_t *bb, double b, char *v, int cnt)
 {
    char buf[256];
    double lat[4] = {bb->ru.lat - MM2LAT(b), bb->ru.lat - MM2LAT(b), bb->ll.lat + MM2LAT(b), bb->ll.lat + MM2LAT(b)};
    double lon[4] = {bb->ll.lon + MM2LON(b), bb->ru.lon - MM2LON(b), bb->ru.lon - MM2LON(b), bb->ll.lon + MM2LON(b)};
    osm_node_t *n;
    osm_way_t *w;
-   int i;
+   int i, j;
+   double dlat, dlon;
 
 #if 0
    //FIXME: This should be outside of geo_square().
@@ -164,7 +165,7 @@ void geo_square(const bbox_t *bb, double b, char *v)
       }
 #endif
 
-   w = malloc_way(2, 5);
+   w = malloc_way(2, 4 * cnt + 1);
    osm_way_default(w);
    set_const_tag(&w->obj.otag[1], "grid", v);
    //put_object((osm_obj_t*) w);
@@ -173,7 +174,7 @@ void geo_square(const bbox_t *bb, double b, char *v)
    {
       n = malloc_node(5);
       osm_node_default(n);
-      w->ref[i] = n->obj.id;
+      w->ref[i * cnt] = n->obj.id;
       n->lat = lat[i];
       n->lon = lon[i];
       set_const_tag(&n->obj.otag[1], "grid", v);
@@ -185,9 +186,22 @@ void geo_square(const bbox_t *bb, double b, char *v)
       set_const_tag(&n->obj.otag[4], "pointindex", strdup(buf));
       put_object((osm_obj_t*) n);
       log_debug("grid polygon lat/lon = %.8f/%.8f", n->lat, n->lon);
+
+      j = (i + 1) % 4;
+      dlat = (lat[j] - lat[i]) / (cnt - 1);
+      dlon = (lon[j] - lon[i]) / (cnt - 1);
+      for (j = 1; j < cnt; j++)
+      {
+         n = malloc_node(1);
+         osm_node_default(n);
+         w->ref[i * cnt + j] = n->obj.id;
+         n->lat = lat[i] + dlat * j;
+         n->lon = lon[i] + dlon * j;
+         put_object((osm_obj_t*) n);
+      }
    }
 
-   w->ref[4] = w->ref[0];
+   w->ref[4 * cnt] = w->ref[0];
    put_object((osm_obj_t*) w);
 }
 
@@ -366,30 +380,43 @@ void geo_legend(const bbox_t *bb, struct rdata *rd, const struct grid *grd)
  */
 void grid(struct rdata *rd, const struct grid *grd)
 {
+   bbox_t bb = rd->bb;
+
+   if (rd->proj == PROJ_TRANSVERSAL)
+   {
+      log_debug("transforming bounding box of grid");
+      transtraversal(-rd->transversal_lat, rd->mean_lon, &bb.ll.lat, &bb.ll.lon);
+      transtraversal(-rd->transversal_lat, rd->mean_lon, &bb.ru.lat, &bb.ru.lon);
+   }
+
    log_msg(LOG_INFO, "grid parameters: margin = %.2f mm, tickswidth = %.2f mm, "
          "substickswidth = %.2f mm, grid = %.2f', ticks = %.2f', subticks = %.2f'",
          grd->g_margin, grd->g_tw, grd->g_stw, grd->lon_g * 60.0,
          grd->lon_ticks * 60.0, grd->lon_sticks * 60.0);
+   log_msg(LOG_INFO, "grid top    %.3f %.3f -- %.3f %.3f",
+         bb.ru.lat, bb.ll.lon, bb.ru.lat, bb.ru.lon);
+   log_msg(LOG_INFO, "grid bottom %.3f %.3f -- %.3f %.3f",
+         bb.ll.lat, bb.ll.lon, bb.ll.lat, bb.ru.lon);
  
-   geo_square(&rd->bb, grd->g_margin, "outer_border");
-   geo_square(&rd->bb, grd->g_margin + grd->g_tw, "ticks_border");
-   geo_square(&rd->bb, grd->g_margin + grd->g_tw + grd->g_stw, "subticks_border");
+   geo_square(&bb, grd->g_margin, "outer_border", grd->gpcnt);
+   geo_square(&bb, grd->g_margin + grd->g_tw, "ticks_border", grd->gpcnt);
+   geo_square(&bb, grd->g_margin + grd->g_tw + grd->g_stw, "subticks_border", grd->gpcnt);
 
-   grid_date(&rd->bb, grd);
+   grid_date(&bb, grd);
 
-   geo_lon_ticks(&rd->bb, MM2LON(grd->g_margin + grd->g_tw + grd->g_stw), MM2LAT(grd->g_margin),
+   geo_lon_ticks(&bb, MM2LON(grd->g_margin + grd->g_tw + grd->g_stw), MM2LAT(grd->g_margin),
          MM2LAT(grd->g_margin + grd->g_tw), MM2LAT(grd->g_margin + grd->g_tw + grd->g_stw),
          MIN10(grd->lon_g), MIN10(grd->lon_ticks), MIN10(grd->lon_sticks));
-   geo_lat_ticks(&rd->bb, MM2LAT(grd->g_margin + grd->g_tw + grd->g_stw), MM2LON(grd->g_margin),
+   geo_lat_ticks(&bb, MM2LAT(grd->g_margin + grd->g_tw + grd->g_stw), MM2LON(grd->g_margin),
          MM2LON(grd->g_margin + grd->g_tw), MM2LON(grd->g_margin + grd->g_tw + grd->g_stw),
          MIN10(grd->lat_g), MIN10(grd->lat_ticks), MIN10(grd->lat_sticks));
 
-   geo_lon_grid(&rd->bb, MM2LON(grd->g_margin + grd->g_tw + grd->g_stw), MM2LAT(grd->g_margin),
+   geo_lon_grid(&bb, MM2LON(grd->g_margin + grd->g_tw + grd->g_stw), MM2LAT(grd->g_margin),
          MIN10(grd->lon_g), MIN10(grd->lon_ticks), MIN10(grd->lon_sticks), grd->gpcnt);
-   geo_lat_grid(&rd->bb, MM2LAT(grd->g_margin + grd->g_tw + grd->g_stw), MM2LON(grd->g_margin),
+   geo_lat_grid(&bb, MM2LAT(grd->g_margin + grd->g_tw + grd->g_stw), MM2LON(grd->g_margin),
          MIN10(grd->lat_g), MIN10(grd->lat_ticks), MIN10(grd->lat_sticks), grd->gpcnt);
 
-   geo_legend(&rd->bb, rd, grd);
+   geo_legend(&bb, rd, grd);
 }
 
 

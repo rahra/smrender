@@ -147,6 +147,14 @@ void transcoord(double theta, double phi, double *lat0, double *lon0)
 }
 
 
+void transtraversal(double lat, double lon, double *lat0, double *lon0)
+{
+   transcoord(0, lon, lat0, lon0);
+   transcoord(lat, 0, lat0, lon0);
+   transcoord(0, -lon, lat0, lon0);
+}
+
+
 /*! Convert geographic to Cartesian (pixel) coordinates x and y.
  * @param lon Longitude of object.
  * @param lat Latitude of object.
@@ -235,6 +243,8 @@ void rdata_log(void)
    log_msg(LOG_NOTICE, "   wc = %.3f°, hc = %.3f°", rd_.wc, rd_.hc);
    log_msg(LOG_NOTICE, "   mean_lat = %.3f°, mean_lat_len = %.3f (%.1f nm)",
          rd_.mean_lat, rd_.mean_lat_len, rd_.mean_lat_len * 60);
+   log_msg(LOG_NOTICE, "   transveral_lat = %.3f°", rd_.transversal_lat);
+   log_msg(LOG_NOTICE, "   proj = %d", rd_.proj);
    log_msg(LOG_NOTICE, "   lath = %f, lath_len = %f", rd_.lath, rd_.lath_len);
    log_msg(LOG_NOTICE, "   polygon_window = %d", rd_.polygon_window);
    for (int i = 0; i < 4; i++)
