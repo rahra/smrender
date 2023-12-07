@@ -432,29 +432,35 @@ void init_grid(struct grid *grd)
 }
 
 
+typedef struct grid_autodef
+{
+   double scale, grid, ticks, subticks;
+} grid_autodef_t;
+
+
 /*! Automatically set grid parameters.
  */
 void auto_grid(const struct rdata *rd, struct grid *grd)
 {
+   const grid_autodef_t gd[] =
+   {
+      {2500000, 300, 60, 10},
+      { 250000,  30,  1,  0.5},
+      {  90000,  10,  1,  0.2},
+      {      0,   5,  1,  0.2},
+      {     -1,   0,  0,  0}
+   };
+
    log_debug("setting auto grid values");
-   if (rd->scale >= 250000)
-   {
-      grd->lat_ticks = grd->lon_ticks = MIN2DEG(1);
-      grd->lat_sticks = grd->lon_sticks = MIN2DEG(0.5);
-      grd->lat_g = grd->lon_g = MIN2DEG(30);
-   }
-   else if (rd->scale >= 90000)
-   {
-      grd->lat_ticks = grd->lon_ticks = MIN2DEG(1);
-      grd->lat_sticks = grd->lon_sticks = MIN2DEG(0.2);
-      grd->lat_g = grd->lon_g = MIN2DEG(10);
-   }
-   else
-   {
-      grd->lat_ticks = grd->lon_ticks = MIN2DEG(1);
-      grd->lat_sticks = grd->lon_sticks = MIN2DEG(0.2);
-      grd->lat_g = grd->lon_g = MIN2DEG(5);
-   }
+   for (int i = 0; gd[i].scale >= 0; i++)
+      if (rd->scale >= gd[i].scale)
+      {
+         log_debug("grid_autodef.scale = %.1f", gd[i].scale);
+         grd->lat_g = grd->lon_g = MIN2DEG(gd[i].grid);
+         grd->lat_ticks = grd->lon_ticks = MIN2DEG(gd[i].ticks);
+         grd->lat_sticks = grd->lon_sticks = MIN2DEG(gd[i].subticks);
+         break;
+      }
 }
 
 
