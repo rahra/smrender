@@ -385,8 +385,13 @@ void grid(struct rdata *rd, const struct grid *grd)
    if (rd->proj == PROJ_TRANSVERSAL)
    {
       log_debug("transforming bounding box of grid");
+      struct coord c;
+      c.lat = bb.ll.lat;
+      c.lon = bb.ru.lon;
       transtraversal(-rd->transversal_lat, rd->mean_lon, &bb.ll.lat, &bb.ll.lon);
       transtraversal(-rd->transversal_lat, rd->mean_lon, &bb.ru.lat, &bb.ru.lon);
+      transtraversal(-rd->transversal_lat, rd->mean_lon, &c.lat, &c.lon);
+      bb.ru.lon = c.lon;
    }
 
    log_msg(LOG_INFO, "grid parameters: margin = %.2f mm, tickswidth = %.2f mm, "
