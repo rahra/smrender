@@ -835,7 +835,6 @@ int attr_tod(const osm_obj_t *o, const char *attr, double *val)
 
 void shape_node(const struct act_shape *as, const osm_node_t *n)
 {
-   struct rdata *rd = get_rdata();
    osm_node_t *nd[as->pcount], *m;
    double radius, angle, angle_step, a, b, start, end;
    osm_way_t *w, *v;
@@ -3272,6 +3271,44 @@ int act_transcoord_main(smrule_t *r, osm_obj_t *o)
 int act_transcoord_fini(smrule_t *r)
 {
    free(r->data);
+   return 0;
+}
+
+
+int act_transversal_ini(smrule_t *r)
+{
+   r->data = rdata_get();
+   return 0;
+}
+
+
+/*! This function is similar to transcoord. It could be seen as a wrapper for
+ * transcoord. It transforms the coordinates to a center point of 0N:0E which
+ * is used for Smrender's transversal Mercator projection. It could be
+ * accomplished in the same way as calling 3x transcoord, 1st +lon, 2nd +lat,
+ * 3rd -lon.
+ */
+int act_transversal_main(smrule_t *r, osm_obj_t *o)
+{
+   const struct rdata *rd = r->data;
+
+   if (o->type != OSM_NODE)
+   {
+      log_msg(LOG_WARN, "may be applied to nodes only!");
+      return 1;
+   }
+
+   transcoord(0, rd->mean_lon, &((osm_node_t*) o)->lat, &((osm_node_t*) o)->lon);
+   transcoord(rd->transversal_lat, 0, &((osm_node_t*) o)->lat, &((osm_node_t*) o)->lon);
+   transcoord(0, -rd->mean_lon, &((osm_node_t*) o)->lat, &((osm_node_t*) o)->lon);
+
+   return 0;
+}
+
+
+int act_transversal_fini(smrule_t *r)
+{
+   r->data = NULL;
    return 0;
 }
 
