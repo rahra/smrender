@@ -549,6 +549,9 @@ executed. This can be used to enable or disable a rule by default and can
 further be used for conditional rendering (see \textsf{enable\_rule} in Section
 \ref{sec:special}).
 
+Please note that the initialization function of a rule still is called even if
+\textsf{visible=false}.
+
 \subsection{Match Operations} \label{sec:match}
 
 Basically there are the four different match operations \emph{string compare},
@@ -1442,6 +1445,12 @@ rendered in the second rule.
       option \optk{gridpoints} sets the total number of grid points. It has to
       be greater or equal to 2. If this option is not given or a number smaller
       than 2 is set, it is internally reset to 2.
+
+      The difference between \textsf{grid()} and \textsf{grid2()} is that the
+      1st generates the grid within the initialization function of the rule
+      while as the latter creates it in the main function at the first match.
+      This may be of interest if some rules should be called before the grid is
+      constructed.
 
       \subsubsection{Create a Ruler}   %FIXME: not finished
 
