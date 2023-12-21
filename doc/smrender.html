@@ -149,13 +149,14 @@ Smrender reads an OSM file and applies a set of rules to this input data to
 create an output image. The input is an OSM file and a set of files containing
 the rule set. Supported output formats are currently PDF, SVG, PNG, and KAP/BSB<a href="#tthFtNtAAB" id="tthFrefAAB"><sup>1</sup></a>
 having the desired resolution and density. Additionally, some other output
-files may be generated depending in the rule set. The latter is explained
-later.
+files may be generated depending on the rule set. This means that you can
+filter the input data and create output files in OSM or JSON format. This is
+explained in Section <a href="#sec:output">6.3.2</a>.
 
 <div class="p"><!----></div>
 The primary goal of <span style="font-family:helvetica"><i><span class="small">Smrender</span></i></span> is to create a sea chart which is well-suited for
 print-out on paper. Nevertheless, it is a universal rendering engine and may be
-used for different tasks.
+used for many different tasks.
 
 <div class="p"><!----></div>
 The input file should be an OSM/XML file as defined by the OSM standard. The
@@ -220,12 +221,21 @@ the character used for the cardinal direction.
 <div class="p"><!----></div>
 <span style="font-family:helvetica"><div class="small"><u>Length</u></div></span> defines the length of the mean latitude (parallel) in degrees if
 <span style="font-family:helvetica">'d'</span> is appended or in nautical miles if <span style="font-family:helvetica">'m'</span> is appended.
-Alternatively, the <span style="font-family:helvetica"><span class="small"><u>scale</u></span></span> of the chart can be specified. <span style="font-family:helvetica"><i><span class="small">Smrender</span></i></span>
+But typically the <span style="font-family:helvetica"><span class="small"><u>scale</u></span></span> of the chart is specified. <span style="font-family:helvetica"><i><span class="small">Smrender</span></i></span>
 calculates the size of the area to meet the scale. Obviously, this depends on the size
 of the output image. The height (the length of the mean longitude) is
 calculated automatically by <span style="font-family:helvetica"><i><span class="small">Smrender</span></i></span> in such a way that the output image is
 projected correctly using a <em>Mercartor projection</em>. The height depends on the size
-of the output image (page format).<br />
+of the output image (page format).
+
+<div class="p"><!----></div>
+As an example a typical rendering window specififcation could be<br />
+
+<div class="p"><!----></div>
+<span style="font-family:helvetica">43N50:15E25:100000</span><br />
+
+<div class="p"><!----></div>
+This renders a chart with the center point at 43°50' N 015°25' E at a scale of 1:100000.<br />
 
 <div class="p"><!----></div>
 If it is chosen to use a bounding box specification then the coordinates of the
@@ -245,6 +255,16 @@ option <span style="font-family:helvetica"><span class="small"><b>-a</b></span><
      <a id="tth_sEc4.2"></a><h3>
 4.2&nbsp;&nbsp;Options</h3> <a id="sec:options">
 </a>
+
+<div class="p"><!----></div>
+This section explains all options. There are many of them but typically you
+just need <span style="font-family:helvetica"><span class="small"><b>-i</b></span></span> for the input file, <span style="font-family:helvetica"><span class="small"><b>-r</b></span></span> for the ruleset, <span style="font-family:helvetica"><span class="small"><b>-o</b></span></span> for
+the output file, and <span style="font-family:helvetica"><span class="small"><b>-P</b></span></span> together with <span style="font-family:helvetica"><span class="small"><b>-l</b></span></span> to specify the page
+format. And of course you need to specify the center point of you chart as
+explained in the previous Section <a href="#sec:window">4.1</a>.
+
+<div class="p"><!----></div>
+In the following all options are explained in alphabetical order.
 
 <div class="p"><!----></div>
 
@@ -268,7 +288,7 @@ option <span style="font-family:helvetica"><span class="small"><b>-a</b></span><
 <br /><span style="font-family:helvetica"><span class="small"><b>-b</b></span></span> <span style="font-family:helvetica"><span class="small"><u>color</u></span></span>
 
 <div class="p"><!----></div>
-      This option allows to set a background color. The color may be define either as a color preset
+      This option allows to set a background color. The color may be defined either as a color preset
       or an HTML-style definition (see Section <a href="#sec:cap">6.1.1</a>). The default color is white.
 
 <div class="p"><!----></div>
@@ -278,7 +298,7 @@ option <span style="font-family:helvetica"><span class="small"><b>-a</b></span><
 <br /><span style="font-family:helvetica"><span class="small"><b>-D</b></span></span> 
 
 <div class="p"><!----></div>
-      <span style="font-family:helvetica"><i><div class="small">Smrender</div></i></span> outputs a lot of information to stderr to watch the progress of
+      <span style="font-family:helvetica"><i><div class="small">Smrender</div></i></span> outputs a lot of information to <span style="font-family:helvetica">stderr</span> to watch the progress of
       rendering. It uses the same log levels as defined for syslog (see
       <span style="font-family:helvetica">syslog(3)</span>). By default it logs all messages of the log level
       <span style="font-family:helvetica">LOG_INFO</span> and above. With this option also debug messages are
@@ -303,7 +323,7 @@ option <span style="font-family:helvetica"><span class="small"><b>-a</b></span><
 <div class="p"><!----></div>
    Please note that this option works only correctly if the nodes and ways are
    stored in that order in the input file (first all nodes and then all
-   ways).
+   ways) as specified by OSM format 0.6.
 <br /><span style="font-family:helvetica"><span class="small"><b>-g</b></span></span> <span style="font-family:helvetica"><span class="small"><u>d</u></span></span>[:<span style="font-family:helvetica"><span class="small"><u>t</u></span></span>[:<span style="font-family:helvetica"><span class="small"><u>s</u></span></span>]]
 
 <div class="p"><!----></div>
@@ -323,6 +343,10 @@ option <span style="font-family:helvetica"><span class="small"><b>-a</b></span><
    on the scale of the output image. For scales below 1:150000 it chooses
    5:1:0.2, for scales below 1:250000 it chooses 10:1:0.25, and for scales
    above 1:250000 it is set to 20:2:0.5.
+
+<div class="p"><!----></div>
+   If the special option value <span style="font-family:helvetica"><span class="small"><u>none</u></span></span> is used the grid is omitted. This
+   acts exactly like option <span style="font-family:helvetica"><span class="small"><b>-G</b></span></span>.
 
 <div class="p"><!----></div>
    A grid may optionally be generated with the action <span style="font-family:helvetica">grid</span>. See
@@ -378,7 +402,7 @@ option <span style="font-family:helvetica"><span class="small"><b>-a</b></span><
 <br /><span style="font-family:helvetica"><span class="small"><b>-p</b></span></span> <span style="font-family:helvetica"><span class="small"><u>projection</u></span></span>
 
 <div class="p"><!----></div>
-   Select the chart projection. This could either be <span style="font-family:helvetica">mercator</span> or
+   Select the chart projection. This could either be <span style="font-family:helvetica">mercator</span>, <span style="font-family:helvetica">transversal</span>, or
    <span style="font-family:helvetica">adams2</span>, the 1st being the default value if the options is omitted.
    Mercator is the typical projection of most nautical charts.
 
@@ -607,6 +631,10 @@ default if omitted) or <span style="font-family:helvetica">false</span>. Rules w
 executed. This can be used to enable or disable a rule by default and can
 further be used for conditional rendering (see <span style="font-family:helvetica">enable_rule</span> in Section
 <a href="#sec:special">6.3.4</a>).
+
+<div class="p"><!----></div>
+Please note that the initialization function of a rule still is called even if
+<span style="font-family:helvetica">visible=false</span>.
 
 <div class="p"><!----></div>
      <a id="tth_sEc5.2"></a><h3>
@@ -883,7 +911,7 @@ looks like the following.
 <pre>
 &nbsp;&nbsp;&nbsp;&lt;action&#62;&nbsp;&nbsp;&nbsp;:=&nbsp;'cap:'&nbsp;&lt;param&#62;&nbsp;[&nbsp;';'&nbsp;&lt;param&#62;&nbsp;]
 &nbsp;&nbsp;&nbsp;&lt;param&#62;&nbsp;&nbsp;&nbsp;&nbsp;:=&nbsp;&lt;fontdef&#62;&nbsp;|&nbsp;&lt;angledef&#62;&nbsp;|&nbsp;&lt;aligndef&#62;&nbsp;|&nbsp;&lt;wcapopt&#62;
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;|&nbsp;&lt;fopt&#62;&nbsp;|&nbsp;&lt;hide&#62;&nbsp;|&nbsp;&lt;bground&#62;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;|&nbsp;&lt;fopt&#62;&nbsp;|&nbsp;&lt;hide&#62;&nbsp;|&nbsp;&lt;bground&#62;&nbsp;|&nbsp;&lt;fontbox&#62;
 
 &nbsp;&nbsp;&nbsp;&lt;fontdef&#62;&nbsp;&nbsp;:=&nbsp;&lt;fontname&#62;&nbsp;|&nbsp;&lt;fontsize&#62;&nbsp;|&nbsp;&lt;color&#62;&nbsp;|&nbsp;&lt;fopt&#62;
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;|&nbsp;&lt;key&#62;
@@ -927,6 +955,9 @@ looks like the following.
 &nbsp;&nbsp;&nbsp;&lt;hide&#62;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;:=&nbsp;'hide'&nbsp;'='&nbsp;&lt;bool&#62;
 
 &nbsp;&nbsp;&nbsp;&lt;bground&#62;&nbsp;&nbsp;:=&nbsp;'fillcolor'&nbsp;'='&nbsp;&lt;coldef&#62;
+
+&nbsp;&nbsp;&nbsp;&lt;fontbox&#62;&nbsp;&nbsp;:=&nbsp;'fontbox'&nbsp;'='&nbsp;&lt;bool&#62;
+
 
 </pre>
 
@@ -1005,6 +1036,13 @@ The color presets reflect the colors of traditional sea charts. The HTML-style c
 number from <span style="font-family:helvetica">00</span> to <span style="font-family:helvetica">ff</span>. Optionally a transparency may be specified with <span style="font-family:helvetica">aa</span>. It ranges from
 <span style="font-family:helvetica">00</span> (opaque) to <span style="font-family:helvetica">7f</span> which is absolute transparent. The most signifficant bit is always cleared, hence,
 setting values greater than <span style="font-family:helvetica">7f</span> has no effect.
+
+<div class="p"><!----></div>
+The parameter <span style="font-family:helvetica"><span class="small"><u>fontbox</u></span></span> generates a way within the data which is a box
+around the text. This may be used by subsequent rules to decorate the
+background of the text in a more powerful manner as with just <span style="font-family:helvetica"><span class="small"><u>fillcolor</u></span></span>.
+The <span style="font-family:helvetica"><span class="small"><u>fontbox</u></span></span> option may be used together with <span style="font-family:helvetica"><span class="small"><u>hide</u></span></span> since filling
+would ovepaint the text.
 
 <div class="p"><!----></div>
 <span style="font-family:helvetica"><div class="small"><u>xoff</u></div></span> and <span style="font-family:helvetica"><span class="small"><u>yoff</u></span></span> specify an offset which is additionally added if
@@ -1669,6 +1707,7 @@ rendered in the second rule.
          
 <pre>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;grid()
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;grid2()
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
 </pre>
 
@@ -1680,6 +1719,23 @@ rendered in the second rule.
       parameters <span style="font-family:helvetica"><span class="small"><u>grid</u></span></span>, <span style="font-family:helvetica"><span class="small"><u>ticks</u></span></span>, and <span style="font-family:helvetica"><span class="small"><u>subticks</u></span></span> which work
       exactly like the command line option (see Section <a href="#sec:options">4.2</a>).
       Missing parameters are initialized with default values.
+
+<div class="p"><!----></div>
+      The boolean argumenta <span style="font-family:helvetica"><span class="small"><b>-copyright</b></span></span> and <span style="font-family:helvetica"><span class="small"><b>-cmdline</b></span></span> do not generate
+      these nodes.
+
+<div class="p"><!----></div>
+      Each grid line can be generated with a number of intermediate points. The
+      option <span style="font-family:helvetica"><span class="small"><b>-gridpoints</b></span></span> sets the total number of grid points. It has to
+      be greater or equal to 2. If this option is not given or a number smaller
+      than 2 is set, it is internally reset to 2.
+
+<div class="p"><!----></div>
+      The difference between <span style="font-family:helvetica">grid()</span> and <span style="font-family:helvetica">grid2()</span> is that the
+      1st generates the grid within the initialization function of the rule
+      while as the latter creates it in the main function at the first match.
+      This may be of interest if some rules should be called before the grid is
+      constructed.
 
 <div class="p"><!----></div>
             <a id="tth_sEc6.2.8"></a><h4>
