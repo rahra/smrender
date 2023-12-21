@@ -332,7 +332,7 @@ int match_attr(const osm_obj_t *o, const char *k, const char *v)
  *  @param len Length of output buffer.
  *  @return returns the length of the new string or -1 in case of error.
  */
-int coord_str(double c, int lat_lon, char *buf, int len)
+int coord_str(double c, coord_fmt_t lat_lon, char *buf, int len)
 {
    // safety check
    if (buf == NULL)
@@ -351,6 +351,13 @@ int coord_str(double c, int lat_lon, char *buf, int len)
 
       case LON_DEG:
          return snprintf(buf, len, "%03d° %.1f'", abs((int) c), (double) ((int) round(fabs(c) * T_RESCALE) % T_RESCALE) / TM_RESCALE);
+
+      case LAT_DEG_ONLY:
+         return snprintf(buf, len, "%02d°", abs((int) c));
+
+      case LON_DEG_ONLY:
+         return snprintf(buf, len, "%03d°", abs((int) c));
+
    }
 
    return -1;

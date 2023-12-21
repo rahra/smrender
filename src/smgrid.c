@@ -1,4 +1,4 @@
-/* Copyright 2011-2021 Bernhard R. Fischer, 4096R/8E24F29D <bf@abenteuerland.at>
+/* Copyright 2011-2023 Bernhard R. Fischer, 4096R/8E24F29D <bf@abenteuerland.at>
  *
  * This file is part of smrender.
  *
@@ -19,55 +19,48 @@
  * make up the grid, the legend, and the chart border.
  *
  * @author Bernhard R. Fischer
+ * @date 2023/12/18
  */
 
 #include <string.h>
 #include <time.h>
+#include <errno.h>
 #include "smrender_dev.h"
 
 
 #define RULER_HEIGHT MM2LAT(2.0)
 
 
-int act_ruler_ini(smrule_t *r)
+int ruler(struct rdata *rd, ruler_t *rl)
 {
-   struct rdata *rd = get_rdata();
    struct coord p;
    char buf[32];
    osm_node_t *n[4], *on[2];
    osm_way_t *w;
-   double lon_diff, rsec;
-   int rcnt, i, j;
-
-   rsec = -1.0;
-   (void) get_param("count", &rsec, r->act);
-   rcnt = rsec <= 0.0 ? 5 : rsec;
-
-   rsec = -1.0;
-   (void) get_param("section", &rsec, r->act);
-   if (rsec <= 0.0)
-      rsec = 1.0;
-
-   log_msg(LOG_INFO, "ruler sectioning = %.2f km x %d", rsec, rcnt);
+   double lon_diff;
+   int i, j;
 
    // FIXME: G_ macros should be replaced by variables
    p.lon = rd->bb.ll.lon + MM2LON(G_MARGIN + G_TW + G_STW * 3);
    p.lat = rd->bb.ll.lat + MM2LAT(G_MARGIN + G_TW + G_STW * 3);
+
+//   if (rd->proj == PROJ_TRANSVERSAL)
+//      transtraversal(-rd->transversal_lat, rd->mean_lon, &p.lat, &p.lon);
 
    // 1° lat = 60 sm
    // 1° lon / cos(lat) = 60 sm -> 1 / (cos(lat) * 60) = 1 sm = 1.852km -> 1 / (cos(lat) * 60 * 1.852) = 1km
 
    //rsec = 1.0; // ruler sectioning -> 1 km
    //rcnt = 5;   // number of ruler sections -> 5
-   lon_diff = (double) rsec / (60.0 * 1.852 * cos(DEG2RAD(p.lat)));
+   lon_diff = rl->rsec / (60.0 * 1.852 * cos(DEG2RAD(p.lat)));
 
-   log_msg(LOG_INFO, "generating ruler: %d sections, %f degrees lon", rcnt, lon_diff);
+   log_msg(LOG_INFO, "generating ruler: %d sections, %f degrees lon", rl->rcnt, lon_diff);
 
    on[0] = malloc_node(1);
    osm_node_default(on[0]);
    on[1] = malloc_node(2);
    osm_node_default(on[1]);
-   set_const_tag(&on[1]->obj.otag[1], "distance", "0 km");
+   set_const_tag(&on[1]->obj.otag[1], "distance", rl->unit ? "0 nm" : "0 km");
 
    on[0]->lat = p.lat;
    on[0]->lon = p.lon;
@@ -77,7 +70,7 @@ int act_ruler_ini(smrule_t *r)
    put_object((osm_obj_t*) on[0]);
    put_object((osm_obj_t*) on[1]);
 
-   for (i = 0; i < rcnt; i++)
+   for (i = 0; i < rl->rcnt; i++)
    {
       n[0] = on[0];
       n[3] = on[1];
@@ -87,10 +80,15 @@ int act_ruler_ini(smrule_t *r)
       on[1] = n[2] = malloc_node(2);
       osm_node_default(n[2]);
 
-      if (rsec < 1.0)
-         snprintf(buf, sizeof(buf), "%d m", (int) ((i + 1) * rsec * 1000.0));
+      if (rl->rsec < 1.0)
+         snprintf(buf, sizeof(buf), "%d m", (int) ((i + 1) * rl->rsec * 1000.0));
       else
-         snprintf(buf, sizeof(buf), "%d km", (int) ((i + 1) * rsec));
+      {
+         if (!rl->unit)
+            snprintf(buf, sizeof(buf), "%d km", (int) ((i + 1) * rl->rsec));
+         else
+            snprintf(buf, sizeof(buf), "%d nm", (int) ((i + 1) * rl->rsec / 1.852));
+      }
       set_const_tag(&on[1]->obj.otag[1], "distance", strdup(buf));
 
       n[1]->lat = n[0]->lat;
@@ -115,7 +113,111 @@ int act_ruler_ini(smrule_t *r)
 }
 
 
-void geo_description(double lat, double lon, char *text, char *pos)
+int ruler_ini(smrule_t *r)
+{
+   ruler_t *rl;
+
+   if ((rl = malloc(sizeof(*rl))) == NULL)
+   {
+      log_msg(LOG_ERR, "malloc() failed: %s", strerror(errno));
+      return -1;
+   }
+   memset(rl, 0, sizeof(*rl));
+
+   rl->rsec = 1;
+   get_param("section", &rl->rsec, r->act);
+   if (rl->rsec <= 0)
+   {
+      log_msg(LOG_WARN, "resetting negative section value");
+      rl->rsec = 1;
+   }
+
+   rl->rcnt = 5;
+   get_parami("count", &rl->rcnt, r->act);
+   if (rl->rcnt < 1)
+      rl->rcnt = 5;
+
+   rl->unit = get_param_bool("nautical", r->act);
+   if (rl->unit)
+      rl->rsec *= 1.852;
+
+   log_msg(LOG_INFO, "ruler sectioning = %.2f km x %d, unit = %d", rl->rsec, rl->rcnt, rl->unit);
+
+   r->data = rl;
+   return 0;
+}
+
+
+int act_ruler_ini(smrule_t *r)
+{
+   if (ruler_ini(r) == -1)
+      return -1;
+
+   return ruler(get_rdata(), r->data);
+}
+
+
+int act_ruler_fini(smrule_t *r)
+{
+   free(r->data);
+   r->data = NULL;
+   return 0;
+}
+
+
+int act_ruler2_ini(smrule_t *r)
+{
+   return ruler_ini(r);
+}
+
+
+int act_ruler2_main(smrule_t *r, osm_obj_t *UNUSED(o))
+{
+   ruler_t *rl = r->data;
+
+   // It's always just called once
+   if (rl->call)
+      return 1;
+   rl->call++;
+   return ruler(get_rdata(), rl);
+}
+
+
+int act_ruler2_fini(smrule_t *r)
+{
+   return act_ruler_fini(r);
+}
+
+
+/*! This function calculates the value yn at xn in accordance to a line running
+ * from coordinates x0/y0 to x1/y1.
+ */
+double intermediate(double x0, double y0, double x1, double y1, double xn)
+{
+   // DIV0 safety check
+   if (x1 - x0 == 0.0)
+      return y0;
+
+   return y0 + (xn - x0) / (x1 - x0) * (y1 - y0);
+}
+
+
+/*! Calculate the degrees of longitude of the page at a specific latitude. This
+ * is always the same for Mercator, but different for Transversal Mercator.
+ */
+static double lonlen_at_lat(const struct coord *pw, double lat)
+{
+   return intermediate(pw[0].lat, pw[1].lon - pw[0].lon, pw[3].lat, pw[2].lon - pw[3].lon, lat);
+}
+
+
+static double latlen_at_lon(const struct coord *pw, double lon)
+{
+   return intermediate(pw[3].lon, pw[3].lat - pw[0].lat, pw[2].lon, pw[2].lat - pw[1].lat, lon);
+}
+
+
+void geo_description(double lat, double lon, char *text, const char *pos)
 {
    osm_node_t *n;
 
@@ -125,7 +227,7 @@ void geo_description(double lat, double lon, char *text, char *pos)
    n->lon = lon;
    set_const_tag(&n->obj.otag[1], "grid", "text");
    set_const_tag(&n->obj.otag[2], "name", text);
-   set_const_tag(&n->obj.otag[3], "border", pos);
+   set_const_tag(&n->obj.otag[3], "border", strdup(pos));
    put_object((osm_obj_t*) n);
 }
 
@@ -145,58 +247,57 @@ void grid_date(const bbox_t *bb, const struct grid *grd)
 }
 
 
-void geo_square(const bbox_t *bb, double b, char *v, int cnt)
+// return 1 if x is First(0) or Last(3) (of 4)
+#define FL(x) ((x) == 0 || (x) == 3)
+// return 1 if x is First(0) or Second(1) (of 4)
+#define F2(x) ((x) == 0 || (x) == 1)
+void geo_square(const struct coord *pw0, double b, char *v, int cnt)
 {
    char buf[256];
-   double lat[4] = {bb->ru.lat - MM2LAT(b), bb->ru.lat - MM2LAT(b), bb->ll.lat + MM2LAT(b), bb->ll.lat + MM2LAT(b)};
-   double lon[4] = {bb->ll.lon + MM2LON(b), bb->ru.lon - MM2LON(b), bb->ru.lon - MM2LON(b), bb->ll.lon + MM2LON(b)};
+   struct coord pw[4];
    osm_node_t *n;
    osm_way_t *w;
    int i, j;
    double dlat, dlon;
 
-#if 0
-   //FIXME: This should be outside of geo_square().
-   if (rd->polygon_window)
-      for (int i = 0; i < 4; i++)
-      {
-         lat[i] = rd->pw[3 - i].lat;
-         lon[i] = rd->pw[3 - i].lon;
-      }
-#endif
+   for (int i = 0; i < 4; i++)
+   {
+      pw[i] = pw0[3 - i];
+      pw[i].lat += MM2LAT0(b, pw0[FL(i) ? 3 : 2].lat - pw0[FL(i) ? 0 : 1].lat) * (F2(i) ? -1 : 1);
+      pw[i].lon += MM2LON0(b, pw0[F2(i) ? 2 : 1].lon - pw0[F2(i) ? 3 : 0].lon) * (FL(i) ? 1 : -1);
+   }
 
    w = malloc_way(2, 4 * cnt + 1);
    osm_way_default(w);
    set_const_tag(&w->obj.otag[1], "grid", v);
-   //put_object((osm_obj_t*) w);
 
    for (i = 0; i < 4; i++)
    {
       n = malloc_node(5);
       osm_node_default(n);
       w->ref[i * cnt] = n->obj.id;
-      n->lat = lat[i];
-      n->lon = lon[i];
+      n->lat = pw[i].lat;
+      n->lon = pw[i].lon;
       set_const_tag(&n->obj.otag[1], "grid", v);
-      coord_str(lat[i], LAT_CHAR, buf, sizeof(buf));
+      coord_str(pw[i].lat, LAT_CHAR, buf, sizeof(buf));
       set_const_tag(&n->obj.otag[2], "lat", strdup(buf));
-      coord_str(lon[i], LON_CHAR, buf, sizeof(buf));
+      coord_str(pw[i].lon, LON_CHAR, buf, sizeof(buf));
       set_const_tag(&n->obj.otag[3], "lon", strdup(buf));
       snprintf(buf, sizeof(buf), "%d", i);
       set_const_tag(&n->obj.otag[4], "pointindex", strdup(buf));
       put_object((osm_obj_t*) n);
-      log_debug("grid polygon lat/lon = %.8f/%.8f", n->lat, n->lon);
+      log_debug("border polygon lat/lon = %.8f/%.8f, \"%s\"", n->lat, n->lon, v);
 
       j = (i + 1) % 4;
-      dlat = (lat[j] - lat[i]) / (cnt - 1);
-      dlon = (lon[j] - lon[i]) / (cnt - 1);
+      dlat = (pw[j].lat - pw[i].lat) / (cnt - 1);
+      dlon = (pw[j].lon - pw[i].lon) / (cnt - 1);
       for (j = 1; j < cnt; j++)
       {
          n = malloc_node(1);
          osm_node_default(n);
          w->ref[i * cnt + j] = n->obj.id;
-         n->lat = lat[i] + dlat * j;
-         n->lon = lon[i] + dlon * j;
+         n->lat = pw[i].lat + dlat * j;
+         n->lon = pw[i].lon + dlon * j;
          put_object((osm_obj_t*) n);
       }
    }
@@ -249,62 +350,84 @@ void geo_tick(double lat1, double lon1, double lat2, double lon2, char *v)
  *  @param t Ticks in tenths of a minute (i.e. T_RESCALE = 1').
  *  @param st subticks in tenths of a minute.
  */
-void geo_lon_ticks(const bbox_t *bb, double b, double b1, double b2, double b3, int g, int t, int st)
+void geo_lon_ticks0(const struct coord *pw, int c0, int c1, const char *desc,  double b, double b1, double b2, double b3, int g, int t, int st)
 {
    int bi, lon;
    char buf[32], *s;
+   double latf, lonf, latm;
 
-   bi = (lround((b + bb->ll.lon) * T_RESCALE) / st) * st;
-   log_msg(LOG_DEBUG, "g = %d, t = %d, st = %d, bi = %d", g, t, st, bi);
+   bi = (lround((MM2LON0(b, pw[c1].lon - pw[c0].lon) + pw[c0].lon) * T_RESCALE) / st) * st;
+   log_debug("g = %d, t = %d, st = %d, bi = %d", g, t, st, bi);
 
-   for (lon = bi + st; lon < (bb->ru.lon - b) * T_RESCALE; lon += st)
+   for (lon = bi + st; lon < (pw[c1].lon - MM2LON0(b, pw[c1].lon - pw[c0].lon)) * T_RESCALE; lon += st)
    {
-      geo_tick(bb->ru.lat - b3, (double) lon / T_RESCALE, bb->ru.lat - ((lon % t) ? b2 : b1), (double) lon / T_RESCALE, lon % t ? "subtick" : "tick");
-      geo_tick(bb->ll.lat + b3, (double) lon / T_RESCALE, bb->ll.lat + ((lon % t) ? b2 : b1), (double) lon / T_RESCALE, lon % t ? "subtick" : "tick");
+      lonf = (double) lon / T_RESCALE;
+      latf = intermediate(pw[c0].lon, pw[c0].lat, pw[c1].lon, pw[c1].lat, lonf);
+      latm = latlen_at_lon(pw, lonf);
+
+      geo_tick(latf + MM2LAT0(b3, latm), lonf, latf + MM2LAT0((lon % t) ? b2 : b1, latm), lonf, lon % t ? "subtick" : "tick");
 
       if (!(lon % g))
       {
-         coord_str((double) lon / T_RESCALE, LON_DEG, buf, sizeof(buf));
+         coord_str(lonf, (double) g / T_RESCALE < 1 ? LON_DEG : LON_DEG_ONLY, buf, sizeof(buf));
          s = strdup(buf);
-         geo_description(bb->ru.lat - b2, (double) lon / T_RESCALE, s, "top");
-         geo_description(bb->ll.lat + b2, (double) lon / T_RESCALE, s, "bottom");
-
+         geo_description(latf + MM2LAT0(b2, latm), lonf, s, desc);
       }
    }
 }
 
 
+void geo_lon_ticks(const struct coord *pw, double b, double b1, double b2, double b3, int g, int t, int st)
+{
+   geo_lon_ticks0(pw, 0, 1, "bottom", b, b1, b2, b3, g, t, st);
+   geo_lon_ticks0(pw, 3, 2, "top", b, -b1, -b2, -b3, g, t, st);
+}
+
+
 /*! Generate latitude ticks within left and right border.
- *  @param b Longitude border.
- *  @param b1 Outer border (mm)
- *  @param b2 Middle line (mm)
- *  @param b3 Inner border (mm)
- *  @param t Ticks in tenths of a minute (i.e. T_RESCALE = 1').
- *  @param st subticks in tenths of a minute.
+ * @param pw Array of corner points.
+ * @param c0 Index to ower corner.
+ * @param c1 Index to upper corner.
+ * @param desc Caption to be added in the OSM tags.
+ * @param b Longitude border, i.e. distance in mm from top/bottom of the page border.
+ * @param b1 Outer border, i.e. distance in mm from the left/right of the page border.
+ * @param b2 Middle line (mm).
+ * @param b3 Inner border (mm).
+ * @param t Ticks in tenths of a minute (i.e. T_RESCALE = 1').
+ * @param st subticks in tenths of a minute.
  */
-void geo_lat_ticks(const bbox_t *bb, double b, double b1, double b2, double b3, int g, int t, int st)
+void geo_lat_ticks0(const struct coord *pw, int c0, int c1, const char *desc, double b, double b1, double b2, double b3, int g, int t, int st)
 {
    int bi, lat;
    char buf[32], *s;
+   double latf, lonf, lonm;
 
-   bi = (lround((b + bb->ll.lat) * T_RESCALE) / st) * st;
-   log_msg(LOG_DEBUG, "g = %d, t = %d, st = %d, bi = %d", g, t, st, bi);
+   bi = (lround((MM2LAT0(b, pw[c1].lat - pw[c0].lat) + pw[c0].lat) * T_RESCALE) / st) * st;
+   log_debug("g = %d, t = %d, st = %d, bi = %d", g, t, st, bi);
 
-   for (lat = bi + st; lat < (bb->ru.lat - b) * T_RESCALE; lat += st)
+   for (lat = bi + st; lat < (pw[c1].lat - MM2LAT0(b, pw[c1].lat - pw[c0].lat)) * T_RESCALE; lat += st)
    {
-      geo_tick((double) lat / T_RESCALE, bb->ll.lon + b3, (double) lat / T_RESCALE,
-            bb->ll.lon + ((lat % t) ? b2 : b1), lat % t ? "subtick" : "tick");
-      geo_tick((double) lat / T_RESCALE, bb->ru.lon - b3, (double) lat / T_RESCALE,
-            bb->ru.lon - ((lat % t) ? b2 : b1), lat % t ? "subtick" : "tick");
+      latf = (double) lat / T_RESCALE;
+      lonf = intermediate(pw[c0].lat, pw[c0].lon, pw[c1].lat, pw[c1].lon, latf);
+      lonm = lonlen_at_lat(pw, latf);
+      log_debug("latf = %.3f, lonf = %.3f, lonm = %.3f", latf, lonf, lonm);
+
+      geo_tick(latf, lonf + MM2LON0(b3, lonm), latf, lonf + MM2LON0((lat % t) ? b2 : b1, lonm), lat % t ? "subtick" : "tick");
 
       if (!(lat % g))
       {
-         coord_str((double) lat / T_RESCALE, LAT_DEG, buf, sizeof(buf));
+         coord_str(latf, (double) g / T_RESCALE < 1 ? LAT_DEG : LAT_DEG_ONLY, buf, sizeof(buf));
          s = strdup(buf);
-         geo_description((double) lat / T_RESCALE, bb->ru.lon - b2, s, "right");
-         geo_description((double) lat / T_RESCALE, bb->ll.lon + b2, s, "left");
+         geo_description(latf, lonf + MM2LON0(b2, lonm), s, desc);
       }
    }
+}
+
+
+void geo_lat_ticks(const struct coord *pw, double b, double b1, double b2, double b3, int g, int t, int st)
+{
+   geo_lat_ticks0(pw, 0, 3, "left", b, b1, b2 ,b3, g, t, st);
+   geo_lat_ticks0(pw, 1, 2, "right", b, -b1, -b2 ,-b3, g, t, st);
 }
 
 
@@ -315,19 +438,37 @@ void geo_lat_ticks(const bbox_t *bb, double b, double b1, double b2, double b3, 
  *  @param st subticks in tenths of a minute.
  *  @param cnt Number of points of each gridline. It must be cnt >= 2.
  */
-void geo_lon_grid(const bbox_t *bb, double b, double b1, int g, int t, int st, int cnt)
+void geo_lon_grid(const struct coord *pw, double b, double b1, int g, int t, int st, int cnt)
 {
    int bi, lon;
-   //char buf[32], *s;
+   double lonf, latf0, latf1, latm;
 
-   bi = (lround((b + bb->ll.lon) * T_RESCALE) / st) * st;
-   log_msg(LOG_DEBUG, "g = %d, t = %d, st = %d, bi = %d", g, t, st, bi);
+   bi = (lround((MM2LON0(b, pw[2].lon - pw[3].lon) + pw[3].lon) * T_RESCALE) / st) * st;
+   log_debug("g = %d, t = %d, st = %d, bi = %d", g, t, st, bi);
 
-   for (lon = bi + st; lon < (bb->ru.lon - b) * T_RESCALE; lon += st)
+   for (lon = bi + st; lon < (pw[2].lon - MM2LON0(b, pw[2].lon - pw[3].lon)) * T_RESCALE; lon += st)
    {
       if (!(lon % g))
       {
-         geo_tick0(bb->ll.lat + b1, (double) lon / T_RESCALE, bb->ru.lat - b1, (double) lon / T_RESCALE, "grid", cnt);
+         lonf = (double) lon / T_RESCALE;
+         if (lonf < pw[0].lon + MM2LON0(b, pw[1].lon - pw[0].lon))
+         {
+            log_debug("outside left");
+            latf0 = intermediate(pw[0].lon + MM2LON0(b, pw[1].lon - pw[0].lon), pw[0].lat, pw[3].lon, pw[3].lat, lonf);
+         }
+         else if (lonf > pw[1].lon - MM2LON0(b, pw[1].lon - pw[0].lon))
+         {
+            log_debug("outside right");
+            latf0 = intermediate(pw[1].lon - MM2LON0(b, pw[1].lon - pw[0].lon), pw[1].lat, pw[2].lon, pw[2].lat, lonf);
+         }
+         else
+         {
+            latf0 = intermediate(pw[0].lon, pw[0].lat, pw[1].lon, pw[1].lat, lonf);
+         }
+         latf1 = intermediate(pw[3].lon, pw[3].lat, pw[2].lon, pw[2].lat, lonf);
+         latm = latlen_at_lon(pw, lonf);
+         log_debug("lonf = %.2f, latf0 = %.2f, latf1 = %.2f", lonf, latf0, latf1);
+         geo_tick0(latf0 + MM2LAT0(b1, latm), lonf, latf1 - MM2LAT0(b1, latm), lonf, "grid", cnt);
       }
    }
 }
@@ -340,19 +481,24 @@ void geo_lon_grid(const bbox_t *bb, double b, double b1, int g, int t, int st, i
  *  @param st subticks in tenths of a minute.
  *  @param cnt Number of points of each gridline. It must be cnt >= 2.
  */
-void geo_lat_grid(const bbox_t *bb, double b, double b1, int g, int t, int st, int cnt)
+void geo_lat_grid(const struct coord *pw, double b, double b1, int g, int t, int st, int cnt)
 {
    int bi, lat;
-   //char buf[32], *s;
+   double latf, lonf0, lonf1, lonm;
 
-   bi = (lround((b + bb->ll.lat) * T_RESCALE) / st) * st;
-   log_msg(LOG_DEBUG, "g = %d, t = %d, st = %d, bi = %d", g, t, st, bi);
+   bi = (lround((MM2LAT0(b, pw[3].lat - pw[0].lat) + pw[0].lat) * T_RESCALE) / st) * st;
+   log_debug("g = %d, t = %d, st = %d, bi = %d", g, t, st, bi);
 
-   for (lat = bi + st; lat < (bb->ru.lat - b) * T_RESCALE; lat += st)
+   for (lat = bi + st; lat < (pw[2].lat - MM2LAT0(b, pw[2].lat - pw[1].lat)) * T_RESCALE; lat += st)
    {
       if (!(lat % g))
       {
-         geo_tick0((double) lat / T_RESCALE, bb->ru.lon - b1, (double) lat / T_RESCALE, bb->ll.lon + b1, "grid", cnt);
+         latf = (double) lat / T_RESCALE;
+         lonf0 = intermediate(pw[0].lat, pw[0].lon, pw[3].lat, pw[3].lon, latf);
+         lonf1 = intermediate(pw[1].lat, pw[1].lon, pw[2].lat, pw[2].lon, latf);
+         lonm = lonlen_at_lat(pw, latf);
+         log_debug("latf = %.2f, lonf0 = %.2f, lonf1 = %.2f", latf, lonf0, lonf1);
+         geo_tick0(latf, lonf1 - MM2LON0(b1, lonm), latf, lonf0 + MM2LON0(b1, lonm), "grid", cnt);
       }
    }
 }
@@ -380,18 +526,40 @@ void geo_legend(const bbox_t *bb, struct rdata *rd, const struct grid *grd)
  */
 void grid(struct rdata *rd, const struct grid *grd)
 {
+   struct coord c[4], *pw = c;
    bbox_t bb = rd->bb;
 
    if (rd->proj == PROJ_TRANSVERSAL)
    {
       log_debug("transforming bounding box of grid");
-      struct coord c;
-      c.lat = bb.ll.lat;
-      c.lon = bb.ru.lon;
+      c[1].lat = bb.ll.lat;
+      c[1].lon = bb.ru.lon;
+      c[3].lat = bb.ru.lat;
+      c[3].lon = bb.ll.lon;
       transtraversal(-rd->transversal_lat, rd->mean_lon, &bb.ll.lat, &bb.ll.lon);
       transtraversal(-rd->transversal_lat, rd->mean_lon, &bb.ru.lat, &bb.ru.lon);
-      transtraversal(-rd->transversal_lat, rd->mean_lon, &c.lat, &c.lon);
-      bb.ru.lon = c.lon;
+      transtraversal(-rd->transversal_lat, rd->mean_lon, &c[1].lat, &c[1].lon);
+      transtraversal(-rd->transversal_lat, rd->mean_lon, &c[3].lat, &c[3].lon);
+      if (!grd->polygon_window)
+         bb.ru.lon = c[1].lon;
+   }
+
+   if (rd->polygon_window)
+   {
+      pw = rd->pw;
+   }
+   else
+   {
+      c[0] = bb.ll;
+      c[2] = bb.ru;
+
+      if (!(rd->proj == PROJ_TRANSVERSAL && grd->polygon_window))
+      {
+         c[1].lat = c[0].lat;
+         c[1].lon = c[2].lon;
+         c[3].lat = c[2].lat;
+         c[3].lon = c[0].lon;
+      }
    }
 
    log_msg(LOG_INFO, "grid parameters: margin = %.2f mm, tickswidth = %.2f mm, "
@@ -403,22 +571,22 @@ void grid(struct rdata *rd, const struct grid *grd)
    log_msg(LOG_INFO, "grid bottom %.3f %.3f -- %.3f %.3f",
          bb.ll.lat, bb.ll.lon, bb.ll.lat, bb.ru.lon);
  
-   geo_square(&bb, grd->g_margin, "outer_border", grd->gpcnt);
-   geo_square(&bb, grd->g_margin + grd->g_tw, "ticks_border", grd->gpcnt);
-   geo_square(&bb, grd->g_margin + grd->g_tw + grd->g_stw, "subticks_border", grd->gpcnt);
+   geo_square(pw, grd->g_margin, "outer_border", grd->gpcnt);
+   geo_square(pw, grd->g_margin + grd->g_tw, "ticks_border", grd->gpcnt);
+   geo_square(pw, grd->g_margin + grd->g_tw + grd->g_stw, "subticks_border", grd->gpcnt);
 
    grid_date(&bb, grd);
 
-   geo_lon_ticks(&bb, MM2LON(grd->g_margin + grd->g_tw + grd->g_stw), MM2LAT(grd->g_margin),
-         MM2LAT(grd->g_margin + grd->g_tw), MM2LAT(grd->g_margin + grd->g_tw + grd->g_stw),
+   geo_lon_ticks(pw, grd->g_margin + grd->g_tw + grd->g_stw, grd->g_margin,
+         grd->g_margin + grd->g_tw, grd->g_margin + grd->g_tw + grd->g_stw,
          MIN10(grd->lon_g), MIN10(grd->lon_ticks), MIN10(grd->lon_sticks));
-   geo_lat_ticks(&bb, MM2LAT(grd->g_margin + grd->g_tw + grd->g_stw), MM2LON(grd->g_margin),
-         MM2LON(grd->g_margin + grd->g_tw), MM2LON(grd->g_margin + grd->g_tw + grd->g_stw),
+   geo_lat_ticks(pw, grd->g_margin + grd->g_tw + grd->g_stw, grd->g_margin,
+         grd->g_margin + grd->g_tw, grd->g_margin + grd->g_tw + grd->g_stw,
          MIN10(grd->lat_g), MIN10(grd->lat_ticks), MIN10(grd->lat_sticks));
 
-   geo_lon_grid(&bb, MM2LON(grd->g_margin + grd->g_tw + grd->g_stw), MM2LAT(grd->g_margin),
+   geo_lon_grid(pw, grd->g_margin + grd->g_tw + grd->g_stw, grd->g_margin,
          MIN10(grd->lon_g), MIN10(grd->lon_ticks), MIN10(grd->lon_sticks), grd->gpcnt);
-   geo_lat_grid(&bb, MM2LAT(grd->g_margin + grd->g_tw + grd->g_stw), MM2LON(grd->g_margin),
+   geo_lat_grid(pw, grd->g_margin + grd->g_tw + grd->g_stw, grd->g_margin,
          MIN10(grd->lat_g), MIN10(grd->lat_ticks), MIN10(grd->lat_sticks), grd->gpcnt);
 
    geo_legend(&bb, rd, grd);
@@ -472,7 +640,7 @@ void auto_grid(const struct rdata *rd, struct grid *grd)
 /*! Initialize grid structure according to the config parameters in the grid
  * rule.
  */
-int grid0(smrule_t *r, struct grid *grd)
+int grid_ini(smrule_t *r, struct grid *grd)
 {
    struct rdata *rd = get_rdata();
    double ticks, sticks, g;
@@ -504,6 +672,8 @@ int grid0(smrule_t *r, struct grid *grd)
    if (grd->gpcnt < 2)
       grd->gpcnt = 2;
 
+   grd->polygon_window = get_param_bool("polygon_window", r->act);
+
    log_debug("struct grid = {lat(%.1f:%.1f:%.1f), lon(%.1f:%.1f:%.1f), %.1f, %.1f, %.1f, %d, %d, %d}",
          grd->lat_g, grd->lat_ticks, grd->lat_sticks, grd->lon_g, grd->lon_ticks, grd->lon_sticks,
          grd->g_margin, grd->g_tw, grd->g_stw,
@@ -525,7 +695,7 @@ int act_grid2_ini(smrule_t *r)
       return -1;
    }
 
-   grid0(r, grd);
+   grid_ini(r, grd);
    r->data = grd;
 
    return 0;

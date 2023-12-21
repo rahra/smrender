@@ -347,7 +347,7 @@ In the following all options are explained in alphabetical order.
 
 \item[\optk{p}] \optv{projection}
 
-   Select the chart projection. This could either be \textsf{mercator} or
+   Select the chart projection. This could either be \textsf{mercator}, \textsf{transversal}, or
    \textsf{adams2}, the 1st being the default value if the options is omitted.
    Mercator is the typical projection of most nautical charts.
 
@@ -759,7 +759,7 @@ looks like the following.
 \begin{verbatim}
    <action>   := 'cap:' <param> [ ';' <param> ]
    <param>    := <fontdef> | <angledef> | <aligndef> | <wcapopt>
-                 | <fopt> | <hide> | <bground>
+                 | <fopt> | <hide> | <bground> | <fontbox>
 
    <fontdef>  := <fontname> | <fontsize> | <color> | <fopt>
                  | <key>
@@ -803,6 +803,9 @@ looks like the following.
    <hide>     := 'hide' '=' <bool>
 
    <bground>  := 'fillcolor' '=' <coldef>
+
+   <fontbox>  := 'fontbox' '=' <bool>
+
 \end{verbatim}
 
 %FIXME: 'min_size' | 'max_size' | 'min_area' | 'auto_scale' not described yet!
@@ -870,6 +873,12 @@ The color presets reflect the colors of traditional sea charts. The HTML-style c
 number from \textsf{00} to \textsf{ff}. Optionally a transparency may be specified with \textsf{aa}. It ranges from
 \textsf{00} (opaque) to \textsf{7f} which is absolute transparent. The most signifficant bit is always cleared, hence,
 setting values greater than \textsf{7f} has no effect.
+
+The parameter \optv{fontbox} generates a way within the data which is a box
+around the text. This may be used by subsequent rules to decorate the
+background of the text in a more powerful manner as with just \optv{fillcolor}.
+The \optv{fontbox} option may be used together with \optv{hide} since filling
+would ovepaint the text.
 
 \optv{xoff} and \optv{yoff} specify an offset which is additionally added if
 the caption is \emph{not} placed in the center point. The default value is set

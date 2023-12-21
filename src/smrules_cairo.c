@@ -116,6 +116,7 @@
 #define CREATE_PATH 1
 #define PUSH_GROUP
 #define AUTOSFC 1
+#define BGBOX_SCALE 1.2
 
 #define CAIRO_SMR_STATS
 #ifdef CAIRO_SMR_STATS
@@ -1239,6 +1240,7 @@ int act_cap_ini(smrule_t *r)
    cap.scl.min_area_size = MIN_AREA_SIZE;
    cap.scl.auto_scale = AUTO_SCALE;
    //cap.xoff = cap.yoff = POS_OFFSET;
+   cap.bgbox_scale = BGBOX_SCALE;
 
    if ((cap.font = get_param("font", NULL, r->act)) == NULL)
    {
@@ -1266,6 +1268,9 @@ int act_cap_ini(smrule_t *r)
 
    (void) get_param("xoff", &cap.xoff, r->act);
    (void) get_param("yoff", &cap.yoff, r->act);
+   (void) get_param("bgbox_scale", &cap.bgbox_scale, r->act);
+
+   cap.fontbox = get_param_bool("fontbox", r->act);
 
    parse_auto_rot(r->act, &cap.angle, &cap.rot);
    if ((cap.akey = get_param("anglekey", NULL, r->act)) != NULL && isnan(cap.angle))
@@ -1344,11 +1349,11 @@ int act_cap_ini(smrule_t *r)
    if (!isnan(cap.angle))
       sm_threaded(r);
 
-   log_debug("%04x, %08x, '%s', '%s', '%s', %.1f, {%.1f, %.1f, %.1f, %.2f}, %.1f, %.1f, %.1f, {%.1f, %08x, %.1f}",
+   log_debug("pos = 0x%04x, col = 0x%08x, colkey = '%s', font = '%s', key = '%s', size = %.1f, scl = {%.1f, %.1f, %.1f, %.2f}, angle = %.1f, xoff = %.1f, yoff =%.1f, rot = {%.1f, %08x, %.1f}, {fill = %d, fillcol 0x%08x, filcolkey \"%s\"}, bgbox_scale = %.2f, fontbox = %d",
          cap.pos, cap.cs.col, safe_null_str(cap.cs.key), cap.font, cap.key, cap.size,
          cap.scl.max_auto_size, cap.scl.min_auto_size, cap.scl.min_area_size, cap.scl.auto_scale,
          cap.angle, cap.xoff, cap.yoff,
-         cap.rot.phase, cap.rot.autocol, cap.rot.weight);
+         cap.rot.phase, cap.rot.autocol, cap.rot.weight, cap.fill.used, cap.fill.cs.col, safe_null_str(cap.fill.cs.key), cap.bgbox_scale, cap.fontbox);
    for (int i = 0; i < cap.klist.count; i++)
       log_debug("filter[%d] = '%s'", i, cap.klist.key[i]);
    memcpy(r->data, &cap, sizeof(cap));
@@ -1890,13 +1895,14 @@ static int dp_get(const diffvec_t *dv, int num_dv, diffpeak_t **rp)
             last = i + num_dv - 1;
          }
          cnt++;
-         if ((*rp = realloc(dp, cnt * sizeof(*dp))) == NULL)
+         diffpeak_t *dp0;
+         if ((dp0 = realloc(dp, cnt * sizeof(*dp))) == NULL)
          {
             log_msg(LOG_ERR, "failed to realloc diffpeak_t: %s", strerror(errno));
             free(dp);
             return -1;
          }
-         dp = *rp;
+         dp = *rp = dp0;
          if (dv[i % num_dv].dv_angle > dv[(i - 1) % num_dv].dv_angle)
             dp[cnt - 1].dp_start = (dv[i % num_dv].dv_angle + dv[(i - 1) % num_dv].dv_angle) / 2;
          else
@@ -2063,6 +2069,94 @@ static int retr_align_key_pos(const osm_obj_t *o, const char *key)
 }
 
 
+static int cap_geo_rect(const struct actCaption *cap, double x, double y, double width, double height, double desc, const osm_obj_t *o)
+{
+   double ws = width * cap->bgbox_scale;
+   double hs = height * cap->bgbox_scale;
+   double x0, y0;
+   osm_node_t *n;
+   osm_way_t *w;
+   int i;
+
+   // get and init new way
+   w = malloc_way(o->tag_cnt + 2, 5);
+   osm_way_default(w);
+   // copy tags and mage sure "generator=smrender" is not duplicated
+   i = match_attr(o, "generator", "smrender") == -1;
+   memcpy(&w->obj.otag[i], o->otag, sizeof(*o->otag) * o->tag_cnt);
+   w->obj.tag_cnt = o->tag_cnt + i;
+   // add new tag "smrender:fontbox=yes"
+   set_const_tag(&w->obj.otag[w->obj.tag_cnt], "smrender:fontbox", "yes");
+   w->obj.tag_cnt++;
+
+   // add corner nodes
+   for (i = 0; i < 4; i++)
+   {
+      n = malloc_node(w->obj.tag_cnt);
+      osm_node_default(n);
+      memcpy(n->obj.otag, w->obj.otag, sizeof(*w->obj.otag) * w->obj.tag_cnt);
+      n->obj.tag_cnt = w->obj.tag_cnt;
+
+      x0 = x + (width - ws) * .5;
+      y0 = y + (height - hs) * .5 + desc;
+
+      switch (i)
+      {
+         case 0:
+            break;
+
+         case 1:
+            x0 += ws;
+            break;
+
+         case 2:
+            x0 += ws;
+            y0 += hs;
+            break;
+
+         case 3:
+            y0 += hs;
+            break;
+
+         default:
+            log_msg(LOG_CRIT, "this shoud never happen: i = %d", i);
+            return -1;
+      }
+
+      pxf2geo(rdata_unit_px(x0, U_PT), rdata_unit_px(y0, U_PT), &n->lon, &n->lat);
+      put_object((osm_obj_t*) n);
+      w->ref[i] = n->obj.id;
+   }
+   w->ref[4] = w->ref[0];
+   put_object((osm_obj_t*) w);
+
+   return 0;
+}
+
+
+/*! This function physically draws the background box of a text. The box will be scaled by BGBOX_SCALE.
+ * @param cap Pointer to the caption structure.
+ * @param x X position of box, which is typically the same as from the text itself.
+ * @param y Y position of box, which is typically the same as from the text itself.
+ * @param w Width of the Text.
+ * @param h Height of the Text.
+ * @param desc The descent of the font which was defined in the cairo_font_extents_t structure.
+ * @param col Color to be used.
+ */
+static void cap_rect(const struct actCaption *cap, double x, double y, double w, double h, double desc, int col)
+{
+   double ws = w * cap->bgbox_scale;
+   double hs = h * cap->bgbox_scale;
+
+   cairo_save(cap->ctx);
+   cairo_translate(cap->ctx, (w - ws) * .5, desc + (h - hs) * .5);
+   cairo_smr_set_source_color(cap->ctx, col);
+   cairo_rectangle(cap->ctx, x, y, ws, hs);
+   cairo_fill(cap->ctx);
+   cairo_restore(cap->ctx);
+}
+
+
 static int cap_coord(const struct actCaption *cap, const struct coord *c, const bstring_t *str, osm_obj_t *o)
 {
    cairo_text_extents_t tx;
@@ -2114,6 +2208,7 @@ static int cap_coord(const struct actCaption *cap, const struct coord *c, const 
    cairo_set_font_size(cap->ctx, mm2unit(cap->size));
    cairo_font_extents(cap->ctx, &fe);
    cairo_text_extents(cap->ctx, buf, &tx);
+   log_debug("ascent = %.2f, descent = %.2f, width = %.2f, height = %.2f, x_brg = %.2f, y_brg = %.2f", fe.ascent, fe.descent, tx.width, tx.height, tx.x_bearing, tx.y_bearing);
 
    if (isnan(cap->angle))
    {
@@ -2224,15 +2319,16 @@ static int cap_coord(const struct actCaption *cap, const struct coord *c, const 
       cairo_smr_set_source_color(cap->ctx, color_by_cs(o, &cap->cs));
 
    cairo_rotate(cap->ctx, a);
-   pos_offset(pos, tx.width + tx.x_bearing, fe.ascent, cap->xoff, cap->yoff, &x, &y);
+   double hgt = fmax(tx.height, fe.ascent + fe.descent);
+   double x0 = x, y0 = y;
+   pos_offset(pos, tx.width + tx.x_bearing, hgt, cap->xoff, cap->yoff, &x, &y);
    if (cap->fill.used)
    {
-      cairo_save(cap->ctx);
-      cairo_translate(cap->ctx, -cap->xoff/2, cap->yoff/2); // FIXME: not sure if translation is correct
-      cairo_smr_set_source_color(cap->ctx, color_by_cs(o, &cap->fill.cs));
-      cairo_rectangle(cap->ctx, x, y, tx.width + tx.x_bearing + cap->xoff, -fe.ascent * 1.2);
-      cairo_fill(cap->ctx);
-      cairo_restore(cap->ctx);
+      cap_rect(cap, x, y, tx.width + tx.x_bearing, -hgt, fe.descent, color_by_cs(o, &cap->fill.cs));
+   }
+   if (cap->fontbox)
+   {
+      cap_geo_rect(cap, x0 + x, y0 + y, tx.width + tx.x_bearing, -hgt, fe.descent, o);
    }
 #ifdef AUTOSFC
    if (isnan(cap->angle))

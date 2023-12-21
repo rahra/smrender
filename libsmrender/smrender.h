@@ -40,11 +40,6 @@
 #define DEG2RAD(x) ((x) * M_PI / 180.0)
 #define RAD2DEG(x) ((x) * 180.0 / M_PI)
 
-#define LAT_CHAR 0
-#define LON_CHAR 1
-#define LAT_DEG 2
-#define LON_DEG 3
-
 #ifdef UNUSED 
 #elif defined(__GNUC__) 
 # define UNUSED(x) UNUSED_ ## x __attribute__((unused)) 
@@ -54,6 +49,11 @@
 # define UNUSED(x) x 
 #endif
 
+//! format types for coord_str()
+typedef enum
+{
+   LAT_CHAR, LON_CHAR, LAT_DEG, LON_DEG, LAT_DEG_ONLY, LON_DEG_ONLY
+} coord_fmt_t;
 
 typedef struct smrule smrule_t;
 
@@ -88,12 +88,11 @@ int get_param_bool(const char*, const action_t*);
 //void set_static_obj_tree(bx_node_t **);
 //struct rdata *get_rdata(void);
 bx_node_t **get_objtree(void);
-int coord_str(double , int , char *, int );
 int func_name(char *, int , void *);
 int put_object0(bx_node_t**, int64_t, void*, int);
 void *get_object0(bx_node_t*, int64_t, int);
 void *rem_object(int, int64_t);
-int coord_str(double, int, char*, int);
+int coord_str(double, coord_fmt_t, char*, int);
 int strcnt(const char*, int);
 int realloc_tags(osm_obj_t *, int );
 int realloc_refs(osm_way_t *, int );

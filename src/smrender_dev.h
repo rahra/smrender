@@ -223,7 +223,9 @@ struct actCaption
    double xoff, yoff;   //!< x/y offset from origin
    int hide;         // if set to 1 do everything except showing the caption
    struct auto_rot rot;
-   struct drawStyle fill;
+   struct drawStyle fill;  //!< this defines if the background is filled
+   double bgbox_scale;     //!< factor to scale the background box
+   int fontbox;            //!< generate OSM data-based box
 #ifdef HAVE_CAIRO
    cairo_t *ctx;
    cairo_surface_t *auto_sfc;
@@ -271,7 +273,21 @@ struct grid
    int copyright, cmdline;
    //! number of points per within each grid line (must be >= 2)
    int gpcnt;
+   //! render chart border as polygon in transversal Mercator
+   int polygon_window;
 };
+
+typedef struct ruler
+{
+   //! number of sections
+   int rcnt;
+   //! length of sections
+   double rsec;
+   //! internal call counter
+   int call;
+   //! units: 0 = km, 1 = nm
+   int unit;
+} ruler_t;
 
 struct file
 {

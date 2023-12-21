@@ -42,8 +42,11 @@
 #define px2mm(x) rdata_px_unit(x, U_MM)
 #define PX2MM(x) px2mm(x)
 // convert mm to degrees
-#define MM2LAT(x) ((x) * (rdata_get()->bb.ru.lat - rdata_get()->bb.ll.lat) / PX2MM(rdata_get()->h))
-#define MM2LON(x) ((x) * (rdata_get()->bb.ru.lon - rdata_get()->bb.ll.lon) / PX2MM(rdata_get()->w))
+#define MM2GEO(x, d, m) ((x) * (d) / (m))
+#define MM2LAT0(x, d) MM2GEO(x, d, PX2MM(rdata_get()->h))
+#define MM2LON0(x, d) MM2GEO(x, d, PX2MM(rdata_get()->w))
+#define MM2LAT(x) MM2LAT0(x, rdata_get()->bb.ru.lat - rdata_get()->bb.ll.lat)
+#define MM2LON(x) MM2LON0(x, rdata_get()->bb.ru.lon - rdata_get()->bb.ll.lon)
 
 
 typedef enum {PROJ_MERC, PROJ_ADAMS2, PROJ_TRANSVERSAL} proj_t;
