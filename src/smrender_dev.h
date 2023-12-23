@@ -70,38 +70,38 @@
 #define POS_W1 (POS_W | POS_1)
 #define POS_DIR_MSK (POS_N | POS_S | POS_E | POS_W)
 
-// macro to convert minutes to degrees
+//! macro to convert minutes to degrees
 #define MIN2DEG(x) ((double) (x) / 60.0)
-// distance of grid lines in degrees (should be multple of G_TICKS)
+//! distance of grid lines in degrees (should be multple of G_TICKS)
 #define G_GRID (10.0 / 60.0)
-// distance of axis ticks in degrees (should be multiple of G_STICKS)
+//! distance of axis ticks in degrees (should be multiple of G_STICKS)
 #define G_TICKS (1.0 / 60.0)
-// distance of axis subticks in degrees
+//! distance of axis subticks in degrees
 #define G_STICKS (G_TICKS / 4.0)
-// margin from paper edge to border of chart (mm)
+//! margin from paper edge to border of chart (mm)
 #define G_MARGIN 15.0
-// width of ticks border (mm)
+//! width of ticks border (mm)
 #define G_TW 5.0
-// width of subticks border (mm)
+//! width of subticks border (mm)
 #define G_STW 2.5
-// line width of chart border (mm)
+//! line width of chart border (mm)
 #define G_BW 0.1
 #define G_FONT "/usr/share/fonts/truetype/ttf-liberation/LiberationSans-Regular.ttf"
 #define G_FTSIZE 3
 #define G_SFTSIZE 2
-// default macros for auto-sized caption limits
+//! default macros for auto-sized caption limits
 #define MIN_AUTO_SIZE 0.5
 #define MAX_AUTO_SIZE 12.0
 #define MIN_AREA_SIZE 8.0
 #define AUTO_SCALE 0.2
-// default curve factor
+//! default curve factor
 #define DIV_PART 0.2
 
 #define ANGLE_DIFF 10
 
 #define MAX_SHAPE_PCOUNT 2000
 
-// default oversampling factor
+//! default oversampling factor
 #ifdef HAVE_CAIRO
 #define DEFAULT_OVS 1
 #else
@@ -111,7 +111,7 @@
 #define MIN_ID 0xffffff0000000000LL
 #define MAX_ID INT64_MAX
 
-// scaling factor for bbox of URL output (-u)
+//! scaling factor for bbox of URL output (-u)
 #define BB_SCALE 0.01
 
 #define JPG_QUALITY 80
@@ -121,7 +121,7 @@
 #define FTYPE_PDF 2
 #define FTYPE_SVG 3
 
-// maximum number of dash definitions in a dash array
+//! maximum number of dash definitions in a dash array
 #define MAX_DASHLEN 4
 
 //enum {WHITE, YELLOW, BLACK, BLUE, MAGENTA, BROWN, TRANSPARENT, BGCOLOR, MAXCOLOR};
@@ -151,16 +151,16 @@ typedef struct keylist
 
 struct auto_rot
 {
-   double phase;     // phase of weighting function. 0 degress means east (0)
-                     // and west (180) is most important
-   int autocol;      // (deprecated) background color which is used for auto-rotation detection
-   double weight;    // auto-rot weighting (0-1), 1 means everything equal
-   int mkarea;       // if set to 1, OSM ways/nodes are generated according to the diffvec_t
+   double phase;     //!< phase of weighting function. 0 degress means east (0) and west (180) is most important
+   int autocol;      //!< (deprecated) background color which is used for auto-rotation detection
+   double weight;    //!< auto-rot weighting (0-1), 1 means everything equal
+   int mkarea;       //!< if set to 1, OSM ways/nodes are generated according to the diffvec_t
 };
 
 struct auto_scale
 {
-   double max_auto_size, min_auto_size;   //!< min/max font size [mm] for auto-size area captions
+   double max_auto_size;   //!< min font size [mm] for auto-size area captions
+   double min_auto_size;   //!< max font size [mm] for auto-size area captions
    double min_area_size;   //!< minimum size [mm2] of area for auto-sized area captions
    double auto_scale;      //!< scaling factor
 };
@@ -192,8 +192,8 @@ struct cap_data
 
 struct col_spec
 {
-   int col;          // color code
-   char *key;        // name of color key (or NULL if not used)
+   int col;          //!< color code
+   char *key;        //!< name of color key (or NULL if not used)
 };
 
 struct drawStyle
@@ -208,20 +208,19 @@ struct drawStyle
 
 struct actCaption
 {
-   short pos;        // position, or'd POS_x macros
-   struct col_spec cs;  // caption color
-   char *font;       // pointer to font filename
-   char *key;        // pointer to caption string
-   keylist_t klist;  // keylist for filter
-   double size;      // font size in mm
+   short pos;              //!< position, or'd POS_x macros
+   struct col_spec cs;     //!< caption color
+   char *font;             //!< pointer to font filename
+   char *key;              //!< pointer to caption string
+   keylist_t klist;        //!< keylist for filter
+   double size;            //!< font size in mm
    struct auto_scale scl;
-   double angle;     // angle to rotate caption. 0 degress equals east,
-                     // counterclockwise. NAN means auto-rotate
-   char *akey;       // angle is defined in a tag
-   char *halignkey;  // keys defining alignment for tag-dependent alignment
+   double angle;           //!< angle to rotate caption. 0 degress equals east, counterclockwise. NAN means auto-rotate
+   char *akey;             //!< angle is defined in a tag
+   char *halignkey;        //!< keys defining alignment for tag-dependent alignment
    char *valignkey;
-   double xoff, yoff;   //!< x/y offset from origin
-   int hide;         // if set to 1 do everything except showing the caption
+   double xoff, yoff;      //!< x/y offset from origin
+   int hide;               //!< if set to 1 do everything except showing the caption
    struct auto_rot rot;
    struct drawStyle fill;  //!< this defines if the background is filled
    double bgbox_scale;     //!< factor to scale the background box

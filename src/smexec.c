@@ -15,8 +15,9 @@
  * along with Smrender. If not, see <http://www.gnu.org/licenses/>.
  */
 
-/*! 
- * 
+/*! \file smexec.c
+ * This file contains to code for rule-based execution of external scripts and
+ * programs.
  *
  *  @author Bernhard R. Fischer
  */

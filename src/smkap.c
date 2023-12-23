@@ -15,7 +15,8 @@
  * along with smrender. If not, see <http://www.gnu.org/licenses/>.
  */
 
-/*! This file contains the code to generate the KAP file.
+/*! \file smkap.c
+ * This file contains the code to generate the KAP file.
  *  Please note that this file contains two functions (bsb_compress_nb() and
  *  bsb_compress_row()) which are taken as is from the project libbsb
  *  (http://libbsb.sourceforge.net/). The authors of libbsb are Stuart

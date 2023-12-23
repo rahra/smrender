@@ -15,13 +15,16 @@
  * along with Smrender. If not, see <http://www.gnu.org/licenses/>.
  */
 
-/*! This file contains the code for median cut algorithm which is used to
+/*! \file median_cut.c
+ * This file contains the code for median cut algorithm which is used to
  * reduce the colors of an image to a specified number.
  * The algorthim was ported to C from the original C++ sample at
  * http://en.literateprograms.org/Median_cut_algorithm_(C_Plus_Plus)?oldid=12754
  *
  * For testing, compile with
  * gcc -Wall -DTEST_MEDIAN_CUT -DHAVE_CONFIG_H `pkg-config --libs --cflags cairo` -std=c99 -I../libsmrender -I..  -lsmrender -omedian_cut median_cut.c
+ *
+ * \author Bernhard R. Fischer <bf@abenteuerland.at>
  */
 
 #ifdef HAVE_CONFIG_H

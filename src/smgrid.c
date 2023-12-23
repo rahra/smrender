@@ -15,7 +15,8 @@
  * along with smrender. If not, see <http://www.gnu.org/licenses/>.
  */
 
-/*! This file contains the function for generating the virtual nodes/ways which
+/*! \file smgrid.c
+ * This file contains the function for generating the virtual nodes/ways which
  * make up the grid, the legend, and the chart border.
  *
  * @author Bernhard R. Fischer

@@ -911,7 +911,7 @@ int add_page_border(struct rdata *rd, const char *border)
 
 /*! This function splits the string of the form "<filename>[:<option>]" and
  * determines its values. <Filename> is directly copied into the argument name.
- * <option> is chcompared to "nologtime" or "logtime". If <option> is set to
+ * <option> is compared to "nologtime" or "logtime". If <option> is set to
  * "nologtime", 0 is returned. If <option> is set to "logtime", or if it is
  * omitted, 1 is returned. In case of any other value, 1 is returned as well,
  * but a warning will be logged.

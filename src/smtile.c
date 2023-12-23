@@ -15,7 +15,8 @@
  * along with Smrender. If not, see <http://www.gnu.org/licenses/>.
  */
 
-/*! This files contains the code to create the tiles for an online tile server.
+/*! \file smtile.c
+ * This files contains the code to create the tiles for an online tile server.
  *  The original code was taken from the OSM Wiki
  *  http://wiki.openstreetmap.org/wiki/Slippy_map_tilenames
  *  and was slightly adapted to fulfill the needs for Smrender.

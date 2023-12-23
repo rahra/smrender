@@ -1,4 +1,5 @@
-/*! This file contains two functions for reading and writing JPEG files from
+/*! \file cairo_jpg.c
+ * This file contains two functions for reading and writing JPEG files from
  * and to Cairo image surfaces. It uses the functions from the libjpeg.
  * Most of the code is directly derived from the online example at
  * http://libjpeg-turbo.virtualgl.org/Documentation/Documentation

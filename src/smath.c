@@ -15,7 +15,8 @@
  * along with smrender. If not, see <http://www.gnu.org/licenses/>.
  */
 
-/*! This file contains contains code for some calculations on positions given in lat/lon.
+/*! \file smath.c
+ * This file contains contains code for some calculations on positions given in lat/lon.
  *
  *  @author Bernhard R. Fischer
  */

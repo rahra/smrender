@@ -15,7 +15,8 @@
  * along with Smrender. If not, see <http://www.gnu.org/licenses/>.
  */
 
-/*! This file contains the code for multi-threaded execution of rules.
+/*! \file smthread.c
+ * This file contains the code for multi-threaded execution of rules.
  *
  *  @author Bernhard R. Fischer
  */

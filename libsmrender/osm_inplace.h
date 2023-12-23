@@ -15,6 +15,13 @@
  * along with Smrender. If not, see <http://www.gnu.org/licenses/>.
  */
 
+/*! \file osm_inplace.h
+ * This file contains the fundamelntal definitions of the OSM objects as
+ * represented in memory by Smrender.
+ *
+ * \author Bernhard R. Fischer, <bf@abenteuerland.at>
+ */
+
 #ifndef OSM_INPLACE_H
 #define OSM_INPLACE_H
 
@@ -38,11 +45,15 @@ enum {ROLE_NA, ROLE_EMPTY};
                            (x)->type == OSM_REL ? sizeof(osm_rel_t) : 0)
 
 
+/*! The otag stucture contains a tag which are the two strings k and v. */
 struct otag
 {
    bstring_t k, v;
 };
 
+/*! The osm_obj_t stucture is the definition of all common attributes which
+ * nodes, ways, and relations share.
+ */
 typedef struct osm_obj
 {
    short type;
