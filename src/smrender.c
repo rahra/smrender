@@ -915,6 +915,8 @@ int add_page_border(struct rdata *rd, const char *border)
  * "nologtime", 0 is returned. If <option> is set to "logtime", or if it is
  * omitted, 1 is returned. In case of any other value, 1 is returned as well,
  * but a warning will be logged.
+ * @param arg Pointer to parameter.
+ * @return returns 0 if options 'nologtime' was given, otherwise 1.
  */
 static int proc_logfile_name(char *arg)
 {
@@ -931,6 +933,7 @@ static int proc_logfile_name(char *arg)
    if (arg[0] == ':')
       arg[0] = '\0';
 
+   s = strtok(NULL, ":");
    // check options 'logtime' | 'nologtime'
    if (s == NULL || !strcasecmp(s, "logtime"))
       return 1;

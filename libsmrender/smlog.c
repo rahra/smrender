@@ -15,7 +15,8 @@
  * along with smrender. If not, see <http://www.gnu.org/licenses/>.
  */
 
-/*! This file simply contains the logging functions. It was originally written
+/*! \file smlog.c
+ * This file simply contains the logging functions. It was originally written
  * for OnionCat and was adapted to be used for smrender.
  * 
  *  @author Bernhard R. Fischer
@@ -77,14 +78,31 @@ void set_log_time(int a)
 }
 
 
+/*! Init logging.
+ * @param s Name of logfile. If s == 'stderr' it will log to stderr instead if
+ * a file. If the string is prepended by a '+' the logging will append to the
+ * logfile if it exists already. Otherwise the file will be truncated.
+ * @param level Loglevel according to syslog(3).
+ * @return The function returns a FILE pointer to the logfile.
+ */
 FILE *init_log(const char *s, int level)
 {
+   const char *mode = "w";
    level_ = level;
 
-   if (!strcmp(s, "stderr"))
+   if (s == NULL || !strcmp(s, "stderr"))
       log_ = stderr;
-   else if ((log_ = fopen(s, "a")) == NULL)
-      fprintf(stderr, "*** could not open logfile %s: %s. Logging to syslog.\n", s, strerror(errno));
+   else
+   {
+      if (*s == '+')
+      {
+         s++;
+         mode = "a";
+      }
+
+      if ((log_ = fopen(s, mode)) == NULL)
+         fprintf(stderr, "*** could not open logfile %s: %s. Logging to syslog.\n", s, strerror(errno));
+   }
 
    return log_;
 }
