@@ -15,6 +15,14 @@
  * along with libhpxml. If not, see <http://www.gnu.org/licenses/>.
  */
 
+/*! \file bstring.c
+ * This file contains all functions for the bstrings. Bstrings are string
+ * which are stored as a memory structure bstring_t which contains a pointer to
+ * the string an the number of bytes within the string. Bstrings are not
+ * necessarily \0-terminated. This speeds up XML processing because it allows
+ * to use the strings within the files directly instead of copying them
+ * somewhere else.
+ */
 #include <stddef.h>
 #include <string.h>
 #include <stdlib.h>
@@ -35,6 +43,11 @@ int bs_advance(bstring_t *b)
 }
 
 
+/*! This function is the same as bs_advance() but takes a bstringl_t structure
+ * as an argument instead.
+ * @param b Pointer to bstringl_t structure.
+ * @return Returns the new length of the string.
+ */
 int bs_advancel(bstringl_t *b)
 {
    b->buf++;
@@ -135,6 +148,11 @@ long bs_tol(bstring_t b)
 }
 
 
+/*! This function converts the decimal number pointed to by the bstring b into
+ * a double value. This function workes similar to strtod(3).
+ * @param b Bstring structure.
+ * @return The function returns the double value of the number pointed to by b.
+ */
 double bs_tod(bstring_t b)
 {
    int n = 0, e;

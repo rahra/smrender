@@ -15,6 +15,11 @@
  * along with smrender. If not, see <http://www.gnu.org/licenses/>.
  */
 
+/*! \file smrender.h
+ * This file contains fundamental definitions for Smrender.
+ *
+ * @author Bernhard R. Fischer, <bf@abenteuerland.at>
+ */
 #ifndef SMRENDER_H
 #define SMRENDER_H
 

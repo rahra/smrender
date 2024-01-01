@@ -15,6 +15,11 @@
  * along with smfilter. If not, see <http://www.gnu.org/licenses/>.
  */
 
+/*! \file seamark.h
+ * This file contains the definitions for the light arcs and the captions.
+ *
+ * \author Bernhard R. Fischer, <bf@abenteuerland.at>
+ */
 #ifndef SEAMARK_H
 #define SEAMARK_H
 

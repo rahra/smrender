@@ -15,6 +15,10 @@
  * along with libhpxml. If not, see <http://www.gnu.org/licenses/>.
  */
 
+/*! \file bstring.h
+ * This file contains all definitions for the bstrings.
+ * @author Bernhard R. Fischer, <bf@abenteuerland.at>
+ */
 #ifndef BSTRING_H
 #define BSTRING_H
 

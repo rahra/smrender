@@ -15,7 +15,9 @@
  * along with Smrender. If not, see <http://www.gnu.org/licenses/>.
  */
 
-/*! This is the header file for lists.c.
+/*! \file lists.h
+ * This is the header file for lists.c. It contains all definitions for the
+ * lists.
  *
  *  @author Bernhard R. Fischer
  */

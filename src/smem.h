@@ -15,6 +15,11 @@
  * along with Smrender. If not, see <http://www.gnu.org/licenses/>.
  */
 
+/*! \file smem.h
+ * This file contains the definitions for the memory handling stuff.
+ *
+ * \author Bernhard R. Fischer, <bf@abenteuerland.at>
+ */
 #ifndef SMEM_H
 #define SMEM_H
 

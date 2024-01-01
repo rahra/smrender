@@ -15,6 +15,12 @@
  * along with Smrender. If not, see <http://www.gnu.org/licenses/>.
  */
 
+/*! \file smem.c
+ * This file contians the functions for the memory handling.
+ * Note: Theses function are currently not in use!
+ *
+ * \author Bernhard R. Fischer, <bf@abenteuerland.at>
+ */
 #include <stdlib.h>
 #include <unistd.h>
 #include <errno.h>

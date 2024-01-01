@@ -15,6 +15,12 @@
  * along with Smrender. If not, see <http://www.gnu.org/licenses/>.
  */
 
+/*! \file bxtree.c
+ * This file contains to code for the (binary) tree. All objects are stored
+ * within this tree. Rules are stored as well in a separate tree.
+ *
+ * @author Bernhard R. Fischer, <bf@abenteuerland.at>
+ */
 #ifdef HAVE_CONFIG_H
 #include "config.h"
 #endif
@@ -35,12 +41,17 @@ static size_t mem_alloc_ = 0, mem_free_ = 0;
 static long malloc_cnt_ = 0;
 
 
+/*! Return the number of bytes currently allocated by the tree.
+ * @return Number of bytes allocated.
+ */
 size_t bx_sizeof(void)
 {
    return mem_alloc_ - mem_free_;
 }
 
 
+/*! This function outputs the current amount of memory at program exit.
+ */
 void __attribute__((destructor)) bx_exit(void)
 {
    log_msg(LOG_DEBUG, "tree memory: %ld kByte, malloc_cnt_ = %ld, mem_alloc_ = %ld, mem_free_ = %ld",
@@ -48,6 +59,10 @@ void __attribute__((destructor)) bx_exit(void)
 }
 
 
+/*! Allocate and initialize memory for a tree node.
+ * @return This function always returns a valid pointer to a new node. If no
+ * memory is available the functions calls exit(3).
+ */
 bx_node_t *bx_malloc(void)
 {
    bx_node_t *node;
@@ -65,6 +80,9 @@ bx_node_t *bx_malloc(void)
 }
 
 
+/*! Free the memory of the given node.
+ * @param node Pointer of node to free.
+ */
 void bx_free(bx_node_t *node)
 {
    free(node);
@@ -75,7 +93,8 @@ void bx_free(bx_node_t *node)
 }
 
 
-/*!
+/*! This funmction recursively adds a new node to the tree at the given id h.
+ * This function is not thread-safe, use bx_add_node0() instead.
  * @param node double pointer to current node.
  * @param h hash value to store.
  * @param d curren depth of tree.
@@ -96,6 +115,13 @@ bx_node_t *bx_add_node1(bx_node_t **node, bx_hash_t h, bx_hash_t d)
 }
 
 
+/*! This function adds a new node to the tree taking core on thread locking.
+ * Internally it calls bx_add_node1().
+ * @param node Double pointer to current node.
+ * @param h Hash value to store.
+ * @param d Curren depth of tree starting with 0 at the root.
+ * @return Pointer to added node.
+ */
 bx_node_t *bx_add_node0(bx_node_t **node, bx_hash_t h, bx_hash_t d)
 {
 #ifdef WITH_THREADS
@@ -111,6 +137,13 @@ bx_node_t *bx_add_node0(bx_node_t **node, bx_hash_t h, bx_hash_t d)
 }
 
 
+/*! This function recursively retrieves the tree node with the id h. This
+ * function does not take thread-locking into account.
+ * @param node Pointer to tree node to start search for.
+ * @param h Hash value (id) of node to get.
+ * @param d Current search depth starting with 0 at the root.
+ * @return Returns a pointer to the desired node.
+ */
 bx_node_t *bx_get_node1(bx_node_t *node, bx_hash_t h, bx_hash_t d)
 {
    // break recursion at end of depth
@@ -122,6 +155,14 @@ bx_node_t *bx_get_node1(bx_node_t *node, bx_hash_t h, bx_hash_t d)
 }
 
 
+/*! This function recursively retrieves the tree node with the id h. This
+ * function does takes care on thread-locking. Internally it calls
+ * bx_get_node1().
+ * @param node Pointer to tree node to start search for.
+ * @param h Hash value (id) of node to get.
+ * @param d Current search depth starting with 0 at the root.
+ * @return Returns a pointer to the desired node.
+ */
 bx_node_t *bx_get_node0(bx_node_t *node, bx_hash_t h, bx_hash_t d)
 {
 #ifdef WITH_THREADS
@@ -137,6 +178,10 @@ bx_node_t *bx_get_node0(bx_node_t *node, bx_hash_t h, bx_hash_t d)
 }
 
 
+/*! This function recursively frees a whole tree.
+ * @param node Pointer to tree.
+ * @param d Current depth, starting with 0 at the root.
+ */
 void bx_free_tree0(bx_node_t *node, bx_hash_t d)
 {
    int i;

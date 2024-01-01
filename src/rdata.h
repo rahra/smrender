@@ -15,6 +15,11 @@
  * along with smrender. If not, see <http://www.gnu.org/licenses/>.
  */
 
+/*! \file rdata.h
+ * This file contains definitions for all rendering relevant data.
+ *
+ * \author Bernhard R. Fischer, <bf@abenteuerland.at>
+ */
 #ifndef RDATA_H
 #define RDATA_H
 

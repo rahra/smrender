@@ -15,6 +15,11 @@
  * along with smrender. If not, see <http://www.gnu.org/licenses/>.
  */
 
+/*! \file smaction.h
+ * This file contains the definitions for the actions (rules).
+ *
+ * @author Bernhard R. Fischer, <bf@abenteuerland.at>
+ */
 #ifndef SMACTION_H
 #define SMACTION_H
 

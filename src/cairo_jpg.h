@@ -1,7 +1,8 @@
 #ifndef CAIRO_JPEG_H
 #define CAIRO_JPEG_H
 
-/*! This file contains all prototypes for the Cairo-JPEG functions implemented
+/*! \file cairo_jpg.h
+ * This file contains all prototypes for the Cairo-JPEG functions implemented
  * in cairo_jpg.c. See there for the function documentation.
  *
  * @author Bernhard R. Fischer, 2048R/5C5FFD47 bf@abenteuerland.at

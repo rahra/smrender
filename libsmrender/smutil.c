@@ -15,7 +15,8 @@
  * along with smrender. If not, see <http://www.gnu.org/licenses/>.
  */
 
-/*! This file contains 'utility' code. This is getting and putting object from
+/*! \file smutil.c
+ * This file contains 'utility' code. This is getting and putting object from
  * and into the object tree, some bstring_t functions (which are not found in
  * bstring.c), and the matching functions which are applied to the objects
  * before execution the rules' actions.

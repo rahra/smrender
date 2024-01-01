@@ -15,6 +15,11 @@
  * along with smfilter. If not, see <http://www.gnu.org/licenses/>.
  */
 
+/*! \file osm_func.c
+ * This file contains some base functions to manipulate OSM objects.
+ *
+ * @author Bernhard R. Fischer, <bf@abenteuerland.at>
+ */
 #ifdef HAVE_CONFIG_H
 #include "config.h"
 #endif

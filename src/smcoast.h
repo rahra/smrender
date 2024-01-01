@@ -15,6 +15,12 @@
  * along with smrender. If not, see <http://www.gnu.org/licenses/>.
  */
 
+/*! \file smcoast.h
+ * This file contains the definitions for the whole polygon closing stuff.
+ *
+ *  \author Bernhard R. Fischer, <bf@abenteuerland.at>
+ */
+
 #ifndef SMCOAST_H
 #define SMCOAST_H
 

@@ -15,8 +15,8 @@
  * along with Smrender. If not, see <http://www.gnu.org/licenses/>.
  */
 
-/*! This files contains the code to handle generic double-linked lists.
- *  
+/*! \file lists.c
+ * This files contains the code to handle generic double-linked lists.
  *
  *  @author Bernhard R. Fischer
  */
