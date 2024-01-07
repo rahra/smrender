@@ -52,11 +52,11 @@ void __attribute__((constructor)) mem_init(void)
       page_size_ -= sizeof(sm_memlist_t);
    heapmem_ = heapmem;
    mem_ = &mem;
-   log_msg(LOG_WARN, "mem_init(), page_size_ = %d", page_size_);
+   log_debug("mem_init(), page_size_ = %d", page_size_);
 }
 
 
-void *mem_alloc(size_t size)
+static void *mem_alloc(size_t size)
 {
    sm_memlist_t *mem;
 
@@ -75,7 +75,7 @@ void *mem_alloc(size_t size)
 }
 
 
-void mem_free(void *p)
+static void mem_free(void *p)
 {
    sm_memlist_t *mem;
 
@@ -90,13 +90,13 @@ void mem_free(void *p)
 }
 
 
-void del_pages(void *p)
+static void del_pages(void *p)
 {
    mem_free(p);
 }
 
 
-void *new_pages(int n)
+static void *new_pages(int n)
 {
    void *p;
 
@@ -105,13 +105,13 @@ void *new_pages(int n)
 }
 
 
-void del_ctrl_block(struct sm_memblock *mb)
+static void del_ctrl_block(struct sm_memblock *mb)
 {
    mem_free(mb);
 }
 
 
-struct sm_memblock *new_ctrl_block(void)
+static struct sm_memblock *new_ctrl_block(void)
 {
    struct sm_memblock *mb;
 
@@ -120,7 +120,7 @@ struct sm_memblock *new_ctrl_block(void)
 }
 
 
-void *block_alloc(struct sm_memblock *mb, int size)
+static void *block_alloc(struct sm_memblock *mb, int size)
 {
    struct sm_memblock *new_alloc;
 
@@ -142,7 +142,7 @@ void *block_alloc(struct sm_memblock *mb, int size)
 }
 
 
-int consolidate_free_list(void)
+static int consolidate_free_list(void)
 {
    struct sm_memblock **free_list, *next;
    int frag_cnt = 0;
@@ -171,14 +171,16 @@ int consolidate_free_list(void)
 }
 
 
-int free_block_size(int size)
+#if 0
+static int free_block_size(int size)
 {
    size /= page_size_ + 1;
    return (size + 1) * page_size_;
 }
+#endif
 
 
-void block_free(struct sm_memblock *mb)
+static void block_free(struct sm_memblock *mb)
 {
    struct sm_memblock **fb;
 
@@ -245,6 +247,14 @@ void *sm_alloc(int size)
    mem_->free_list = new_free;
 
    return block_alloc(new_free, size);
+}
+
+
+void *sm_calloc(int size)
+{
+   void *mem = sm_alloc(size);
+   memset(mem, 0, size);
+   return mem;
 }
 
 

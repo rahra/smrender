@@ -1,4 +1,4 @@
-/* Copyright 2012 Bernhard R. Fischer, 2048R/5C5FFD47 <bf@abenteuerland.at>
+/* Copyright 2012-2024 Bernhard R. Fischer, 4096R/8E24F29D <bf@abenteuerland.at>
  *
  * This file is part of Smrender.
  *
@@ -19,6 +19,7 @@
  * This file contains the definitions for the memory handling stuff.
  *
  * \author Bernhard R. Fischer, <bf@abenteuerland.at>
+ * \date 2024/01/07
  */
 #ifndef SMEM_H
 #define SMEM_H
@@ -52,6 +53,7 @@ struct sm_mem
 
 
 void *sm_alloc(int );
+void *sm_calloc(int );
 void sm_free(void *);
 char *sm_strdup(const char *);
 
