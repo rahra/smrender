@@ -1,4 +1,4 @@
-/* Copyright 2011-2023 Bernhard R. Fischer, 4096R/8E24F29D <bf@abenteuerland.at>
+/* Copyright 2011-2024 Bernhard R. Fischer, 4096R/8E24F29D <bf@abenteuerland.at>
  *
  * This file is part of smrender.
  *
@@ -27,6 +27,8 @@
 #include <time.h>
 #include <errno.h>
 #include "smrender_dev.h"
+#include "smem.h"
+#include "smcore.h"
 
 
 #define RULER_HEIGHT MM2LAT(2.0)
@@ -365,6 +367,7 @@ void geo_lon_ticks0(const struct coord *pw, int c0, int c1, const char *desc,  d
       lonf = (double) lon / T_RESCALE;
       latf = intermediate(pw[c0].lon, pw[c0].lat, pw[c1].lon, pw[c1].lat, lonf);
       latm = latlen_at_lon(pw, lonf);
+      log_debug("latf = %.3f, lonf = %.3f, latm = %.3f", latf, lonf, latm);
 
       geo_tick(latf + MM2LAT0(b3, latm), lonf, latf + MM2LAT0((lon % t) ? b2 : b1, latm), lonf, lon % t ? "subtick" : "tick");
 
@@ -603,6 +606,7 @@ void init_grid(struct grid *grd)
    grd->copyright = 1;
    grd->cmdline = 1;
    grd->gpcnt = 2;
+   grd->callcnt = 0;
 }
 
 
@@ -753,5 +757,184 @@ int act_grid_main(smrule_t *UNUSED(r), osm_obj_t *UNUSED(o))
 int act_grid_fini(smrule_t *r)
 {
    return act_grid2_fini(r);
+}
+
+
+/*! Initialize grid structure according to the config parameters in the grid
+ * rule.
+ */
+int act_global_grid_ini(smrule_t *r)
+{
+#define _GGRID(x, y) ((x) > 0.0 ? MIN2DEG(x) : (y))
+   struct grid *grd;
+   struct rdata *rd = get_rdata();
+   double g;
+
+   grd = sm_alloc(sizeof(*grd));
+   init_grid(grd);
+   auto_grid(rd, grd);
+
+   (void) get_param("lat_grid", &g, r->act);
+   grd->lat_g = _GGRID(g, grd->lat_g);
+   (void) get_param("lon_grid", &g, r->act);
+   grd->lon_g = _GGRID(g, grd->lon_g);
+
+   if (get_param("grid", &g, r->act) != NULL)
+   {
+      if (get_param("lat_grid", NULL, r->act) == NULL && get_param("lon_grid", NULL, r->act) == NULL)
+         grd->lat_g = grd->lon_g = _GGRID(g, grd->lat_g);
+      else
+         log_msg(LOG_WARN, "'grid' cannot be set together with 'lat_grid' or 'lon_grid', ignoring 'grid'");
+   }
+
+   get_parami("gridpoints", &grd->gpcnt, r->act);
+   if (grd->gpcnt < 2)
+      grd->gpcnt = 2;
+
+   log_debug("lat_grid = %.1f, lon_grid = %.1f, gridpoints = %d", grd->lat_g, grd->lon_g, grd->gpcnt);
+   r->data = grd;
+   return 0;
+}
+
+
+static double parallel_set_coords(double *lat, double *lon, double a0, double b)
+{
+   if (lat != NULL)
+      *lat = a0;
+   if (lon != NULL)
+      *lon = lonmod(b);
+
+   return a0;
+}
+
+
+static double meridian_set_coords(double *lat, double *lon, double a0, double b)
+{
+   if (lat != NULL)
+      *lat = latmod(b);
+   if (lon != NULL)
+      *lon = b <= 90 || b > 270 ? a0 : lonmod(a0 + 180);
+
+   return lonmod(a0);
+}
+
+
+/*! This function generates a generic geographic circle on the surface of the
+ * Earth.
+ */
+osm_way_t *circle(double a0, double g, int cnt, char *circt, double (*cfunc)(double *, double*, double, double))
+{
+   osm_node_t *n;
+   osm_way_t *w;
+
+   cnt = cnt < 1 ? 1 : cnt;
+
+   a0 = cfunc(NULL, NULL, a0, 0);
+   w = malloc_way(3, 0);
+   osm_way_default(w);
+   set_const_tag(&w->obj.otag[1], "global_grid", "yes");
+   set_const_tag(&w->obj.otag[2], "circle", circt);
+
+   for (double a = 0; a < 360; a += g)
+   {
+      double b = a;
+      for (int i = 0; i < cnt; i++, b += g / cnt)
+      {
+         n = malloc_node(1);
+         osm_node_default(n);
+
+         (void) cfunc(&n->lat, &n->lon, a0, b);
+
+         put_object((osm_obj_t*) n);
+         insert_refs(w, &n, 1, w->ref_cnt);
+      }
+   }
+
+   n = get_object(OSM_NODE, w->ref[0]);
+   insert_refs(w, &n, 1, w->ref_cnt);
+   put_object((osm_obj_t*) w);
+
+   return w;
+}
+
+
+/*! This function creates a parallel at lat0 degrees. Every g degrees a
+ * longitudinal grid node is inserted and between each of these nodes
+ * additional cnt many nodes are inserted.
+ * @param lat0 Latitude in degrees.
+ * @param g Distance of longitude grid in degrees.
+ * @param cnt Number of points between each longitude node.
+ * @param circt Value of tag "circle=<value>".
+ * @return Returns a pointer to the way object. All newly created objects are
+ * already inserted into the OSM database.
+ */
+osm_way_t *parallel0(double lat0, double g, int cnt, char *circt)
+{
+   return circle(lat0, g, cnt, circt, parallel_set_coords);
+}
+
+
+osm_way_t *parallel(double lat0, double g, int cnt)
+{
+   return parallel0(lat0, g, cnt, "parallel");
+}
+
+
+/*! This function creates a full 360 degree meridian at longitude lon0 with a
+ * latitude grid of g and cnt points between each g. It creates a way with
+ * nodes which will be added to the OSM data.
+ * @param lon0 Longitude of the Meridian. Since it generates a 360 degrees
+ * great circle, also lon0 + 180 will be covered.
+ * @param g Distance of latitude grid.
+ * @param cnt Number of points between each g point. This value should be at
+ * least 1. If it smaller than that, 1 will be used.
+ * @param circt Value of tag "circle=<value>".
+ * @return Returns a pointer to the newly generated OSM way.
+ */
+osm_way_t *meridian0(double lon0, double g, int cnt, char *circt)
+{
+   return circle(lon0, g, cnt, circt, meridian_set_coords);
+}
+
+
+osm_way_t *meridian(double lon0, double g, int cnt)
+{
+   return meridian0(lon0, g, cnt, "meridian");
+}
+
+
+/*! This function generates ways and nodes of a global grid. The function
+ * executes only once per rule, independently of how often it is called.
+ */
+int act_global_grid_main(smrule_t *r, osm_obj_t *UNUSED(o))
+{
+   struct grid *grd = r->data;
+
+   if (grd->callcnt)
+      return 1;
+   grd->callcnt++;
+
+   log_debug("generating global longitude grid");
+   for (double a = -180; a < 180; a += grd->lon_g)
+      meridian(a, grd->lat_g, grd->gpcnt);
+   log_debug("generating global latitude grid");
+   for (double a = -90; a <= 90; a += grd->lat_g)
+      parallel(a, grd->lon_g, grd->gpcnt);
+
+   parallel0(66.563555, grd->lon_g, grd->gpcnt, "parallel:Arctic circle");
+   parallel0(-66.563555, grd->lon_g, grd->gpcnt, "parallel:Antarctic circle");
+   parallel0(23.436444, grd->lon_g, grd->gpcnt, "parallel:Tropic of Cancer");
+   parallel0(-23.436444, grd->lon_g, grd->gpcnt, "parallel:Tropic of Capricorn");
+
+   return 1;
+}
+
+
+int act_global_grid_fini(smrule_t *r)
+{
+   log_debug("callcnt = %d", ((struct grid*) r->data)->callcnt);
+   sm_free(r->data);
+   r->data = NULL;
+   return 0;
 }
 

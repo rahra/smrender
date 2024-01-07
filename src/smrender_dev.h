@@ -274,6 +274,8 @@ struct grid
    int gpcnt;
    //! render chart border as polygon in transversal Mercator
    int polygon_window;
+   //! call counter
+   int callcnt;
 };
 
 typedef struct ruler
