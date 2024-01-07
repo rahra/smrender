@@ -1,4 +1,4 @@
-/* Copyright 2011-2021 Bernhard R. Fischer, 4096R/8E24F29D <bf@abenteuerland.at>
+/* Copyright 2011-2024 Bernhard R. Fischer, 4096R/8E24F29D <bf@abenteuerland.at>
  *
  * This file is part of smrender.
  *
@@ -18,7 +18,8 @@
 /*! \file smrules_cairo.c
  * This file contains all graphical rendering functions using libcairo.
  *
- *  @author Bernhard R. Fischer
+ * \author Bernhard R. Fischer, <bf@abenteuerland.at>
+ * \date 2024/01/07
  */
 
 #ifdef HAVE_CONFIG_H
@@ -150,6 +151,7 @@ typedef struct cartesian
 
 
 int color_by_cs(const osm_obj_t *o, const struct col_spec *cs);
+static int img_ini(smrule_t *r, struct actImage *img);
 
 static cairo_surface_t *sfc_;
 static cairo_rectangle_t ext_;
@@ -682,6 +684,10 @@ int act_draw_ini(smrule_t *r)
    cairo_push_group(d->ctx);
    CSS_INC(CSS_PUSH);
 #endif
+
+   log_debug("parsing image data");
+   if (get_param("file", NULL, r->act) != NULL && img_ini(r, &d->img) != 0)
+      log_msg(LOG_WARN, "not using image in fill operation");
 
    sm_threaded(r);
 
@@ -2472,19 +2478,12 @@ int act_cap_fini(smrule_t *r)
 }
 
  
-int act_img_ini(smrule_t *r)
+static int img_ini(smrule_t *r, struct actImage *img)
 {
    cairo_surface_t *sfc;
    cairo_t *ctx;
-   struct actImage img;
    char *name;
    int e;
-
-   if (r->oo->type != OSM_NODE && r->oo->type != OSM_WAY)
-   {
-      log_msg(LOG_WARN, "img() only applicable to nodes and ways");
-      return -1;
-   }
 
    if ((name = get_param("file", NULL, r->act)) == NULL)
    {
@@ -2492,11 +2491,11 @@ int act_img_ini(smrule_t *r)
       return -1;
    }
 
-   memset(&img, 0, sizeof(img));
+   memset(img, 0, sizeof(*img));
 
-   if (get_param("scale", &img.scale, r->act) == NULL)
-      img.scale = 1;
-   img.scale *= get_rdata()->img_scale;
+   if (get_param("scale", &img->scale, r->act) == NULL)
+      img->scale = 1;
+   img->scale *= get_rdata()->img_scale;
 
    if (strlen(name) >= 4 && !strcasecmp(name + strlen(name) - 4, ".svg"))
    {
@@ -2530,15 +2529,15 @@ int act_img_ini(smrule_t *r)
 #endif
       log_debug("svg dimension: w = %.1f, h = %.1f", d_w, d_h);
 
-      img.w = d_w * img.scale;
-      img.h = d_h * img.scale;
+      img->w = d_w * img->scale;
+      img->h = d_h * img->scale;
       rect.x = 0;
       rect.y = 0;
-      rect.width = img.w;
-      rect.height = img.h;
-      img.img = cairo_recording_surface_create(CAIRO_CONTENT_COLOR_ALPHA, &rect);
-      ctx = cairo_create(img.img);
-      cairo_scale(ctx, img.scale, img.scale);
+      rect.width = img->w;
+      rect.height = img->h;
+      img->img = cairo_recording_surface_create(CAIRO_CONTENT_COLOR_ALPHA, &rect);
+      ctx = cairo_create(img->img);
+      cairo_scale(ctx, img->scale, img->scale);
 #if LIBRSVG_MAJOR_VERSION >= 2 && LIBRSVG_MINOR_VERSION >= 52
       RsvgRectangle vp = {0, 0, d_w, d_h};
 
@@ -2588,70 +2587,88 @@ int act_img_ini(smrule_t *r)
          }
       }
 
-      img.w = cairo_image_surface_get_width(sfc) * img.scale;
-      img.h = cairo_image_surface_get_height(sfc) * img.scale;
-      img.img = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, img.w, img.h);
-      if ((e = cairo_surface_status(img.img)) != CAIRO_STATUS_SUCCESS)
+      img->w = cairo_image_surface_get_width(sfc) * img->scale;
+      img->h = cairo_image_surface_get_height(sfc) * img->scale;
+      img->img = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, img->w, img->h);
+      if ((e = cairo_surface_status(img->img)) != CAIRO_STATUS_SUCCESS)
       {
          log_msg(LOG_ERR, "cannot open file %s: %s", name, cairo_status_to_string(e));
-         //cairo_surface_destroy(img.img);
+         //cairo_surface_destroy(img->img);
          return -1;
       }
-      ctx = cairo_create(img.img);
-      cairo_scale(ctx, img.scale, img.scale);
+      ctx = cairo_create(img->img);
+      cairo_scale(ctx, img->scale, img->scale);
       cairo_set_source_surface(ctx, sfc, 0, 0);
       cairo_paint(ctx);
       cairo_destroy(ctx);
       cairo_surface_destroy(sfc);
    }
 
-   img.ctx = cairo_create(sfc_);
-   if ((e = cairo_status(img.ctx)) != CAIRO_STATUS_SUCCESS)
+   img->ctx = cairo_create(sfc_);
+   if ((e = cairo_status(img->ctx)) != CAIRO_STATUS_SUCCESS)
    {
       log_msg(LOG_ERR, "cannot create cairo context: %s", cairo_status_to_string(e));
-      cairo_surface_destroy(img.img);
+      cairo_surface_destroy(img->img);
       return -1;
    }
 
-   parse_auto_rot(r->act, &img.angle, &img.rot);
-   img.akey = get_param("anglekey", NULL, r->act);
-   if (img.akey != NULL && isnan(img.angle))
+   parse_auto_rot(r->act, &img->angle, &img->rot);
+   img->akey = get_param("anglekey", NULL, r->act);
+   if (img->akey != NULL && isnan(img->angle))
    {
       log_msg(LOG_NOTICE, "ignoring angle=auto");
-      img.angle = 0;
+      img->angle = 0;
    }
-   img.alignkey = get_param("alignkey", NULL, r->act);
+   img->alignkey = get_param("alignkey", NULL, r->act);
 
    if (r->oo->type == OSM_NODE)
    {
-      cairo_scale(img.ctx, PX2PT_SCALE, PX2PT_SCALE);
+      cairo_scale(img->ctx, PX2PT_SCALE, PX2PT_SCALE);
    }
    else if (r->oo->type == OSM_WAY)
    {
-      if (isnan(img.angle))
+      if (isnan(img->angle))
       {
          log_msg(LOG_NOTICE, "ignoring angle=auto");
-         img.angle = 0;
+         img->angle = 0;
       }
-      img.pat = cairo_pattern_create_for_surface(img.img);
-      if (cairo_pattern_status(img.pat) != CAIRO_STATUS_SUCCESS)
+      img->pat = cairo_pattern_create_for_surface(img->img);
+      if (cairo_pattern_status(img->pat) != CAIRO_STATUS_SUCCESS)
       {
          log_msg(LOG_ERR, "failed to create pattern");
          return -1;
       }
       cairo_matrix_t m;
       cairo_matrix_init_scale(&m, 1/PX2PT_SCALE, 1/PX2PT_SCALE);
-      cairo_matrix_rotate(&m, DEG2RAD(img.angle));
-      cairo_pattern_set_matrix(img.pat, &m);
-      cairo_pattern_set_extend(img.pat, CAIRO_EXTEND_REPEAT);
-      cairo_set_source(img.ctx, img.pat);
+      cairo_matrix_rotate(&m, DEG2RAD(img->angle));
+      cairo_pattern_set_matrix(img->pat, &m);
+      cairo_pattern_set_extend(img->pat, CAIRO_EXTEND_REPEAT);
+      cairo_set_source(img->ctx, img->pat);
    }
+
+   return 0;
+}
+
+
+int act_img_ini(smrule_t *r)
+{
+   struct actImage img;
+   int e;
+
+   if (r->oo->type != OSM_NODE && r->oo->type != OSM_WAY)
+   {
+      log_msg(LOG_WARN, "img() only applicable to nodes and ways");
+      return -1;
+   }
+
+   if ((e = img_ini(r, &img)) != 0)
+      return e;
 
 #ifdef PUSH_GROUP
    cairo_push_group(img.ctx);
    CSS_INC(CSS_PUSH);
 #endif
-  
+
    if ((r->data = malloc(sizeof(img))) == NULL)
    {
       log_msg(LOG_ERR, "cannot malloc: %s", strerror(errno));
