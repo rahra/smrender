@@ -123,6 +123,30 @@ double lonmod(double lon)
 }
 
 
+/*! This function properly wraps the latitude value lat to a valid geographic
+ * latitude between -90 and +90.
+ * @param lat Angle in degrees to fix properly.
+ * @return The function returns a value -90 >= x <= 90.
+ */
+double latmod(double lat)
+{
+   lat = fmod(lat, 360);
+   if (lat >= -90 && lat <= 90)
+      return lat;
+   if (lat > 90 && lat <= 270)
+      return 180 - lat;
+   if (lat > 270)
+      return lat - 360;
+   if (lat >= -270 && lat < -90)
+      return -180 - lat;
+   if (lat < -270)
+      return lat + 360;
+
+   log_msg(LOG_WARN, "this should never happen, lat = %.2f", lat);
+   return lat;
+}
+
+
 /*! This function translates coordinates to a different point of reference,
  * i.e. it rotates to surface to a different reference.
  * @param theta Translation of latitude in degrees.

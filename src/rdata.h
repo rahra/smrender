@@ -167,6 +167,8 @@ void geo2pxi(double, double, int*, int*);
 void transcoord(double, double, double*, double*);
 void transtraversal(double, double, double*, double*);
 
+double lonmod(double);
+double latmod(double);
 
 struct rdata *rdata_get(void);
 #define get_rdata rdata_get
