@@ -278,7 +278,7 @@ void geo_square(const struct coord *pw0, double b, char *v, int cnt)
    {
       n = malloc_node(5);
       osm_node_default(n);
-      w->ref[i * cnt] = n->obj.id;
+      w->ref[i * cnt] = n->obj.id; // FIXME: insert_refs() must be used instead!
       n->lat = pw[i].lat;
       n->lon = pw[i].lon;
       set_const_tag(&n->obj.otag[1], "grid", v);
@@ -298,7 +298,7 @@ void geo_square(const struct coord *pw0, double b, char *v, int cnt)
       {
          n = malloc_node(1);
          osm_node_default(n);
-         w->ref[i * cnt + j] = n->obj.id;
+         w->ref[i * cnt + j] = n->obj.id; // FIXME: insert_refs() must be used instead!
          n->lat = pw[i].lat + dlat * j;
          n->lon = pw[i].lon + dlon * j;
          put_object((osm_obj_t*) n);
@@ -320,7 +320,7 @@ void geo_tick0(double lat1, double lon1, double lat2, double lon2, char *v, int 
    if (cnt < 2)
       cnt = 2;
 
-   w = malloc_way(2, cnt);
+   w = malloc_way(2, 0);
    osm_way_default(w);
    set_const_tag(&w->obj.otag[1], "grid", v);
    put_object((osm_obj_t*) w);
@@ -331,10 +331,10 @@ void geo_tick0(double lat1, double lon1, double lat2, double lon2, char *v, int 
    {
       n = malloc_node(1);
       osm_node_default(n);
-      w->ref[i] = n->obj.id;
       n->lat = lat1 + dlat * i;
       n->lon = lon1 + dlon * i;
       put_object((osm_obj_t*) n);
+      insert_refs(w, &n, 1, w->ref_cnt);
    }
 }
 
