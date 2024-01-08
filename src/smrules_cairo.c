@@ -175,6 +175,23 @@ void __attribute__((constructor)) cairo_smr_init(void)
 }
 
 
+static void cairo_smr_pop_group0(cairo_t *ctx)
+{
+   cairo_pop_group_to_source(ctx);
+   CSS_INC(CSS_POP);
+   cairo_paint(ctx);
+   CSS_INC(CSS_PAINT);
+}
+
+
+static void cairo_smr_pop_group(cairo_t *ctx)
+{
+#ifdef PUSH_GROUP
+   cairo_smr_pop_group0(ctx);
+#endif
+}
+
+
 static inline int cairo_smr_bpp(cairo_format_t fmt)
 {
    switch (fmt)
@@ -1085,12 +1102,7 @@ int act_draw_fini(smrule_t *r)
    struct actDraw *d = r->data;
    int i;
 
-#ifdef PUSH_GROUP
-   cairo_pop_group_to_source(d->ctx);
-   CSS_INC(CSS_POP);
-   cairo_paint(d->ctx);
-   CSS_INC(CSS_PAINT);
-#endif
+   cairo_smr_pop_group(d->ctx);
 
    if (d->directional)
    {
@@ -1139,10 +1151,7 @@ int act_draw_fini(smrule_t *r)
          cairo_smr_set_source_color(d->ctx, d->fill.cs.col);
       }
       cairo_fill(d->ctx);
-      cairo_pop_group_to_source(d->ctx);
-      CSS_INC(CSS_POP);
-      cairo_paint(d->ctx);
-      CSS_INC(CSS_PAINT);
+      cairo_smr_pop_group0(d->ctx);
    }
 
    cairo_destroy(d->ctx);
@@ -2466,12 +2475,7 @@ int act_cap_fini(smrule_t *r)
 {
    struct actCaption *cap = r->data;
 
-#ifdef PUSH_GROUP
-   cairo_pop_group_to_source(cap->ctx);
-   CSS_INC(CSS_POP);
-   cairo_paint(cap->ctx);
-   CSS_INC(CSS_PAINT);
-#endif
+   cairo_smr_pop_group(cap->ctx);
    cairo_destroy(cap->ctx);
 
 #ifdef AUTOSFC
@@ -2798,13 +2802,6 @@ int act_img_main(smrule_t *r, osm_obj_t *o)
 
 static void img_fini(struct actImage *img)
 {
-#ifdef PUSH_GROUP
-   cairo_pop_group_to_source(img->ctx);
-   CSS_INC(CSS_POP);
-   cairo_paint(img->ctx);
-   CSS_INC(CSS_PAINT);
-#endif
-
    if (img->pat)
       cairo_pattern_destroy(img->pat);
 
@@ -2815,6 +2812,7 @@ static void img_fini(struct actImage *img)
 
 int act_img_fini(smrule_t *r)
 {
+   cairo_smr_pop_group(((struct actImage*) r->data)->ctx);
    img_fini(r->data);
    free(r->data);
    r->data = NULL;
