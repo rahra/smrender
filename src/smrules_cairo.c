@@ -19,7 +19,7 @@
  * This file contains all graphical rendering functions using libcairo.
  *
  * \author Bernhard R. Fischer, <bf@abenteuerland.at>
- * \date 2024/01/07
+ * \date 2024/01/08
  */
 
 #ifdef HAVE_CONFIG_H
@@ -152,6 +152,7 @@ typedef struct cartesian
 
 int color_by_cs(const osm_obj_t *o, const struct col_spec *cs);
 static int img_ini(smrule_t *r, struct actImage *img);
+static void img_fini(struct actImage *img);
 
 static cairo_surface_t *sfc_;
 static cairo_rectangle_t ext_;
@@ -572,6 +573,8 @@ static void parse_auto_rot(const action_t *act, double *angle, struct auto_rot *
    {
       *angle = fmod(*angle, 360.0);
    }
+
+   log_debug("auto_rot = {phase: %.2f, autocol(deprecated): 0x%08x, weight: %.2f, mkarea: %d}", rot->phase, rot->autocol, rot->weight, rot->mkarea);
 }
 
  
@@ -685,9 +688,20 @@ int act_draw_ini(smrule_t *r)
    CSS_INC(CSS_PUSH);
 #endif
 
-   log_debug("parsing image data");
-   if (get_param("file", NULL, r->act) != NULL && img_ini(r, &d->img) != 0)
-      log_msg(LOG_WARN, "not using image in fill operation");
+   if ((s = get_param("file", NULL, r->act)) != NULL)
+   {
+      log_debug("parsing image data");
+      if (img_ini(r, &d->img) == 0)
+      {
+         if (d->fill.used)
+            log_msg(LOG_NOTICE, "using image \"%s\" to fill, other fill settings are ignored", s);
+         else
+            d->fill.used = 1;
+         d->fill.style = DRAW_IMAGE;
+      }
+      else
+         log_msg(LOG_WARN, "not using image in fill operation");
+   }
 
    sm_threaded(r);
 
@@ -2646,6 +2660,14 @@ static int img_ini(smrule_t *r, struct actImage *img)
       cairo_set_source(img->ctx, img->pat);
    }
 
+   log_debug("actImage = {angle: %.2f, auto_rot: {...}, scale: %.2f, akey: \"%s\", alignkey: \"%s\", w: %.1f, h: %.1f}",
+         img->angle, img->scale, img->akey, img->alignkey, img->w, img->h);
+
+#ifdef PUSH_GROUP
+   cairo_push_group(img->ctx);
+   CSS_INC(CSS_PUSH);
+#endif
+
    return 0;
 }
 
@@ -2663,11 +2685,6 @@ int act_img_ini(smrule_t *r)
 
    if ((e = img_ini(r, &img)) != 0)
       return e;
-
-#ifdef PUSH_GROUP
-   cairo_push_group(img.ctx);
-   CSS_INC(CSS_PUSH);
-#endif
 
    if ((r->data = malloc(sizeof(img))) == NULL)
    {
@@ -2779,10 +2796,8 @@ int act_img_main(smrule_t *r, osm_obj_t *o)
 }
 
 
-int act_img_fini(smrule_t *r)
+static void img_fini(struct actImage *img)
 {
-   struct actImage *img = r->data;
-
 #ifdef PUSH_GROUP
    cairo_pop_group_to_source(img->ctx);
    CSS_INC(CSS_POP);
@@ -2795,7 +2810,13 @@ int act_img_fini(smrule_t *r)
 
    cairo_destroy(img->ctx);
    cairo_surface_destroy(img->img);
-   free(img);
+}
+
+
+int act_img_fini(smrule_t *r)
+{
+   img_fini(r->data);
+   free(r->data);
    r->data = NULL;
    return 0;
 }

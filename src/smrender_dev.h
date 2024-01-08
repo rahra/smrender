@@ -1,4 +1,4 @@
-/* Copyright 2011-2023 Bernhard R. Fischer, 4096R/8E24F29D <bf@abenteuerland.at>
+/* Copyright 2011-2024 Bernhard R. Fischer, 4096R/8E24F29D <bf@abenteuerland.at>
  *
  * This file is part of smrender.
  *
@@ -19,7 +19,7 @@
  * This file contains almost all internal declarations.
  *
  * \author Bernhard R. Fischer, <bf@abenteuerland.at>
- * \version 2023/09/24
+ * \version 2024/01/08
  */
 #ifndef SMRENDER_DEV_H
 #define SMRENDER_DEV_H
@@ -126,7 +126,7 @@
 
 //enum {WHITE, YELLOW, BLACK, BLUE, MAGENTA, BROWN, TRANSPARENT, BGCOLOR, MAXCOLOR};
 enum {LAT, LON};
-enum {DRAW_SOLID, DRAW_DASHED, DRAW_DOTTED, DRAW_TRANSPARENT, DRAW_PIPE, DRAW_ROUNDDOT};
+typedef enum {DRAW_SOLID, DRAW_DASHED, DRAW_DOTTED, DRAW_TRANSPARENT, DRAW_PIPE, DRAW_ROUNDDOT, DRAW_IMAGE} draw_style_t;
 enum {SHAPE_REGULAR, SHAPE_SECTORED, SHAPE_STARED};
 
 #define DEFAULT_NINDENT 3
@@ -200,7 +200,7 @@ struct drawStyle
 {
    struct col_spec cs;
    double width;
-   short style;
+   draw_style_t style;
    short used;
    int dashlen;
    double dash[MAX_DASHLEN];
