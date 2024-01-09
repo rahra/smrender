@@ -1,0 +1,21 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<osm version='0.6' generator='Bernhard R. Fischer'>
+   <way>
+      <tag k='natural' v='coastline'/>
+      <tag k='_action_' v='cat_poly'/>
+   </way>
+
+   <way visible="true">
+      <tag k='natural' v='coastline'/>
+      <tag k='generator' v='smrender'/>
+      <tag k='_action_' v='draw:file=wooded.jpg;scale=0.6;directional=yes'/>
+   </way>
+
+   <way>
+      <tag k='natural' v='coastline'/>
+      <tag k='generator' v='smrender'/>
+      <tag k='_action_' v='draw:bcolor=black'/>
+   </way>
+
+</osm>
+
