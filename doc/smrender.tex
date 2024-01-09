@@ -946,8 +946,11 @@ caption is than placed at the position of the centroid\footnote{This is similar
 \subsubsection{Drawing and Filling} \label{sec:draw}
 
 The \emph{draw} action is used to draw lines of various styles and fill
-polygons. This action uses solid colors for its operation. If you wish to fill
-an area with an image as pattern please have a look at Section \ref{sec:img}.
+polygons. This action uses solid colors (with alpha channel) for its operation.
+It can also be used to fill areas with an image used as a pattern, almost exactly like the action \textsf{img()} (see Section \ref{sec:img}). The difference between image filling with \textsf{img()} and \textsf{draw()} is that \textsf{draw()} supports \emph{directional} filling (see below) which is useful if an object has holes. Although \emph{directional} filling could always be used instead of normal filling, it is a more complex operation and thus slightly slower.
+
+If you wish to fill an area with an image as pattern use the option \optv{file} and any of the image options as described in Section \ref{sec:img}.
+
 The following shows the basic rule format.\footnote{Basic BNF parameters are
 defined in Section \ref{sec:act} on page \pageref{sec:act}.}
 
@@ -1442,7 +1445,7 @@ rendered in the second rule.
       This action creates a grid exactly like the command line option \optk{g}
       but it provides more options.  It provides the parameters \optv{margin},
       \optv{tickswidth}, and \optv{subtickswith} to adjust the size of the axis
-      rulers. Values are given in milimeters. Furthermore it provides the
+      rulers. Values are given in millimeters. Furthermore it provides the
       parameters \optv{grid}, \optv{ticks}, and \optv{subticks} which work
       exactly like the command line option (see Section \ref{sec:options}).
       Missing parameters are initialized with default values.
