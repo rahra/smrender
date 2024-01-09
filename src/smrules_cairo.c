@@ -127,7 +127,6 @@ static int css_stats_[CSS_MAX];
 #else
 #define CSS_INC(x)
 #endif
-#define CAIRO_SMR_FILL(x) if ((x) != NULL) cairo_fill(x)
 
 typedef struct diffvec
 {
@@ -725,6 +724,7 @@ int act_draw_ini(smrule_t *r)
    }
    cairo_smr_push_group(d->ctx);
 
+   // check if file is given and load background image
    if ((s = get_param("file", NULL, r->act)) != NULL)
    {
       log_debug("parsing image data");
@@ -735,6 +735,21 @@ int act_draw_ini(smrule_t *r)
    }
 
    sm_threaded(r);
+
+   // check if parameter combination makes sense
+   if (d->directional)
+   {
+      if ((d->fill.used || d->img_used) && d->border.used)
+      {
+         log_msg(LOG_WARN, "in directional mode, filling and border drawing is not supported at the same time -> disabling border");
+         d->border.used = 0;
+      }
+      if (!d->fill.used && !d->img_used && d->border.used)
+      {
+         log_msg(LOG_NOTICE, "directional mode makes only sense with a fill operation -> disabling directional mode");
+         d->directional = 0;
+      }
+   }
 
    log_debug("actDraw = {fill: {color: 0x%08x, width: %.1f, style: %d, used: %d, dashlen: %d, dash: {%.1f, %.1f}}, border: {color: 0x%08x, width: %.1f, style %d, used: %d, dashlen: %d, dash: {%.1f, %.1f}}, directional: %d, collect_open: %d, wl: %p, img_used: %d}",
         d->fill.cs.col, d->fill.width, d->fill.style, d->fill.used, d->fill.dashlen, d->fill.dash[0], d->fill.dash[1],
@@ -1180,9 +1195,15 @@ int act_draw_fini(smrule_t *r)
       {
          cairo_smr_set_source_color(d->ctx, d->fill.cs.col);
       }
-      CAIRO_SMR_FILL(d->img.ctx);
+
+      if (d->img_used)
+      {
+         cairo_set_source(d->img.ctx, d->img.pat);
+         cairo_fill(d->img.ctx);
+         cairo_smr_pop_group0(d->img.ctx);
+      }
+
       cairo_fill(d->ctx);
-      cairo_smr_pop_group0(d->img.ctx);
       cairo_smr_pop_group0(d->ctx);
    }
 
