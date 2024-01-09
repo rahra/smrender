@@ -19,7 +19,7 @@
  * This file contains all graphical rendering functions using libcairo.
  *
  * \author Bernhard R. Fischer, <bf@abenteuerland.at>
- * \date 2024/01/08
+ * \date 2024/01/09
  */
 
 #ifdef HAVE_CONFIG_H
@@ -325,7 +325,7 @@ void cairo_smr_init_main_image(const char *bg)
    CSS_INC(CSS_PAINT);
    cairo_destroy(ctx);
 
-   log_msg(LOG_DEBUG, "background color is set to 0x%08x", parse_color("bgcolor"));
+   log_debug("background color is set to 0x%08x", parse_color("bgcolor"));
 }
 
 
@@ -1019,8 +1019,6 @@ static inline int cairo_smr_poly(cairo_t *ctx, const struct actDraw *d, const os
 static void render_poly_line(const struct actDraw *d, const osm_way_t *w, int cw)
 {
    // safety check
-   //if (ctx == NULL) return;
-   // safety check
    if (w == NULL || d == NULL)
    {
       log_msg(LOG_ERR, "NULL pointer to caught");
@@ -1417,10 +1415,7 @@ int act_cap_ini(smrule_t *r)
 
    cairo_smr_set_source_color(cap.ctx, cap.cs.col);
    cairo_set_line_width(cap.ctx, THINLINE);
-#ifdef PUSH_GROUP
-   cairo_push_group(cap.ctx);
-   CSS_INC(CSS_PUSH);
-#endif
+   cairo_smr_push_group(cap.ctx);
 
    if ((r->data = malloc(sizeof(cap))) == NULL)
    {
@@ -2936,7 +2931,7 @@ int act_clip_fini(smrule_t *r)
    double *bc = r->data;
    cairo_t *ctx;
 
-   log_msg(LOG_DEBUG, "%.1f, %.1f, %.1f, %.1f", bc[0], bc[1], bc[2], bc[3]);
+   log_debug("%.1f, %.1f, %.1f, %.1f", bc[0], bc[1], bc[2], bc[3]);
 
    ctx = cairo_create(sfc_);
 
