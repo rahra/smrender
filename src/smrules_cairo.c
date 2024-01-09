@@ -127,6 +127,7 @@ static int css_stats_[CSS_MAX];
 #else
 #define CSS_INC(x)
 #endif
+#define CAIRO_SMR_FILL(x) if ((x) != NULL) cairo_fill(x)
 
 typedef struct diffvec
 {
@@ -175,8 +176,30 @@ void __attribute__((constructor)) cairo_smr_init(void)
 }
 
 
+static void cairo_smr_push_group0(cairo_t *ctx)
+{
+   if (ctx == NULL)
+      return;
+
+   cairo_push_group(ctx);
+   CSS_INC(CSS_PUSH);
+}
+
+
+static void cairo_smr_push_group(cairo_t *ctx)
+{
+#ifdef PUSH_GROUP
+   cairo_smr_push_group0(ctx);
+#endif
+}
+
+
 static void cairo_smr_pop_group0(cairo_t *ctx)
 {
+   // safety check
+   if (ctx == NULL)
+      return;
+
    cairo_pop_group_to_source(ctx);
    CSS_INC(CSS_POP);
    cairo_paint(ctx);
@@ -700,33 +723,23 @@ int act_draw_ini(smrule_t *r)
       r->data = NULL;
       return -1;
    }
-#ifdef PUSH_GROUP
-   cairo_push_group(d->ctx);
-   CSS_INC(CSS_PUSH);
-#endif
+   cairo_smr_push_group(d->ctx);
 
    if ((s = get_param("file", NULL, r->act)) != NULL)
    {
       log_debug("parsing image data");
       if (img_ini(r, &d->img) == 0)
-      {
-         if (d->fill.used)
-            log_msg(LOG_NOTICE, "using image \"%s\" to fill, other fill settings are ignored", s);
-         else
-            d->fill.used = 1;
-         d->fill.style = DRAW_IMAGE;
-      }
+         d->img_used = 1;
       else
          log_msg(LOG_WARN, "not using image in fill operation");
    }
 
    sm_threaded(r);
 
-   //log_msg(LOG_DEBUG, "directional = %d, ignore_open = %d", d->directional, !d->collect_open);
-   log_msg(LOG_DEBUG, "{%08x, %.1f, %d, %d, %d, {%.1f, %.1f}}, {%08x, %.1f, %d, %d, %d, {%.1f, %.1f}}, %d, %d, %p",
+   log_debug("actDraw = {fill: {color: 0x%08x, width: %.1f, style: %d, used: %d, dashlen: %d, dash: {%.1f, %.1f}}, border: {color: 0x%08x, width: %.1f, style %d, used: %d, dashlen: %d, dash: {%.1f, %.1f}}, directional: %d, collect_open: %d, wl: %p, img_used: %d}",
         d->fill.cs.col, d->fill.width, d->fill.style, d->fill.used, d->fill.dashlen, d->fill.dash[0], d->fill.dash[1],
         d->border.cs.col, d->border.width, d->border.style, d->border.used, d->border.dashlen, d->border.dash[0], d->border.dash[1],
-        d->directional, d->collect_open, d->wl);
+        d->directional, d->collect_open, d->wl, d->img_used);
 
    return 0;
 }
@@ -983,16 +996,22 @@ static inline int cairo_smr_poly(cairo_t *ctx, const struct actDraw *d, const os
  * context. Thus, fill must be called after, explicitly. Please note that it is
  * not allowed to mix calls which stroke/fill and those who don't because
  * stroke/fill will always clear all previous paths.
- * @param ctx Pointer to the cairo context.
  * @param d Pointer to the drawing parameters of Smrender.
  * @param w Pointer to the OSM way.
  * @param cw If 0 stroke/fill immediately, otherwise just create sub-path but
  * do not stroke/fill.
  */
-static void render_poly_line(cairo_t *ctx, const struct actDraw *d, const osm_way_t *w, int cw)
+static void render_poly_line(const struct actDraw *d, const osm_way_t *w, int cw)
 {
    // safety check
-   if (w == NULL) { log_msg(LOG_ERR, "NULL pointer to way"); return; }
+   //if (ctx == NULL) return;
+   // safety check
+   if (w == NULL || d == NULL)
+   {
+      log_msg(LOG_ERR, "NULL pointer to caught");
+      return;
+   }
+
    if (w->ref_cnt < 2)
    {
       log_msg(LOG_WARN, "ignoring short way %"PRId64" (len = %d)", w->obj.id, w->ref_cnt);
@@ -1001,39 +1020,49 @@ static void render_poly_line(cairo_t *ctx, const struct actDraw *d, const osm_wa
 
    if (d->border.used)
    {
-      cairo_smr_set_source_color(ctx, color_by_cs(&w->obj, &d->border.cs));
+      cairo_smr_set_source_color(d->ctx, color_by_cs(&w->obj, &d->border.cs));
       // The pipe is a special case: it is a combination of a dashed and a
       // dotted line, the dots are place at the beginning of each dash.
-      cairo_set_line_width(ctx, cairo_smr_border_width(d, is_closed_poly(w)));
-      cairo_smr_dash(ctx, d->border.style == DRAW_PIPE ? DRAW_DASHED : d->border.style, d->border.width, d->border.dash, d->border.dashlen);
-      cairo_smr_poly(ctx, d, w);
-      cairo_stroke(ctx);
+      cairo_set_line_width(d->ctx, cairo_smr_border_width(d, is_closed_poly(w)));
+      cairo_smr_dash(d->ctx, d->border.style == DRAW_PIPE ? DRAW_DASHED : d->border.style, d->border.width, d->border.dash, d->border.dashlen);
+      cairo_smr_poly(d->ctx, d, w);
+      cairo_stroke(d->ctx);
       CSS_INC(CSS_STROKE);
 
       if (d->border.style == DRAW_PIPE)
       {
-         cairo_set_line_width(ctx, cairo_get_line_width(ctx) * PIPE_DOT_SCALE);
-         cairo_smr_dash(ctx, DRAW_PIPE, d->border.width, d->border.dash, d->border.dashlen);
-         cairo_smr_poly(ctx, d, w);
-         cairo_stroke(ctx);
+         cairo_set_line_width(d->ctx, cairo_get_line_width(d->ctx) * PIPE_DOT_SCALE);
+         cairo_smr_dash(d->ctx, DRAW_PIPE, d->border.width, d->border.dash, d->border.dashlen);
+         cairo_smr_poly(d->ctx, d, w);
+         cairo_stroke(d->ctx);
          CSS_INC(CSS_STROKE);
+      }
+   }
+
+   if (d->img_used && is_closed_poly(w))
+   {
+      cairo_smr_poly(d->img.ctx, d, w);
+      if (!cw)
+      {
+         cairo_fill(d->img.ctx);
+         CSS_INC(CSS_FILL);
       }
    }
 
    if (d->fill.used)
    {
-      cairo_smr_poly(ctx, d, w);
-      cairo_smr_set_source_color(ctx, color_by_cs(&w->obj, &d->fill.cs));
+      cairo_smr_poly(d->ctx, d, w);
+      cairo_smr_set_source_color(d->ctx, color_by_cs(&w->obj, &d->fill.cs));
       if (!is_closed_poly(w))
       {
-         cairo_set_line_width(ctx, cairo_smr_fill_width(d));
-         cairo_smr_dash(ctx, d->fill.style, d->border.width, d->fill.dash, d->fill.dashlen);
-         cairo_stroke(ctx);
+         cairo_set_line_width(d->ctx, cairo_smr_fill_width(d));
+         cairo_smr_dash(d->ctx, d->fill.style, d->border.width, d->fill.dash, d->fill.dashlen);
+         cairo_stroke(d->ctx);
          CSS_INC(CSS_STROKE);
       }
       else if (!cw)
       {
-         cairo_fill(ctx);
+         cairo_fill(d->ctx);
          CSS_INC(CSS_FILL);
       }
    }
@@ -1056,13 +1085,13 @@ int act_draw_main(smrule_t *r, osm_obj_t *o)
          if (!d->collect_open)
             return 0;
 
-         render_poly_line(d->ctx, d, (osm_way_t*) o, RENDER_IMMEDIATE);
+         render_poly_line(d, (osm_way_t*) o, RENDER_IMMEDIATE);
          return 0;
       }
 
       if (!d->directional)
       {
-         render_poly_line(d->ctx, d, (osm_way_t*) o, RENDER_IMMEDIATE);
+         render_poly_line(d, (osm_way_t*) o, RENDER_IMMEDIATE);
          return 0;
       }
 
@@ -1102,6 +1131,7 @@ int act_draw_fini(smrule_t *r)
    struct actDraw *d = r->data;
    int i;
 
+   cairo_smr_pop_group(d->img.ctx);
    cairo_smr_pop_group(d->ctx);
 
    if (d->directional)
@@ -1121,19 +1151,19 @@ int act_draw_fini(smrule_t *r)
       }
       qsort(d->wl->ref, d->wl->ref_cnt, sizeof(struct poly), (int(*)(const void *, const void *)) compare_poly_area);
 
-      cairo_push_group(d->ctx);
-      CSS_INC(CSS_PUSH);
+      cairo_smr_push_group0(d->ctx);
+      cairo_smr_push_group0(d->img.ctx);
       // check if largest polygon is clockwise
       if (d->wl->ref_cnt && d->wl->ref[0].cw)
       {
          // ...and render larger (page size) filled polygon
          log_debug("inserting artifical background");
-         render_poly_line(d->ctx, d, page_way(), CREATE_PATH);
+         render_poly_line(d, page_way(), CREATE_PATH);
       }
       for (i = 0; i < d->wl->ref_cnt; i++)
       {
          log_debug("id = %"PRId64", cw = %d, area = %f", d->wl->ref[i].w->obj.id, d->wl->ref[i].cw, d->wl->ref[i].area);
-         render_poly_line(d->ctx, d, d->wl->ref[i].w, CREATE_PATH);
+         render_poly_line(d, d->wl->ref[i].w, CREATE_PATH);
       }
 
       // select fill color based on the key of the first ccw way (if key coloring is chosen)
@@ -1150,10 +1180,13 @@ int act_draw_fini(smrule_t *r)
       {
          cairo_smr_set_source_color(d->ctx, d->fill.cs.col);
       }
+      CAIRO_SMR_FILL(d->img.ctx);
       cairo_fill(d->ctx);
+      cairo_smr_pop_group0(d->img.ctx);
       cairo_smr_pop_group0(d->ctx);
    }
 
+   img_fini(&d->img);
    cairo_destroy(d->ctx);
    free(d);
    r->data = NULL;
@@ -2622,11 +2655,13 @@ static int img_ini(smrule_t *r, struct actImage *img)
       cairo_surface_destroy(sfc);
    }
 
+   // creating drawing context
    img->ctx = cairo_create(sfc_);
    if ((e = cairo_status(img->ctx)) != CAIRO_STATUS_SUCCESS)
    {
       log_msg(LOG_ERR, "cannot create cairo context: %s", cairo_status_to_string(e));
       cairo_surface_destroy(img->img);
+      img->ctx = NULL;
       return -1;
    }
 
@@ -2654,6 +2689,8 @@ static int img_ini(smrule_t *r, struct actImage *img)
       if (cairo_pattern_status(img->pat) != CAIRO_STATUS_SUCCESS)
       {
          log_msg(LOG_ERR, "failed to create pattern");
+         cairo_destroy(img->ctx);
+         img->ctx = NULL;
          return -1;
       }
       cairo_matrix_t m;
@@ -2664,13 +2701,10 @@ static int img_ini(smrule_t *r, struct actImage *img)
       cairo_set_source(img->ctx, img->pat);
    }
 
-   log_debug("actImage = {angle: %.2f, auto_rot: {...}, scale: %.2f, akey: \"%s\", alignkey: \"%s\", w: %.1f, h: %.1f}",
-         img->angle, img->scale, img->akey, img->alignkey, img->w, img->h);
+   log_debug("actImage = {angle: %.2f, auto_rot: {...}, scale: %.2f, akey: \"%s\", alignkey: \"%s\", w: %.1f, h: %.1f, ctx: %p}",
+         img->angle, img->scale, img->akey, img->alignkey, img->w, img->h, img->ctx);
 
-#ifdef PUSH_GROUP
-   cairo_push_group(img->ctx);
-   CSS_INC(CSS_PUSH);
-#endif
+   cairo_smr_push_group(img->ctx);
 
    return 0;
 }
@@ -2802,6 +2836,7 @@ int act_img_main(smrule_t *r, osm_obj_t *o)
 
 static void img_fini(struct actImage *img)
 {
+   log_debug("freeing image data");
    if (img->pat)
       cairo_pattern_destroy(img->pat);
 

@@ -126,7 +126,7 @@
 
 //enum {WHITE, YELLOW, BLACK, BLUE, MAGENTA, BROWN, TRANSPARENT, BGCOLOR, MAXCOLOR};
 enum {LAT, LON};
-typedef enum {DRAW_SOLID, DRAW_DASHED, DRAW_DOTTED, DRAW_TRANSPARENT, DRAW_PIPE, DRAW_ROUNDDOT, DRAW_IMAGE} draw_style_t;
+typedef enum {DRAW_SOLID, DRAW_DASHED, DRAW_DOTTED, DRAW_TRANSPARENT, DRAW_PIPE, DRAW_ROUNDDOT} draw_style_t;
 enum {SHAPE_REGULAR, SHAPE_SECTORED, SHAPE_STARED};
 
 #define DEFAULT_NINDENT 3
@@ -247,6 +247,7 @@ struct actDraw
 #ifdef HAVE_CAIRO
    cairo_t *ctx;
 #endif
+   int img_used;
    struct actImage img;
 };
 
