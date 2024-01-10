@@ -947,7 +947,7 @@ caption is than placed at the position of the centroid\footnote{This is similar
 
 The \emph{draw} action is used to draw lines of various styles and fill
 polygons. This action uses solid colors (with alpha channel) for its operation.
-It can also be used to fill areas with an image used as a pattern, almost exactly like the action \textsf{img()} (see Section \ref{sec:img}). The difference between image filling with \textsf{img()} and \textsf{draw()} is that \textsf{draw()} supports \emph{directional} filling (see below) which is useful if an object has holes. Although \emph{directional} filling could always be used instead of normal filling, it is a more complex operation and thus slightly slower.
+It can also be used to fill areas with an image used as a pattern, almost exactly like the action \textsf{img()} (see Section \ref{sec:img}). The difference between image filling with \textsf{img()} and \textsf{draw()} is that \textsf{draw()} supports \emph{directional} filling (see below) which is useful if an object has holes. Directional filling requires that the direction of the ways are correct which unfortunately is not always the case in the original OSM data. It is a more complex operation and thus slightly slower than standard filling.
 
 If you wish to fill an area with an image as pattern use the option \optv{file} and any of the image options as described in Section \ref{sec:img}.
 
