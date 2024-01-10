@@ -247,7 +247,6 @@ struct actDraw
 #ifdef HAVE_CAIRO
    cairo_t *ctx;
 #endif
-   int img_used;
    struct actImage img;
 };
 

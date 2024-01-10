@@ -177,6 +177,7 @@ void __attribute__((constructor)) cairo_smr_init(void)
 
 static void cairo_smr_push_group0(cairo_t *ctx)
 {
+   // safety check
    if (ctx == NULL)
       return;
 
@@ -728,9 +729,7 @@ int act_draw_ini(smrule_t *r)
    if ((s = get_param("file", NULL, r->act)) != NULL)
    {
       log_debug("parsing image data");
-      if (img_ini(r, &d->img) == 0)
-         d->img_used = 1;
-      else
+      if (img_ini(r, &d->img) != 0)
          log_msg(LOG_WARN, "not using image in fill operation");
    }
 
@@ -739,22 +738,22 @@ int act_draw_ini(smrule_t *r)
    // check if parameter combination makes sense
    if (d->directional)
    {
-      if ((d->fill.used || d->img_used) && d->border.used)
+      if ((d->fill.used || d->img.ctx != NULL) && d->border.used)
       {
          log_msg(LOG_WARN, "in directional mode, filling and border drawing is not supported at the same time -> disabling border");
          d->border.used = 0;
       }
-      if (!d->fill.used && !d->img_used && d->border.used)
+      if (!d->fill.used && d->img.ctx == NULL && d->border.used)
       {
          log_msg(LOG_NOTICE, "directional mode makes only sense with a fill operation -> disabling directional mode");
          d->directional = 0;
       }
    }
 
-   log_debug("actDraw = {fill: {color: 0x%08x, width: %.1f, style: %d, used: %d, dashlen: %d, dash: {%.1f, %.1f}}, border: {color: 0x%08x, width: %.1f, style %d, used: %d, dashlen: %d, dash: {%.1f, %.1f}}, directional: %d, collect_open: %d, wl: %p, img_used: %d}",
+   log_debug("actDraw = {fill: {color: 0x%08x, width: %.1f, style: %d, used: %d, dashlen: %d, dash: {%.1f, %.1f}}, border: {color: 0x%08x, width: %.1f, style %d, used: %d, dashlen: %d, dash: {%.1f, %.1f}}, directional: %d, collect_open: %d, wl: %p, img: {ctx: %p, ...}}",
         d->fill.cs.col, d->fill.width, d->fill.style, d->fill.used, d->fill.dashlen, d->fill.dash[0], d->fill.dash[1],
         d->border.cs.col, d->border.width, d->border.style, d->border.used, d->border.dashlen, d->border.dash[0], d->border.dash[1],
-        d->directional, d->collect_open, d->wl, d->img_used);
+        d->directional, d->collect_open, d->wl, d->img.ctx);
 
    return 0;
 }
@@ -1052,7 +1051,7 @@ static void render_poly_line(const struct actDraw *d, const osm_way_t *w, int cw
       }
    }
 
-   if (d->img_used && is_closed_poly(w))
+   if (d->img.ctx != NULL && is_closed_poly(w))
    {
       cairo_smr_poly(d->img.ctx, d, w);
       if (!cw)
@@ -1194,7 +1193,7 @@ int act_draw_fini(smrule_t *r)
          cairo_smr_set_source_color(d->ctx, d->fill.cs.col);
       }
 
-      if (d->img_used)
+      if (d->img.ctx != NULL)
       {
          cairo_set_source(d->img.ctx, d->img.pat);
          cairo_fill(d->img.ctx);
