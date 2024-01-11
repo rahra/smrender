@@ -169,9 +169,10 @@ struct actImage
 {
    double angle;
    struct auto_rot rot;
-   double scale;
-   char *akey;       // angle is defined in a tag
-   char *alignkey;   // alignment defined in a tag
+   double scale;        //!< scale image by this factor
+   char *akey;          //!< angle is defined in a tag
+   char *alignkey;      //!< alignment defined in a tag
+   double trans;        //!< transparancy of image, 0.0 = opaque, 1.0 = absolute transparent
 #ifdef HAVE_CAIRO
    cairo_surface_t *img;
    cairo_pattern_t *pat;

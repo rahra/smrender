@@ -2559,9 +2559,19 @@ static int img_ini(smrule_t *r, struct actImage *img)
 
    memset(img, 0, sizeof(*img));
 
+   // get scaling factor
    if (get_param("scale", &img->scale, r->act) == NULL)
       img->scale = 1;
+   // scale with global scaling
    img->scale *= get_rdata()->img_scale;
+
+   // get transparency
+   if (get_param("transparency", &img->trans, r->act) != NULL)
+   {
+      // make sure transparency is between 0.0 and 1.0
+      img->trans = fmax(img->trans, 0.0);
+      img->trans = fmin(img->trans, 1.0);
+   }
 
    if (strlen(name) >= 4 && !strcasecmp(name + strlen(name) - 4, ".svg"))
    {
@@ -2619,6 +2629,11 @@ static int img_ini(smrule_t *r, struct actImage *img)
          return -1;
       }
 #endif
+
+      // add transparency (FIXME: probably that doesn't work with SVGs as with pixel images below...)
+      cairo_set_source_rgba(ctx, 0, 0, 0, img->trans);
+      cairo_set_operator(ctx, CAIRO_OPERATOR_DEST_OUT);
+      cairo_paint(ctx);
       cairo_destroy(ctx);
 
       g_object_unref(rh);
@@ -2662,9 +2677,15 @@ static int img_ini(smrule_t *r, struct actImage *img)
          //cairo_surface_destroy(img->img);
          return -1;
       }
+
+      // draw input image on new internal alpha channel surface
       ctx = cairo_create(img->img);
       cairo_scale(ctx, img->scale, img->scale);
       cairo_set_source_surface(ctx, sfc, 0, 0);
+      cairo_paint(ctx);
+      // add transparency
+      cairo_set_source_rgba(ctx, 0, 0, 0, img->trans);
+      cairo_set_operator(ctx, CAIRO_OPERATOR_DEST_OUT);
       cairo_paint(ctx);
       cairo_destroy(ctx);
       cairo_surface_destroy(sfc);
@@ -2716,8 +2737,8 @@ static int img_ini(smrule_t *r, struct actImage *img)
       cairo_set_source(img->ctx, img->pat);
    }
 
-   log_debug("actImage = {angle: %.2f, auto_rot: {...}, scale: %.2f, akey: \"%s\", alignkey: \"%s\", w: %.1f, h: %.1f, ctx: %p}",
-         img->angle, img->scale, img->akey, img->alignkey, img->w, img->h, img->ctx);
+   log_debug("actImage = {angle: %.2f, auto_rot: {...}, scale: %.2f, akey: \"%s\", alignkey: \"%s\", trans, %.2f, w: %.1f, h: %.1f, ctx: %p}",
+         img->angle, img->scale, img->akey, img->alignkey, img->trans, img->w, img->h, img->ctx);
 
    cairo_smr_push_group(img->ctx);
 

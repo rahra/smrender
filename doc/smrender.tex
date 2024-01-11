@@ -1071,8 +1071,13 @@ an image as pattern.
 
 \begin{verbatim}
    <definition>  := 'img:' [ <param> [ ';' <param> ... ]]
-   <param>       := <name> '=' <value>
-   <name>        := 'file' | 'angle' | 'scale' | 'mkarea' | 'anglekey'
+   <param>       := <file> | <angle> | <scale> | <mkarea> | <anglekey> | <trans>
+   <file>        := 'file' '=' <string>
+   <angle>       := 'angle' '=' <num>
+   <scale>       := 'scale' '=' <num>
+   <mkarea>      := 'mkarea' '=' <bool>
+   <anglekey>    := 'anglekey' '=' <string>
+   <trans>       := 'transparency' '=' <num>
 \end{verbatim}
 
 The parameter \optv{file} is mandatory and contains a path to a PNG file. If
@@ -1107,6 +1112,7 @@ auto-rotation function will add nodes and ways to the data which indicate the
 level priority of the angles around the node. This is mainly intended for
 debugging.
 
+The parameter \optv{transparency} makes the image transparent. It can be a decimal number between 0.0 and 1.0, where 0.0 is the default value which is absolut opaque (as the original image) and 1.0 is absolut transparent which means you won't see it at all. Please note that this works with pixel images (JPG and PNG) but not with SVGs.
 
 %bis hier
 \subsection{Data Manipulation} \label{sec:manipulation}
