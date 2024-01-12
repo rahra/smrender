@@ -25,12 +25,15 @@
 #ifndef SMCORE_H
 #define SMCORE_H
 
-// return values of apply_rule()
-#define ERULE_OUTOFBBOX 1  //!< The node is outside of the area to render.
-#define ERULE_WAYOPEN 2    //!< The rule applies only to closed ways.
-#define ERULE_WAYCLOSED 3  //!< The rule applies only to open ways.
-#define ERULE_NOMATCH 4    //!< The tags of the rule do not match the object.
-#define ERULE_INVISIBLE 5  //!< The object is invisible.
+//! return values of apply_rule()
+enum {
+   ERULE_OUTOFBBOX,     //!< The node is outside of the area to render.
+   ERULE_WAYOPEN,       //!< The rule applies only to closed ways.
+   ERULE_WAYCLOSED,     //!< The rule applies only to open ways.
+   ERULE_NOMATCH,       //!< The tags of the rule do not match the object.
+   ERULE_INVISIBLE,     //!< The object is invisible.
+   ERULE_EXECUTED       //!< Rule is already exectured.
+};
 
 #define RULES_TAG "smrender:rules"
 

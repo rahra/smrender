@@ -110,6 +110,10 @@ int log_errno(int , const char *);
 /* smthread.c */
 void sm_threaded(smrule_t*);
 int sm_thread_id(void);
+int sm_is_exec_once(const smrule_t *);
+int sm_is_exec(const smrule_t *);
+void sm_set_exec_once(smrule_t *);
+void sm_set_exec(smrule_t *);
 
 #endif
 

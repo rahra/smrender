@@ -1,4 +1,4 @@
-/* Copyright 2011 Bernhard R. Fischer, 2048R/5C5FFD47 <bf@abenteuerland.at>
+/* Copyright 2011-2024 Bernhard R. Fischer, 4096R/8E24F29D <bf@abenteuerland.at>
  *
  * This file is part of smrender.
  *
@@ -19,6 +19,7 @@
  * This file contains the definitions for the actions (rules).
  *
  * @author Bernhard R. Fischer, <bf@abenteuerland.at>
+ * @date 2024/01/12
  */
 #ifndef SMACTION_H
 #define SMACTION_H
@@ -38,6 +39,10 @@
 #define SPECIAL_MASK 0x00ff
 
 #define ACTION_THREADED 1
+//! main shall be executed just once
+#define ACTION_EXEC_ONCE 2
+//! flag is set if main function was execute at least once
+#define ACTION_EXEC 4
 #define ACTION_OPEN_WAY -1
 #define ACTION_CLOSED_WAY 1
 

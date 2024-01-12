@@ -1,4 +1,4 @@
-/* Copyright 2011 Bernhard R. Fischer, 2048R/5C5FFD47 <bf@abenteuerland.at>
+/* Copyright 2011-2024 Bernhard R. Fischer, 4096R/8E24F29D <bf@abenteuerland.at>
  *
  * This file is part of smrender.
  *
@@ -22,6 +22,7 @@
  * before execution the rules' actions.
  *
  *  @author Bernhard R. Fischer
+ *  @date 2024/01/12
  */
 
 #ifdef HAVE_CONFIG_H
@@ -484,9 +485,27 @@ int get_param_bool(const char *attr, const action_t *act)
 }
  
 
+int sm_is_flag_set(const smrule_t *r, int flag)
+{
+   return (r->act->flags & flag) != 0;
+}
+
+
 int sm_is_threaded(const smrule_t *r)
 {
-   return (r->act->flags & ACTION_THREADED) != 0;
+   return sm_is_flag_set(r, ACTION_THREADED);
+}
+
+
+int sm_is_exec(const smrule_t *r)
+{
+   return sm_is_flag_set(r, ACTION_EXEC);
+}
+
+
+int sm_is_exec_once(const smrule_t *r)
+{
+   return sm_is_flag_set(r, ACTION_EXEC_ONCE);
 }
 
 
@@ -495,6 +514,21 @@ void sm_threaded(smrule_t *r)
    log_debug("activating multi-threading for rule 0x%016lx", r->oo->id);
    r->act->flags |= ACTION_THREADED;
 }
+
+
+void sm_set_exec_once(smrule_t *r)
+{
+   log_debug("set rule to execute only once");
+   r->act->flags |= ACTION_EXEC_ONCE;
+}
+
+
+void sm_set_exec(smrule_t *r)
+{
+   //log_debug("set rule executed"); // too much debuggin
+   r->act->flags |= ACTION_EXEC;
+}
+
 
 #ifdef WITH_THREADS
 

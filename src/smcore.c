@@ -264,10 +264,15 @@ int apply_rule(osm_obj_t *o, smrule_t *r, int *ret)
    if (!o->vis)
       return ERULE_INVISIBLE;
 
+   if (sm_is_exec_once(r) && sm_is_exec(r))
+      return ERULE_EXECUTED;
+
    // call function with this object
    i = r->act->main.func(r, o);
    if (ret != NULL)
       *ret = i;
+
+   sm_set_exec(r);
 
 #ifdef ADD_RULE_TAG
    add_rule_tag(r, o);
