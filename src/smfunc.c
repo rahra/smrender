@@ -468,6 +468,12 @@ int act_poly_area_main(smrule_t * UNUSED(r), osm_way_t *w)
 }
 
 
+int act_poly_area_fini(smrule_t *UNUSED(r))
+{
+   return 0;
+}
+
+
 int act_poly_centroid_ini(smrule_t *r)
 {
    sm_threaded(r);
@@ -507,6 +513,12 @@ int act_poly_centroid_main(smrule_t * UNUSED(r), osm_way_t *w)
  
    //log_debug("centroid %.3f/%.3f, ar = %f, way = %ld, node %ld", n->lat, n->lon, ar, w->obj.id, n->obj.id);
 
+   return 0;
+}
+
+
+int act_poly_centroid_fini(smrule_t *UNUSED(r))
+{
    return 0;
 }
 
@@ -566,15 +578,39 @@ int set_way_direction(osm_way_t *w, int dir)
 }
 
 
+int act_set_ccw_ini(smrule_t * UNUSED(r))
+{
+   return 0;
+}
+
+
 int act_set_ccw_main(smrule_t * UNUSED(r), osm_way_t *w)
 {
    return set_way_direction(w, DIR_CCW);
 }
 
 
+int act_set_ccw_fini(smrule_t * UNUSED(r))
+{
+   return 0;
+}
+
+
+int act_set_cw_ini(smrule_t * UNUSED(r))
+{
+   return 0;
+}
+
+
 int act_set_cw_main(smrule_t * UNUSED(r), osm_way_t *w)
 {
    return set_way_direction(w, DIR_CW);
+}
+
+
+int act_set_cw_fini(smrule_t * UNUSED(r))
+{
+   return 0;
 }
 
 
@@ -1207,6 +1243,12 @@ int dist_median(const osm_way_t *w, double *median)
 }
 
 
+int act_dist_median_ini(smrule_t * UNUSED(r))
+{
+   return 0;
+}
+
+
 int act_dist_median_main(smrule_t * UNUSED(r), osm_way_t *w)
 {
    struct otag *ot;
@@ -1233,6 +1275,12 @@ int act_dist_median_main(smrule_t * UNUSED(r), osm_way_t *w)
    set_const_tag(&w->obj.otag[w->obj.tag_cnt], "smrender:dist_median", strdup(buf));
    w->obj.tag_cnt++;
 
+   return 0;
+}
+
+
+int act_dist_median_fini(smrule_t * UNUSED(r))
+{
    return 0;
 }
 
@@ -1437,6 +1485,12 @@ int act_poly_len_main(smrule_t * UNUSED(r), osm_way_t *w)
 }
 
 
+int act_poly_len_fini(smrule_t *UNUSED(r))
+{
+   return 0;
+}
+
+
 /*! Unthreaded action, simple does nothing. Smrender automatically syncs
  * threads before calling this function. Because this does nothing, the
  * following action is also called "thread-synced" (without any other thread
@@ -1444,6 +1498,12 @@ int act_poly_len_main(smrule_t * UNUSED(r), osm_way_t *w)
  * before the next action is executed.
  */
 int act_sync_threads_ini(smrule_t * UNUSED(r))
+{
+   return 0;
+}
+
+
+int act_sync_threads_fini(smrule_t * UNUSED(r))
 {
    return 0;
 }
@@ -1472,6 +1532,12 @@ static int parse_id(smrule_t *r)
 }
 
 
+int act_disable_ini(smrule_t * UNUSED(r))
+{
+   return 0;
+}
+
+
 /*! Disable object, i.e. set visibility to 0.
  */
 int act_disable_main(smrule_t * UNUSED(r), osm_obj_t *o)
@@ -1481,11 +1547,29 @@ int act_disable_main(smrule_t * UNUSED(r), osm_obj_t *o)
 }
 
 
+int act_disable_fini(smrule_t * UNUSED(r))
+{
+   return 0;
+}
+
+
+int act_enable_ini(smrule_t * UNUSED(r))
+{
+   return 0;
+}
+
+
 /*! Enable object, i.e. set visibility to 1.
  */
 int act_enable_main(smrule_t * UNUSED(r), osm_obj_t *o)
 {
    o->vis = 1;
+   return 0;
+}
+
+
+int act_enable_fini(smrule_t * UNUSED(r))
+{
    return 0;
 }
 
@@ -1502,6 +1586,12 @@ int act_enable_rule_main(smrule_t *r, osm_obj_t * UNUSED(o))
 }
 
 
+int act_enable_rule_fini(smrule_t *UNUSED(r))
+{
+   return 0;
+}
+
+
 int act_disable_rule_ini(smrule_t *r)
 {
    return parse_id(r);
@@ -1511,6 +1601,12 @@ int act_disable_rule_ini(smrule_t *r)
 int act_disable_rule_main(smrule_t *r, osm_obj_t * UNUSED(o))
 {
    return act_disable_main(r, r->data);
+}
+
+
+int act_disable_rule_fini(smrule_t *UNUSED(r))
+{
+   return 0;
 }
 
 
