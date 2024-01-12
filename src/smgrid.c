@@ -170,6 +170,7 @@ int act_ruler_fini(smrule_t *r)
 
 int act_ruler2_ini(smrule_t *r)
 {
+   sm_set_exec_once(r);
    return ruler_ini(r);
 }
 
@@ -178,10 +179,6 @@ int act_ruler2_main(smrule_t *r, osm_obj_t *UNUSED(o))
 {
    ruler_t *rl = r->data;
 
-   // It's always just called once
-   if (rl->call)
-      return 1;
-   rl->call++;
    return ruler(get_rdata(), rl);
 }
 
@@ -606,7 +603,6 @@ void init_grid(struct grid *grd)
    grd->copyright = 1;
    grd->cmdline = 1;
    grd->gpcnt = 2;
-   grd->callcnt = 0;
 }
 
 
@@ -703,6 +699,7 @@ int act_grid2_ini(smrule_t *r)
    grid_ini(r, grd);
    r->data = grd;
 
+   sm_set_exec_once(r);
    return 0;
 }
 
@@ -713,16 +710,7 @@ int act_grid2_ini(smrule_t *r)
  */
 int act_grid2_main(smrule_t *r, osm_obj_t *UNUSED(o))
 {
-   static int _once = 0;
-
-   if (_once)
-   {
-      log_msg(LOG_INFO, "grid2() is always just called once");
-      return 1;
-   }
-
    grid(get_rdata(), r->data);
-   _once++;
    return 1;
 }
 
@@ -793,6 +781,7 @@ int act_global_grid_ini(smrule_t *r)
 
    log_debug("lat_grid = %.1f, lon_grid = %.1f, gridpoints = %d", grd->lat_g, grd->lon_g, grd->gpcnt);
    r->data = grd;
+   sm_set_exec_once(r);
    return 0;
 }
 
@@ -910,10 +899,6 @@ int act_global_grid_main(smrule_t *r, osm_obj_t *UNUSED(o))
 {
    struct grid *grd = r->data;
 
-   if (grd->callcnt)
-      return 1;
-   grd->callcnt++;
-
    log_debug("generating global longitude grid");
    for (double a = -180; a < 180; a += grd->lon_g)
       meridian(a, grd->lat_g, grd->gpcnt);
@@ -932,7 +917,6 @@ int act_global_grid_main(smrule_t *r, osm_obj_t *UNUSED(o))
 
 int act_global_grid_fini(smrule_t *r)
 {
-   log_debug("callcnt = %d", ((struct grid*) r->data)->callcnt);
    sm_free(r->data);
    r->data = NULL;
    return 0;

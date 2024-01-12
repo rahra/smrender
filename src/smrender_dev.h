@@ -276,8 +276,6 @@ struct grid
    int gpcnt;
    //! render chart border as polygon in transversal Mercator
    int polygon_window;
-   //! call counter
-   int callcnt;
 };
 
 typedef struct ruler
@@ -286,8 +284,6 @@ typedef struct ruler
    int rcnt;
    //! length of sections
    double rsec;
-   //! internal call counter
-   int call;
    //! units: 0 = km, 1 = nm
    int unit;
 } ruler_t;
