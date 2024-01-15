@@ -1,4 +1,4 @@
-/* Copyright 2011-2023 Bernhard R. Fischer, 4096R/8E24F29D <bf@abenteuerland.at>
+/* Copyright 2011-2024 Bernhard R. Fischer, 4096R/8E24F29D <bf@abenteuerland.at>
  *
  * This file is part of smrender.
  *
@@ -19,7 +19,7 @@
  * This file contains the main() function and main initialization functions.
  *
  *  \author Bernhard R. Fischer, <bf@abenteuerland.at>
- *  \date 2023/10/05
+ *  \date 2024/01/15
  */
 
 #ifdef HAVE_CONFIG_H
@@ -42,6 +42,7 @@
 #include <syslog.h>
 #include <signal.h>
 #include <locale.h>
+#include <getopt.h>
 
 #include "smrender_dev.h"
 #include "smcore.h"
@@ -71,6 +72,42 @@ struct tile_info
 volatile sig_atomic_t int_ = 0;
 static volatile sig_atomic_t pipe_ = 0;
 int render_all_nodes_ = 0;
+#ifdef HAVE_GETOPT_LONG
+//! long options for getopt_long()
+static const struct option lopts_[] =
+{
+   {"all-nodes", no_argument, NULL, 'a'},
+   {"border", required_argument, NULL, 'B'},
+   {"bgcolor", required_argument, NULL, 'b'},
+   {"no-color", no_argument, NULL, 'C'},
+   {"color", no_argument, NULL, 'C' + 256},
+   {"log-level", no_argument, NULL, 'D'},
+   {"dpi", no_argument, NULL, 'd'},
+   {"filter", no_argument, NULL, 'f'},
+   {"grid", required_argument, NULL, 'g'},
+   {"no-grid", no_argument, NULL, 'G'},
+   {"in", required_argument, NULL, 'i'},
+   {"kap", required_argument, NULL, 'k'},
+   {"kap-header", required_argument, NULL, 'K'},
+   {"logfile", required_argument, NULL, 'L'},
+   {"landscape", no_argument, NULL, 'l'},
+   {"id-offset", required_argument, NULL, 'N'},
+   {"id-positive", no_argument, NULL, 'n'},
+   {"rules", required_argument, NULL, 'r'},
+   {"out-rules", required_argument, NULL, 'R'},
+   {"img-scale", required_argument, NULL, 's'},
+   {"title", required_argument, NULL, 't'},
+   {"tiles", required_argument, NULL, 'T'},
+   {"out", required_argument, NULL, 'o'},
+   {"projection", required_argument, NULL, 'p'},
+   {"page", required_argument, NULL, 'P'},
+   {"urls", no_argument, NULL, 'u'},
+   {"params", no_argument, NULL, 'V'},
+   {"version", no_argument, NULL, 'v'},
+   {"write", required_argument, NULL, 'w'},
+   {NULL, 0, NULL, 0}
+};
+#endif
 
 
 /*! This function parse a coordinate string of format "[-]dd.ddd[NESW]" or
@@ -1006,7 +1043,11 @@ int main(int argc, char *argv[])
    memset(&ri, 0, sizeof(ri));
    ri.nindent = DEFAULT_NINDENT;
 
+#ifdef HAVE_GETOPT_LONG
+   while ((n = getopt_long(argc, argv, "ab:B:DCd:fg:Ghi:k:K:lL:MmN:no:O:p:P:r:R:s:S:t:T:uVvw:", lopts_, NULL)) != -1)
+#else
    while ((n = getopt(argc, argv, "ab:B:DCd:fg:Ghi:k:K:lL:MmN:no:O:p:P:r:R:s:S:t:T:uVvw:")) != -1)
+#endif
       switch (n)
       {
          case 'a':
@@ -1023,6 +1064,10 @@ int main(int argc, char *argv[])
 
          case 'C':
             clear_log_flags(LOGF_COLOR);
+            break;
+
+         case 'C' + 256:
+            set_log_flags(LOGF_COLOR);
             break;
 
          case 'D':
