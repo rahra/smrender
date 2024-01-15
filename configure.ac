@@ -81,7 +81,7 @@ AC_SEARCH_LIBS([sin], [m])
 AC_SEARCH_LIBS([dlopen], [dl])
 #AC_SEARCH_LIBS([RAND_bytes], [crypto])
 
-AC_CHECK_FUNCS([strptime dladdr mbtowc execvpe])
+AC_CHECK_FUNCS([strptime dladdr mbtowc execvpe getopt_long])
 
 PKG_CHECK_MODULES([GLIB], [glib-2.0],
                   [AC_DEFINE([HAVE_GLIB], [1], [using glib version check])],
