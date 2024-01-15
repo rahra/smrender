@@ -1,4 +1,4 @@
-/* Copyright 2011 Bernhard R. Fischer, 2048R/5C5FFD47 <bf@abenteuerland.at>
+/* Copyright 2011-2024 Bernhard R. Fischer, 4096R/8E24F29D <bf@abenteuerland.at>
  *
  * This file is part of smrender.
  *
@@ -19,6 +19,7 @@
  * This file contains fundamental definitions for Smrender.
  *
  * @author Bernhard R. Fischer, <bf@abenteuerland.at>
+ * @date 2024/01/15
  */
 #ifndef SMRENDER_H
 #define SMRENDER_H

@@ -1,4 +1,4 @@
-/* Copyright 2008-2011 Bernhard R. Fischer, Daniel Haslinger.
+/* Copyright 2008-2024 Bernhard R. Fischer, 4096R/8E24F29D <bf@abenteuerland.at>
  *
  * This file is part of smrender.
  *
@@ -20,7 +20,7 @@
  * for OnionCat and was adapted to be used for smrender.
  * 
  *  @author Bernhard R. Fischer
- *  @version 2011/12/20
+ *  @version 2024/01/15
  */
 
 #ifdef HAVE_CONFIG_H
