@@ -537,6 +537,7 @@ void usage(const char *s)
          "   -a .................. Render all nodes, otherwise only nodes which are\n"
          "                         on the page are rendered.\n"
          "   -B <border> ......... Add an additional border to the page.\n"
+         "   -C .................. Disable colored log output.\n"
          "   -b <color> .......... Choose background color ('white' is default).\n"
          "   -D .................. Increase verbosity (can be specified multiple times).\n"
          "   -d <density> ........ Set image density (300 is default).\n"
@@ -991,6 +992,7 @@ int main(int argc, char *argv[])
 
    (void) gettimeofday(&tv_start, NULL);
    init_log(logfile, level);
+   set_log_flags(LOGF_COLOR);
    rd = get_rdata();
    init_grid(&grd);
    rd->cmdline = mk_cmd_line((const char**) argv);
@@ -1004,7 +1006,7 @@ int main(int argc, char *argv[])
    memset(&ri, 0, sizeof(ri));
    ri.nindent = DEFAULT_NINDENT;
 
-   while ((n = getopt(argc, argv, "ab:B:Dd:fg:Ghi:k:K:lL:MmN:no:O:p:P:r:R:s:S:t:T:uVvw:")) != -1)
+   while ((n = getopt(argc, argv, "ab:B:DCd:fg:Ghi:k:K:lL:MmN:no:O:p:P:r:R:s:S:t:T:uVvw:")) != -1)
       switch (n)
       {
          case 'a':
@@ -1017,6 +1019,10 @@ int main(int argc, char *argv[])
 
          case 'b':
             bg = optarg;
+            break;
+
+         case 'C':
+            clear_log_flags(LOGF_COLOR);
             break;
 
          case 'D':
