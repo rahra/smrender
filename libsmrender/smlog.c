@@ -39,6 +39,7 @@
 #include <pthread.h>
 #endif
 
+#include "smrender.h"
 
 // Define the following macro if log_msg() should preserve errno.
 #define PRESERVE_ERRNO
@@ -54,10 +55,12 @@
 int sm_thread_id(void);
 
 static const char *flty_[8] = {"emerg", "alert", "crit", "err", "warning", "notice", "info", "debug"};
+enum {ANSI_BLACK, ANSI_RED, ANSI_GREEN, ANSI_YELLOW, ANSI_BLUE, ANSI_MAGENTA, ANSI_CYAN, ANSI_WHITE, ANSI_RESET};
+static const char *acol_[] = {"\x1b[30m", "\x1b[31m", "\x1b[32m", "\x1b[33m", "\x1b[34m",  "\x1b[35m", "\x1b[36m", "\x1b[37m", "\x1b[0m"};
 //! FILE pointer to log
 static FILE *log_ = NULL;
 static int level_ = LOG_INFO;
-static int logtime_ = 1;
+static int flags_ = LOGF_TIME;
 
 
 void __attribute__((constructor)) init_log0(void)
@@ -67,14 +70,39 @@ void __attribute__((constructor)) init_log0(void)
 }
 
 
-/*! Enable (a != 0) or disable (a == ) logging of timestamp. By default
+void set_log_flags(int f)
+{
+   // do not set LOGF_COLOR if output is sent to file
+   if (log_ != stderr && f == LOGF_COLOR)
+      return;
+
+   flags_ |= f;
+}
+
+
+void clear_log_flags(int f)
+{
+   flags_ &= ~f;
+}
+
+
+int test_flag(int f)
+{
+   return flags_ & f;
+}
+
+
+/*! Enable (a != 0) or disable (a == 0) logging of timestamp. By default
  * timestamp logging is enabled.
  * @param a Set to true to enable timestamp logging or false (a == 0) to
  * disable it.
  */
 void set_log_time(int a)
 {
-   logtime_ = a;
+   if (a)
+      set_log_flags(LOGF_TIME);
+   else
+      clear_log_flags(LOGF_TIME);
 }
 
 
@@ -102,9 +130,32 @@ FILE *init_log(const char *s, int level)
 
       if ((log_ = fopen(s, mode)) == NULL)
          fprintf(stderr, "*** could not open logfile %s: %s. Logging to syslog.\n", s, strerror(errno));
+
+      // do not use ANSI colors in file
+      clear_log_flags(LOGF_COLOR);
    }
 
    return log_;
+}
+
+
+static int level_color(int level)
+{
+   switch (level)
+   {
+      case LOG_DEBUG:
+         return ANSI_MAGENTA;
+
+      case LOG_INFO:
+      case LOG_NOTICE:
+         return ANSI_GREEN;
+
+      case LOG_WARNING:
+         return ANSI_YELLOW;
+
+      default:
+         return ANSI_RED;
+   }
 }
 
 
@@ -157,14 +208,22 @@ int vlog_msgf(FILE *out, int lf, const char *fmt, va_list ap)
    if (out != NULL)
    {
       len = 0;
-      if (logtime_)
+      if (test_flag(LOGF_TIME))
       {
+         const char *con, *coff;
+         if (test_flag(LOGF_COLOR))
+         {
+            con = acol_[level_color(level)];
+            coff = acol_[ANSI_RESET];
+         }
+         else
+            con = coff = "";
 #ifdef WITH_THREADS
       int id = sm_thread_id();
       pthread_mutex_lock(&mutex);
-      len = fprintf(out, "%s.%03d %s (+%2d.%03d) %d:[%7s] ", timestr, (int) (tv.tv_usec / 1000), timez, (int) tr.tv_sec, (int) (tr.tv_usec / 1000), id, flty_[level]);
+      len = fprintf(out, "%s.%03d %s (+%2d.%03d) %d:[%s%7s%s] ", timestr, (int) (tv.tv_usec / 1000), timez, (int) tr.tv_sec, (int) (tr.tv_usec / 1000), id, con, flty_[level], coff);
 #else
-      len = fprintf(out, "%s.%03d %s (+%2d.%03d) [%7s] ", timestr, (int) (tv.tv_usec / 1000), timez, (int) tr.tv_sec, (int) (tr.tv_usec / 1000), flty_[level]);
+      len = fprintf(out, "%s.%03d %s (+%2d.%03d) [%s%7s%s] ", timestr, (int) (tv.tv_usec / 1000), timez, (int) tr.tv_sec, (int) (tr.tv_usec / 1000), con, flty_[level], coff);
 #endif
       }
       len += vfprintf(out, fmt, ap);

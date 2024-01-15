@@ -41,6 +41,8 @@
 #define LOG_WARN LOG_WARNING
 #define log_debug(fmt, x...) log_msg(LOG_DEBUG, "%s() " fmt, __func__, ## x)
 #define log_warn(x...) log_msg(LOG_WARN, ## x)
+#define LOGF_TIME 1
+#define LOGF_COLOR 2
 
 #define DEG2RAD(x) ((x) * M_PI / 180.0)
 #define RAD2DEG(x) ((x) * 180.0 / M_PI)
@@ -106,6 +108,8 @@ const char *safe_null_str(const char *);
 /* smlog.c */
 int log_msg(int, const char*, ...) __attribute__((format (printf, 2, 3)));
 int log_errno(int , const char *);
+void set_log_flags(int);
+void clear_log_flags(int);
 
 /* smthread.c */
 void sm_threaded(smrule_t*);
