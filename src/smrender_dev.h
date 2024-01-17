@@ -315,6 +315,9 @@ size_t save_osm(const char *, bx_node_t *, const struct bbox *, const char *);
 int apply_smrules0(osm_obj_t*, smrule_t*);
 int apply_rule(osm_obj_t*, smrule_t*, int*);
 int call_fini(smrule_t*);
+void print_version(void);
+void usage(const char *);
+
 
 /* smcoast.c */
 int is_closed_poly(const osm_way_t*);

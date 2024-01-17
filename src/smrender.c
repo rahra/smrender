@@ -81,7 +81,8 @@ static const struct option lopts_[] =
    {"bgcolor", required_argument, NULL, 'b'},
    {"no-color", no_argument, NULL, 'C'},
    {"color", no_argument, NULL, 'C' + 256},
-   {"log-level", no_argument, NULL, 'D'},
+   {"inc-loglevel", no_argument, NULL, 'D'},
+   {"loglevel", no_argument, NULL, 'D' + 256},
    {"dpi", no_argument, NULL, 'd'},
    {"filter", no_argument, NULL, 'f'},
    {"grid", required_argument, NULL, 'g'},
@@ -541,78 +542,6 @@ double init_rd_paper(struct rdata *rd, const char *paper)
    } // end else
 
    return angle;
-}
-
-
-static void print_version(void)
-{
-   printf("Seamark renderer V" PACKAGE_VERSION ", (c) 2011-2023, Bernhard R. Fischer, 4096R/8E24F29D <bf@abenteuerland.at>.\n"
-          "See https://github.com/rahra/smrender for more information.\n");
-#ifdef HAVE_CAIRO
-   printf("Using libcairo %s.\n", cairo_version_string());
-#else
-   printf("Compiled without libcairo support.\n");
-#endif
-}
-
-
-void usage(const char *s)
-{
-   print_version();
-   printf(
-         "usage: %s [OPTIONS] <window>\n"
-         "   <window> := <center> | <bbox>\n"
-         "   <bbox>   := <left lower>:<right upper>\n"
-         "   <left lower> := <coords>\n"
-         "   <right upper> := <coords>\n"
-         "   <center> := <coords>:<size>\n"
-         "   <coords> := <lat>:<lon>\n"
-         "   <size>   := <scale> | <length>'d' | <length>'m'\n"
-         "               <scale> Scale of chart.\n"
-         "               <length> Length of mean latitude in either degrees ('d') or\n"
-         "                        nautical miles ('m')\n"
-         "   -a .................. Render all nodes, otherwise only nodes which are\n"
-         "                         on the page are rendered.\n"
-         "   -B <border> ......... Add an additional border to the page.\n"
-         "   -C .................. Disable colored log output.\n"
-         "   -b <color> .......... Choose background color ('white' is default).\n"
-         "   -D .................. Increase verbosity (can be specified multiple times).\n"
-         "   -d <density> ........ Set image density (300 is default).\n"
-         "   -f .................. Use loading filter.\n"
-         "   -g <grd>[:<t>[:<s>]]  Distance of grid/ticks/subticks in minutes.\n"
-         "   -G .................. Do not generate grid nodes/ways.\n"
-         "   -i <osm input> ...... OSM input data (default is stdin).\n"
-         "   -k <filename> ....... Generate KAP file.\n"
-         "   -K <filename> ....... Generate KAP header file.\n"
-         "   -L [+]<logfile>[:<lopt]\n"
-         "      .................. Save log output to <logfile>. Option '+' means append to logfile\n"
-         "                         Option <lopt> allows to be 'nologtime' to suppress timestamp.\n"
-         "   -l .................. Select landscape output. Only useful with option -P.\n"
-         "   -M .................. Input file is memory mapped (default).\n"
-         "   -m .................. Input file is read into heap memory.\n"
-         "   -N <offset> ......... Add numerical <offset> to all IDs in output data.\n"
-         "   -n .................. Output IDs as positive values only.\n"
-         "   -r <rules file> ..... Rules file ('rules.osm' is default).\n"
-         "                         Set <rules file> to 'none' to run without rules.\n"
-         "   -R <file> ........... Output all rules to <file> in OSM or JSON format dependent on its extension..\n"
-         "   -s <img scale> ...... Set global image scale (default = 1).\n"
-         "   -S <file> ........... Output processed rules in rendering order to <file> in JSON format (DEPRECATED: use -R).\n"
-         "   -t <title> .......... Set descriptional chart title.\n"
-         "   -T <tile_info> ...... Create tiles.\n"
-         "      <tile_info> := <zoom_lo> [ '-' <zoom_hi> ] ':' <tile_path> [ ':' <file_type> ]\n"
-         "      <file_type> := 'png' | 'jpg'\n"
-         "   -o <image file> ..... Name of output file. The extensions determines the output format.\n"
-         "                         Currently supported formats: .PDF, .PNG, .SVG.\n"
-         "   -O <pdf file> ....... Filename of output PDF file (DEPRECATED: use -o).\n"
-         "   -p <projection> ..... Chart projection, either 'mercator' (default) or 'adams2'.\n"
-         "   -P <page format> .... Select output page format.\n"
-         "   -u .................. Output URLs suitable for OSM data download and\n"
-         "                         exit.\n"
-         "   -V .................. Show chart parameters and exit.\n"
-         "   -v .................. Print version and exit.\n"
-         "   -w <osm file> ....... Output OSM data to file.\n",
-         s
-         );
 }
 
 
