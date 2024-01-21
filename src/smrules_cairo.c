@@ -1324,13 +1324,16 @@ int act_cap_ini(smrule_t *r)
 
    if ((cap.font = get_param("font", NULL, r->act)) == NULL)
    {
-      log_msg(LOG_WARN, "parameter 'font' missing");
-      return 1;
+      cap.font = DEFAULT_CAP_FONT;
+      log_msg(LOG_NOTICE, "parameter 'font' missing, defaulting to \"%s\"", cap.font);
    }
    if (get_param("size", &cap.size, r->act) == NULL)
    {
-      log_msg(LOG_WARN, "parameter 'size' missing");
-      return 1;
+      if (r->oo->type == OSM_NODE)
+      {
+         cap.size = DEFAULT_CAP_SIZE;
+         log_msg(LOG_NOTICE, "parameter 'size' missing, defaulting to %.1f", cap.size);
+      }
    }
    cap.xoff = cap.yoff = mm2unit(cap.size) / 2;
    if ((cap.key = get_param("key", NULL, r->act)) == NULL)

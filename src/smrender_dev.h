@@ -94,6 +94,8 @@
 #define MAX_AUTO_SIZE 12.0
 #define MIN_AREA_SIZE 8.0
 #define AUTO_SCALE 0.2
+#define DEFAULT_CAP_FONT "serif"
+#define DEFAULT_CAP_SIZE 4.0
 //! default curve factor
 #define DIV_PART 0.2
 
