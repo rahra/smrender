@@ -91,7 +91,7 @@ I still maintain it and do constantantly add new features.
 
 \smrender{} contains several features which are experimental. Those are namely
 the auto-rotation and the polygon-size dependent captions (see Section
-\ref{sec:cap}).
+\ref{sec:act-cap}).
 
 \section{Name}
 
@@ -240,7 +240,7 @@ In the following all options are explained in alphabetical order.
    \item[\optk{b}] \optv{color}
 
       This option allows to set a background color. The color may be defined either as a color preset
-      or an HTML-style definition (see Section \ref{sec:cap}). The default color is white.
+      or an HTML-style definition (see Section \ref{sec:act-cap}). The default color is white.
 
       Please note that some Shells (such as the \textsf{bash}) interpret the
       \textsf{\#} character if the color is specified in HTML-style. In this
@@ -637,11 +637,13 @@ The basic format of an action and basic values and types are defined as follows.
 \begin{verbatim}
    <action> := <ref> [ ':' <param> [ ';' <param> [ ... ] ] ]
    <ref>    := <func> [ '@' <library> ]
+
    <param>  := [ SEP ] <name> [ SEP ] '=' [ SEP ] <value> [ SEP ]
-   <value>  := <bool> | <num> | any valid XML string
+   SEP      := '`' | '"'
+   <value>  := <bool> | <num> | <coldef> | any valid XML string
+
    <bool>   := 'yes' | 'no' | 'true' | 'false' | <num>
    <num>    := any decimal number
-   SEP      := '`' | '"'
    <length> := <num> [ <udef> ]
    <udef>   := <pageunit> | <nautunit>
    <pageunit> := 'mm' | 'cm' | 'in' | 'px' | 'pt' | '"'
@@ -649,11 +651,11 @@ The basic format of an action and basic values and types are defined as follows.
                  'm' | 'km' | 'ft' | 'nm' | 'sm'
 \end{verbatim}
 
-Every action consists of a symbol name \optv{ref} which is used to find the
-appropriate function in \smrender or in a shared object\footnote{Function
+Every action consists of a symbol name \optv{func} which is used to find the
+appropriate function in \smrender or in the shared object\footnote{Function
    libraries, on Unix-based systems \textsf{.so} files, on Mac OSX
    \textsf{.dylib} files, and on Windows \textsf{.dll} files.}
-and an optional set of
+\optv{library}, and a set of
 parameters. These are attribute/value pairs. The names of the attributes are
 case-sensitive. A special \emph{type} exists which is the boolean type. It can
 be set to the case-insensitive strings 'yes', 'no', 'true', or 'false', or to
@@ -661,15 +663,16 @@ any decimal number. 0 is interpreted as false all other values are considered
 to be \emph{true}.
 
 \smrender{} is shipped with a set of functions for rendering. Those are
-capable to place captions (Section \ref{sec:cap}), drawing and filling (Section
+capable to place captions (Section \ref{sec:act-cap}), drawing and filling (Section
 \ref{sec:draw}), placing icons (Section \ref{sec:img}), generating OSM files
 (Section \ref{sec:output}), do some special purpose operations (Section
 \ref{sec:special}), and calling external library functions (Section
 \ref{sec:func}). The latter is thought to be a simple but powerful interface
 for third-party modules.
 
-All functions are described in Section \ref{sec:renderfunc}.
+All functions are described in Section \ref{sec:renderfunc}. Here is a list of all actions in \smrender{}.
 
+\input{action_list}
 
 \subsection{Measurement Units} \label{sec:units}
 
@@ -719,7 +722,7 @@ output format is PDF which is created as vector image as well. There are no pixe
    \textsf{km} & Kilometers & = 1000 m\\
    \textsf{ft} & Feet & = 0.3048 m\\
 \end{tabular}
-\caption{Measurement units referred to reallity.}
+\caption{Measurement units referred to reality.}
 \label{fig:realunits}
 \end{table}
 
@@ -750,7 +753,7 @@ It can be distinguished between three types of functions:
 
 \subsection{Graphical Rendering Primitives} \label{sec:rendergfx}
 
-\subsubsection{Captions} \label{sec:cap}
+\subsubsection{Captions} \label{sec:act-cap}
 
 The action type \textsf{cap} is used to place a caption. If the action is carried out in a node-rule,
 the caption is placed at the node's position with the specified properties. The formal definition
@@ -760,6 +763,7 @@ looks like the following.
    <action>   := 'cap:' <param> [ ';' <param> ]
    <param>    := <fontdef> | <angledef> | <aligndef> | <wcapopt>
                  | <fopt> | <hide> | <bground> | <fontbox>
+                 | <boxscale>
 
    <fontdef>  := <fontname> | <fontsize> | <color> | <fopt>
                  | <key>
@@ -774,7 +778,7 @@ looks like the following.
 
    <angledef> := <angle> | <anglekey>
    <angle>    := 'angle' '=' <angleval>
-   <angleval> := 'auto' | decimal value
+   <angleval> := 'auto' | 'majoraxis' | decimal value
    <anglekey> := 'anglekey' '=' <string>
 
    <fopt>     := <foptname> '=' decimal value
@@ -803,14 +807,12 @@ looks like the following.
    <hide>     := 'hide' '=' <bool>
 
    <bground>  := 'fillcolor' '=' <coldef>
-
+   <boxscale> := 'bgbox_scale' '=' decimal value
    <fontbox>  := 'fontbox' '=' <bool>
 
 \end{verbatim}
 
-%FIXME: 'min_size' | 'max_size' | 'min_area' | 'auto_scale' not described yet!
-%FIXME: 'align' | 'alignkey' | 'halignkey' | 'valignkey' not described yet!
-The parameters \optv{font}, \optv{size}, and \optv{key} are mandatory, the others
+The parameter \optv{key} is mandatory, the others
 are optional.
 
 If \textsf{fontconfig} is available, \optv{font} is defined as specified by
@@ -916,7 +918,7 @@ reading left-right is more easy than reading top-bottom.
 
 For example if \textsf{``weight=0.7''} is defined, northerly and southerly test samples
 are taken into account only with 70\% which leads to the fact that the
-the caption tends to be rather east-west aligned.
+caption tends to be rather east-west aligned.
 
 The parameter \textsf{'anglekey'} defines a key which can be used if the
 caption shall be rotated based on the value of a tag. The value of the
@@ -932,18 +934,18 @@ true}. Subsequently other rules may be called by using e.g. the tags
 
 \paragraph{Captions on ways} are handled a little bit different from captions
 on nodes. Actually, captions on ways (polylines) are not supported yet but
-captions on areas (closed polygons) are supported very well, although it is still
+captions on areas (closed polygons) are very well supported, although it is still
 in development.
 
 \smrender{} will calculate the centroid and the area of the polygon. The
 caption is than placed at the position of the centroid\footnote{This is similar
-   to what \emph{Osmarender} does.}. If the parameter \optv{size} is omitted or
-   set to 0, the font size is chosen dependent on the square root of the area.
-   Thus, larger polygons get larger captions and smaller ones get smaller
-   captions.
+to what \emph{Osmarender} does.}. If the parameter \optv{size} is omitted or
+set to 0, the font size is chosen dependent on the square root\footnote{It was emperical determined that the square root function works pretty well.} of the area multiplied by the scaling factor set in the option \optv{auto\_scale}. The resulting font size can further be influenced by the options \optv{min\_size} and \optv{max\_size}. They define the minimum and maximum font sizes even if the calculation by \optv{auto\_scale} would exceed these values. Thus, larger polygons get larger captions and smaller ones get smaller captions.
+
+It may be the case that that captions may clutter the chart if very tiny islands in respect to the page size and map scale get captions as well. This can be avoided by setting the option \optv{min\_area}. The area is a decimal number in square millimeters (mm$^2$) in respect to the page (not the real area of the island).
 
 
-\subsubsection{Drawing and Filling} \label{sec:draw}
+\subsubsection{Drawing and Filling} \label{sec:draw}\label{sec:act-draw}
 
 The \emph{draw} action is used to draw lines of various styles and fill
 polygons. This action uses solid colors (with alpha channel) for its operation.
@@ -988,7 +990,7 @@ part which is enclosed with a border.  The filled part is defined by
 \optv{color}, \optv{width}, and \optv{style} of which just \optv{color} is
 honored for closed polygons. The border part is defined by \optv{bcolor},
 \optv{bwidth}, and \optv{bstyle}. The color definition is explained in Section
-\ref{sec:cap} on page \pageref{sec:cap}.
+\ref{sec:act-cap} on page \pageref{sec:act-cap}.
 
 The arguments to \optv{style} and \optv{bstyle} are one of \textsf{dashed},
 \textsf{dotted}, \textsf{solid}, \textsf{transparent}, \textsf{pipe}, or
@@ -1064,13 +1066,13 @@ again by a deeper area on the west side of this chart detail.
 Filling polygons using this mode works only if the polygons are edited correctly, i.e.
 their direction is correct. Furthermore it is slightly slower than the regular fill mode.
 
-\subsubsection{Placing Images} \label{sec:img}
+\subsubsection{Placing Images} \label{sec:img}\label{sec:act-img}
 
 Smrender allows to place images at the position of nodes or to fill areas using
 an image as pattern.
 
 \begin{verbatim}
-   <definition>  := 'img:' [ <param> [ ';' <param> ... ]]
+   <action>  := 'img:' [ <param> [ ';' <param> ... ]]
    <param>       := <file> | <angle> | <scale> | <mkarea> | <anglekey> | <trans>
    <file>        := 'file' '=' <string>
    <angle>       := 'angle' '=' <num>
@@ -1090,14 +1092,14 @@ onto the map.
 
 If \optv{angle} is set to ``\textsf{auto}'',
 \smrender{} tries to find a rotation angle. This works as described
-in Section \ref{sec:cap}. The rotation function does not take the image itself into account except its size.
+in Section \ref{sec:act-cap}. The rotation function does not take the image itself into account except its size.
 The rotation test starts at direction East and rotates counterclockwise.
 Obviously, this makes only sense if it is applied to asymmetric non-centered images, such as light flares.
 On areas, ``\textsf{auto}'' has no effect.
 
 The paramter \optv{anglekey} defines the name of the key of a tag which is used
 to derive the angle of rotation during runtime. It is implemented in the same
-way as it is for captions (see Section \ref{sec:cap}). Obviously, this does not work
+way as it is for captions (see Section \ref{sec:act-cap}). Obviously, this does not work
 together with \optv{angle=auto}. The latter is ignored if \optv{anglekey} is
 set.
 
@@ -1117,7 +1119,7 @@ The parameter \optv{transparency} makes the image transparent. It can be a decim
 %bis hier
 \subsection{Data Manipulation} \label{sec:manipulation}
 
-\subsubsection{Adding Objects}
+\subsubsection{Adding Objects}\label{sec:act-add}
 
 With this action you can add OSM objects as defined in the ruleset to the data.
 You can use this to add specific OSM objects during during the stage of
@@ -1167,7 +1169,7 @@ right and above of the lower left page corner.
 </node>
 \end{verbatim}
 
-\subsubsection{Adding Tags to Objects} \label{sec:addtag}
+\subsubsection{Adding Tags to Objects} \label{sec:addtag}\label{sec:act-addtag}
 
 The action \textsf{set\_tags} allows to add an arbitrary number of OSM tags to an
 object. The tags have to be defined through an object within the rules file.
@@ -2222,7 +2224,7 @@ is a north-up compass with with crosslines rotated by the variation as shown in 
 As most other functions,
 it will not directly create graphics output but OSM nodes and ways with specific tags.
 Those can then be graphically rendered by using one of \smrender's rendering
-primitives (s. Section \ref{sec:cap} and \ref{sec:draw}).
+primitives (s. Section \ref{sec:act-cap} and \ref{sec:draw}).
 
 \begin{verbatim}
    <definition>  := 'compass@libsmfilter.so:' [ <param> [ ';'
@@ -2525,7 +2527,7 @@ specify simple font faces such as e.g. \textsf{sans-serif} or
 \textsf{DejaVuSans} and the package will handle the path resolution to the
 necessary font files. You can still use fonts even without \textsf{fontconfig}
 but you then have to specify the full paths for the font files in the
-\textsf{cap()} rules (see Section \ref{sec:cap}) such as e.g.
+\textsf{cap()} rules (see Section \ref{sec:act-cap}) such as e.g.
 \textsf{/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf}. The package
 \textsf{librsvg2} is used to read SVG images in your ruleset, otherwise it
 supports just PNG images (see Section \ref{sec:img}).
