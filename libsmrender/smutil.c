@@ -117,6 +117,14 @@ void set_unique_way_id(int64_t id)
 }
 
 
+/*! This function stores the pointer p in the tree at the id with index idx.
+ * @param tree Pointer to tree pointer.
+ * @param id ID of object p.
+ * @param p Pointer to store.
+ * @param idx Index with leaf node of id.
+ * @return On success this function returns 0, otherwise -1 is returned. If the
+ * leaf node already contains a pointer, it will be overwritten.
+ */
 int put_object0(bx_node_t **tree, int64_t id, void *p, int idx)
 {
    bx_node_t *bn;
@@ -141,6 +149,10 @@ int put_object0(bx_node_t **tree, int64_t id, void *p, int idx)
 }
 
 
+/*! This function puts the OSM object o into the internal data tree.
+ * @param o Pointer to OSM object.
+ * @return On success, the function returns 0, otherwise -1.
+ */
 int put_object(osm_obj_t *o)
 {
    /*if (obj_tree_ == NULL)
@@ -153,6 +165,12 @@ int put_object(osm_obj_t *o)
 }
 
 
+/*! This function returns an object with a specific ID from the data tree.
+ * @param tree Pointer to tree.
+ * @param id ID of object to return.
+ * @param idx Index of object which typically is IDX_NODE, IDX_WAY, or IDX_REL.
+ * These are the OSM_ macros - 1.
+ */
 void *get_object0(bx_node_t *tree, int64_t id, int idx)
 {
    bx_node_t *bn;
@@ -178,6 +196,13 @@ void *get_object0(bx_node_t *tree, int64_t id, int idx)
 }
 
 
+/*! This function returns a pointer to an (OSM) object from the internal data
+ * tree.
+ * @param type Type of object. This is one of OSM_NODE, OSM_WAY, and OSM_REL.
+ * @param id ID if object to return.
+ * @return This function returns a point to an osm_object_t or NULL, of the
+ * object does not exist.
+ */
 void *get_object(int type, int64_t id)
 {
    /*if (obj_tree_ == NULL)

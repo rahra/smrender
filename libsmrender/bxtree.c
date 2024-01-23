@@ -54,7 +54,7 @@ size_t bx_sizeof(void)
  */
 void __attribute__((destructor)) bx_exit(void)
 {
-   log_msg(LOG_DEBUG, "tree memory: %ld kByte, malloc_cnt_ = %ld, mem_alloc_ = %ld, mem_free_ = %ld",
+   log_debug("tree memory: %ld kByte, malloc_cnt_ = %ld, mem_alloc_ = %ld, mem_free_ = %ld",
          bx_sizeof() / 1024, malloc_cnt_, mem_alloc_, mem_free_);
 }
 
