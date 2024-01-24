@@ -304,6 +304,13 @@ typedef struct renum
    int pass;
 } renum_t;
 
+typedef struct indexf
+{
+   int fd;
+   void *base;
+   void *index;
+} indexf_t;
+
 /* smrender.c */
 int print_onode(FILE *, const osm_obj_t*);
 int col_freq(struct rdata *, int, int, int, int, double, int);
