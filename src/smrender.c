@@ -1297,6 +1297,9 @@ int main(int argc, char *argv[])
 
    if (load_filter)
    {
+      if (index)
+         log_msg(LOG_NOTICE, "index together with load filter no supported yet, ignoring");
+
       memset(&fi, 0, sizeof(fi));
       fi.c1.lat = rd->bb.ru.lat + rd->hc * 0.05;
       fi.c1.lon = rd->bb.ll.lon - rd->wc * 0.05;
@@ -1307,14 +1310,28 @@ int main(int argc, char *argv[])
             fi.c1.lat, fi.c1.lon, fi.c2.lat, fi.c2.lon);
       (void) read_osm_file(ctl, get_objtree(), &fi, &rd->ds);
 
-      if (index)
-         log_msg(LOG_NOTICE, "index together with load filter no supported yet");
-   }
+     }
    else
    {
-      (void) read_osm_file(ctl, get_objtree(), NULL, &rd->ds);
+      int e = -1;
       if (index)
-         write_index(osm_ifile, *get_objtree(), ctl->buf.buf);
+         e = index_read(osm_ifile, ctl->buf.buf);
+
+      if (!e)
+      {
+         log_msg(LOG_NOTICE, "index successfully read");
+      }
+      else if (e == -1)
+      {
+         (void) read_osm_file(ctl, get_objtree(), NULL, &rd->ds);
+         if (index)
+            index_write(osm_ifile, *get_objtree(), ctl->buf.buf);
+      }
+      else
+      {
+         log_msg(LOG_ERR, "index file corrupt, please delete the file and restart");
+         exit(EXIT_FAILURE);
+      }
    }
 
    if (!rd->ds.cnt[OSM_NODE])
