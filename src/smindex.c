@@ -37,6 +37,8 @@
 #include "smcoast.h"
 
 #define INDEX_DIRTY 1
+#define INDEX_EXT ".index"
+
 
 typedef struct index_hdr
 {
@@ -46,6 +48,23 @@ typedef struct index_hdr
    int role_cnt;
    int role_size;
 } index_hdr_t;
+
+
+ssize_t sm_write(int fd, const void *buf, size_t len)
+{
+   ssize_t wlen;
+
+   wlen = write(fd, buf, len);
+   if (wlen == -1)
+      log_errno(LOG_ERR, "write() failed");
+   else if ((size_t) wlen < len)
+   {
+      log_msg(LOG_ERR, "write() truncated, wrote %ld of %ld bytes", wlen, len);
+      wlen = -wlen;
+   }
+
+   return wlen;
+}
 
 
 void *baseloc(void *base, void *ptr)
@@ -71,24 +90,29 @@ int write_obj_index(osm_obj_t *o, const indexf_t *idxf)
    else if (o->type == OSM_REL)
       os.r.mem = 0;
 
-   write(idxf->fd, &os, size);
+   if (sm_write(idxf->fd, &os, size) < 0)
+      return -1;
+
    for (i = 0; i < o->tag_cnt; i++)
    {
       memcpy(&otag, &o->otag[i], sizeof(otag));
       otag.k.buf = baseloc(idxf->base, otag.k.buf);
       otag.v.buf = baseloc(idxf->base, otag.v.buf);
-      write(idxf->fd, &otag, sizeof(otag));
+      if (sm_write(idxf->fd, &otag, sizeof(otag)) < 0)
+         return -1;
    }
 
    if (o->type == OSM_WAY)
    {
       osm_way_t *w = (osm_way_t*) o;
-      write(idxf->fd, w->ref, w->ref_cnt * sizeof(*w->ref));
+      if (sm_write(idxf->fd, w->ref, w->ref_cnt * sizeof(*w->ref)) < 0)
+         return -1;
    }
    else if (o->type == OSM_REL)
    {
       osm_rel_t *r = (osm_rel_t*) o;
-      write(idxf->fd, r->mem, r->mem_cnt * sizeof(*r->mem));
+      if (sm_write(idxf->fd, r->mem, r->mem_cnt * sizeof(*r->mem)) < 0)
+         return -1;
    }
 
    return 0;
@@ -97,48 +121,51 @@ int write_obj_index(osm_obj_t *o, const indexf_t *idxf)
 
 int write_index_header(index_hdr_t *ih, const indexf_t *idxf)
 {
+   log_debug("writing index header...");
+   return sm_write(idxf->fd, ih, sizeof(*ih)) < 0 ? -1 : 0;
+}
+
+
+int write_index_roles(index_hdr_t *ih, const indexf_t *idxf)
+{
    int i;
    short len;
-   char *s;
+   const char *s;
 
-   memset(ih, 0, sizeof(*ih));
-   strcpy(ih->type_str, "SMRENDER.INDEX");
-   ih->version = 1;
-   ih->flags = INDEX_DIRTY;
-
-   errno = 0;
-   if (write(idxf->fd, ih, sizeof(*ih)) < sizeof(*ih))
-      return -1;
-
-   for (i = ROLE_FIRST_FREE_NUM; ; i++, ih.role_cnt++)
+   log_debug("writing roles..");
+   for (i = ROLE_FIRST_FREE_NUM; ; i++, ih->role_cnt++)
    {
       s = role_str(i);
       if (!strcmp(s, "n/a"))
          break;
 
       len = strlen(s) + 1 + sizeof(len);
-      if (write(idxf->fd, &len, sizeof(len)) < sizeof(len))
+      if (sm_write(idxf->fd, &len, sizeof(len)) < 0)
          return -1;
-      if (write(idxf->fd, s, len) < len)
+      if (sm_write(idxf->fd, s, len) < 0)
          return -1;
 
       ih->role_size += len;
    }
 
-   lseek(idxf->fd, 0, SEEK_SET);
-   write(idxf->fd, ih, sizeof(*ih));
-   lseek(idxf->fd, ih->role_size, SEEK_CUR);
-
    return 0;
 }
 
-#define INDEX_EXT ".index"
-int write_index(const char *fname, bx_node_t *tree)
+
+void init_index_header(index_hdr_t *ih, int flags)
+{
+   strcpy(ih->type_str, "SMRENDER.INDEX");
+   ih->version = 1;
+   ih->flags = flags;
+}
+
+
+int write_index(const char *fname, bx_node_t *tree, const void *base)
 {
    indexf_t idxf;
    index_hdr_t ih;
 
-   log_debug("write_index() called");
+   log_debug("called");
    if (fname == NULL || tree == NULL)
    {
       log_msg(LOG_CRIT, "null pointer caught");
@@ -149,27 +176,32 @@ int write_index(const char *fname, bx_node_t *tree)
    snprintf(buf, sizeof(buf), "%s%s", fname, INDEX_EXT);
 
    memset(&idxf, 0, sizeof(idxf));
-   log_msg(LOG_NOTICE, "creating index file \"%s\"" buf);
-   if ((idxf->fd = creat(buf, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH )) == -1)
+   idxf.base = base;
+   log_msg(LOG_NOTICE, "creating index file \"%s\"", buf);
+   if ((idxf.fd = creat(buf, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH )) == -1)
    {
       log_errno(LOG_ERR, "could not create index file");
       return -1;
    }
 
-   rn->tree = tree;
-   rn->id = 1;
-   log_debug("renumbering nodes...");
-   traverse(tree, 0, IDX_NODE, (tree_func_t) renumber_obj, rn);
-   rn->id = 1;
-   log_debug("renumbering ways...");
-   traverse(tree, 0, IDX_WAY, (tree_func_t) renumber_obj, rn);
-   rn->id = 1;
-   log_debug("renumbering relations, pass 1...");
-   traverse(tree, 0, IDX_REL, (tree_func_t) renumber_obj, rn);
-   rn->id = 1;
-   rn->pass++;
-   log_debug("renumbering relations, pass 2...");
-   traverse(tree, 0, IDX_REL, (tree_func_t) renumber_obj, rn);
+   memset(&ih, 0, sizeof(ih));
+   init_index_header(&ih, INDEX_DIRTY);
+   write_index_header(&ih, &idxf);
+   write_index_roles(&ih, &idxf);
+   lseek(idxf.fd, 0, SEEK_SET);
+   write_index_header(&ih, &idxf);
+   lseek(idxf.fd, ih.role_size, SEEK_CUR);
+
+   log_debug("saving node index...");
+   traverse(tree, 0, IDX_NODE, (tree_func_t) write_obj_index, &idxf);
+   log_debug("saving way index...");
+   traverse(tree, 0, IDX_WAY, (tree_func_t) write_obj_index, &idxf);
+   log_debug("saving relation index...");
+   traverse(tree, 0, IDX_REL, (tree_func_t) write_obj_index, &idxf);
+
+   lseek(idxf.fd, 0, SEEK_SET);
+   init_index_header(&ih, 0);
+   write_index_header(&ih, &idxf);
 
    return 0;
 }

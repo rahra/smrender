@@ -395,5 +395,9 @@ int create_tiles(const char *, const struct rdata *, int , int );
 int rules_info(const struct rdata *, rinfo_t *, const struct dstats *);
 size_t save_json(const char *, bx_node_t *, int );
 
+/* smindex.c */
+int write_index(const char *, bx_node_t *, const void *);
+ssize_t sm_write(int , const void *, size_t );
+
 #endif
 

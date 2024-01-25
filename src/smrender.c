@@ -106,6 +106,7 @@ static const struct option lopts_[] =
    {"params", no_argument, NULL, 'V'},
    {"version", no_argument, NULL, 'v'},
    {"write", required_argument, NULL, 'w'},
+   {"index", no_argument, NULL, 'x'},
    {NULL, 0, NULL, 0}
 };
 #endif
@@ -937,7 +938,7 @@ int strrcasecmp(const char *str, const char *ext)
 int main(int argc, char *argv[])
 {
    hpx_ctrl_t *ctl, *cfctl;
-   int fd = 0, n, i, norules = 0;
+   int fd = 0, n, i, norules = 0, index = 0;
    struct stat st;
    FILE *f;
    char *cf = "rules.osm", *img_file = NULL, *osm_ifile = NULL, *osm_ofile =
@@ -973,9 +974,9 @@ int main(int argc, char *argv[])
    ri.nindent = DEFAULT_NINDENT;
 
 #ifdef HAVE_GETOPT_LONG
-   while ((n = getopt_long(argc, argv, "ab:B:DCd:fg:Ghi:k:K:lL:MmN:no:O:p:P:r:R:s:S:t:T:uVvw:", lopts_, NULL)) != -1)
+   while ((n = getopt_long(argc, argv, "ab:B:DCd:fg:Ghi:k:K:lL:MmN:no:O:p:P:r:R:s:S:t:T:uVvw:x", lopts_, NULL)) != -1)
 #else
-   while ((n = getopt(argc, argv, "ab:B:DCd:fg:Ghi:k:K:lL:MmN:no:O:p:P:r:R:s:S:t:T:uVvw:")) != -1)
+   while ((n = getopt(argc, argv, "ab:B:DCd:fg:Ghi:k:K:lL:MmN:no:O:p:P:r:R:s:S:t:T:uVvw:x")) != -1)
 #endif
       switch (n)
       {
@@ -1200,6 +1201,10 @@ int main(int argc, char *argv[])
          case 'w':
             osm_ofile = optarg;
             break;
+
+         case 'x':
+            index = 1;
+            break;
       }
 
    log_debug("args: %s", rd->cmdline);
@@ -1301,10 +1306,15 @@ int main(int argc, char *argv[])
       log_msg(LOG_INFO, "using input bounding box %.3f/%.3f - %.3f/%.3f",
             fi.c1.lat, fi.c1.lon, fi.c2.lat, fi.c2.lon);
       (void) read_osm_file(ctl, get_objtree(), &fi, &rd->ds);
+
+      if (index)
+         log_msg(LOG_NOTICE, "index together with load filter no supported yet");
    }
    else
    {
       (void) read_osm_file(ctl, get_objtree(), NULL, &rd->ds);
+      if (index)
+         write_index(osm_ifile, *get_objtree(), ctl->buf.buf);
    }
 
    if (!rd->ds.cnt[OSM_NODE])
@@ -1358,6 +1368,7 @@ int main(int argc, char *argv[])
       save_osm(osm_ofile, *get_objtree(), NULL, rd->cmdline);
    else
       save_osm(osm_ofile, *get_objtree(), &rd->bb, rd->cmdline);
+
    (void) close(ctl->fd);
    hpx_free(ctl);
    hpx_free(cfctl);
