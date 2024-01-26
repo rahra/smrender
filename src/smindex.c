@@ -182,10 +182,11 @@ void index_init_header(index_hdr_t *ih, int flags)
 }
 
 
-int index_write(const char *fname, bx_node_t *tree, const void *base)
+int index_write(const char *fname, bx_node_t *tree, const void *base, const struct dstats *ds)
 {
    indexf_t idxf;
    index_hdr_t ih;
+   int e = -1;
 
    log_debug("called");
    if (fname == NULL || tree == NULL)
@@ -214,6 +215,11 @@ int index_write(const char *fname, bx_node_t *tree, const void *base)
    index_write_header(&ih, &idxf);
    lseek(idxf.fd, ih.role_size, SEEK_CUR);
 
+   log_debug("writing dstats");
+   if ((e = sm_write(idxf.fd, ds, sizeof(*ds))) == -1)
+      goto iw_exit;
+   ih.var_size += e;
+
    log_debug("saving node index...");
    traverse(tree, 0, IDX_NODE, (tree_func_t) index_write_obj, &idxf);
    log_debug("saving way index...");
@@ -225,7 +231,11 @@ int index_write(const char *fname, bx_node_t *tree, const void *base)
    ih.flags = 0;
    index_write_header(&ih, &idxf);
 
-   return 0;
+   e = 0;
+
+iw_exit:
+   close(idxf.fd);
+   return e;
 }
 
 
@@ -376,7 +386,7 @@ iro_err:
  * @param base Pointer to memory mapped OSM data.
  * @return On success, the function returns 0, otherwise -1.
  */
-int index_read(const char *fname, const void *base)
+int index_read(const char *fname, const void *base, struct dstats *ds)
 {
    indexf_t idxf;
    index_hdr_t *ih;
@@ -452,9 +462,16 @@ int index_read(const char *fname, const void *base)
       log_msg(LOG_ERR, "index corrupt");
       goto ri_err2;
    }
+
+   log_debug("reading dstats");
+   if (ih->var_size < (int) sizeof(*ds) || size < (int) sizeof(*ds) || ih->var_size != (int) sizeof(*ds))
+      goto ri_err2;
+
+   memcpy(ds, idata, sizeof(*ds));
    idata += ih->var_size;
    size -= ih->var_size;
 
+   log_debug("reading objects");
    if (index_read_objs(idata, size, idxf.base) == -1)
    {
       log_msg(LOG_ERR, "index corrupt");

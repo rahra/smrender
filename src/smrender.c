@@ -1315,7 +1315,7 @@ int main(int argc, char *argv[])
    {
       int e = -1;
       if (index)
-         e = index_read(osm_ifile, ctl->buf.buf);
+         e = index_read(osm_ifile, ctl->buf.buf, &rd->ds);
 
       if (!e)
       {
@@ -1325,7 +1325,7 @@ int main(int argc, char *argv[])
       {
          (void) read_osm_file(ctl, get_objtree(), NULL, &rd->ds);
          if (index)
-            index_write(osm_ifile, *get_objtree(), ctl->buf.buf);
+            index_write(osm_ifile, *get_objtree(), ctl->buf.buf, &rd->ds);
       }
       else
       {

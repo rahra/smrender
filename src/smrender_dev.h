@@ -396,9 +396,9 @@ int rules_info(const struct rdata *, rinfo_t *, const struct dstats *);
 size_t save_json(const char *, bx_node_t *, int );
 
 /* smindex.c */
-int index_write(const char *, bx_node_t *, const void *);
+int index_write(const char *, bx_node_t *, const void *, const struct dstats *);
 ssize_t sm_write(int , const void *, size_t );
-int index_read(const char *, const void *);
+int index_read(const char *, const void *, struct dstats *);
 
 #endif
 
