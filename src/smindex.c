@@ -208,18 +208,22 @@ int index_write(const char *fname, bx_node_t *tree, const void *base, const stru
    }
 
    memset(&ih, 0, sizeof(ih));
+   log_debug("header @ 0x%08lx", 0L);
    index_init_header(&ih, INDEX_FDIRTY);
    index_write_header(&ih, &idxf);
+   log_debug("roles @ 0x%08lx", sizeof(ih));
    index_write_roles(&ih, &idxf);
    lseek(idxf.fd, 0, SEEK_SET);
    index_write_header(&ih, &idxf);
    lseek(idxf.fd, ih.role_size, SEEK_CUR);
 
+   log_debug("dstats @ 0x%08lx", sizeof(ih) + ih.role_size);
    log_debug("writing dstats");
    if ((e = sm_write(idxf.fd, ds, sizeof(*ds))) == -1)
       goto iw_exit;
    ih.var_size += e;
 
+   log_debug("objects @ 0x%08lx", sizeof(ih) + ih.role_size + ih.var_size);
    log_debug("saving node index...");
    traverse(tree, 0, IDX_NODE, (tree_func_t) index_write_obj, &idxf);
    log_debug("saving way index...");
