@@ -380,6 +380,29 @@ iro_err:
 }
 
 
+static int cmp_time(time_t a, time_t b)
+{
+   return a - b;
+}
+
+
+/*! This function compares 2 timespec structs.
+ * @param a Pointer to a timespec struct.
+ * @param b Pointer to another timespec struct.
+ * @return This function returns 0 if both are equal. If a is greater than b, a
+ * positiv number is returned, if a is less than b, a negative number is
+ * returned.
+ */
+int cmp_timespec(const struct timespec *a, const struct timespec *b)
+{
+   int r;
+
+   if ((r = cmp_time(a->tv_sec, b->tv_sec)))
+      return r;
+   return cmp_time(a->tv_nsec, b->tv_nsec);
+}
+
+
 /*! This function reads the index from the index file.
  * @param fname Name of OSM data file. The index file name ist constructed by
  * concattenating INDEX_EXT.
@@ -391,45 +414,74 @@ int index_read(const char *fname, const void *base, struct dstats *ds)
    indexf_t idxf;
    index_hdr_t *ih;
    struct stat st;
+   struct timespec ts;
    void *idata, *ibase;
    int size;
    int e = -2;
 
    log_debug("called");
+   // safety check
    if (fname == NULL)
    {
       log_msg(LOG_CRIT, "null pointer caught");
-      return -1;
+      return ESM_NULLPTR;
    }
 
+   // get mtime from OSM file
+   if (stat(fname, &st) == -1)
+   {
+      log_errno(LOG_ERR, "could not stat() OSM file");
+      return -1;
+   }
+   ts = st.st_mtim;
+
+   // make index file name
    char buf[strlen(fname) + strlen(INDEX_EXT) + 1];
    snprintf(buf, sizeof(buf), "%s%s", fname, INDEX_EXT);
 
    log_msg(LOG_NOTICE, "reading index file \"%s\"", buf);
+
+   // open index file
    memset(&idxf, 0, sizeof(idxf));
    idxf.base = base;
    if ((idxf.fd = open(buf, O_RDWR)) == -1)
    {
-      log_errno(LOG_ERR, "could not open index file");
-      return -1;
+      log_errno(LOG_NOTICE, "could not open index file");
+      return ESM_NOFILE;
    }
+
+   // stat index file
    if (fstat(idxf.fd, &st) == -1)
    {
       log_errno(LOG_ERR, "stat() failed");
       goto ri_err;
    }
+
+   // compare timestamps
+   if (cmp_timespec(&st.st_mtim, &ts) < 0)
+   {
+      e = ESM_OUTDATED;
+      log_msg(LOG_WARN, "index file is older than data file");
+      goto ri_err;
+   }
+
+   // make sure index file has reasonable minimum size
    if (st.st_size < (off_t) sizeof(*ih))
    {
       log_msg(LOG_ERR, "index file too small: %ld", st.st_size);
+      e = ESM_TRUNCATED;
       goto ri_err;
 
    }
+
+   // map file to memory
    if ((ibase = mmap(NULL, st.st_size, PROT_READ, MAP_PRIVATE | MAP_NORESERVE, idxf.fd, 0)) == MAP_FAILED)
    {
       log_errno(LOG_ERR, "mmap() failed");
       goto ri_err;
    }
 
+   // get header and check integrity
    ih = idata = ibase;
    if (memcmp(ih->type_str, INDEX_IDENT, strlen(INDEX_IDENT) + 1))
    {
@@ -450,6 +502,7 @@ int index_read(const char *fname, const void *base, struct dstats *ds)
    idata += sizeof(*ih);
    size = st.st_size - sizeof(*ih);
 
+   // read roles
    if (index_read_roles(ih, idata, size) == -1)
    {
       log_msg(LOG_ERR, "index corrupt");
@@ -457,20 +510,21 @@ int index_read(const char *fname, const void *base, struct dstats *ds)
    }
    idata += ih->role_size;
    size -= ih->role_size;
+
+   // read dstats (variable data chunk)
+   log_debug("reading dstats");
    if (ih->var_size < 0)
    {
       log_msg(LOG_ERR, "index corrupt");
       goto ri_err2;
    }
-
-   log_debug("reading dstats");
    if (ih->var_size < (int) sizeof(*ds) || size < (int) sizeof(*ds) || ih->var_size != (int) sizeof(*ds))
       goto ri_err2;
-
    memcpy(ds, idata, sizeof(*ds));
    idata += ih->var_size;
    size -= ih->var_size;
 
+   // read OSM objects
    log_debug("reading objects");
    if (index_read_objs(idata, size, idxf.base) == -1)
    {

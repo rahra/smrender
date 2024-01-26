@@ -1292,9 +1292,6 @@ int main(int argc, char *argv[])
    if ((ctl = hpx_init(fd, st.st_size)) == NULL)
       perror("hpx_init_simple"), exit(EXIT_FAILURE);
 
-   log_msg(LOG_NOTICE, "reading osm data (file size %ld kb, memory at %p)",
-         (long) labs(st.st_size) / 1024, ctl->buf.buf);
-
    if (load_filter)
    {
       if (index)
@@ -1308,6 +1305,8 @@ int main(int argc, char *argv[])
       fi.use_bbox = 1;
       log_msg(LOG_INFO, "using input bounding box %.3f/%.3f - %.3f/%.3f",
             fi.c1.lat, fi.c1.lon, fi.c2.lat, fi.c2.lon);
+      log_msg(LOG_NOTICE, "reading osm data (file size %ld kb, memory at %p)",
+         (long) labs(st.st_size) / 1024, ctl->buf.buf);
       (void) read_osm_file(ctl, get_objtree(), &fi, &rd->ds);
 
      }
@@ -1317,20 +1316,25 @@ int main(int argc, char *argv[])
       if (index)
          e = index_read(osm_ifile, ctl->buf.buf, &rd->ds);
 
-      if (!e)
+      switch (e)
       {
-         log_msg(LOG_NOTICE, "index successfully read");
-      }
-      else if (e == -1)
-      {
-         (void) read_osm_file(ctl, get_objtree(), NULL, &rd->ds);
-         if (index)
-            index_write(osm_ifile, *get_objtree(), ctl->buf.buf, &rd->ds);
-      }
-      else
-      {
-         log_msg(LOG_ERR, "index file corrupt, please delete the file and restart");
-         exit(EXIT_FAILURE);
+         case 0:
+            log_msg(LOG_NOTICE, "index successfully read");
+            break;
+
+         case ESM_NULLPTR:
+         case ESM_OUTDATED:
+         case ESM_NOFILE:
+            log_msg(LOG_NOTICE, "reading osm data (file size %ld kb, memory at %p)",
+               (long) labs(st.st_size) / 1024, ctl->buf.buf);
+            (void) read_osm_file(ctl, get_objtree(), NULL, &rd->ds);
+            if (index)
+               index_write(osm_ifile, *get_objtree(), ctl->buf.buf, &rd->ds);
+            break;
+
+         default:
+            log_msg(LOG_ERR, "index file corrupt (e = %d)", e);
+            exit(EXIT_FAILURE);
       }
    }
 

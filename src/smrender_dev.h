@@ -70,6 +70,14 @@
 #define POS_W1 (POS_W | POS_1)
 #define POS_DIR_MSK (POS_N | POS_S | POS_E | POS_W)
 
+#define ESM_OK 0
+#define ESM_ERROR -1
+#define ESM_NOFILE -2
+#define ESM_TIMEDIFF -3
+#define ESM_TRUNCATED -4
+#define ESM_NULLPTR -5
+#define ESM_OUTDATED -6
+
 //! macro to convert minutes to degrees
 #define MIN2DEG(x) ((double) (x) / 60.0)
 //! distance of grid lines in degrees (should be multple of G_TICKS)
@@ -306,9 +314,14 @@ typedef struct renum
 
 typedef struct indexf
 {
+   //! pointer to file descriptor of index file
    int fd;
+   //! mmap'ed base pointer of OSM data file
    const void *base;
+   //! mmap'ed base pointer of index file
    void *index;
+   //! error condition
+   int err;
 } indexf_t;
 
 /* smrender.c */
