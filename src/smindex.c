@@ -16,10 +16,10 @@
  */
 
 /*! \file smindex.c
- * This file contains all rule functions which do not create graphics output.
+ * This file contains all functions regarding the index file.
  *
- *  @author Bernhard R. Fischer
- *  \date 2023/09/24
+ *  \author Bernhard R. Fischer
+ *  \date 2024/01/26
  */
 
 #ifdef HAVE_CONFIG_H

@@ -483,6 +483,16 @@ In the following all options are explained in alphabetical order.
 
    If this option is omitted, no output will be generated.
 
+\item[\optk{x}]
+
+   With this option \smrender{} will use an index file to speed up the loading process.
+
+   Basically at the startup \smrender{} pulls in the input data file (from option \optk{i}). By reading it it parses the whole data file and creates an in-memory index which obviously takes some time. Although the XML processor of \smrender{} is pretty fast it is still a time consuming task.
+   
+   With this option set it will save this internal index to a file after the input data was parsed. In a subsequent run of \smrender{} it will pull in the index directly from the file instead of parsing the whole XML file of the raw input data. This drastically speeds up the initialization process which is very usefull if your render several files in a row if they are based on the same input data. It is also very useful if you are developing a ruleset and have to restart \smrender{} over and over again, specifically if the input file has a reasonable size.
+
+   Before loading the index it compares the timestmaps of the index file and the input file. If the input file is newer it will drop and rebuild the index file. This comparison is based on the \emph{modification time} of the files in the file system. Please note that if you tamper with these timestamps or your system had a timewarp (system time changed) this may lead to accidentally reading an outdated index. In this case just delete the index file manually and restart \smrender{}.
+
 \end{itemize}
 
 

@@ -547,7 +547,20 @@ In the following all options are explained in alphabetical order.
    Thus the output depends on the options <span style="font-family:helvetica"><span class="small"><b>-f</b></span></span>, <span style="font-family:helvetica"><span class="small"><b>-C</b></span></span>, and <span style="font-family:helvetica"><span class="small"><b>-G</b></span></span>.
 
 <div class="p"><!----></div>
-   If this option is omitted, no output will be generated.</ul>
+   If this option is omitted, no output will be generated.
+<br /><span style="font-family:helvetica"><span class="small"><b>-x</b></span></span>
+
+<div class="p"><!----></div>
+   With this option <span style="font-family:helvetica"><i><span class="small">Smrender</span></i></span> will use an index file to speed up the loading process.
+
+<div class="p"><!----></div>
+   Basically at the startup <span style="font-family:helvetica"><i><span class="small">Smrender</span></i></span> pulls in the input data file (from option <span style="font-family:helvetica"><span class="small"><b>-i</b></span></span>). By reading it it parses the whole data file and creates an in-memory index which obviously takes some time. Although the XML processor of <span style="font-family:helvetica"><i><span class="small">Smrender</span></i></span> is pretty fast it is still a time consuming task.
+
+<div class="p"><!----></div>
+   With this option set it will save this internal index to a file after the input data was parsed. In a subsequent run of <span style="font-family:helvetica"><i><span class="small">Smrender</span></i></span> it will pull in the index directly from the file instead of parsing the whole XML file of the raw input data. This drastically speeds up the initialization process which is very usefull if your render several files in a row if they are based on the same input data. It is also very useful if you are developing a ruleset and have to restart <span style="font-family:helvetica"><i><span class="small">Smrender</span></i></span> over and over again, specifically if the input file has a reasonable size.
+
+<div class="p"><!----></div>
+   Before loading the index it compares the timestmaps of the index file and the input file. If the input file is newer it will drop and rebuild the index file. This comparison is based on the <em>modification time</em> of the files in the file system. Please note that if you tamper with these timestamps or your system had a timewarp (system time changed) this may lead to accidentally reading an outdated index. In this case just delete the index file manually and restart <span style="font-family:helvetica"><i><span class="small">Smrender</span></i></span>.</ul>
 
 <div class="p"><!----></div>
  <a id="tth_sEc5"></a><h2>
