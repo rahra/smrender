@@ -33,7 +33,9 @@
 #include <ctype.h>
 #include <unistd.h>
 #include <string.h>
+#ifdef HAVE_STRINGS_H
 #include <strings.h>    // strcasecmp()
+#endif
 #include <time.h>
 #include <errno.h>
 #include <math.h>

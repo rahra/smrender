@@ -33,7 +33,9 @@
 #include <stdint.h>
 #include <limits.h>
 #include <string.h>
-#include <strings.h>
+#ifdef HAVE_STRINGS_H
+#include <strings.h>    //strcasecmp
+#endif
 #include <syslog.h>
 #include <errno.h>
 #include <math.h>

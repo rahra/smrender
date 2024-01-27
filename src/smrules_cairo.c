@@ -29,7 +29,9 @@
 #ifdef HAVE_CAIRO
 
 #include <string.h>
+#ifdef HAVE_STRINGS_H
 #include <strings.h>    // strcasecmp()
+#endif
 #include <syslog.h>
 #include <errno.h>
 #include <inttypes.h>
