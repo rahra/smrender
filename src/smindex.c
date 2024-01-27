@@ -35,9 +35,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <inttypes.h>
-#ifdef WITH_MMAP
 #include <sys/mman.h>
-#endif
 
 #include "smrender_dev.h"
 #include "smcore.h"
@@ -65,21 +63,45 @@ typedef struct index_hdr
    int var_size;
 } index_hdr_t;
 
+typedef struct index_varhdr
+{
+   //! type field of variable header
+   char type_str[4];
+   //! length of data in variable header (excluding this header)
+   int len;
+} index_varhdr_t;
 
+
+/*! This function is a wrapper function for write(2). It add error checking and
+ * logging.
+ * @param fd File descriptior of open file.
+ * @param buf Pointer to data buffer.
+ * @param len Number of bytes in buf.
+ * @return It basically returns the same values as write(2) (see there) except
+ * that it completes partial writes. This means that the function returns
+ * either len or -1.
+ */
 ssize_t sm_write(int fd, const void *buf, size_t len)
 {
-   ssize_t wlen;
+   ssize_t wlen, size;
 
-   wlen = write(fd, buf, len);
-   if (wlen == -1)
-      log_errno(LOG_ERR, "write() failed");
-   else if ((size_t) wlen < len)
+   for (size = 0; len > 0; size += wlen)
    {
-      log_msg(LOG_ERR, "write() truncated, wrote %ld of %ld bytes", wlen, len);
-      wlen = -wlen;
+      wlen = write(fd, buf, len);
+      if (wlen == -1)
+      {
+         log_errno(LOG_ERR, "write() failed");
+         return -1;
+      }
+
+      if ((size_t) wlen < len)
+         log_msg(LOG_NOTICE, "partial write(), wrote %ld of %ld bytes", wlen, len);
+
+      len -= wlen;
+      buf += wlen;
    }
 
-   return wlen;
+   return size;
 }
 
 
@@ -95,6 +117,8 @@ void *reloc(const void *base, void *ptr)
 }
 
 
+/*! This function writes the binary data of one object to the index file.
+ */
 int index_write_obj(osm_obj_t *o, const indexf_t *idxf)
 {
    struct otag otag;
