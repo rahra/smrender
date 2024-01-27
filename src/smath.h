@@ -1,4 +1,4 @@
-/* Copyright 2011-2023 Bernhard R. Fischer, 4096R/8E24F29D <bf@abenteuerland.at>
+/* Copyright 2011-2024 Bernhard R. Fischer, 4096R/8E24F29D <bf@abenteuerland.at>
  *
  * This file is part of smrender.
  *
@@ -20,6 +20,7 @@
  * data.
  *
  *  \author Bernhard R. Fischer, <bf@abenteuerland.at>
+ *  \date 2024/01/27
  */
 
 #ifndef SMATH_H

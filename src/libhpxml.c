@@ -1,4 +1,4 @@
-/* Copyright 2011-2018 Bernhard R. Fischer, 4096R/8E24F29D <bf@abenteuerland.at>
+/* Copyright 2011-2024 Bernhard R. Fischer, 4096R/8E24F29D <bf@abenteuerland.at>
  *
  * This file is part of libhpxml.
  *
@@ -18,7 +18,8 @@
 /*! \file libhpxml.c
  * This file contains all functions for the XML input parser.
  *
- * @author Bernhard R. Fischer
+ * \author Bernhard R. Fischer <bf@abenteuerland.at>
+ * \date 2024/01/27
  */
 
 #ifdef HAVE_CONFIG_H
