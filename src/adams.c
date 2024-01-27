@@ -35,6 +35,7 @@
 #include <math.h>
 
 #include "adams.h"
+#include "smath.h"
 
 
 void adams_square_ii_smr(double lambda, double phi, double *x, double *y)

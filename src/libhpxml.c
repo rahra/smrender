@@ -39,6 +39,25 @@
 #endif
 #endif
 
+#ifndef MADV_WILLNEED
+#ifdef POSIX_MADV_WILLNEED
+#define MADV_WILLNEED POSIX_MADV_WILLNEED
+#else
+#warning "cannot define MADV_WILLNEED, will undef madvise()"
+#undef HAVE_MADVISE
+#undef HAVE_POSIX_MADVISE
+#endif
+#endif
+#ifndef MADV_DONTNEED
+#ifdef POSIX_MADV_DONTNEED
+#define MADV_DONTNEED POSIX_MADV_DONTNEED
+#else
+#warning "cannot define MADV_MADV_DONTNEED, will undef madvise()"
+#undef HAVE_MADVISE
+#undef HAVE_POSIX_MADVISE
+#endif
+#endif
+
 #include "smrender.h"
 #include "bstring.h"
 #include "libhpxml.h"
@@ -442,12 +461,20 @@ int hpx_proc_buf(hpx_ctrl_t *ctl, bstringl_t *b, long *lno)
    return s;
 }
 
-/*
-int hpx_buf_reader(int fd, char *buf, int buflen)
+
+/*! This function is wrapper for either madvise() or posix_madvise().
+ */
+static int hpx_madvise(void *addr, size_t length, int advice)
 {
-   return -1;
+#ifdef HAVE_MADVISE
+   return madvise(addr, length, advice);
+#elif HAVE_POSIX_MADVISE
+   return posix_madvise(addr, length, advice);
+#else
+   return 0;
+#endif
 }
-*/
+
 
 /*!
  *  @param fd Input file descriptor.
@@ -492,7 +519,7 @@ hpx_ctrl_t *hpx_init(int fd, long len)
             ctl->pg_siz / 1024, ctl->pg_blk_siz / 1024);
 
       // advise 1st block
-      if (madvise(ctl->madv_ptr,
+      if (hpx_madvise(ctl->madv_ptr,
                ctl->pg_blk_siz <= ctl->len ? ctl->pg_blk_siz : ctl->len,
                      MADV_WILLNEED) == -1)
          log_msg(LOG_ERR, "madvise(%p, %ld, MADV_WILLNEED) failed: %s",
@@ -570,14 +597,14 @@ long hpx_get_eleml(hpx_ctrl_t *ctl, bstringl_t *b, int *in_tag, long *lno)
             {
                s = ctl->len - ctl->pos - ctl->pg_blk_siz >= ctl->pg_blk_siz ?
                      ctl->pg_blk_siz : ctl->len - ctl->pos - ctl->pg_blk_siz;
-               if (madvise(ctl->madv_ptr + ctl->pg_blk_siz, s, MADV_WILLNEED) == -1)
+               if (hpx_madvise(ctl->madv_ptr + ctl->pg_blk_siz, s, MADV_WILLNEED) == -1)
                   log_msg(LOG_ERR, "madvise(%p, %ld, MADV_WILLNEED) failed: %s",
                         ctl->madv_ptr + ctl->pg_blk_siz, s, strerror(errno));
             }
             // mark previous block as unneeded
             if (ctl->madv_ptr - ctl->pg_blk_siz >= ctl->buf.buf)
             {
-               if (madvise(ctl->madv_ptr - ctl->pg_blk_siz, ctl->pg_blk_siz, MADV_DONTNEED) == -1)
+               if (hpx_madvise(ctl->madv_ptr - ctl->pg_blk_siz, ctl->pg_blk_siz, MADV_DONTNEED) == -1)
                   log_msg(LOG_ERR, "madvise(%p, %ld, MADV_DONTNEED) failed: %s",
                         ctl->madv_ptr - ctl->pg_blk_siz, ctl->pg_blk_siz, strerror(errno));
  
