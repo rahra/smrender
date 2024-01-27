@@ -31,6 +31,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
+#include <inttypes.h>
 #include <limits.h>
 #include <string.h>
 #ifdef HAVE_STRINGS_H
@@ -137,7 +138,7 @@ int put_object0(bx_node_t **tree, int64_t id, void *p, int idx)
    }
 
    if (bn->next[idx] != NULL && p != NULL && tree == &obj_tree_)
-      log_msg(LOG_WARN, "nt->next[%d] contains valid pointer, overwriting.", idx);
+      log_msg(LOG_WARN, "nt->next[%d](id = %"PRId64") contains valid pointer, overwriting.", idx, id);
 
    bn->next[idx] = p;
    return 0;
