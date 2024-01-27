@@ -33,6 +33,7 @@
 #include <ctype.h>
 #include <unistd.h>
 #include <string.h>
+#include <strings.h>    // strcasecmp()
 #include <time.h>
 #include <errno.h>
 #include <math.h>

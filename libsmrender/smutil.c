@@ -33,6 +33,7 @@
 #include <stdint.h>
 #include <limits.h>
 #include <string.h>
+#include <strings.h>
 #include <syslog.h>
 #include <errno.h>
 #include <math.h>
