@@ -19,7 +19,7 @@
  * This file contains all functions regarding the index file.
  *
  *  \author Bernhard R. Fischer
- *  \date 2024/01/26
+ *  \date 2024/01/29
  */
 
 #ifdef HAVE_CONFIG_H
