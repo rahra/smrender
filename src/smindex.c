@@ -36,6 +36,7 @@
 #include <sys/stat.h>
 #include <inttypes.h>
 #include <sys/mman.h>
+#include <arpa/inet.h>
 
 #include "smrender_dev.h"
 #include "smcore.h"
@@ -46,6 +47,24 @@
 #define INDEX_EXT ".index"
 #define INDEX_IDENT "SMRENDER.INDEX"
 
+#define INDEX_VH_ROLE 0x524f4c45
+#define INDEX_VH_DSTS 0x44535453
+#define INDEX_VH_OBJS 0x4f424a53
+
+
+typedef struct indexf
+{
+   //! pointer to file descriptor of index file
+   int fd;
+   //! mmap'ed base pointer of OSM data file
+   const void *base;
+   //! mmap'ed base pointer of index file
+   void *index;
+   //! error condition
+   int err;
+   //! number of bytes of all object data
+   long len;
+} indexf_t;
 
 typedef struct index_hdr
 {
@@ -55,20 +74,20 @@ typedef struct index_hdr
    int version;
    //! file flags (INDEX_F...)
    int flags;
-   //! number of roles attached to header
-   int role_cnt;
-   //! number of bytes used by these roles
-   int role_size;
-   //! number of variable data bytes for the next header after roles
-   int var_size;
 } index_hdr_t;
 
 typedef struct index_varhdr
 {
    //! type field of variable header
-   char type_str[4];
+   union
+   {
+      char type_str[4];
+      int type;
+   };
+   //! flags (no flags yet defined)
+   int flags;
    //! length of data in variable header (excluding this header)
-   int len;
+   long len;
 } index_varhdr_t;
 
 
@@ -119,11 +138,11 @@ void *reloc(const void *base, void *ptr)
 
 /*! This function writes the binary data of one object to the index file.
  */
-int index_write_obj(osm_obj_t *o, const indexf_t *idxf)
+int index_write_obj(osm_obj_t *o, indexf_t *idxf)
 {
    struct otag otag;
    osm_storage_t os;
-   int i, size;
+   int i, size, len;
 
    if (o == NULL)
       return -1;
@@ -136,29 +155,33 @@ int index_write_obj(osm_obj_t *o, const indexf_t *idxf)
    else if (o->type == OSM_REL)
       os.r.mem = 0;
 
-   if (sm_write(idxf->fd, &os, size) < 0)
+   if ((len = sm_write(idxf->fd, &os, size)) < 0)
       return -1;
+   idxf->len += len;
 
    for (i = 0; i < o->tag_cnt; i++)
    {
       memcpy(&otag, &o->otag[i], sizeof(otag));
       otag.k.buf = baseloc(idxf->base, otag.k.buf);
       otag.v.buf = baseloc(idxf->base, otag.v.buf);
-      if (sm_write(idxf->fd, &otag, sizeof(otag)) < 0)
+      if ((len = sm_write(idxf->fd, &otag, sizeof(otag))) < 0)
          return -1;
+      idxf->len += len;
    }
 
    if (o->type == OSM_WAY)
    {
       osm_way_t *w = (osm_way_t*) o;
-      if (sm_write(idxf->fd, w->ref, w->ref_cnt * sizeof(*w->ref)) < 0)
+      if ((len = sm_write(idxf->fd, w->ref, w->ref_cnt * sizeof(*w->ref))) < 0)
          return -1;
+      idxf->len += len;
    }
    else if (o->type == OSM_REL)
    {
       osm_rel_t *r = (osm_rel_t*) o;
-      if (sm_write(idxf->fd, r->mem, r->mem_cnt * sizeof(*r->mem)) < 0)
+      if ((len = sm_write(idxf->fd, r->mem, r->mem_cnt * sizeof(*r->mem))) < 0)
          return -1;
+      idxf->len += len;
    }
 
    return 0;
@@ -172,29 +195,84 @@ int index_write_header(index_hdr_t *ih, const indexf_t *idxf)
 }
 
 
-int index_write_roles(index_hdr_t *ih, const indexf_t *idxf)
+int index_write_roles(int fd)
 {
    int i;
    short len;
    const char *s;
+   index_varhdr_t vh = {{"ROLE"}, 0, 0};
 
    log_debug("writing roles..");
-   for (i = ROLE_FIRST_FREE_NUM; ; i++, ih->role_cnt++)
+   if (sm_write(fd, &vh, sizeof(vh)) < 0)
+      return -1;
+
+   for (i = ROLE_FIRST_FREE_NUM; ; i++)
    {
       s = role_str(i);
       if (!strcmp(s, "n/a"))
          break;
 
       len = strlen(s) + 1;
-      if (sm_write(idxf->fd, &len, sizeof(len)) < 0)
+      if (sm_write(fd, &len, sizeof(len)) < 0)
          return -1;
-      if (sm_write(idxf->fd, s, len) < 0)
+      if (sm_write(fd, s, len) < 0)
          return -1;
 
-      ih->role_size += len + sizeof(len);
+      vh.len += len + sizeof(len);
    }
 
-   return 0;
+   log_debug("vh.len = %ld", vh.len);
+   lseek(fd, -vh.len - sizeof(vh), SEEK_CUR);
+   if (sm_write(fd, &vh, sizeof(vh)) < 0)
+      return -1;
+   lseek(fd, vh.len, SEEK_CUR);
+
+   return sizeof(vh) + vh.len;
+}
+
+
+int index_write_dstats(int fd, const struct dstats *ds)
+{
+   index_varhdr_t vh = {{"DSTS"}, 0, sizeof(*ds)};
+
+   log_debug("writing dstats...");
+   if (sm_write(fd, &vh, sizeof(vh)) < 0)
+      return -1;
+   if (sm_write(fd, ds, sizeof(*ds)) < 0)
+      return -1;
+
+   log_debug("vh.len = %ld", vh.len);
+   return sizeof(vh) + vh.len;
+}
+
+
+long index_write_objects(int fd, const void *base, bx_node_t *tree)
+{
+   index_varhdr_t vh = {{"OBJS"}, 0, 0};
+   indexf_t idxf;
+
+   if (sm_write(fd, &vh, sizeof(vh)) < 0)
+      return -1;
+
+   memset(&idxf, 0, sizeof(idxf));
+   idxf.fd = fd;
+   idxf.base = base;
+
+   log_debug("saving node index...");
+   traverse(tree, 0, IDX_NODE, (tree_func_t) index_write_obj, &idxf);
+   log_debug("saving way index...");
+   traverse(tree, 0, IDX_WAY, (tree_func_t) index_write_obj, &idxf);
+   log_debug("saving relation index...");
+   traverse(tree, 0, IDX_REL, (tree_func_t) index_write_obj, &idxf);
+
+   vh.len = idxf.len;
+   log_debug("vh.len = %ld", vh.len);
+   lseek(fd, -vh.len - sizeof(vh), SEEK_CUR);
+   if (sm_write(fd, &vh, sizeof(vh)) < 0)
+      return -1;
+   lseek(fd, vh.len, SEEK_CUR);
+
+   return sizeof(vh) + vh.len;
 }
 
 
@@ -211,6 +289,7 @@ int index_write(const char *fname, bx_node_t *tree, const void *base, const stru
    indexf_t idxf;
    index_hdr_t ih;
    int e = -1;
+   long len;
 
    log_debug("called");
    if (fname == NULL || tree == NULL)
@@ -235,25 +314,22 @@ int index_write(const char *fname, bx_node_t *tree, const void *base, const stru
    log_debug("header @ 0x%08lx", 0L);
    index_init_header(&ih, INDEX_FDIRTY);
    index_write_header(&ih, &idxf);
-   log_debug("roles @ 0x%08lx", sizeof(ih));
-   index_write_roles(&ih, &idxf);
-   lseek(idxf.fd, 0, SEEK_SET);
-   index_write_header(&ih, &idxf);
-   lseek(idxf.fd, ih.role_size, SEEK_CUR);
+   len = sizeof(ih);
 
-   log_debug("dstats @ 0x%08lx", sizeof(ih) + ih.role_size);
-   log_debug("writing dstats");
-   if ((e = sm_write(idxf.fd, ds, sizeof(*ds))) == -1)
+   log_debug("roles @ 0x%08lx", len);
+   if ((e = index_write_roles(idxf.fd)) == -1)
       goto iw_exit;
-   ih.var_size += e;
+   len += e;
 
-   log_debug("objects @ 0x%08lx", sizeof(ih) + ih.role_size + ih.var_size);
-   log_debug("saving node index...");
-   traverse(tree, 0, IDX_NODE, (tree_func_t) index_write_obj, &idxf);
-   log_debug("saving way index...");
-   traverse(tree, 0, IDX_WAY, (tree_func_t) index_write_obj, &idxf);
-   log_debug("saving relation index...");
-   traverse(tree, 0, IDX_REL, (tree_func_t) index_write_obj, &idxf);
+   log_debug("dstats @ 0x%08lx", len);
+   if ((e = index_write_dstats(idxf.fd, ds)) == -1)
+      goto iw_exit;
+   len += e;
+
+   log_debug("objects @ 0x%08lx", len);
+   if ((e = index_write_objects(idxf.fd, base, tree)) == -1)
+      goto iw_exit;
+   len += e;
 
    lseek(idxf.fd, 0, SEEK_SET);
    ih.flags = 0;
@@ -267,13 +343,12 @@ iw_exit:
 }
 
 
-int index_read_roles(const index_hdr_t *ih, const void *base, int len)
+int index_read_roles(const void *base, int len)
 {
    bstring_t b;
-   int i;
 
    log_debug("called");
-   for (i = 0; i < ih->role_cnt; i++)
+   for (; len > 0;)
    {
       if (len < (int) sizeof(short))
          return -1;
@@ -441,10 +516,11 @@ int index_read(const char *fname, const void *base, struct dstats *ds)
 {
    indexf_t idxf;
    index_hdr_t *ih;
+   index_varhdr_t *vh;
    struct stat st;
    struct timespec ts;
    void *idata, *ibase;
-   int size;
+   long size;
    int e = -2;
 
    log_debug("called");
@@ -530,34 +606,48 @@ int index_read(const char *fname, const void *base, struct dstats *ds)
    idata += sizeof(*ih);
    size = st.st_size - sizeof(*ih);
 
-   // read roles
-   if (index_read_roles(ih, idata, size) == -1)
+   for (; size > (long) sizeof(*vh);)
    {
-      log_msg(LOG_ERR, "index corrupt");
-      goto ri_err2;
-   }
-   idata += ih->role_size;
-   size -= ih->role_size;
+      vh = idata;
+      if (size < vh->len)
+         goto ri_err2;
 
-   // read dstats (variable data chunk)
-   log_debug("reading dstats");
-   if (ih->var_size < 0)
-   {
-      log_msg(LOG_ERR, "index corrupt");
-      goto ri_err2;
-   }
-   if (ih->var_size < (int) sizeof(*ds) || size < (int) sizeof(*ds) || ih->var_size != (int) sizeof(*ds))
-      goto ri_err2;
-   memcpy(ds, idata, sizeof(*ds));
-   idata += ih->var_size;
-   size -= ih->var_size;
+      idata += sizeof(*vh);
+      size -= sizeof(*vh);
 
-   // read OSM objects
-   log_debug("reading objects");
-   if (index_read_objs(idata, size, idxf.base) == -1)
-   {
-      log_msg(LOG_ERR, "index corrupt");
-      goto ri_err2;
+      log_debug("chunk type \"%.*s\", len = %ld", (int) sizeof(vh->type_str), vh->type_str, vh->len);
+      switch (ntohl(vh->type))
+      {
+         case INDEX_VH_ROLE:
+            // read roles
+            log_debug("reading roles");
+            if (index_read_roles(idata, vh->len) == -1)
+            {
+               log_msg(LOG_ERR, "index corrupt");
+               goto ri_err2;
+            }
+            break;
+
+         case INDEX_VH_DSTS:
+            // read dstats (variable data chunk)
+            log_debug("reading dstats");
+            if (vh->len != sizeof(*ds))
+               goto ri_err2;
+            memcpy(ds, idata, sizeof(*ds));
+            break;
+
+         case INDEX_VH_OBJS:
+            log_debug("reading objects");
+            if (index_read_objs(idata, vh->len, idxf.base) == -1)
+               goto ri_err2;
+            break;
+
+         default:
+            log_msg(LOG_INFO, "ignoring unknown chunk");
+      }
+
+      idata += vh->len;
+      size -= vh->len;
    }
 
    e = 0;

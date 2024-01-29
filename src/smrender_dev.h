@@ -312,18 +312,6 @@ typedef struct renum
    int pass;
 } renum_t;
 
-typedef struct indexf
-{
-   //! pointer to file descriptor of index file
-   int fd;
-   //! mmap'ed base pointer of OSM data file
-   const void *base;
-   //! mmap'ed base pointer of index file
-   void *index;
-   //! error condition
-   int err;
-} indexf_t;
-
 /* smrender.c */
 int print_onode(FILE *, const osm_obj_t*);
 int col_freq(struct rdata *, int, int, int, int, double, int);
