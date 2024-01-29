@@ -1,4 +1,4 @@
-/* Copyright 2011-2021 Bernhard R. Fischer, 4096R/8E24F29D <bf@abenteuerland.at>
+/* Copyright 2011-2024 Bernhard R. Fischer, 4096R/8E24F29D <bf@abenteuerland.at>
  *
  * This file is part of smrender.
  *
@@ -20,10 +20,14 @@
  * engine.
  *
  *  @author Bernhard R. Fischer
+ *  @data 2024/01/29
  */
 
 #ifndef SMCORE_H
 #define SMCORE_H
+
+#define NODES_FIRST 0
+#define RELS_FIRST 1
 
 //! return values of apply_rule()
 enum {
@@ -44,6 +48,7 @@ enum {IDX_NODE, IDX_WAY, IDX_REL};
 
 /* smcore.c */
 int traverse(const bx_node_t*, int, int, tree_func_t, void*);
+int traverse_all(const bx_node_t*, int, tree_func_t, void *);
 int execute_rules0(bx_node_t *, tree_func_t , void *);
 int execute_rules(bx_node_t *, int );
 int rev_index_way_nodes(osm_way_t *, bx_node_t **);
