@@ -449,34 +449,45 @@ static int apply_smrules_w(osm_obj_t *r, void *ver)
 }
 
 
+/*! This function calls traverse() 3 times subsquently, with IDX_NODE, IDX_WAY,
+ * and IDX_REL if dir is set to NODES_FIRST. If dir is set to RELS_FIRST,
+ * traverse() will be called with IDX_REL first.
+ * @param nt Pointer to the tree to be traversed.
+ * @oaran dir Order of execution which is either NODES_FIRST or RELS_FIRST.
+ * @param dhandler Function to be called for each object.
+ * @param p Optional argument which is passed to dhandler(p).
+ * @return The function returns the return value of traverse().
+ */
+int execute_treefunc(const bx_node_t *nt, int dir, tree_func_t dhandler, void *p)
+{
+#define NUM_OBJ_INDEX 3
+   int e, i, j;
+
+   for (i = 0, e = 0; i < NUM_OBJ_INDEX && !e; i++)
+   {
+      j = dir == NODES_FIRST ? i : NUM_OBJ_INDEX - 1 - i;
+      log_msg(LOG_INFO, "%ss...", type_str(j + 1));
+      e = traverse(nt, 0, j, dhandler, p);
+#ifdef THREADED_RULES
+      sm_wait_threads();
+      dequeue_fini();
+#endif
+
+   }
+
+   return e;
+}
+
+
 int execute_rules0(bx_node_t *rules, tree_func_t func, void *p)
 {
-   // FIXME: order rel -> way -> node?
-   log_msg(LOG_NOTICE, " relations...");
-   traverse(rules, 0, IDX_REL, func, p);
-#ifdef THREADED_RULES
-   sm_wait_threads();
-   dequeue_fini();
-#endif
-   log_msg(LOG_NOTICE, " ways...");
-   traverse(rules, 0, IDX_WAY, func, p);
-#ifdef THREADED_RULES
-   sm_wait_threads();
-   dequeue_fini();
-#endif
-   log_msg(LOG_NOTICE, " nodes...");
-   traverse(rules, 0, IDX_NODE, func, p);
-#ifdef THREADED_RULES
-   sm_wait_threads();
-   dequeue_fini();
-#endif
-   return 0;
+   return execute_treefunc(rules, RELS_FIRST, func, p);
 }
 
  
 int execute_rules(bx_node_t *rules, int version)
 {
-   return execute_rules0(rules, apply_smrules_w, (void*) (long) version);
+   return execute_treefunc(rules, RELS_FIRST, apply_smrules_w, (void*) (long) version);
 }
 
 
@@ -559,29 +570,6 @@ int traverse(const bx_node_t *nt, int d, int idx, tree_func_t dhandler, void *p)
          if ((e = traverse(nt->next[i], d + 1, idx, dhandler, p)))
             return e;
       }
-
-   return 0;
-}
-
-
-/*! This function calls traverse() 3 times subsquently, with IDX_NODE, IDX_WAY,
- * and IDX_REL if dir is set to NODES_FIRST. If dir is set to RELS_FIRST,
- * traverse() will be called with IDX_REL first.
- * @param nt Pointer to the tree to be traversed.
- * @oaran dir Order of execution which is either NODES_FIRST or RELS_FIRST.
- * @param dhandler Function to be called for each object.
- * @param p Optional argument which is passed to dhandler(p).
- * @return The function returns the return value of traverse().
- */
-int traverse_all(const bx_node_t *nt, int dir, tree_func_t dhandler, void *p)
-{
-   int e;
-
-   for (int i = 0; i < 3; i++)
-   {
-      if ((e = traverse(nt, 0, dir == NODES_FIRST ? i : 3 - i, dhandler, p)))
-         return e;
-   }
 
    return 0;
 }

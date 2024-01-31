@@ -1260,16 +1260,8 @@ int main(int argc, char *argv[])
 
    if (!norules)
    {
-      log_msg(LOG_INFO, "preparing node rules");
-      if (traverse(rd->rules, 0, IDX_NODE, (tree_func_t) init_rules, rd->rules) < 0)
-         log_msg(LOG_ERR, "rule parser failed"),
-            exit(EXIT_FAILURE);
-      log_msg(LOG_INFO, "preparing way rules");
-      if (traverse(rd->rules, 0, IDX_WAY, (tree_func_t) init_rules, rd->rules) < 0)
-         log_msg(LOG_ERR, "rule parser failed"),
-            exit(EXIT_FAILURE);
-      log_msg(LOG_INFO, "preparing relation rules");
-      if (traverse(rd->rules, 0, IDX_REL, (tree_func_t) init_rules, rd->rules) < 0)
+      log_msg(LOG_INFO, "preparing rules");
+      if (execute_treefunc(rd->rules, NODES_FIRST, (tree_func_t) init_rules, rd->rules) < 0)
          log_msg(LOG_ERR, "rule parser failed"),
             exit(EXIT_FAILURE);
    }
@@ -1393,28 +1385,6 @@ int main(int argc, char *argv[])
    else
       save_osm(osm_ofile, *get_objtree(), &rd->bb, rd->cmdline);
 
-   (void) close(ctl->fd);
-   hpx_free(ctl);
-   hpx_free(cfctl);
-
-   log_debug("freeing main objects");
-   traverse(*get_objtree(), 0, IDX_REL, free_objects, NULL);
-   traverse(*get_objtree(), 0, IDX_WAY, free_objects, NULL);
-   traverse(*get_objtree(), 0, IDX_NODE, free_objects, NULL);
-
-   if (!norules)
-   {
-      log_debug("freeing rule objects");
-      traverse(rd->rules, 0, IDX_REL, (tree_func_t) free_rules, NULL);
-      traverse(rd->rules, 0, IDX_WAY, (tree_func_t) free_rules, NULL);
-      traverse(rd->rules, 0, IDX_NODE, (tree_func_t) free_rules, NULL);
-   }
-
-   log_debug("freeing main object tree");
-   bx_free_tree(*get_objtree());
-   log_debug("freeing rules tree");
-   bx_free_tree(rd->rules);
-
    if (ti.path != NULL)
    {
       log_msg(LOG_INFO, "creating tiles in directory %s", ti.path);
@@ -1483,6 +1453,25 @@ int main(int argc, char *argv[])
          fclose(f);
       }
    }
+
+   log_msg(LOG_NOTICE, "cleaning up...");
+   (void) close(ctl->fd);
+   hpx_free(ctl);
+   hpx_free(cfctl);
+
+   log_debug("freeing main objects");
+   execute_rules0(*get_objtree(), free_objects, NULL);
+
+   if (!norules)
+   {
+      log_debug("freeing rule objects");
+      execute_rules0(rd->rules, (tree_func_t) free_rules, NULL);
+   }
+
+   log_debug("freeing main object tree");
+   bx_free_tree(*get_objtree());
+   log_debug("freeing rules tree");
+   bx_free_tree(rd->rules);
 
    free(rd->cmdline);
 
