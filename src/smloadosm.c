@@ -117,7 +117,7 @@ static int get_value(const char *k, hpx_tag_t *tag, bstring_t *b)
 }
 
 
-static void init_stats(struct dstats *ds)
+void init_stats(struct dstats *ds)
 {
    memset(ds, 0, sizeof(*ds));
    for (int i = 0; i < 4; i++)
@@ -144,7 +144,7 @@ static void log_stats(const struct dstats *ds)
 }
 
 
-static void update_node_stats(const osm_node_t *n, struct dstats *ds)
+void update_node_stats(const osm_node_t *n, struct dstats *ds)
 {
    if (ds->bb.ru.lat < n->lat) ds->bb.ru.lat = n->lat;
    if (ds->bb.ll.lon > n->lon) ds->bb.ll.lon = n->lon;
@@ -153,7 +153,7 @@ static void update_node_stats(const osm_node_t *n, struct dstats *ds)
 }
 
 
-static int update_stats(const osm_obj_t *o, struct dstats *ds)
+int update_stats(const osm_obj_t *o, struct dstats *ds)
 {
    int i;
 
@@ -224,7 +224,7 @@ static int same_sgn(int64_t a, int64_t b)
 }
 
 
-static void fin_stats(struct dstats *ds)
+void fin_stats(struct dstats *ds)
 {
    int d;
 

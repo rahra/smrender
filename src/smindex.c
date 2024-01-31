@@ -634,6 +634,7 @@ int index_read(const char *fname, const void *base, struct dstats *ds)
             if (vh->len != sizeof(*ds))
                goto ri_err2;
             memcpy(ds, idata, sizeof(*ds));
+            fin_stats(ds);
             break;
 
          case INDEX_VH_OBJS:
