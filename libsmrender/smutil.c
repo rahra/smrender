@@ -448,6 +448,21 @@ char *get_parami(const char *attr, int *ival, const action_t *act)
 }
 
 
+char *get_paraml(const char *attr, long *ival, const action_t *act)
+{
+   double f;
+   char *r;
+
+   if ((r = get_param(attr, &f, act)) == NULL)
+      return NULL;
+
+   if (ival != NULL)
+      *ival = f;
+
+   return r;
+}
+
+
 /*! This function tests an attribute to be true or false.
  * @param attr Pointer to attribute key.
  * @param act Pointer to action_t (which contains the list of action parameters).
