@@ -1307,7 +1307,7 @@ int main(int argc, char *argv[])
      }
    else
    {
-      int e = -1;
+      int e = ESM_NOFILE;
       if (index)
          e = index_read(osm_ifile, ctl->buf.buf, &rd->ds);
 
