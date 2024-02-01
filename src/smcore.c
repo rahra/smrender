@@ -436,16 +436,10 @@ int apply_smrules1(smrule_t *r, long ver, const bx_node_t *ot)
 }
 
 
-int apply_smrules(smrule_t *r, long ver)
-{
-   return apply_smrules1(r, ver, *get_objtree());
-}
-
-
 /* Typecasting wrapper for apply_smrules(). */
-static int apply_smrules_w(osm_obj_t *r, void *ver)
+static int apply_smrules(osm_obj_t *r, void *ver)
 {
-   return apply_smrules((smrule_t*) r, (long) ver);
+   return apply_smrules1((smrule_t*) r, (intptr_t) ver, *get_objtree());
 }
 
 
@@ -487,7 +481,7 @@ int execute_rules0(bx_node_t *rules, tree_func_t func, void *p)
  
 int execute_rules(bx_node_t *rules, int version)
 {
-   return execute_treefunc(rules, RELS_FIRST, apply_smrules_w, (void*) (long) version);
+   return execute_treefunc(rules, RELS_FIRST, apply_smrules, (void*) (long) version);
 }
 
 
