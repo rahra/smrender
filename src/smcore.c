@@ -369,7 +369,7 @@ int dequeue_fini(void)
 #endif
 
 
-int apply_smrules1(smrule_t *r, long ver, const bx_node_t *ot)
+int apply_smrules(smrule_t *r, trv_info_t *ti)
 {
    int e = 0;
 
@@ -379,7 +379,7 @@ int apply_smrules1(smrule_t *r, long ver, const bx_node_t *ot)
       return 1;
    }
 
-   if (r->oo->ver != (int) ver)
+   if (r->oo->ver != ti->ver)
       return 0;
 
    if (!r->oo->vis)
@@ -412,10 +412,10 @@ int apply_smrules1(smrule_t *r, long ver, const bx_node_t *ot)
    {
 #ifdef THREADED_RULES
       if (sm_is_threaded(r))
-         e = traverse_queue(ot, r->oo->type - 1, (tree_func_t) apply_smrules0, r);
+         e = traverse_queue(ti->objtree, r->oo->type - 1, (tree_func_t) apply_smrules0, r);
       else
 #endif
-         e = traverse(ot, 0, r->oo->type - 1, (tree_func_t) apply_smrules0, r);
+         e = traverse(ti->objtree, 0, r->oo->type - 1, (tree_func_t) apply_smrules0, r);
    }
    else
       log_debug("   -> no main function");
@@ -433,13 +433,6 @@ int apply_smrules1(smrule_t *r, long ver, const bx_node_t *ot)
    }
 
    return e;
-}
-
-
-/* Typecasting wrapper for apply_smrules(). */
-static int apply_smrules(osm_obj_t *r, void *ver)
-{
-   return apply_smrules1((smrule_t*) r, (intptr_t) ver, *get_objtree());
 }
 
 
@@ -479,9 +472,13 @@ int execute_rules0(bx_node_t *rules, tree_func_t func, void *p)
 }
 
  
+/* This function traverses the rules and for each rule traverses the objects.
+ * execute_rules() -> traverse(apply_smrules()) -> traverse(apply_smrules0()) -> apply_rule()
+*/
 int execute_rules(bx_node_t *rules, int version)
 {
-   return execute_treefunc(rules, RELS_FIRST, apply_smrules, (void*) (long) version);
+   trv_info_t ti = {*get_objtree(), version};
+   return execute_treefunc(rules, RELS_FIRST, (tree_func_t) apply_smrules, &ti);
 }
 
 

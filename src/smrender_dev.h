@@ -322,9 +322,6 @@ void mk_chart_coords(int, int, struct rdata*, double*, double*);
 int poly_area(const osm_way_t*, struct coord *, double *);
 struct rdata *get_rdata(void);
 size_t save_osm(const char *, bx_node_t *, const struct bbox *, const char *);
-int apply_smrules0(osm_obj_t*, smrule_t*);
-int apply_rule(osm_obj_t*, smrule_t*, int*);
-int call_fini(smrule_t*);
 void print_version(void);
 void usage(const char *);
 

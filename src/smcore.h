@@ -43,6 +43,14 @@ enum {
 
 typedef int (*tree_func_t)(osm_obj_t*, void*);
 
+typedef struct trv_info
+{
+   //! tree of objects to which is to be traversed by each rule
+   bx_node_t *objtree;
+   //! version of rules to apply
+   long ver;
+} trv_info_t;
+
 // indexes to object tree
 enum {IDX_NODE, IDX_WAY, IDX_REL};
 
@@ -55,6 +63,11 @@ int rev_index_way_nodes(osm_way_t *, bx_node_t **);
 int rev_index_rel_nodes(osm_rel_t *, bx_node_t **);
 int get_rev_index(osm_obj_t**, const osm_obj_t*);
 int insert_refs(osm_way_t *, osm_node_t **, int, int);
+
+int apply_smrules(smrule_t *, trv_info_t *);
+int apply_smrules0(osm_obj_t*, smrule_t*);
+int apply_rule(osm_obj_t*, smrule_t*, int*);
+int call_fini(smrule_t*);
 
 /* smthread.c */
 void sm_wait_threads(void);
