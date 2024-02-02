@@ -69,7 +69,8 @@
 >6.3.1&nbsp; Calling External Functions</a><br />&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#tth_sEc6.3.2"
 >6.3.2&nbsp; Output of OSM Data</a><br />&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#tth_sEc6.3.3"
 >6.3.3&nbsp; Executing Programs and Scripts</a><br />&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#tth_sEc6.3.4"
->6.3.4&nbsp; Special Control Functions</a><br /><a href="#tth_sEc7"
+>6.3.4&nbsp; Calling Sub-Rules</a><br />&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#tth_sEc6.3.5"
+>6.3.5&nbsp; Special Control Functions</a><br /><a href="#tth_sEc7"
 >7&nbsp; Signals</a><br /><a href="#tth_sEc8"
 >8&nbsp; Extensions</a><br />&nbsp;&nbsp;&nbsp;&nbsp;<a href="#tth_sEc8.1"
 >8.1&nbsp; Libsmfilter and Smfilter</a><br />&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#tth_sEc8.1.1"
@@ -100,7 +101,7 @@
 1&nbsp;&nbsp;Release Notes</h2>
 
 <div class="p"><!----></div>
-This document describes the current (2023/09/27) version of <span style="font-family:helvetica"><i><span class="small">Smrender</span></i></span>.
+This document describes the current (2024/02/02) version of <span style="font-family:helvetica"><i><span class="small">Smrender</span></i></span>.
 
 <div class="p"><!----></div>
 Although I put a lot of effort into writing this manual it still may be
@@ -171,7 +172,7 @@ The rules are also defined in OSM format (see Section <a href="#sec:rules">5</a>
 rules are applied iteratively in a loop depending on their <em>version</em>.
 Within the loop, <span style="font-family:helvetica"><i><span class="small">Smrender</span></i></span> always applies first all relation rules, then way rules, and then all node
 rules of the same version. All rules of the same version are applied in the
-order of their <em>id</em>.
+order of their <em>id</em>. That means that the version is used to group certain rules together.
 
 <div class="p"><!----></div>
 Invisible objects are ignored by the renderer. Invisible objects are such which
@@ -350,7 +351,7 @@ In the following all options are explained in alphabetical order.
 
 <div class="p"><!----></div>
    A grid may optionally be generated with the action <span style="font-family:helvetica">grid</span>. See
-   Section <a href="#sec:special">6.3.4</a>.
+   Section <a href="#sec:special">6.3.5</a>.
 <br /><span style="font-family:helvetica"><span class="small"><b>-G</b></span></span>
 
 <div class="p"><!----></div>
@@ -629,7 +630,10 @@ outlines the rendering order.
 
 <div class="p"><!----></div>
 Rules with a version greater or equal to 2<sup>16</sup> = 0x10000 = 65536 are
-ignored.  The number of iterations, i.e. the number of different versions is
+ignored. Numbers equal or greater to that are reserved to be used for sub-rules. See Section <a href="#sec:act-sub">6.3.4</a> for further details.
+
+<div class="p"><!----></div>
+The number of iterations, i.e. the number of different versions is
 limited to <span style="font-family:helvetica">MAX_ITER</span><a href="#tthFtNtAAD" id="tthFrefAAD"><sup>3</sup></a> which is defined in <span style="font-family:helvetica">rdata.h</span>. Run <span style="font-family:helvetica"><i><span class="small">Smrender</span></i></span>
 with option <span style="font-family:helvetica"><span class="small"><b>-V</b></span></span> to see its value.
 
@@ -643,7 +647,7 @@ The attribute <span style="font-family:helvetica">visible</span> can be set to e
 default if omitted) or <span style="font-family:helvetica">false</span>. Rules which are "invisible" are not
 executed. This can be used to enable or disable a rule by default and can
 further be used for conditional rendering (see <span style="font-family:helvetica">enable_rule</span> in Section
-<a href="#sec:special">6.3.4</a>).
+<a href="#sec:special">6.3.5</a>).
 
 <div class="p"><!----></div>
 Please note that the initialization function of a rule still is called even if
@@ -798,41 +802,14 @@ to be <em>true</em>.
 capable to place captions (Section <a href="#sec:act-cap">6.1.1</a>), drawing and filling (Section
 <a href="#sec:draw">6.1.2</a>), placing icons (Section <a href="#sec:img">6.1.3</a>), generating OSM files
 (Section <a href="#sec:output">6.3.2</a>), do some special purpose operations (Section
-<a href="#sec:special">6.3.4</a>), and calling external library functions (Section
+<a href="#sec:special">6.3.5</a>), and calling external library functions (Section
 <a href="#sec:func">6.3.1</a>). The latter is thought to be a simple but powerful interface
 for third-party modules.
 
 <div class="p"><!----></div>
-All functions are described in Section <a href="#sec:renderfunc">6</a>. Here is a list of all actions in <span style="font-family:helvetica"><i><span class="small">Smrender</span></i></span>.
+All functions are described in Section <a href="#sec:renderfunc">6</a>.
 
 <div class="p"><!----></div>
-
-<table class="tabular">
-<tr><td width="0"> </td><td width="0"> </td></tr>
-<tr><td width="0"> </td><td width="0"> </td></tr>
-<tr><td width="0"> </td><td width="0"> </td></tr>
-<tr><td width="0"> </td><td width="0"> </td></tr>
-<tr><td width="0"> </td><td width="0"> </td></tr>
-<tr><td width="0"> </td><td width="0"> </td></tr>
-<tr><td width="0"> </td><td width="0"> </td></tr>
-<tr><td width="0"> </td><td width="0"> </td></tr>
-<tr><td width="0"> </td><td width="0"> </td></tr>
-<tr><td width="0"> </td><td width="0"> </td></tr>
-<tr><td width="0"> </td><td width="0"> </td></tr>
-<tr><td width="0"> </td><td width="0"> </td></tr>
-<tr><td width="0"> </td><td width="0"> </td></tr>
-<tr><td width="0"> </td><td width="0"> </td></tr>
-<tr><td width="0"> </td><td width="0"> </td></tr>
-<tr><td width="0"> </td><td width="0"> </td></tr>
-<tr><td width="0"> </td><td width="0"> </td></tr>
-<tr><td width="0"> </td><td width="0"> </td></tr>
-<tr><td width="0"> </td><td width="0"> </td></tr>
-<tr><td width="0"> </td><td width="0"> </td></tr>
-<tr><td width="0"> </td><td width="0"> </td></tr>
-<tr><td width="0"> </td><td width="0"> </td></tr>
-<tr><td width="0"> </td><td width="0"> </td></tr>
-<tr><td width="0"> </td><td width="0"> </td></tr>
-<tr><td width="0"> </td><td width="0"> </td></tr></table>
      <a id="tth_sEc5.4"></a><h3>
 5.4&nbsp;&nbsp;Measurement Units</h3> <a id="sec:units">
 </a>
@@ -934,6 +911,12 @@ It can be distinguished between three types of functions:
 </ol>
 
 <div class="p"><!----></div>
+Here is a list of all functions currently implemented and built-in into <span style="font-family:helvetica"><i><span class="small">Smrender</span></i></span>. Please note that there are additional sea-chart-specific functions found in the the shared library <span style="font-family:helvetica">libsmfilter</span> which is bundled with <span style="font-family:helvetica"><i><span class="small">Smrender</span></i></span>. These functions are described in Section <a href="#sec:smfilter">8.1</a>.
+
+<div class="p"><!----></div>
+
+<table class="tabular">
+<tr><td width="0"></td><td width="0"></td></tr></table>
      <a id="tth_sEc6.1"></a><h3>
 6.1&nbsp;&nbsp;Graphical Rendering Primitives</h3> <a id="sec:rendergfx">
 </a>
@@ -1476,6 +1459,7 @@ type of the template.
 <div class="p"><!----></div>
       <a id="tth_sEc6.2.3"></a><h4>
 6.2.3&nbsp;&nbsp;Standard Shapes</h4> <a id="sec:shape">
+</a><a id="sec:act-shape">
 </a>
 
 <div class="p"><!----></div>
@@ -1558,6 +1542,7 @@ the following snippet as an example.
 <div class="p"><!----></div>
       <a id="tth_sEc6.2.4"></a><h4>
 6.2.4&nbsp;&nbsp;Create Formatted Strings</h4> <a id="sec:strfmt">
+</a><a id="sec:act-strfmt">
 </a>
 
 <div class="p"><!----></div>
@@ -1637,7 +1622,8 @@ rendered in the second rule.
 
 <div class="p"><!----></div>
       <a id="tth_sEc6.2.5"></a><h4>
-6.2.5&nbsp;&nbsp;Concatenating Ways</h4>
+6.2.5&nbsp;&nbsp;Concatenating Ways</h4> <a id="sec:act-cat-poly">
+</a>
 
 <div class="p"><!----></div>
 
@@ -1723,7 +1709,8 @@ rendered in the second rule.
 
 <div class="p"><!----></div>
             <a id="tth_sEc6.2.6"></a><h4>
-6.2.6&nbsp;&nbsp;Inherit Tags to Objects</h4>
+6.2.6&nbsp;&nbsp;Inherit Tags to Objects</h4> <a id="sec:act-inherit-tags">
+</a>
 
 <div class="p"><!----></div>
 
@@ -1763,7 +1750,9 @@ rendered in the second rule.
 
 <div class="p"><!----></div>
                <a id="tth_sEc6.2.7"></a><h4>
-6.2.7&nbsp;&nbsp;Generating a Grid</h4> 
+6.2.7&nbsp;&nbsp;Generating a Grid</h4><a id="sec:act-grid">
+</a><a id="sec:act-grid2">
+</a> 
 <div class="p"><!----></div>
          
 <pre>
@@ -1800,7 +1789,9 @@ rendered in the second rule.
 
 <div class="p"><!----></div>
             <a id="tth_sEc6.2.8"></a><h4>
-6.2.8&nbsp;&nbsp;Create a Ruler</h4>   
+6.2.8&nbsp;&nbsp;Create a Ruler</h4><a id="sec:act-ruler">
+</a><a id="sec:act-ruler2">
+</a>   
 <div class="p"><!----></div>
       
 <pre>
@@ -1816,7 +1807,8 @@ rendered in the second rule.
 
 <div class="p"><!----></div>
             <a id="tth_sEc6.2.9"></a><h4>
-6.2.9&nbsp;&nbsp;Text Translation</h4>
+6.2.9&nbsp;&nbsp;Text Translation</h4><a id="sec:act-translate">
+</a>
 
 <div class="p"><!----></div>
 
@@ -1860,7 +1852,8 @@ rendered in the second rule.
 
 <div class="p"><!----></div>
             <a id="tth_sEc6.2.10"></a><h4>
-6.2.10&nbsp;&nbsp;Translate Reference Point of Chart</h4>
+6.2.10&nbsp;&nbsp;Translate Reference Point of Chart</h4> <a id="sec:act-transcoord">
+</a>
 
 <div class="p"><!----></div>
 
@@ -1947,7 +1940,8 @@ rendered in the second rule.
 <div class="p"><!----></div>
    
 <ul>
-<li> <span style="font-family:helvetica">clip</span>
+<li> <span style="font-family:helvetica">clip</span> <a id="sec:act-clip">
+</a>
 
 <div class="p"><!----></div>
       This function
@@ -1964,7 +1958,8 @@ rendered in the second rule.
 <div class="p"><!----></div>
 </li>
 
-<li> <span style="font-family:helvetica">dist_median</span> ( <span style="font-size:x-small">EXPERIMENTAL</span>)
+<li> <span style="font-family:helvetica">dist_median</span> ( <span style="font-size:x-small">EXPERIMENTAL</span>) <a id="sec:act-dist-median">
+</a>
 
 <div class="p"><!----></div>
       This function calculates the median of the length of the edges of a way.
@@ -1973,7 +1968,8 @@ rendered in the second rule.
 <div class="p"><!----></div>
 </li>
 
-<li> <span style="font-family:helvetica">fixbordernodes</span>
+<li> <span style="font-family:helvetica">fixbordernodes</span> <a id="sec:act-fixbordernodes">
+</a>
 
 <div class="p"><!----></div>
       It turned out that some charting software, at least the in other respects
@@ -1987,7 +1983,8 @@ rendered in the second rule.
 <div class="p"><!----></div>
 </li>
 
-<li> <span style="font-family:helvetica">ins_eqdist</span> ( <span style="font-size:x-small">EXPERIMENTAL</span>)
+<li> <span style="font-family:helvetica">ins_eqdist</span> ( <span style="font-size:x-small">EXPERIMENTAL</span>) <a id="sec:act-ins-eqdist">
+</a>
 
 <div class="p"><!----></div>
       This function inserts nodes along a way with equal distances. The
@@ -2002,7 +1999,8 @@ rendered in the second rule.
 <div class="p"><!----></div>
 </li>
 
-<li> <span style="font-family:helvetica">mask</span> ( <span style="font-size:x-small">EXPERIMENTAL</span>)
+<li> <span style="font-family:helvetica">mask</span> ( <span style="font-size:x-small">EXPERIMENTAL</span>)<a id="sec:act-mask">
+</a>
 
 <div class="p"><!----></div>
       This function allows to mask nodes if there is a dense cluster of nodes
@@ -2019,7 +2017,8 @@ rendered in the second rule.
 <div class="p"><!----></div>
 </li>
 
-<li> <span style="font-family:helvetica">poly_area</span>
+<li> <span style="font-family:helvetica">poly_area</span> <a id="sec:act-poly-area">
+</a>
 
 <div class="p"><!----></div>
       This function calculates the area of closed polygons in nautical square miles. It
@@ -2028,7 +2027,8 @@ rendered in the second rule.
 <div class="p"><!----></div>
 </li>
 
-<li> <span style="font-family:helvetica">poly_centroid</span>
+<li> <span style="font-family:helvetica">poly_centroid</span> <a id="sec:act-poly-centroid">
+</a>
 
 <div class="p"><!----></div>
       This function calculates the centroid of a closed polygon. It then adds a new node
@@ -2038,7 +2038,8 @@ rendered in the second rule.
 <div class="p"><!----></div>
 </li>
 
-<li> <span style="font-family:helvetica">poly_len</span>
+<li> <span style="font-family:helvetica">poly_len</span> <a id="sec:act-poly-len">
+</a>
 
 <div class="p"><!----></div>
       This function calculates the length of a polygon in nautical miles. It
@@ -2046,7 +2047,9 @@ rendered in the second rule.
 <div class="p"><!----></div>
 </li>
 
-<li> <span style="font-family:helvetica">set_ccw</span> and <span style="font-family:helvetica">set_cw</span>
+<li> <span style="font-family:helvetica">set_ccw</span> and <span style="font-family:helvetica">set_cw</span><a id="sec:act-set-ccw">
+</a><a id="sec:act-set-cw">
+</a>
 
 <div class="p"><!----></div>
       Those functions set the direction of a closed way to either clockwise
@@ -2054,7 +2057,8 @@ rendered in the second rule.
 <div class="p"><!----></div>
 </li>
 
-<li> <span style="font-family:helvetica">simplify</span>
+<li> <span style="font-family:helvetica">simplify</span><a id="sec:act-simplify">
+</a>
 
 <div class="p"><!----></div>
       This function has the mandatory argument <span style="font-family:helvetica">dist</span>. It simplifies
@@ -2064,7 +2068,8 @@ rendered in the second rule.
 <div class="p"><!----></div>
 </li>
 
-<li> <span style="font-family:helvetica">split</span>
+<li> <span style="font-family:helvetica">split</span><a id="sec:act-split">
+</a>
 
 <div class="p"><!----></div>
       This action can be applied to nodes only. It splits all ways at the
@@ -2080,7 +2085,8 @@ rendered in the second rule.
 <div class="p"><!----></div>
 </li>
 
-<li> <span style="font-family:helvetica">refine_poly</span> ( <span style="font-size:x-small">DEPRECATED</span>)
+<li> <span style="font-family:helvetica">refine_poly</span> ( <span style="font-size:x-small">DEPRECATED</span>)<a id="sec:act-refine-poly">
+</a>
 
 <div class="p"><!----></div>
       This function smooths the edges of polygons. It may take the function
@@ -2091,14 +2097,16 @@ rendered in the second rule.
 <div class="p"><!----></div>
 </li>
 
-<li> <span style="font-family:helvetica">reverse_way</span>
+<li> <span style="font-family:helvetica">reverse_way</span><a id="sec:act-reverse-way">
+</a>
 
 <div class="p"><!----></div>
       This function always reverses a way independent of its current direction.
 <div class="p"><!----></div>
 </li>
 
-<li> <span style="font-family:helvetica">virtclosed</span>
+<li> <span style="font-family:helvetica">virtclosed</span><a id="sec:act-virtclosed">
+</a>
 
 <div class="p"><!----></div>
       This function closes ways which are virtually closed. It takes the
@@ -2114,7 +2122,8 @@ rendered in the second rule.
 <div class="p"><!----></div>
 </li>
 
-<li> <span style="font-family:helvetica">wrapdetect</span>
+<li> <span style="font-family:helvetica">wrapdetect</span><a id="sec:act-wrapdetect">
+</a>
 
 <div class="p"><!----></div>
       This function detects if a way wraps from East to West or from West to
@@ -2150,7 +2159,8 @@ rendered in the second rule.
 <div class="p"><!----></div>
 </li>
 
-<li> <span style="font-family:helvetica">zeroway</span> ( <span style="font-size:x-small">EXPERIMENTAL</span>)
+<li> <span style="font-family:helvetica">zeroway</span> ( <span style="font-size:x-small">EXPERIMENTAL</span>)<a id="sec:act-zeroway">
+</a>
 
 <div class="p"><!----></div>
       Insert an artificial way of length zero at the matching node if the node
@@ -2319,6 +2329,7 @@ attacker with access to your system to compromise it.
 <div class="p"><!----></div>
       <a id="tth_sEc6.3.2"></a><h4>
 6.3.2&nbsp;&nbsp;Output of OSM Data</h4> <a id="sec:output">
+</a> <a id="sec:act-out">
 </a>
 
 <div class="p"><!----></div>
@@ -2366,6 +2377,7 @@ if it is output in non-condensed mode.
 <div class="p"><!----></div>
       <a id="tth_sEc6.3.3"></a><h4>
 6.3.3&nbsp;&nbsp;Executing Programs and Scripts</h4> <a id="sec:exec">
+</a><a id="sec:act-exec">
 </a>
 
 <div class="p"><!----></div>
@@ -2484,13 +2496,83 @@ The following commands are currently implemented:
 
 <div class="p"><!----></div>
       <a id="tth_sEc6.3.4"></a><h4>
-6.3.4&nbsp;&nbsp;Special Control Functions</h4> <a id="sec:special">
+6.3.4&nbsp;&nbsp;Calling Sub-Rules</h4> <a id="sec:act-sub">
+</a>
+
+<div class="p"><!----></div>
+The ruleset of <span style="font-family:helvetica"><i><span class="small">Smrender</span></i></span> allows to call a set of sub-rules. The purpose of this is to make the ruleset more simple and modular. Sub-rules can be nested and are re-entrant. That means that you can call a further subset from within a subset and that a subset can be called multiple times (like function calls in a programming language).
+
+<div class="p"><!----></div>
+The subroutine call is implemented as a regular action with the following syntax.
+
+<div class="p"><!----></div>
+
+<pre>
+&nbsp;&nbsp;&nbsp;&lt;action&#62;&nbsp;&nbsp;&nbsp;:=&nbsp;'cap:'&nbsp;&lt;param&#62;&nbsp;[&nbsp;';'&nbsp;&lt;param&#62;&nbsp;]
+&nbsp;&nbsp;&nbsp;&lt;param&#62;&nbsp;&nbsp;&nbsp;&nbsp;:=&nbsp;&lt;version&#62;
+&nbsp;&nbsp;&nbsp;&lt;version&#62;&nbsp;&nbsp;:=&nbsp;'version'&nbsp;'='&nbsp;integer&nbsp;number
+
+</pre> 
+
+<div class="p"><!----></div>
+The option <span style="font-family:helvetica"><span class="small"><u>version</u></span></span> is mandatory. It specifies the version number of the group of rules to be called. All rules with this version number and the same object type (node, way, or relation) are then called in the order of their id ascendingly. These rules are then applied to the all objects which match the criteria defined in the sub-rule definition <em>and</em> the sub-rules themselves. Have a look at the following example.
+
+<div class="p"><!----></div>
+[language=XML]
+&lt;!- call subrules for objects matching these tags -&#62;
+&lt;way&#62; &lt;!- rule #1 -&#62;
+   &lt;tag k='natural' v='coastline'/&#62;
+   &lt;tag k='generator' v='smrender'/&#62;
+   &lt;tag k='_action_' v='sub:version=65536'/&#62;
+&lt;/way&#62;
+
+<div class="p"><!----></div>
+&lt;!- subrules to be called -&#62;
+&lt;way version="65536&#187; &lt;!- rule #2 -&#62;
+   &lt;tag k='_action_'
+   v='draw:color=navajowhite;directional=1;ignore_open=1'/&#62;
+&lt;/way&#62;
+
+<div class="p"><!----></div>
+&lt;!- nested subroutine call -&#62;
+&lt;way version="65536&#187; &lt;!- rule #3 -&#62;
+   &lt;tag k='_action_' v='sub:version=65537'/&#62;
+&lt;/way&#62;
+
+<div class="p"><!----></div>
+&lt;!- next level subroutines -&#62;
+&lt;way version="65537&#187; &lt;!- rule #4 -&#62;
+   &lt;tag k='_action_' v='draw:bcolor=black'/&#62;
+&lt;/way&#62;
+
+<div class="p"><!----></div>
+&lt;!- repeated subroutine call-&#62;
+&lt;way version="2&#187; &lt;!- rule #5 -&#62;
+   &lt;tag k='seamark:type' v='depth_contour'/&#62;
+   &lt;tag k='seamark:depth_contour:depth' v='10'/&#62;
+   &lt;tag k='_action_' v='sub:version=65537'/&#62;
+&lt;/way&#62;
+
+
+<div class="p"><!----></div>
+This example contains 5 rules in 4 groups. The 1st one has no version attribute thus 1 is assumed. The 2nd and 3rd one are in group #65536, the 4th is in group #65537 and the 5th is in group #2.
+
+<div class="p"><!----></div>
+The 1st rule to be executed is the 1st at the beginning because it has the lowest version (group) number and the lowest id - obviously because it is the only element in the group. The 2nd, 3rd, and 4th rule are ignored by the regular rule processor because their version number is  &#8805;  65536 (see Section <a href="#ref:ruleorder">5.1</a>). The 5th rule is executed next after the 1st one.
+
+<div class="p"><!----></div>
+The execution is then done as follows. The 1st rule is executed and applied to all ways which have the tags <span style="font-family:helvetica">natural=coastline</span> and <span style="font-family:helvetica">generator=smrender</span>. Since the action is <span style="font-family:helvetica">sub(version=65536)</span>, &#228;pplying" means executing all rules from the given subset. This subset contains 2 rules: the 2nd and the 3rd from the ruleset from above. The 2nd is executed 1st because it has the lower id. This is because both rules have no explicitly defined id so they are numbered with an internal number ascendingly as they appear. The 3rd is executed directly after #2. Since this rule is again a subroutine call to the group #65537, rule #4 is executed.
+
+<div class="p"><!----></div>
+      <a id="tth_sEc6.3.5"></a><h4>
+6.3.5&nbsp;&nbsp;Special Control Functions</h4> <a id="sec:special">
 </a>
 
 <div class="p"><!----></div>
 
 <ul>
-<li> <span style="font-family:helvetica">diff</span> ( <span style="font-size:x-small">EXPERIMENTAL</span>)
+<li> <span style="font-family:helvetica">diff</span> ( <span style="font-size:x-small">EXPERIMENTAL</span>) <a id="sec:act-diff">
+</a>
 
 <div class="p"><!----></div>
       This function takes the argument <span style="font-family:helvetica"><span class="small"><u>file</u></span></span> (exactly like in the
@@ -2501,7 +2583,8 @@ The following commands are currently implemented:
 <div class="p"><!----></div>
 </li>
 
-<li> <span style="font-family:helvetica">disable</span>
+<li> <span style="font-family:helvetica">disable</span> <a id="sec:act-disable">
+</a>
 
 <div class="p"><!----></div>
       This function disables the object to which it is applied. This is done by
@@ -2512,7 +2595,9 @@ The following commands are currently implemented:
 <div class="p"><!----></div>
 </li>
 
-<li> <span style="font-family:helvetica">enable_rule</span> and <span style="font-family:helvetica">disable_rule</span>
+<li> <span style="font-family:helvetica">enable_rule</span> and <span style="font-family:helvetica">disable_rule</span> <a id="sec:act-disable-rule">
+</a><a id="sec:act-enable-rule">
+</a>
 
 <div class="p"><!----></div>
       These actions take the mandatory argument <span style="font-family:helvetica"><span class="small"><u>id</u></span></span> which specifies the
@@ -2523,7 +2608,8 @@ The following commands are currently implemented:
 <div class="p"><!----></div>
 </li>
 
-<li> <span style="font-family:helvetica">exit</span>
+<li> <span style="font-family:helvetica">exit</span> <a id="sec:act-exit">
+</a>
 
 <div class="p"><!----></div>
       This function forces <span style="font-family:helvetica"><i><span class="small">Smrender</span></i></span> to stop. No further rules will be
@@ -2536,7 +2622,8 @@ The following commands are currently implemented:
 <div class="p"><!----></div>
 </li>
 
-<li> <span style="font-family:helvetica">incomplete</span> ( <span style="font-size:x-small">EXPERIMENTAL</span>)
+<li> <span style="font-family:helvetica">incomplete</span> ( <span style="font-size:x-small">EXPERIMENTAL</span>) <a id="sec:act-incomplete">
+</a>
 
 <div class="p"><!----></div>
       This action can be applied to relations andy ways.
@@ -2552,7 +2639,8 @@ The following commands are currently implemented:
 <div class="p"><!----></div>
 </li>
 
-<li> <span style="font-family:helvetica">neighbortile</span> ( <span style="font-size:x-small">EXPERIMENTAL</span>)
+<li> <span style="font-family:helvetica">neighbortile</span> ( <span style="font-size:x-small">EXPERIMENTAL</span>) <a id="sec:act-neighbortile">
+</a>
       This is a special function which may be handy in the tile creation
       process.  It creates a directory named "neighbor_tiles" and within
       this a tile directory tree (<span style="font-family:helvetica">zoom/x/y.conf</span>).  The files created
@@ -2560,11 +2648,6 @@ The following commands are currently implemented:
       a shell script. The variables in the files specifies the bounding boxes
       of the tiles in zoom level 10. This function will be improved in future
       and the file format may change.
-<div class="p"><!----></div>
-</li>
-
-<li> <span style="font-family:helvetica">sub</span> ( <span style="font-size:x-small">EXPERIMENTAL</span>)
-      Call a set of sub-rules.
 <div class="p"><!----></div>
 </li>
 </ul>

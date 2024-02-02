@@ -1,24 +1,30 @@
 #!/bin/sh
 
+tmp=$(mktemp)
+
 cat <<!
 \noindent\begin{tabular}{p{0.49\textwidth}p{0.49\textwidth}}
 !
 
+grep "int act_" ../src/*c | sed 's/.*act_\(.*\)_\(ini\|fini\|main\).*/\1/' | uniq |sort >/$tmp
+l=$(($(wc -l <$tmp) / 2))
+
 n=0
-for c in $(grep "int act_" ../src/*c | sed 's/.*act_\(.*\)_\(ini\|fini\|main\).*/\1/' | uniq |sort)
+i=0
+for c in $(cat $tmp)
 do
+   i=$(($i + 1))
    cl=$(echo $c | sed 's/_/\\_/g')
    cr=sec:act-$(echo $c | sed 's/_/-/g')
-#   echo "$c \\hyperref[$cr]{$cl, \\ref*{$cr}}"
-   echo -n "\\hyperref[$cr]{$cl, \\\\ref*{$cr}} "
+   echo "\\hyperref[$cr]{$cl, \\\\ref*{$cr}}"
+   echo
 
-   if test $n -eq 0 ; then
-      echo -n "& "
-      n=1
-   else
-      echo "\\\\\\\\"
-      n=0
+   if test $i -eq $l ; then
+      echo "&"
    fi
+
 done
 
 echo "\\\\end{tabular}"
+rm $tmp
+
