@@ -266,7 +266,7 @@ int apply_rule(osm_obj_t *o, smrule_t *r, int *ret)
    if (!o->vis)
       return ERULE_INVISIBLE;
 
-   if (sm_is_exec_once(r) && sm_is_exec(r))
+   if (sm_is_flag_set(r, ACTION_EXEC_ONCE) && sm_is_flag_set(r, ACTION_EXEC))
       return ERULE_EXECUTED;
 
    // call function with this object
@@ -274,7 +274,7 @@ int apply_rule(osm_obj_t *o, smrule_t *r, int *ret)
    if (ret != NULL)
       *ret = i;
 
-   sm_set_exec(r);
+   sm_set_flag(r, ACTION_EXEC);
 
 #ifdef ADD_RULE_TAG
    add_rule_tag(r, o);
@@ -413,6 +413,13 @@ int apply_smrules(smrule_t *r, trv_info_t *ti)
    {
       log_msg(LOG_INFO, "ignoring invisible rule %016"PRIx64, r->oo->id);
       return 0;
+   }
+
+   if (sm_is_flag_set(r, ACTION_FINISHED) && !sm_is_flag_set(r, ACTION_EXEC_ONCE))
+   {
+      log_debug("action is reentered");
+      call_ini(r);
+      sm_clear_flag(r, ACTION_FINISHED);
    }
 
    // FIXME: wtf is this?
