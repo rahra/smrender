@@ -120,6 +120,8 @@ int sm_is_exec_once(const smrule_t *);
 int sm_is_exec(const smrule_t *);
 void sm_set_exec_once(smrule_t *);
 void sm_set_exec(smrule_t *);
+void sm_set_flag(smrule_t *, int );
+int sm_is_flag_set(const smrule_t *, int );
 
 #endif
 

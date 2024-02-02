@@ -292,10 +292,10 @@ void check_way_type(smrule_t *r)
    if (!((osm_way_t*) r->oo)->ref_cnt)
       return;
    if (((osm_way_t*) r->oo)->ref[0] == ((osm_way_t*) r->oo)->ref[((osm_way_t*) r->oo)->ref_cnt - 1])
-      r->act->way_type = ACTION_CLOSED_WAY;
+      sm_set_flag(r, ACTION_CLOSED_WAY);
    else
-      r->act->way_type = ACTION_OPEN_WAY;
-   log_debug("way_type = %s", r->act->way_type == ACTION_CLOSED_WAY ? "ACTION_CLOSED_WAY" : "ACTION_OPEN_WAY");
+      sm_set_flag(r, ACTION_OPEN_WAY);
+   log_debug("way_type = %s", sm_is_flag_set(r, ACTION_CLOSED_WAY) ? "ACTION_CLOSED_WAY" : "ACTION_OPEN_WAY");
 }
 
 

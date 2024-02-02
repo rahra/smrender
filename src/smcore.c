@@ -241,19 +241,21 @@ int apply_rule(osm_obj_t *o, smrule_t *r, int *ret)
    // check if way rule applies to either areas (closed ways) or lines (open
    // ways)
    if (r->oo->type == OSM_WAY)
-      switch (r->act->way_type)
+   {
+      // test if it applies to areas only but way is open
+      if (sm_is_flag_set(r, ACTION_CLOSED_WAY))
       {
-         // test if it applies to areas only but way is open
-         case ACTION_CLOSED_WAY:
-            if (((osm_way_t*) o)->ref_cnt && ((osm_way_t*) o)->ref[0] != ((osm_way_t*) o)->ref[((osm_way_t*) o)->ref_cnt - 1])
-               return ERULE_WAYOPEN;
-            break;
-         // test if it applies to lines only but way is closed
-         case ACTION_OPEN_WAY:
-            if (((osm_way_t*) o)->ref_cnt && ((osm_way_t*) o)->ref[0] == ((osm_way_t*) o)->ref[((osm_way_t*) o)->ref_cnt - 1])
-               return ERULE_WAYCLOSED;
-            break;
+         if (((osm_way_t*) o)->ref_cnt && ((osm_way_t*) o)->ref[0] != ((osm_way_t*) o)->ref[((osm_way_t*) o)->ref_cnt - 1])
+            return ERULE_WAYOPEN;
       }
+      // test if it applies to lines only but way is closed
+      else if (sm_is_flag_set(r, ACTION_OPEN_WAY))
+      {
+         if (((osm_way_t*) o)->ref_cnt && ((osm_way_t*) o)->ref[0] == ((osm_way_t*) o)->ref[((osm_way_t*) o)->ref_cnt - 1])
+            return ERULE_WAYCLOSED;
+      }
+      // else it doesn't matter if it's open or closed
+   }
 
    // check if tags of rule match tags of object
    for (i = 0; i < r->oo->tag_cnt; i++)
@@ -308,12 +310,12 @@ int call_fini(smrule_t *r)
    }
 
    // call de-initialization rule of function rule if available
-   if (r->act->fini.func != NULL && !r->act->finished)
+   if (r->act->fini.func != NULL && !sm_is_flag_set(r, ACTION_FINISHED))
    {
       log_msg(LOG_INFO, "calling rule %016lx, %s_fini", (long) r->oo->id, r->act->func_name);
       if ((e = r->act->fini.func(r)))
          log_debug("_fini returned %d", e);
-      r->act->finished = 1;
+      sm_set_flag(r, ACTION_FINISHED);
    }
 
    return e;

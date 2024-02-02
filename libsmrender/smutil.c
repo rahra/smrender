@@ -504,6 +504,12 @@ int get_param_bool(const char *attr, const action_t *act)
 }
  
 
+void sm_set_flag(smrule_t *r, int flag)
+{
+   r->act->flags |= flag;
+}
+
+
 int sm_is_flag_set(const smrule_t *r, int flag)
 {
    return (r->act->flags & flag) != 0;
