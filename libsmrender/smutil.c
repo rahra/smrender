@@ -510,6 +510,12 @@ void sm_set_flag(smrule_t *r, int flag)
 }
 
 
+void sm_clear_flag(smrule_t *r, int flag)
+{
+   r->act->flags &= ~flag;
+}
+
+
 int sm_is_flag_set(const smrule_t *r, int flag)
 {
    return (r->act->flags & flag) != 0;
