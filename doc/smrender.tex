@@ -74,7 +74,7 @@ pdflang={en}
 
 \section{Release Notes}
 
-This document describes the current (2023/09/27) version of \smrender{}.
+This document describes the current (2024/02/02) version of \smrender{}.
 
 Although I put a lot of effort into writing this manual it still may be
 incomplete. Please don't hesitate to contact me if there is something unclear
@@ -128,7 +128,7 @@ The rules are also defined in OSM format (see Section \ref{sec:rules}). The
 rules are applied iteratively in a loop depending on their \emph{version}.
 Within the loop, \smrender{} always applies first all relation rules, then way rules, and then all node
 rules of the same version. All rules of the same version are applied in the
-order of their \emph{id}.
+order of their \emph{id}. That means that the version is used to group certain rules together.
 
 Invisible objects are ignored by the renderer. Invisible objects are such which
 have set the attribute \textsf{visible=``false''}.  If objects have no such
@@ -544,7 +544,9 @@ outlines the rendering order.
 \end{enumerate}
 
 Rules with a version greater or equal to $2^{16} = 0\text{x}10000 = 65536$ are
-ignored.  The number of iterations, i.e. the number of different versions is
+ignored. Numbers equal or greater to that are reserved to be used for sub-rules. See Section \ref{sec:act-sub} for further details.
+
+The number of iterations, i.e. the number of different versions is
 limited to \textsf{MAX\_ITER}\footnote{It is currently (21$^{st}$ of October
 2014) defined to 64.} which is defined in \textsf{rdata.h}. Run \smrender{}
 with option \optk{V} to see its value.
@@ -1991,6 +1993,58 @@ The following commands are currently implemented:
 \end{itemize}
 
 
+\subsubsection{Calling Sub-Rules} \label{sec:act-sub}
+
+The ruleset of \smrender{} allows to call a set of sub-rules. The purpose of this is to make the ruleset more simple and modular. Sub-rules can be nested and are re-entrant. That means that you can call a further subset from within a subset and that a subset can be called multiple times (like function calls in a programming language).
+
+The subroutine call is implemented as a regular action with the following syntax.
+
+\begin{verbatim}
+   <action>   := 'cap:' <param> [ ';' <param> ]
+   <param>    := <version>
+   <version>  := 'version' '=' integer number
+\end{verbatim} 
+
+The option \optv{version} is mandatory. It specifies the version number of the group of rules to be called. All rules with this version number and the same object type (node, way, or relation) are then called in the order of their id ascendingly. These rules are then applied to the all objects which match the criteria defined in the sub-rule definition \emph{and} the sub-rules themselves. Have a look at the following example.
+
+\begin{lstlisting}[language=XML]
+<!-- call subrules for objects matching these tags -->
+<way> <!-- rule #1 -->
+   <tag k='natural' v='coastline'/>
+   <tag k='generator' v='smrender'/>
+   <tag k='_action_' v='sub:version=65536'/>
+</way>
+
+<!-- subrules to be called -->
+<way version="65536"> <!-- rule #2 -->
+   <tag k='_action_'
+   v='draw:color=navajowhite;directional=1;ignore_open=1'/>
+</way>
+
+<!-- nested subroutine call -->
+<way version="65536"> <!-- rule #3 -->
+   <tag k='_action_' v='sub:version=65537'/>
+</way>
+
+<!-- next level subroutines -->
+<way version="65537"> <!-- rule #4 -->
+   <tag k='_action_' v='draw:bcolor=black'/>
+</way>
+
+<!-- repeated subroutine call-->
+<way version="2"> <!-- rule #5 -->
+   <tag k='seamark:type' v='depth_contour'/>
+   <tag k='seamark:depth_contour:depth' v='10'/>
+   <tag k='_action_' v='sub:version=65537'/>
+</way>
+\end{lstlisting}
+
+This example contains 5 rules in 4 groups. The 1st one has no version attribute thus 1 is assumed. The 2nd and 3rd one are in group \#65536, the 4th is in group \#65537 and the 5th is in group \#2.
+
+The 1st rule to be executed is the 1st at the beginning because it has the lowest version (group) number and the lowest id -- obviously because it is the only element in the group. The 2nd, 3rd, and 4th rule are ignored by the regular rule processor because their version number is $\geq$ 65536 (see Section \ref{ref:ruleorder}). The 5th rule is executed next after the 1st one.
+
+The execution is then done as follows. The 1st rule is executed and applied to all ways which have the tags \textsf{natural=coastline} and \textsf{generator=smrender}. Since the action is \textsf{sub(version=65536)}, "applying" means executing all rules from the given subset. This subset contains 2 rules: the 2nd and the 3rd from the ruleset from above. The 2nd is executed 1st because it has the lower id. This is because both rules have no explicitly defined id so they are numbered with an internal number ascendingly as they appear. The 3rd is executed directly after \#2. Since this rule is again a subroutine call to the group \#65537, rule \#4 is executed.
+
 \subsubsection{Special Control Functions} \label{sec:special}
 %\subsection{Special Purpose Actions} \label{sec:special}
 %Currently, \smrender{} provides the following functions.
@@ -2049,10 +2103,6 @@ The following commands are currently implemented:
       a shell script. The variables in the files specifies the bounding boxes
       of the tiles in zoom level 10. This function will be improved in future
       and the file format may change.
-
-
-   \item {\sffamily sub} (\textsc{experimental})
-      Call a set of sub-rules.
 
 \end{itemize}
 
