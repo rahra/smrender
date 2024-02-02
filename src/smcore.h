@@ -20,7 +20,7 @@
  * engine.
  *
  *  @author Bernhard R. Fischer
- *  @data 2024/01/29
+ *  @data 2024/02/02
  */
 
 #ifndef SMCORE_H
@@ -68,6 +68,7 @@ int apply_smrules(smrule_t *, trv_info_t *);
 int apply_smrules0(osm_obj_t*, smrule_t*);
 int apply_rule(osm_obj_t*, smrule_t*, int*);
 int call_fini(smrule_t*);
+int call_ini(smrule_t*);
 
 /* smthread.c */
 void sm_wait_threads(void);

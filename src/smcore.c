@@ -19,7 +19,7 @@
  * This file contains the code of the main execution process.
  *
  *  \author Bernhard R. Fischer, <bf@abenteuerland.at>
- *  \date 2024/01/29
+ *  \date 2024/02/02
  */
 
 #ifdef HAVE_CONFIG_H
@@ -314,6 +314,31 @@ int call_fini(smrule_t *r)
       if ((e = r->act->fini.func(r)))
          log_debug("_fini returned %d", e);
       r->act->finished = 1;
+   }
+
+   return e;
+}
+
+
+int call_ini(smrule_t *r)
+{
+   int e = 0;
+
+   if (r->act->ini.func != NULL)
+   {
+      log_msg(LOG_DEBUG, "calling %s_ini()", r->act->func_name);
+      e = r->act->ini.func(r);
+      if (e < 0)
+      {
+         log_msg(LOG_ERR, "%s_ini() failed: %d. Exiting.", r->act->func_name, e);
+      }
+      else if (e > 0)
+      {
+         log_msg(LOG_ERR, "%s_ini() failed: %d. Rule will be ignored.", r->act->func_name, e);
+         r->act->main.func = NULL;
+         r->act->fini.func = NULL;
+         e = 0;
+      }
    }
 
    return e;
