@@ -1,0 +1,25 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<osm version='0.6' generator='Bernhard R. Fischer'>
+
+   <way>
+      <tag k='natural' v='coastline'/>
+      <tag k='_action_' v='cat_poly'/>
+   </way>
+
+   <!-- call subrules for objects matching these tags -->
+   <way>
+      <tag k='natural' v='coastline'/>
+      <tag k='generator' v='smrender'/>
+      <tag k='_action_' v='sub:version=65536'/>
+   </way>
+
+   <!-- subrules to be called -->
+   <way version="65536">
+      <tag k='_action_' v='draw:color=navajowhite;directional=1;ignore_open=1'/>
+   </way>
+   <way version="65536">
+      <tag k='_action_' v='draw:bcolor=black'/>
+   </way>
+
+</osm>
+

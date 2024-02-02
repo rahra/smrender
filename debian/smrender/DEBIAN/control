@@ -1,0 +1,8 @@
+Package: smrender
+Version: 4.4.0-1
+Depends: libc6
+Recommends: libcairo2, librsvg2-2, libjpeg-turbo8, fontconfig
+Maintainer: Bernhard R. Fischer <bernhard.fischer@netlogix.at>
+Architecture: amd64
+Description: A powerful, flexible, and modular rule-based rendering and data processing engine for OSM data. 
+

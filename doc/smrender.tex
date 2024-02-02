@@ -74,7 +74,7 @@ pdflang={en}
 
 \section{Release Notes}
 
-This document describes the current (2023/09/27) version of \smrender{}.
+This document describes the current (2024/02/02) version of \smrender{}.
 
 Although I put a lot of effort into writing this manual it still may be
 incomplete. Please don't hesitate to contact me if there is something unclear
@@ -128,7 +128,7 @@ The rules are also defined in OSM format (see Section \ref{sec:rules}). The
 rules are applied iteratively in a loop depending on their \emph{version}.
 Within the loop, \smrender{} always applies first all relation rules, then way rules, and then all node
 rules of the same version. All rules of the same version are applied in the
-order of their \emph{id}.
+order of their \emph{id}. That means that the version is used to group certain rules together.
 
 Invisible objects are ignored by the renderer. Invisible objects are such which
 have set the attribute \textsf{visible=``false''}.  If objects have no such
@@ -483,6 +483,16 @@ In the following all options are explained in alphabetical order.
 
    If this option is omitted, no output will be generated.
 
+\item[\optk{x}]
+
+   With this option \smrender{} will use an index file to speed up the loading process.
+
+   Basically at the startup \smrender{} pulls in the input data file (from option \optk{i}). By reading it it parses the whole data file and creates an in-memory index which obviously takes some time. Although the XML processor of \smrender{} is pretty fast it is still a time consuming task.
+   
+   With this option set it will save this internal index to a file after the input data was parsed. In a subsequent run of \smrender{} it will pull in the index directly from the file instead of parsing the whole XML file of the raw input data. This drastically speeds up the initialization process which is very usefull if your render several files in a row if they are based on the same input data. It is also very useful if you are developing a ruleset and have to restart \smrender{} over and over again, specifically if the input file has a reasonable size.
+
+   Before loading the index it compares the timestmaps of the index file and the input file. If the input file is newer it will drop and rebuild the index file. This comparison is based on the \emph{modification time} of the files in the file system. Please note that if you tamper with these timestamps or your system had a timewarp (system time changed) this may lead to accidentally reading an outdated index. In this case just delete the index file manually and restart \smrender{}.
+
 \end{itemize}
 
 
@@ -534,7 +544,9 @@ outlines the rendering order.
 \end{enumerate}
 
 Rules with a version greater or equal to $2^{16} = 0\text{x}10000 = 65536$ are
-ignored.  The number of iterations, i.e. the number of different versions is
+ignored. Numbers equal or greater to that are reserved to be used for sub-rules. See Section \ref{sec:act-sub} for further details.
+
+The number of iterations, i.e. the number of different versions is
 limited to \textsf{MAX\_ITER}\footnote{It is currently (21$^{st}$ of October
 2014) defined to 64.} which is defined in \textsf{rdata.h}. Run \smrender{}
 with option \optk{V} to see its value.
@@ -670,9 +682,8 @@ capable to place captions (Section \ref{sec:act-cap}), drawing and filling (Sect
 \ref{sec:func}). The latter is thought to be a simple but powerful interface
 for third-party modules.
 
-All functions are described in Section \ref{sec:renderfunc}. Here is a list of all actions in \smrender{}.
+All functions are described in Section \ref{sec:renderfunc}.
 
-\input{action_list}
 
 \subsection{Measurement Units} \label{sec:units}
 
@@ -750,6 +761,9 @@ It can be distinguished between three types of functions:
 
 \end{enumerate}
 
+Here is a list of all functions currently implemented and built-in into \smrender{}. Please note that there are additional sea-chart-specific functions found in the the shared library \textsf{libsmfilter} which is bundled with \smrender{}. These functions are described in Section \ref{sec:smfilter}.
+
+\input{action_list}
 
 \subsection{Graphical Rendering Primitives} \label{sec:rendergfx}
 
@@ -1202,7 +1216,7 @@ type of the template.
 </way>
 \end{verbatim}
 
-\subsubsection{Standard Shapes} \label{sec:shape}
+\subsubsection{Standard Shapes} \label{sec:shape}\label{sec:act-shape}
 
 \smrender{} is able to generate standard shapes like triangles, or circles using this action.
 The formal definition looks like the following.
@@ -1266,7 +1280,7 @@ the following snippet as an example.
 \end{verbatim}
 
 
-\subsubsection{Create Formatted Strings} \label{sec:strfmt}
+\subsubsection{Create Formatted Strings} \label{sec:strfmt}\label{sec:act-strfmt}
 
 This action is intended to create formatted strings out of a set of tags. It
 works in a similar but yet more simple manner as \textsf{printf(3)} does. The
@@ -1336,7 +1350,7 @@ rendered in the second rule.
 </node>
 \end{verbatim}
 
-\subsubsection{Concatenating Ways}
+\subsubsection{Concatenating Ways} \label{sec:act-cat-poly}
 
 %  \item {\sffamily cat\_poly}
 
@@ -1409,7 +1423,7 @@ rendered in the second rule.
          $2^{31}$ nodes. It is assumed that most other OSM processing tools do
          not care about the artifical boundary of 2000.
 
-      \subsubsection{Inherit Tags to Objects}
+      \subsubsection{Inherit Tags to Objects} \label{sec:act-inherit-tags}
 %   \item {\sffamily inherit\_tags} (\textsc{experimental})
 
 \begin{verbatim}
@@ -1443,7 +1457,7 @@ rendered in the second rule.
       the latter case \textsf{inherit\_tags} will overwrite tags in the parent
       if they do already exist.
 
-         \subsubsection{Generating a Grid} %FIXME: not finished
+         \subsubsection{Generating a Grid}\label{sec:act-grid}\label{sec:act-grid2} %FIXME: not finished
 
          \begin{verbatim}
          grid()
@@ -1472,7 +1486,7 @@ rendered in the second rule.
       This may be of interest if some rules should be called before the grid is
       constructed.
 
-      \subsubsection{Create a Ruler}   %FIXME: not finished
+      \subsubsection{Create a Ruler}\label{sec:act-ruler}\label{sec:act-ruler2}   %FIXME: not finished
 
       \begin{verbatim}
       ruler()
@@ -1484,7 +1498,7 @@ rendered in the second rule.
       \optv{Section} is the length of one section of the ruler in kilometers.
       \optv{Count} sets the number of sections.
 
-      \subsubsection{Text Translation}
+      \subsubsection{Text Translation}\label{sec:act-translate}
 
 \begin{verbatim}
    <action>    := 'translate:' [ <param> [ ';' <param> ] ]
@@ -1518,7 +1532,7 @@ rendered in the second rule.
 
    Have a look at Section \ref{sec:transexample} for a detailed example.
 
-      \subsubsection{Translate Reference Point of Chart}
+      \subsubsection{Translate Reference Point of Chart} \label{sec:act-transcoord}
 
 \begin{verbatim}
    <action>    := 'transcoord:' [ <param> [ ';' <param> ] ]
@@ -1591,7 +1605,7 @@ rendered in the second rule.
 
    \begin{itemize}
 
-   \item {\sffamily clip}
+      \item {\sffamily clip} \label{sec:act-clip}
 
       This function
       clips\footnote{\url{https://en.wikipedia.org/wiki/Clipping_\%28computer_graphics\%29}}
@@ -1604,13 +1618,13 @@ rendered in the second rule.
       \optv{border=15,20,15,20}. If \optv{border} is omitted, \smrender{} clips
       to the default axis borders of the chart.
 
-   \item {\sffamily dist\_median} (\textsc{experimental})
+   \item {\sffamily dist\_median} (\textsc{experimental}) \label{sec:act-dist-median}
 
       This function calculates the median of the length of the edges of a way.
       It adds the tag \textsf{smrender:dist\_median=*}. The value of the tag
       contains the result of the calculation.
 
-   \item {\sffamily fixbordernodes}
+   \item {\sffamily fixbordernodes} \label{sec:act-fixbordernodes}
 
       It turned out that some charting software, at least the in other respects
       very good chart editing tool
@@ -1620,7 +1634,7 @@ rendered in the second rule.
 
       This function reduces the coordinates of such points by 1 arc second.
 
-   \item {\sffamily ins\_eqdist} (\textsc{experimental})
+   \item {\sffamily ins\_eqdist} (\textsc{experimental}) \label{sec:act-ins-eqdist}
 
       This function inserts nodes along a way with equal distances. The
       distance is given with the parameter \optv{distance} in any unit
@@ -1632,7 +1646,7 @@ rendered in the second rule.
       appropriate values. The bearing may be used by the function \textsf{shape}
       (see Section \ref{sec:shape}) to create appropriate rotated shapes.
 
-   \item {\sffamily mask} (\textsc{experimental})
+   \item {\sffamily mask} (\textsc{experimental})\label{sec:act-mask}
       
       This function allows to mask nodes if there is a dense cluster of nodes
       in some places on the chart which would make the result to look like just
@@ -1645,37 +1659,37 @@ rendered in the second rule.
       \textsf{smrender:mask=yes}. This tag can then be matched on within the
       ruleset.
 
-   \item {\sffamily poly\_area}
+   \item {\sffamily poly\_area} \label{sec:act-poly-area}
 
       This function calculates the area of closed polygons in nautical square miles. It
       adds the tag \textsf{smrender:area=*} to the way. The value of the tag contains
       the area.
 
-   \item {\sffamily poly\_centroid}
+   \item {\sffamily poly\_centroid} \label{sec:act-poly-centroid}
 
       This function calculates the centroid of a closed polygon. It then adds a new node
       at this position. The node will inherit all tags of the polygon. Additionally,
       the tag \textsf{smrender:id:way=*} is added whose value is set to the ID of the
       way, respectively.
  
-   \item {\sffamily poly\_len}
+   \item {\sffamily poly\_len} \label{sec:act-poly-len}
 
       This function calculates the length of a polygon in nautical miles. It
       adds the tag \textsf{smrender:length=*} to the way.
 
-   \item {\sffamily set\_ccw} and {\sffamily set\_cw}
+   \item {\sffamily set\_ccw} and {\sffamily set\_cw}\label{sec:act-set-ccw}\label{sec:act-set-cw}
 
       Those functions set the direction of a closed way to either clockwise
       (``cw'') or counterclockwise (``ccw'').
 
-   \item {\sffamily simplify}
+   \item {\sffamily simplify}\label{sec:act-simplify}
 
       This function has the mandatory argument \textsf{dist}. It simplifies
       ways, i.e. it reduced the number of nodes in a way such that the distance
       between the nodes is greater than \textsf{dist}. By default \textsf{dist}
       is set in nautical miles.
 
-   \item {\sffamily split}
+   \item {\sffamily split}\label{sec:act-split}
 
       This action can be applied to nodes only. It splits all ways at the
       matching node into two parts. As a result two ways exist: the 1st one
@@ -1687,7 +1701,7 @@ rendered in the second rule.
       there will also be two ways but they are seperated by one segment, the
       one which follows the matching node in the original way.
 
-   \item {\sffamily refine\_poly} (\textsc{deprecated})
+   \item {\sffamily refine\_poly} (\textsc{deprecated})\label{sec:act-refine-poly}
 
       This function smooths the edges of polygons. It may take the function
       arguments \textsf{iteration} and \textsf{deviation}. The first defines
@@ -1695,11 +1709,11 @@ rendered in the second rule.
       The latter defines the maximum deviation of the original polyline in
       meters (default = 50). This avoids too high distortion of the polylines.
 
-   \item {\sffamily reverse\_way}
+   \item {\sffamily reverse\_way}\label{sec:act-reverse-way}
 
       This function always reverses a way independent of its current direction.
 
-   \item {\sffamily virtclosed}
+   \item {\sffamily virtclosed}\label{sec:act-virtclosed}
 
       This function closes ways which are virtually closed. It takes the
       optional argument \textsf{dist} which defines the maximum distance at
@@ -1711,7 +1725,7 @@ rendered in the second rule.
       a way. If this distance is lower than \textsf{dist} it closes the way by
       appending the first node to the end of the way.
 
-   \item {\sffamily wrapdetect}
+   \item {\sffamily wrapdetect}\label{sec:act-wrapdetect}
 
       This function detects if a way wraps from East to West or from West to
       East across the 180th degree Meridian (West or East).
@@ -1738,7 +1752,7 @@ rendered in the second rule.
    </node>
 \end{verbatim}
 
-   \item {\sffamily zeroway} (\textsc{experimental})
+   \item {\sffamily zeroway} (\textsc{experimental})\label{sec:act-zeroway}
 
       Insert an artificial way of length zero at the matching node if the node
       is connecting two other ways. Such a way is a way with two nodes where
@@ -1849,7 +1863,7 @@ SUID/GUID-root! This would be a potential security risk and might allow an
 attacker with access to your system to compromise it.
 
 
-\subsubsection{Output of OSM Data} \label{sec:output}
+\subsubsection{Output of OSM Data} \label{sec:output} \label{sec:act-out}
 
 The action \textsf{out} outputs all matched OSM objects to a file. The default
 file format is OSM but with the option \textsf{format=json} it is possible to
@@ -1888,7 +1902,7 @@ more. \textsf{Nindent} selects the default number of spaces to indent the data
 if it is output in non-condensed mode.
 
 
-\subsubsection{Executing Programs and Scripts} \label{sec:exec}
+\subsubsection{Executing Programs and Scripts} \label{sec:exec}\label{sec:act-exec}
 
 \smrender{} is able to run external 3rd-party programs and scripts. \smrender{}
 communicates through \textsf{stdin}, \textsf{stdout}, and \textsf{stderr} of the program. The new
@@ -1981,12 +1995,64 @@ The following commands are currently implemented:
 \end{itemize}
 
 
+\subsubsection{Calling Sub-Rules} \label{sec:act-sub}
+
+The ruleset of \smrender{} allows to call a set of sub-rules. The purpose of this is to make the ruleset more simple and modular. Sub-rules can be nested and are re-entrant. That means that you can call a further subset from within a subset and that a subset can be called multiple times (like function calls in a programming language).
+
+The subroutine call is implemented as a regular action with the following syntax.
+
+\begin{verbatim}
+   <action>   := 'cap:' <param> [ ';' <param> ]
+   <param>    := <version>
+   <version>  := 'version' '=' integer number
+\end{verbatim} 
+
+The option \optv{version} is mandatory. It specifies the version number of the group of rules to be called. All rules with this version number and the same object type (node, way, or relation) are then called in the order of their id ascendingly. These rules are then applied to the all objects which match the criteria defined in the sub-rule definition \emph{and} the sub-rules themselves. Have a look at the following example.
+
+\begin{lstlisting}[language=XML]
+<!-- call subrules for objects matching these tags -->
+<way> <!-- rule #1 -->
+   <tag k='natural' v='coastline'/>
+   <tag k='generator' v='smrender'/>
+   <tag k='_action_' v='sub:version=65536'/>
+</way>
+
+<!-- subrules to be called -->
+<way version="65536"> <!-- rule #2 -->
+   <tag k='_action_'
+   v='draw:color=navajowhite;directional=1;ignore_open=1'/>
+</way>
+
+<!-- nested subroutine call -->
+<way version="65536"> <!-- rule #3 -->
+   <tag k='_action_' v='sub:version=65537'/>
+</way>
+
+<!-- next level subroutines -->
+<way version="65537"> <!-- rule #4 -->
+   <tag k='_action_' v='draw:bcolor=black'/>
+</way>
+
+<!-- repeated subroutine call-->
+<way version="2"> <!-- rule #5 -->
+   <tag k='seamark:type' v='depth_contour'/>
+   <tag k='seamark:depth_contour:depth' v='10'/>
+   <tag k='_action_' v='sub:version=65537'/>
+</way>
+\end{lstlisting}
+
+This example contains 5 rules in 4 groups. The 1st one has no version attribute thus 1 is assumed. The 2nd and 3rd one are in group \#65536, the 4th is in group \#65537 and the 5th is in group \#2.
+
+The 1st rule to be executed is the 1st at the beginning because it has the lowest version (group) number and the lowest id -- obviously because it is the only element in the group. The 2nd, 3rd, and 4th rule are ignored by the regular rule processor because their version number is $\geq$ 65536 (see Section \ref{ref:ruleorder}). The 5th rule is executed next after the 1st one.
+
+The execution is then done as follows. The 1st rule is executed and applied to all ways which have the tags \textsf{natural=coastline} and \textsf{generator=smrender}. Since the action is \textsf{sub(version=65536)}, "applying" means executing all rules from the given subset. This subset contains 2 rules: the 2nd and the 3rd from the ruleset from above. The 2nd is executed 1st because it has the lower id. This is because both rules have no explicitly defined id so they are numbered with an internal number ascendingly as they appear. The 3rd is executed directly after \#2. Since this rule is again a subroutine call to the group \#65537, rule \#4 is executed.
+
 \subsubsection{Special Control Functions} \label{sec:special}
 %\subsection{Special Purpose Actions} \label{sec:special}
 %Currently, \smrender{} provides the following functions.
 
 \begin{itemize}
-   \item {\sffamily diff} (\textsc{experimental})
+   \item {\sffamily diff} (\textsc{experimental}) \label{sec:act-diff}
 
       This function takes the argument \optv{file} (exactly like in the
       function \textsf{out}. See Section \ref{sec:output}.) and \optv{infile}.
@@ -1994,7 +2060,7 @@ The following commands are currently implemented:
       have been loaded by \smrender{} (option \optk{i}) and writes all objects
       which do not exist to \optv{file}.
 
-   \item {\sffamily disable}
+   \item {\sffamily disable} \label{sec:act-disable}
 
       This function disables the object to which it is applied. This is done by
       setting the attribute \textsf{visible=``false''}.  It is intended to be
@@ -2002,7 +2068,7 @@ The following commands are currently implemented:
       Please note that disabled objects cannot be re-enabled again because the
       rendering engine completely ignores invisible objects.
 
-   \item {\sffamily enable\_rule} and {\sffamily disable\_rule}
+   \item {\sffamily enable\_rule} and {\sffamily disable\_rule} \label{sec:act-disable-rule}\label{sec:act-enable-rule}
 
       These actions take the mandatory argument \optv{id} which specifies the
       id of the rule to be enabled or disabled. They actually set the visibility to
@@ -2010,7 +2076,7 @@ The following commands are currently implemented:
       a rule which would have been rendered before this one according to its
       version and id is not executed it again.
 
-   \item {\sffamily exit}
+   \item {\sffamily exit} \label{sec:act-exit}
 
       This function forces \smrender{} to stop. No further rules will be
       processed and \smrender{} will create the output files according to the
@@ -2019,7 +2085,7 @@ The following commands are currently implemented:
 
       This function is mainly intended for debugging rule sets.
 
-   \item {\sffamily incomplete} (\textsc{experimental})
+   \item {\sffamily incomplete} (\textsc{experimental}) \label{sec:act-incomplete}
 
       This action can be applied to relations andy ways.
       It takes the single parameter \optv{file} which specifies the
@@ -2031,7 +2097,7 @@ The following commands are currently implemented:
       Please note that this currently may not work properly if you specify the
       same file name in several \textsf{incomplete}-rules.
 
-   \item {\sffamily neighbortile} (\textsc{experimental})
+   \item {\sffamily neighbortile} (\textsc{experimental}) \label{sec:act-neighbortile}
       This is a special function which may be handy in the tile creation
       process.  It creates a directory named ``neighbor\_tiles'' and within
       this a tile directory tree (\textsf{zoom/x/y.conf}).  The files created
@@ -2039,10 +2105,6 @@ The following commands are currently implemented:
       a shell script. The variables in the files specifies the bounding boxes
       of the tiles in zoom level 10. This function will be improved in future
       and the file format may change.
-
-
-   \item {\sffamily sub} (\textsc{experimental})
-      Call a set of sub-rules.
 
 \end{itemize}
 

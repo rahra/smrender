@@ -70,6 +70,14 @@
 #define POS_W1 (POS_W | POS_1)
 #define POS_DIR_MSK (POS_N | POS_S | POS_E | POS_W)
 
+#define ESM_OK 0
+#define ESM_ERROR -1
+#define ESM_NOFILE -2
+#define ESM_TIMEDIFF -3
+#define ESM_TRUNCATED -4
+#define ESM_NULLPTR -5
+#define ESM_OUTDATED -6
+
 //! macro to convert minutes to degrees
 #define MIN2DEG(x) ((double) (x) / 60.0)
 //! distance of grid lines in degrees (should be multple of G_TICKS)
@@ -314,9 +322,6 @@ void mk_chart_coords(int, int, struct rdata*, double*, double*);
 int poly_area(const osm_way_t*, struct coord *, double *);
 struct rdata *get_rdata(void);
 size_t save_osm(const char *, bx_node_t *, const struct bbox *, const char *);
-int apply_smrules0(osm_obj_t*, smrule_t*);
-int apply_rule(osm_obj_t*, smrule_t*, int*);
-int call_fini(smrule_t*);
 void print_version(void);
 void usage(const char *);
 
@@ -387,6 +392,11 @@ int create_tiles(const char *, const struct rdata *, int , int );
 /* smjson.c */
 int rules_info(const struct rdata *, rinfo_t *, const struct dstats *);
 size_t save_json(const char *, bx_node_t *, int );
+
+/* smindex.c */
+int index_write(const char *, bx_node_t *, const void *, const struct dstats *);
+ssize_t sm_write(int , const void *, size_t );
+int index_read(const char *, const void *, struct dstats *);
 
 #endif
 

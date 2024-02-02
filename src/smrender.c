@@ -33,6 +33,9 @@
 #include <ctype.h>
 #include <unistd.h>
 #include <string.h>
+#ifdef HAVE_STRINGS_H
+#include <strings.h>    // strcasecmp()
+#endif
 #include <time.h>
 #include <errno.h>
 #include <math.h>
@@ -106,6 +109,7 @@ static const struct option lopts_[] =
    {"params", no_argument, NULL, 'V'},
    {"version", no_argument, NULL, 'v'},
    {"write", required_argument, NULL, 'w'},
+   {"index", no_argument, NULL, 'x'},
    {NULL, 0, NULL, 0}
 };
 #endif
@@ -937,7 +941,7 @@ int strrcasecmp(const char *str, const char *ext)
 int main(int argc, char *argv[])
 {
    hpx_ctrl_t *ctl, *cfctl;
-   int fd = 0, n, i, norules = 0;
+   int fd = 0, n, i, norules = 0, index = 0;
    struct stat st;
    FILE *f;
    char *cf = "rules.osm", *img_file = NULL, *osm_ifile = NULL, *osm_ofile =
@@ -973,9 +977,9 @@ int main(int argc, char *argv[])
    ri.nindent = DEFAULT_NINDENT;
 
 #ifdef HAVE_GETOPT_LONG
-   while ((n = getopt_long(argc, argv, "ab:B:DCd:fg:Ghi:k:K:lL:MmN:no:O:p:P:r:R:s:S:t:T:uVvw:", lopts_, NULL)) != -1)
+   while ((n = getopt_long(argc, argv, "ab:B:DCd:fg:Ghi:k:K:lL:MmN:no:O:p:P:r:R:s:S:t:T:uVvw:x", lopts_, NULL)) != -1)
 #else
-   while ((n = getopt(argc, argv, "ab:B:DCd:fg:Ghi:k:K:lL:MmN:no:O:p:P:r:R:s:S:t:T:uVvw:")) != -1)
+   while ((n = getopt(argc, argv, "ab:B:DCd:fg:Ghi:k:K:lL:MmN:no:O:p:P:r:R:s:S:t:T:uVvw:x")) != -1)
 #endif
       switch (n)
       {
@@ -1200,6 +1204,10 @@ int main(int argc, char *argv[])
          case 'w':
             osm_ofile = optarg;
             break;
+
+         case 'x':
+            index = 1;
+            break;
       }
 
    log_debug("args: %s", rd->cmdline);
@@ -1252,16 +1260,8 @@ int main(int argc, char *argv[])
 
    if (!norules)
    {
-      log_msg(LOG_INFO, "preparing node rules");
-      if (traverse(rd->rules, 0, IDX_NODE, (tree_func_t) init_rules, rd->rules) < 0)
-         log_msg(LOG_ERR, "rule parser failed"),
-            exit(EXIT_FAILURE);
-      log_msg(LOG_INFO, "preparing way rules");
-      if (traverse(rd->rules, 0, IDX_WAY, (tree_func_t) init_rules, rd->rules) < 0)
-         log_msg(LOG_ERR, "rule parser failed"),
-            exit(EXIT_FAILURE);
-      log_msg(LOG_INFO, "preparing relation rules");
-      if (traverse(rd->rules, 0, IDX_REL, (tree_func_t) init_rules, rd->rules) < 0)
+      log_msg(LOG_INFO, "preparing rules");
+      if (execute_treefunc(rd->rules, NODES_FIRST, (tree_func_t) init_rules, rd->rules) < 0)
          log_msg(LOG_ERR, "rule parser failed"),
             exit(EXIT_FAILURE);
    }
@@ -1287,11 +1287,11 @@ int main(int argc, char *argv[])
    if ((ctl = hpx_init(fd, st.st_size)) == NULL)
       perror("hpx_init_simple"), exit(EXIT_FAILURE);
 
-   log_msg(LOG_NOTICE, "reading osm data (file size %ld kb, memory at %p)",
-         (long) labs(st.st_size) / 1024, ctl->buf.buf);
-
    if (load_filter)
    {
+      if (index)
+         log_msg(LOG_NOTICE, "index together with load filter no supported yet, ignoring");
+
       memset(&fi, 0, sizeof(fi));
       fi.c1.lat = rd->bb.ru.lat + rd->hc * 0.05;
       fi.c1.lon = rd->bb.ll.lon - rd->wc * 0.05;
@@ -1300,11 +1300,37 @@ int main(int argc, char *argv[])
       fi.use_bbox = 1;
       log_msg(LOG_INFO, "using input bounding box %.3f/%.3f - %.3f/%.3f",
             fi.c1.lat, fi.c1.lon, fi.c2.lat, fi.c2.lon);
+      log_msg(LOG_NOTICE, "reading osm data (file size %ld kb, memory at %p)",
+         (long) labs(st.st_size) / 1024, ctl->buf.buf);
       (void) read_osm_file(ctl, get_objtree(), &fi, &rd->ds);
-   }
+
+     }
    else
    {
-      (void) read_osm_file(ctl, get_objtree(), NULL, &rd->ds);
+      int e = ESM_NOFILE;
+      if (index)
+         e = index_read(osm_ifile, ctl->buf.buf, &rd->ds);
+
+      switch (e)
+      {
+         case 0:
+            log_msg(LOG_NOTICE, "index successfully read");
+            break;
+
+         case ESM_NULLPTR:
+         case ESM_OUTDATED:
+         case ESM_NOFILE:
+            log_msg(LOG_NOTICE, "reading osm data (file size %ld kb, memory at %p)",
+               (long) labs(st.st_size) / 1024, ctl->buf.buf);
+            (void) read_osm_file(ctl, get_objtree(), NULL, &rd->ds);
+            if (index)
+               index_write(osm_ifile, *get_objtree(), ctl->buf.buf, &rd->ds);
+            break;
+
+         default:
+            log_msg(LOG_ERR, "index file corrupt (e = %d)", e);
+            exit(EXIT_FAILURE);
+      }
    }
 
    if (!rd->ds.cnt[OSM_NODE])
@@ -1358,27 +1384,6 @@ int main(int argc, char *argv[])
       save_osm(osm_ofile, *get_objtree(), NULL, rd->cmdline);
    else
       save_osm(osm_ofile, *get_objtree(), &rd->bb, rd->cmdline);
-   (void) close(ctl->fd);
-   hpx_free(ctl);
-   hpx_free(cfctl);
-
-   log_debug("freeing main objects");
-   traverse(*get_objtree(), 0, IDX_REL, free_objects, NULL);
-   traverse(*get_objtree(), 0, IDX_WAY, free_objects, NULL);
-   traverse(*get_objtree(), 0, IDX_NODE, free_objects, NULL);
-
-   if (!norules)
-   {
-      log_debug("freeing rule objects");
-      traverse(rd->rules, 0, IDX_REL, (tree_func_t) free_rules, NULL);
-      traverse(rd->rules, 0, IDX_WAY, (tree_func_t) free_rules, NULL);
-      traverse(rd->rules, 0, IDX_NODE, (tree_func_t) free_rules, NULL);
-   }
-
-   log_debug("freeing main object tree");
-   bx_free_tree(*get_objtree());
-   log_debug("freeing rules tree");
-   bx_free_tree(rd->rules);
 
    if (ti.path != NULL)
    {
@@ -1448,6 +1453,25 @@ int main(int argc, char *argv[])
          fclose(f);
       }
    }
+
+   log_msg(LOG_NOTICE, "cleaning up...");
+   (void) close(ctl->fd);
+   hpx_free(ctl);
+   hpx_free(cfctl);
+
+   log_debug("freeing main objects");
+   execute_rules0(*get_objtree(), free_objects, NULL);
+
+   if (!norules)
+   {
+      log_debug("freeing rule objects");
+      execute_rules0(rd->rules, (tree_func_t) free_rules, NULL);
+   }
+
+   log_debug("freeing main object tree");
+   bx_free_tree(*get_objtree());
+   log_debug("freeing rules tree");
+   bx_free_tree(rd->rules);
 
    free(rd->cmdline);
 

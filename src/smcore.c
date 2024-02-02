@@ -1,4 +1,4 @@
-/* Copyright 2011-2022 Bernhard R. Fischer, 4096R/8E24F29D <bf@abenteuerland.at>
+/* Copyright 2011-2024 Bernhard R. Fischer, 4096R/8E24F29D <bf@abenteuerland.at>
  *
  * This file is part of smrender.
  *
@@ -19,7 +19,7 @@
  * This file contains the code of the main execution process.
  *
  *  \author Bernhard R. Fischer, <bf@abenteuerland.at>
- *  \date 2022/03/29
+ *  \date 2024/02/02
  */
 
 #ifdef HAVE_CONFIG_H
@@ -241,19 +241,21 @@ int apply_rule(osm_obj_t *o, smrule_t *r, int *ret)
    // check if way rule applies to either areas (closed ways) or lines (open
    // ways)
    if (r->oo->type == OSM_WAY)
-      switch (r->act->way_type)
+   {
+      // test if it applies to areas only but way is open
+      if (sm_is_flag_set(r, ACTION_CLOSED_WAY))
       {
-         // test if it applies to areas only but way is open
-         case ACTION_CLOSED_WAY:
-            if (((osm_way_t*) o)->ref_cnt && ((osm_way_t*) o)->ref[0] != ((osm_way_t*) o)->ref[((osm_way_t*) o)->ref_cnt - 1])
-               return ERULE_WAYOPEN;
-            break;
-         // test if it applies to lines only but way is closed
-         case ACTION_OPEN_WAY:
-            if (((osm_way_t*) o)->ref_cnt && ((osm_way_t*) o)->ref[0] == ((osm_way_t*) o)->ref[((osm_way_t*) o)->ref_cnt - 1])
-               return ERULE_WAYCLOSED;
-            break;
+         if (((osm_way_t*) o)->ref_cnt && ((osm_way_t*) o)->ref[0] != ((osm_way_t*) o)->ref[((osm_way_t*) o)->ref_cnt - 1])
+            return ERULE_WAYOPEN;
       }
+      // test if it applies to lines only but way is closed
+      else if (sm_is_flag_set(r, ACTION_OPEN_WAY))
+      {
+         if (((osm_way_t*) o)->ref_cnt && ((osm_way_t*) o)->ref[0] == ((osm_way_t*) o)->ref[((osm_way_t*) o)->ref_cnt - 1])
+            return ERULE_WAYCLOSED;
+      }
+      // else it doesn't matter if it's open or closed
+   }
 
    // check if tags of rule match tags of object
    for (i = 0; i < r->oo->tag_cnt; i++)
@@ -264,7 +266,7 @@ int apply_rule(osm_obj_t *o, smrule_t *r, int *ret)
    if (!o->vis)
       return ERULE_INVISIBLE;
 
-   if (sm_is_exec_once(r) && sm_is_exec(r))
+   if (sm_is_flag_set(r, ACTION_EXEC_ONCE) && sm_is_flag_set(r, ACTION_EXEC))
       return ERULE_EXECUTED;
 
    // call function with this object
@@ -272,7 +274,7 @@ int apply_rule(osm_obj_t *o, smrule_t *r, int *ret)
    if (ret != NULL)
       *ret = i;
 
-   sm_set_exec(r);
+   sm_set_flag(r, ACTION_EXEC);
 
 #ifdef ADD_RULE_TAG
    add_rule_tag(r, o);
@@ -308,12 +310,37 @@ int call_fini(smrule_t *r)
    }
 
    // call de-initialization rule of function rule if available
-   if (r->act->fini.func != NULL && !r->act->finished)
+   if (r->act->fini.func != NULL && !sm_is_flag_set(r, ACTION_FINISHED))
    {
       log_msg(LOG_INFO, "calling rule %016lx, %s_fini", (long) r->oo->id, r->act->func_name);
       if ((e = r->act->fini.func(r)))
          log_debug("_fini returned %d", e);
-      r->act->finished = 1;
+      sm_set_flag(r, ACTION_FINISHED);
+   }
+
+   return e;
+}
+
+
+int call_ini(smrule_t *r)
+{
+   int e = 0;
+
+   if (r->act->ini.func != NULL)
+   {
+      log_msg(LOG_DEBUG, "calling %s_ini()", r->act->func_name);
+      e = r->act->ini.func(r);
+      if (e < 0)
+      {
+         log_msg(LOG_ERR, "%s_ini() failed: %d. Exiting.", r->act->func_name, e);
+      }
+      else if (e > 0)
+      {
+         log_msg(LOG_ERR, "%s_ini() failed: %d. Rule will be ignored.", r->act->func_name, e);
+         r->act->main.func = NULL;
+         r->act->fini.func = NULL;
+         e = 0;
+      }
    }
 
    return e;
@@ -369,7 +396,7 @@ int dequeue_fini(void)
 #endif
 
 
-int apply_smrules1(smrule_t *r, long ver, const bx_node_t *ot)
+int apply_smrules(smrule_t *r, trv_info_t *ti)
 {
    int e = 0;
 
@@ -379,13 +406,20 @@ int apply_smrules1(smrule_t *r, long ver, const bx_node_t *ot)
       return 1;
    }
 
-   if (r->oo->ver != (int) ver)
+   if (r->oo->ver != ti->ver)
       return 0;
 
    if (!r->oo->vis)
    {
       log_msg(LOG_INFO, "ignoring invisible rule %016"PRIx64, r->oo->id);
       return 0;
+   }
+
+   if (sm_is_flag_set(r, ACTION_FINISHED) && !sm_is_flag_set(r, ACTION_EXEC_ONCE))
+   {
+      log_debug("action is reentered");
+      call_ini(r);
+      sm_clear_flag(r, ACTION_FINISHED);
    }
 
    // FIXME: wtf is this?
@@ -412,10 +446,10 @@ int apply_smrules1(smrule_t *r, long ver, const bx_node_t *ot)
    {
 #ifdef THREADED_RULES
       if (sm_is_threaded(r))
-         e = traverse_queue(ot, r->oo->type - 1, (tree_func_t) apply_smrules0, r);
+         e = traverse_queue(ti->objtree, r->oo->type - 1, (tree_func_t) apply_smrules0, r);
       else
 #endif
-         e = traverse(ot, 0, r->oo->type - 1, (tree_func_t) apply_smrules0, r);
+         e = traverse(ti->objtree, 0, r->oo->type - 1, (tree_func_t) apply_smrules0, r);
    }
    else
       log_debug("   -> no main function");
@@ -436,47 +470,49 @@ int apply_smrules1(smrule_t *r, long ver, const bx_node_t *ot)
 }
 
 
-int apply_smrules(smrule_t *r, long ver)
+/*! This function calls traverse() 3 times subsquently, with IDX_NODE, IDX_WAY,
+ * and IDX_REL if dir is set to NODES_FIRST. If dir is set to RELS_FIRST,
+ * traverse() will be called with IDX_REL first.
+ * @param nt Pointer to the tree to be traversed.
+ * @oaran dir Order of execution which is either NODES_FIRST or RELS_FIRST.
+ * @param dhandler Function to be called for each object.
+ * @param p Optional argument which is passed to dhandler(p).
+ * @return The function returns the return value of traverse().
+ */
+int execute_treefunc(const bx_node_t *nt, int dir, tree_func_t dhandler, void *p)
 {
-   return apply_smrules1(r, ver, *get_objtree());
-}
+#define NUM_OBJ_INDEX 3
+   int e, i, j;
 
+   for (i = 0, e = 0; i < NUM_OBJ_INDEX && !e; i++)
+   {
+      j = dir == NODES_FIRST ? i : NUM_OBJ_INDEX - 1 - i;
+      log_msg(LOG_INFO, "%ss...", type_str(j + 1));
+      e = traverse(nt, 0, j, dhandler, p);
+#ifdef THREADED_RULES
+      sm_wait_threads();
+      dequeue_fini();
+#endif
 
-/* Typecasting wrapper for apply_smrules(). */
-static int apply_smrules_w(osm_obj_t *r, void *ver)
-{
-   return apply_smrules((smrule_t*) r, (long) ver);
+   }
+
+   return e;
 }
 
 
 int execute_rules0(bx_node_t *rules, tree_func_t func, void *p)
 {
-   // FIXME: order rel -> way -> node?
-   log_msg(LOG_NOTICE, " relations...");
-   traverse(rules, 0, IDX_REL, func, p);
-#ifdef THREADED_RULES
-   sm_wait_threads();
-   dequeue_fini();
-#endif
-   log_msg(LOG_NOTICE, " ways...");
-   traverse(rules, 0, IDX_WAY, func, p);
-#ifdef THREADED_RULES
-   sm_wait_threads();
-   dequeue_fini();
-#endif
-   log_msg(LOG_NOTICE, " nodes...");
-   traverse(rules, 0, IDX_NODE, func, p);
-#ifdef THREADED_RULES
-   sm_wait_threads();
-   dequeue_fini();
-#endif
-   return 0;
+   return execute_treefunc(rules, RELS_FIRST, func, p);
 }
 
  
+/* This function traverses the rules and for each rule traverses the objects.
+ * execute_rules() -> traverse(apply_smrules()) -> traverse(apply_smrules0()) -> apply_rule()
+*/
 int execute_rules(bx_node_t *rules, int version)
 {
-   return execute_rules0(rules, apply_smrules_w, (void*) (long) version);
+   trv_info_t ti = {*get_objtree(), version};
+   return execute_treefunc(rules, RELS_FIRST, (tree_func_t) apply_smrules, &ti);
 }
 
 

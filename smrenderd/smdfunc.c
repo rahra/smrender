@@ -29,11 +29,8 @@
 #include <signal.h>
 
 #include "smrender.h"
+#include "smcore.h"
 #include "smdfunc.h"
-
-
-// this is defined in smrender_dev.h
-int apply_smrules1(smrule_t *r, long ver, const bx_node_t *ot);
 
 
 int act_ws_traverse_ini(smrule_t *UNUSED(r))
@@ -141,7 +138,8 @@ void *traverse_thread(void *p)
             tc->slave_cmd = TC_NEXT;
             r->data = tc;
             pthread_mutex_unlock(&tc->mtx);
-            e = apply_smrules1(r, r->oo->ver, tc->ot);
+            trv_info_t ti = {tc->ot, r->oo->ver};
+            e = apply_smrules(r, &ti);
             break;
 
          case TC_BREAK:

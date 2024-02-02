@@ -1,4 +1,4 @@
-/* Copyright 2011-2023 Bernhard R. Fischer, 4096R/8E24F29D <bf@abenteuerland.at>
+/* Copyright 2011-2024 Bernhard R. Fischer, 4096R/8E24F29D <bf@abenteuerland.at>
  *
  * This file is part of smrender.
  *
@@ -20,6 +20,7 @@
  * data.
  *
  *  \author Bernhard R. Fischer, <bf@abenteuerland.at>
+ *  \date 2024/01/27
  */
 
 #ifndef SMATH_H
@@ -27,6 +28,22 @@
 
 
 #include <math.h>
+
+#include "smrender.h"
+
+
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
+#ifndef M_PI_2
+#define M_PI_2 1.57079632679489661923
+#endif
+#ifndef M_PI_4
+#define M_PI_4 0.78539816339744830962
+#endif
+#ifndef M_SQRT1_2
+#define M_SQRT1_2 0.70710678118654752440
+#endif
 
 
 /*struct coord

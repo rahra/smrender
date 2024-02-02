@@ -1,4 +1,4 @@
-/* Copyright 2011-2022 Bernhard R. Fischer, 4096R/8E24F29D <bf@abenteuerland.at>
+/* Copyright 2011-2024 Bernhard R. Fischer, 4096R/8E24F29D <bf@abenteuerland.at>
  *
  * This file is part of smrender.
  *
@@ -20,7 +20,7 @@
  * as well as the code for traversing the object (nodes/ways) tree.
  *
  *  \author Bernhard R. Fischer
- *  \date 2022/03/25
+ *  \date 2024/02/02
  */
 #include <string.h>
 #include <errno.h>
@@ -29,6 +29,7 @@
 #include <inttypes.h>
 
 #include "smrender_dev.h"
+#include "smcore.h"
 
 
 #include "colors.c"
@@ -291,10 +292,10 @@ void check_way_type(smrule_t *r)
    if (!((osm_way_t*) r->oo)->ref_cnt)
       return;
    if (((osm_way_t*) r->oo)->ref[0] == ((osm_way_t*) r->oo)->ref[((osm_way_t*) r->oo)->ref_cnt - 1])
-      r->act->way_type = ACTION_CLOSED_WAY;
+      sm_set_flag(r, ACTION_CLOSED_WAY);
    else
-      r->act->way_type = ACTION_OPEN_WAY;
-   log_debug("way_type = %s", r->act->way_type == ACTION_CLOSED_WAY ? "ACTION_CLOSED_WAY" : "ACTION_OPEN_WAY");
+      sm_set_flag(r, ACTION_OPEN_WAY);
+   log_debug("way_type = %s", sm_is_flag_set(r, ACTION_CLOSED_WAY) ? "ACTION_CLOSED_WAY" : "ACTION_OPEN_WAY");
 }
 
 
@@ -313,7 +314,7 @@ int init_rule(osm_obj_t *o, smrule_t **r)
 {
    char *s, *t, *func, buf[1024];
    smrule_t *rl;
-   int e, i;
+   int i;
 
    log_debug("initializing rule %"PRId64" (0x%016"PRIx64", %"PRId64")", o->id, o->id, o->id & 0x000000ffffffffff);
 
@@ -403,25 +404,6 @@ int init_rule(osm_obj_t *o, smrule_t **r)
    if (rl->act->parm != NULL)
       rl->act->fp = parse_fparam(rl->act->parm);
 
-   // finally call initialization function
-   if (rl->act->ini.func != NULL)
-   {
-      log_msg(LOG_DEBUG, "calling %s_ini()", rl->act->func_name);
-      e = rl->act->ini.func(rl);
-      if (e < 0)
-      {
-         log_msg(LOG_ERR, "%s_ini() failed: %d. Exiting.", rl->act->func_name, e);
-         return e;
-      }
-      if (e > 0)
-      {
-         log_msg(LOG_ERR, "%s_ini() failed: %d. Rule will be ignored.", rl->act->func_name, e);
-         rl->act->main.func = NULL;
-         rl->act->fini.func = NULL;
-         return 0;
-      }
-   }
-
    // remove _action_ tag from tag list, i.e. move last element
    // to position of _action_ tag (order doesn't matter).
    if (i < rl->oo->tag_cnt - 1)
@@ -431,6 +413,9 @@ int init_rule(osm_obj_t *o, smrule_t **r)
    }
    rl->oo->tag_cnt--;
    rl->act->tag_cnt--;
+
+   // finally call initialization function
+   call_ini(rl);
 
    return 0;
 }

@@ -103,6 +103,7 @@ typedef union osm_storage
 
 time_t parse_time(bstring_t);
 void free_obj(osm_obj_t*);
+void *malloc_mem(size_t , int );
 osm_node_t *malloc_node(short );
 osm_way_t *malloc_way(short , int );
 osm_rel_t *malloc_rel(short , short );

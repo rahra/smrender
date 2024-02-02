@@ -31,8 +31,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
+#include <inttypes.h>
 #include <limits.h>
 #include <string.h>
+#ifdef HAVE_STRINGS_H
+#include <strings.h>    //strcasecmp
+#endif
 #include <syslog.h>
 #include <errno.h>
 #include <math.h>
@@ -142,7 +146,7 @@ int put_object0(bx_node_t **tree, int64_t id, void *p, int idx)
    }
 
    if (bn->next[idx] != NULL && p != NULL && tree == &obj_tree_)
-      log_msg(LOG_WARN, "nt->next[%d] contains valid pointer, overwriting.", idx);
+      log_msg(LOG_WARN, "nt->next[%d](id = %"PRId64") contains valid pointer, overwriting.", idx, id);
 
    bn->next[idx] = p;
    return 0;
@@ -469,6 +473,21 @@ char *get_parami(const char *attr, int *ival, const action_t *act)
 }
 
 
+char *get_paraml(const char *attr, long *ival, const action_t *act)
+{
+   double f;
+   char *r;
+
+   if ((r = get_param(attr, &f, act)) == NULL)
+      return NULL;
+
+   if (ival != NULL)
+      *ival = f;
+
+   return r;
+}
+
+
 /*! This function tests an attribute to be true or false.
  * @param attr Pointer to attribute key.
  * @param act Pointer to action_t (which contains the list of action parameters).
@@ -509,6 +528,18 @@ int get_param_bool(const char *attr, const action_t *act)
    return get_param_bool2(attr, act, 0);
 }
  
+
+void sm_set_flag(smrule_t *r, int flag)
+{
+   r->act->flags |= flag;
+}
+
+
+void sm_clear_flag(smrule_t *r, int flag)
+{
+   r->act->flags &= ~flag;
+}
+
 
 int sm_is_flag_set(const smrule_t *r, int flag)
 {

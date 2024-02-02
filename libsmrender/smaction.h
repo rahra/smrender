@@ -38,13 +38,20 @@
 #define SPECIAL_NOT 0x4000
 #define SPECIAL_MASK 0x00ff
 
-#define ACTION_THREADED 1
+//! rule may be called multithreaded
+#define ACTION_THREADED (1 << 0)
 //! main shall be executed just once
-#define ACTION_EXEC_ONCE 2
+#define ACTION_EXEC_ONCE (1 << 1)
 //! flag is set if main function was execute at least once
-#define ACTION_EXEC 4
-#define ACTION_OPEN_WAY -1
-#define ACTION_CLOSED_WAY 1
+#define ACTION_EXEC (1 << 2)
+//! ini function was called
+#define ACTION_INIT (1 << 3)
+//! fini function was called
+#define ACTION_FINISHED (1 << 4)
+//! apply to open ways only
+#define ACTION_OPEN_WAY (1 << 5)
+//! apply to closed ways only
+#define ACTION_CLOSED_WAY (1 << 6)
 
 #define TM_RESCALE 100
 #define T_RESCALE (60 * TM_RESCALE)
@@ -89,28 +96,28 @@ struct actParam
 
 struct action
 {
-   union             // initialization function _ini()
+   union             //!< initialization function _ini()
    {
       int (*func)(void*);
       void *sym;
    } ini;
-   union             // rule function
+   union             //!< rule function
    {
       int (*func)(void*, osm_obj_t*);
       void *sym;
    } main;
-   union             // finalization function _fini()
+   union             //!< finalization function _fini()
    {
       int (*func)(void*);
       void *sym;
    } fini;
-   void *libhandle;  // pointer to lib base
-   char *func_name;  // pointer to function name
-   char *parm;       // function argument string
-   fparam_t **fp;    // pointer to parsed parameter list
-   short flags;      // execution control flags.
-   short finished;   // set to 1 after _fini was called, otherwise 0
-   short way_type;   // -1 if open, 0 in any case, 1 of closed
+   void *libhandle;  //!< pointer to lib base
+   char *func_name;  //!< pointer to function name
+   char *parm;       //!< function argument string
+   fparam_t **fp;    //!< pointer to parsed parameter list
+   short flags;      //!< execution control flags.
+   short finished;   //!< deprecated: set to 1 after _fini was called, otherwise 0
+   short way_type;   //!< deprecated: -1 if open, 0 in any case, 1 of closed
    short tag_cnt;
    struct stag stag[];
 };

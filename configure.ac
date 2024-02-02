@@ -1,6 +1,6 @@
 AC_PREREQ([2.69])
 #define([svnversion], esyscmd([sh -c "echo -n `git log --oneline | wc -l`"]))dnl
-AC_INIT([smrender],[[4.3.3]],[bf@abenteuerland.at])
+AC_INIT([smrender],[[4.4.0]],[bf@abenteuerland.at])
 AC_CONFIG_MACRO_DIR([m4])
 AM_INIT_AUTOMAKE([foreign -Wall -Werror])
 AM_PROG_AR
@@ -16,11 +16,13 @@ smrender_datadir=${datadir}/smrender
 AC_SUBST(smrender_datadir)
 
 # some #defines for smrender
+#AC_DEFINE([_POSIX_C_SOURCE], [200809L], [Code is POSIX compatible])
 AC_DEFINE([MEM_USAGE], [], [Generate memory usage statistics.])
 AC_DEFINE([bx_hash_t], [int64_t], [Set hash type for bxtree.])
 AC_DEFINE([BX_RES], [4], [Set bit resolution for bxtree.])
 AC_DEFINE([WITH_MMAP], [], [Add mmap() support.])
 
+AC_DEFINE([WITH_THREADS], [], [enable multi-threading])
 AC_ARG_ENABLE([threads], [AS_HELP_STRING([--enable-threads],[compile with pthreads support])],
    AC_DEFINE([WITH_THREADS], [], [enable multi-threading]))
 
@@ -81,7 +83,7 @@ AC_SEARCH_LIBS([sin], [m])
 AC_SEARCH_LIBS([dlopen], [dl])
 #AC_SEARCH_LIBS([RAND_bytes], [crypto])
 
-AC_CHECK_FUNCS([strptime dladdr mbtowc execvpe getopt_long])
+AC_CHECK_FUNCS([strptime dladdr mbtowc execvpe getopt_long madvise posix_madvise])
 
 PKG_CHECK_MODULES([GLIB], [glib-2.0],
                   [AC_DEFINE([HAVE_GLIB], [1], [using glib version check])],

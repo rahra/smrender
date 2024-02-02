@@ -19,7 +19,7 @@
  * This file contains the usage output
  *
  *  \author Bernhard R. Fischer, <bf@abenteuerland.at>
- *  \date 2024/01/15
+ *  \date 2024/01/26
  */
 
 #ifdef HAVE_CONFIG_H
@@ -68,6 +68,9 @@ static const char *usage_txt_ =
    "\n"
    "   --write <osm_file>\n"
    "   -w <osm_file> .......... Output internal OSM database to file at the end of processing.\n"
+   "\n"
+   "   --index\n"
+   "   -x ..................... Use index file to speed up data loading.\n"
    "\n"
    "Rules Options:\n"
    "   --rules <rules_file>\n"
