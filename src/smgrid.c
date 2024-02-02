@@ -170,7 +170,7 @@ int act_ruler_fini(smrule_t *r)
 
 int act_ruler2_ini(smrule_t *r)
 {
-   sm_set_exec_once(r);
+   sm_set_flag(r, ACTION_EXEC_ONCE);
    return ruler_ini(r);
 }
 
@@ -699,7 +699,7 @@ int act_grid2_ini(smrule_t *r)
    grid_ini(r, grd);
    r->data = grd;
 
-   sm_set_exec_once(r);
+   sm_set_flag(r, ACTION_EXEC_ONCE);
    return 0;
 }
 
@@ -781,7 +781,7 @@ int act_global_grid_ini(smrule_t *r)
 
    log_debug("lat_grid = %.1f, lon_grid = %.1f, gridpoints = %d", grd->lat_g, grd->lon_g, grd->gpcnt);
    r->data = grd;
-   sm_set_exec_once(r);
+   sm_set_flag(r, ACTION_EXEC_ONCE);
    return 0;
 }
 
