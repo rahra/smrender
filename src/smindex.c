@@ -557,7 +557,7 @@ int index_read(const char *fname, const void *base, struct dstats *ds)
    // stat index file
    if (fstat(idxf.fd, &st) == -1)
    {
-      log_errno(LOG_ERR, "stat() failed");
+      log_msg(LOG_ERR, "fstat(%d [\"%s\"]) failed: %s", idxf.fd, buf, strerror(errno));
       goto ri_err;
    }
 

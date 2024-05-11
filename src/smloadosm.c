@@ -710,7 +710,7 @@ hpx_ctrl_t *open_osm_source(const char *s, int w_mmap)
 
    if (fstat(fd, &st) == -1)
    {
-      log_msg(LOG_ERR, "stat() failed: %s", strerror(errno));
+      log_msg(LOG_ERR, "fstat(%d [\"%s\"]) failed: %s", fd, s, strerror(errno));
       goto oos_close_fd;
    }
 
@@ -748,7 +748,7 @@ hpx_ctrl_t *open_osm_source(const char *s, int w_mmap)
          snprintf(buf, sizeof(buf), "%s/%s", s, de->d_name);
          if (stat(buf, &st) == -1)
          {
-            log_msg(LOG_ERR, "stat() failed: %s", strerror(errno));
+            log_msg(LOG_ERR, "stat(\"%s\") failed: %s", buf, strerror(errno));
             goto oos_close_fd;
          }
 
