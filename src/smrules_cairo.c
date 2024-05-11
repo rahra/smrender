@@ -2889,6 +2889,12 @@ static void img_fini(struct actImage *img)
 
 int act_img_fini(smrule_t *r)
 {
+   // safety check
+   if (r->data == NULL)
+   {
+      log_msg(LOG_WARN, "r->data == NULL");
+      return 1;
+   }
    cairo_smr_pop_group(((struct actImage*) r->data)->ctx);
    img_fini(r->data);
    free(r->data);
