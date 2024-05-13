@@ -1352,22 +1352,28 @@ rendered in the second rule.
 
 \subsubsection{Concatenating Ways} \label{sec:act-cat-poly}
 
-%  \item {\sffamily cat\_poly}
+\begin{verbatim}
+   <action>   := 'cat_poly:' <param> [ ';' <param> ]
+   <param>    := <nocorner> | <incomp> | <copy> | <vcdist>
+   <nocorner> := 'no_corner' '=' <bool>
+   <incomp>   := 'ign_incomplete' '=' <bool>
+   <copy>     := 'copy' '=' <string>
+\end{verbatim}
 
       This function closes open polygons. To have closed polygons is
-      highly important because just such polygons can be filled with a
-      background color.
+      highly important because just such polygons can be filled.
 
       Polygons which are literally closed, such as the coastline or lakes are
       very often found as a set of open ways whose beginning and end share the
       same nodes. This is because different tags may be attached to different
-      parts of the polygon. Furthermore, just partial data sets are used as
+      parts of the polygon. Furthermore, partial data sets may be used as
       input because typically just a small area out of the world's data is
       selected.\\
 
       \textsf{Cat\_poly} has three optional parameters: \textsf{ign\_incomplete},
-      \textsf{no\_corner}, and \textsf{copy}. The first two can both be set to either 0 or 1. If these
-      parameters are omitted, both are internally set to 0 by default.
+      \textsf{no\_corner}, and \textsf{copy}. The 1st two are of type boolean.
+      If these
+      parameters are omitted, both are set to 0 (false) by default.
 
       If \textsf{ign\_incomplete} is set to 1, \textsf{cat\_poly} will only
       close such polygons which are formed by a collection of ways where the
@@ -1386,7 +1392,7 @@ rendered in the second rule.
       
       The parameter \textsf{copy} can occur multiple times and it is used to
       specify the keys of the tags of the ways which should be copied to the
-      newly joined long way. If the values of these keys differ than
+      newly joined longer and closed way. If the values of these keys differ than
       \smrender{} takes just the first one. All others are ignored. This is
       because OSM defines that a tag can appear just excatly one time in an OSM
       object. \\
