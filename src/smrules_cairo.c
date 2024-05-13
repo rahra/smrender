@@ -733,7 +733,10 @@ int act_draw_ini(smrule_t *r)
    {
       log_debug("parsing image data");
       if (img_ini(r, &d->img) != 0)
+      {
          log_msg(LOG_WARN, "not using image in fill operation");
+         d->img.ctx = NULL;
+      }
    }
 
    sm_threaded(r);
@@ -2866,6 +2869,12 @@ int img_place(const struct actImage *img, const osm_node_t *n)
 
 int act_img_main(smrule_t *r, osm_obj_t *o)
 {
+   // safety check
+   if (r->data == NULL)
+   {
+      log_msg(LOG_WARN, "r->data == NULL");
+      return 1;
+   }
    if (o->type == OSM_NODE)
       return img_place(r->data, (osm_node_t*) o);
    if (o->type == OSM_WAY)
