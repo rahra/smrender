@@ -20,7 +20,7 @@
  * for OnionCat and was adapted to be used for smrender.
  * 
  *  @author Bernhard R. Fischer
- *  @version 2024/01/15
+ *  @version 2024/05/13
  */
 
 #ifdef HAVE_CONFIG_H

@@ -98,6 +98,7 @@ int get_param_bool(const char*, const action_t*);
 //struct rdata *get_rdata(void);
 bx_node_t **get_objtree(void);
 int func_name(char *, int , void *);
+int put_object0_ctrl(bx_node_t **, int64_t, void *, int, void **);
 int put_object0(bx_node_t**, int64_t, void*, int);
 void *get_object0(bx_node_t*, int64_t, int);
 void *rem_object(int, int64_t);

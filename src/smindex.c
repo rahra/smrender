@@ -419,6 +419,7 @@ static int alloc_cpy_upd(void **base, int *len, void **dst, int olen)
  */
 int index_read_objs(void *base, int len, const void *osm_base)
 {
+   void *ctrl = (void*)(intptr_t) -1;
    const osm_obj_t *o0;
    osm_obj_t *o;
    osm_way_t *w;
@@ -471,7 +472,12 @@ int index_read_objs(void *base, int len, const void *osm_base)
       }
 
       // store object into tree
-      put_object(o);
+      //put_object(o);
+      if (put_object0_ctrl(get_objtree(), o->id, o, o->type -1, &ctrl))
+      {
+         log_msg(LOG_ERR, "Index corrupt! Delete index file an restart smrender.");
+         goto iro_err;
+      }
    }
 
    log_debug("read %ld objects", n);

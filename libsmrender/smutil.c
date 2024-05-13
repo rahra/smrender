@@ -126,10 +126,16 @@ void set_unique_way_id(int64_t id)
  * @param id ID of object p.
  * @param p Pointer to store.
  * @param idx Index with leaf node of id.
+ * @param ctrl This is a pointer to a variable which controls the behavior if
+ * an entry already exists. If ctrl is NULL or *ctrl is NULL the old object is
+ * simply overwritten. If *ctrl is (void*) -1 put_object0_ctrl() will return -1
+ * and the previous entry will not be overwritten. In any case *ctrl will
+ * pointer to the previous existing entry (which is NULL if there was no entry
+ * before).
  * @return On success this function returns 0, otherwise -1 is returned. If the
  * leaf node already contains a pointer, it will be overwritten.
  */
-int put_object0(bx_node_t **tree, int64_t id, void *p, int idx)
+int put_object0_ctrl(bx_node_t **tree, int64_t id, void *p, int idx, void **ctrl)
 {
    bx_node_t *bn;
 
@@ -146,10 +152,30 @@ int put_object0(bx_node_t **tree, int64_t id, void *p, int idx)
    }
 
    if (bn->next[idx] != NULL && p != NULL && tree == &obj_tree_)
+   {
+      if (ctrl != NULL && *ctrl != NULL)
+      {
+         log_msg(LOG_WARN, "nt->next[%d](id = %"PRId64") contains valid pointer, not overwriting.", idx, id);
+         *ctrl = bn->next[idx];
+         return -1;
+      }
       log_msg(LOG_WARN, "nt->next[%d](id = %"PRId64") contains valid pointer, overwriting.", idx, id);
+   }
+
+   // save old pointer
+   if (ctrl != NULL)
+      *ctrl = bn->next[idx];
 
    bn->next[idx] = p;
    return 0;
+}
+
+
+/*! This is a wrapper function for put_object0_dup().
+ */
+int put_object0(bx_node_t **tree, int64_t id, void *p, int idx)
+{
+   return put_object0_ctrl(tree, id, p, idx, NULL);
 }
 
 
