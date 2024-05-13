@@ -808,6 +808,27 @@ static double meridian_set_coords(double *lat, double *lon, double a0, double b)
 }
 
 
+static char sgnc(double a0, char p, char z, char n)
+{
+   if (a0 == 0.0)
+      return z;
+   if (a0 < 0.0)
+      return n;
+   //if (a0 > 0.0)
+      return p;
+}
+
+
+static char dirc(double a0, const char *circt)
+{
+   if (!strncmp(circt, "parallel", 8))
+      return sgnc(a0, 'N', ' ', 'S');
+   if (!strncmp(circt, "meridian", 8))
+      return sgnc(a0, 'E', ' ', 'W');
+   return ' ';
+}
+
+
 /*! This function generates a generic geographic circle on the surface of the
  * Earth.
  */
@@ -815,22 +836,40 @@ osm_way_t *circle(double a0, double g, int cnt, char *circt, double (*cfunc)(dou
 {
    osm_node_t *n;
    osm_way_t *w;
+   char buf[32];
 
    cnt = cnt < 1 ? 1 : cnt;
 
    a0 = cfunc(NULL, NULL, a0, 0);
-   w = malloc_way(3, 0);
+   w = malloc_way(5, 0);
    osm_way_default(w);
    set_const_tag(&w->obj.otag[1], "global_grid", "yes");
    set_const_tag(&w->obj.otag[2], "circle", circt);
+   snprintf(buf, sizeof(buf), "%d", (int) a0);
+   set_const_tag(&w->obj.otag[3], "deg", strdup(buf));
+   snprintf(buf, sizeof(buf), "%d %c", abs((int) a0), dirc(a0, circt));
+   set_const_tag(&w->obj.otag[4], "deg:naut", strdup(buf));
 
    for (double a = 0; a < 360; a += g)
    {
       double b = a;
       for (int i = 0; i < cnt; i++, b += g / cnt)
       {
-         n = malloc_node(1);
-         osm_node_default(n);
+         if (!i)
+         {
+            n = malloc_node(3);
+            osm_node_default(n);
+            int p = strncmp(circt, "parallel", 8);
+            snprintf(buf, sizeof(buf), "%d", (int) a0);
+            set_const_tag(&n->obj.otag[1], p ? "lon" : "lat", strdup(buf));
+            snprintf(buf, sizeof(buf), "%d", (int) a);
+            set_const_tag(&n->obj.otag[2], p ? "lat" : "lon", strdup(buf));
+         }
+         else
+         {
+            n = malloc_node(1);
+            osm_node_default(n);
+         }
 
          (void) cfunc(&n->lat, &n->lon, a0, b);
 
