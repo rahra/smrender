@@ -131,6 +131,10 @@ FILE *init_log(const char *s, int level)
       if ((log_ = fopen(s, mode)) == NULL)
          fprintf(stderr, "*** could not open logfile %s: %s. Logging to syslog.\n", s, strerror(errno));
 
+      int e;
+      if ((e = setvbuf(log_, NULL, _IOLBF, 0)))
+         fprintf(stderr, "*** setvbuf() returned %d: %s", e, strerror(errno));
+
       // do not use ANSI colors in file
       clear_log_flags(LOGF_COLOR);
    }
