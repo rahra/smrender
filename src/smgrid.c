@@ -829,6 +829,12 @@ static char dirc(double a0, const char *circt)
 }
 
 
+static double frac(double a)
+{
+   return a - floor(a);
+}
+
+
 /*! This function generates a generic geographic circle on the surface of the
  * Earth.
  */
@@ -837,39 +843,63 @@ osm_way_t *circle(double a0, double g, int cnt, char *circt, double (*cfunc)(dou
    osm_node_t *n;
    osm_way_t *w;
    char buf[32];
+   double lat, lon;
 
    cnt = cnt < 1 ? 1 : cnt;
 
    a0 = cfunc(NULL, NULL, a0, 0);
-   w = malloc_way(5, 0);
+   w = malloc_way(3, 0);
    osm_way_default(w);
    set_const_tag(&w->obj.otag[1], "global_grid", "yes");
    set_const_tag(&w->obj.otag[2], "circle", circt);
+   /*
    snprintf(buf, sizeof(buf), "%d", (int) a0);
    set_const_tag(&w->obj.otag[3], "deg", strdup(buf));
    snprintf(buf, sizeof(buf), "%d %c", abs((int) a0), dirc(a0, circt));
    set_const_tag(&w->obj.otag[4], "deg:naut", strdup(buf));
+   */
 
    for (double a = 0; a < 360; a += g)
    {
       double b = a;
       for (int i = 0; i < cnt; i++, b += g / cnt)
       {
-         if (!i)
+         n = malloc_node(11);
+         osm_node_default(n);
+
+         if (!strncmp(circt, "parallel", 8))
          {
-            n = malloc_node(3);
-            osm_node_default(n);
-            int p = strncmp(circt, "parallel", 8);
-            snprintf(buf, sizeof(buf), "%d", (int) a0);
-            set_const_tag(&n->obj.otag[1], p ? "lon" : "lat", strdup(buf));
-            snprintf(buf, sizeof(buf), "%d", (int) a);
-            set_const_tag(&n->obj.otag[2], p ? "lat" : "lon", strdup(buf));
+            parallel_set_coords(&lat, &lon, a0, a);
+            set_const_tag(&n->obj.otag[1], "circle", "parallel");
          }
          else
          {
-            n = malloc_node(1);
-            osm_node_default(n);
+            meridian_set_coords(&lat, &lon, a0, a);
+            set_const_tag(&n->obj.otag[1], "circle", "meridian");
          }
+
+         snprintf(buf, sizeof(buf), "%d", i);
+         set_const_tag(&n->obj.otag[2], "index", strdup(buf));
+
+         snprintf(buf, sizeof(buf), "%d", (int) lat);
+         set_const_tag(&n->obj.otag[3], "lat", strdup(buf));
+         snprintf(buf, sizeof(buf), "%d", (int) lon);
+         set_const_tag(&n->obj.otag[4], "lon", strdup(buf));
+
+         snprintf(buf, sizeof(buf), "%f", lat);
+         set_const_tag(&n->obj.otag[5], "lat:dec", strdup(buf));
+         snprintf(buf, sizeof(buf), "%f", lon);
+         set_const_tag(&n->obj.otag[6], "lon:dec", strdup(buf));
+
+         snprintf(buf, sizeof(buf), "%d", (int) (frac(lat) * 60));
+         set_const_tag(&n->obj.otag[7], "lat:min", strdup(buf));
+         snprintf(buf, sizeof(buf), "%d", (int) (frac(lon) * 60));
+         set_const_tag(&n->obj.otag[8], "lon:min", strdup(buf));
+
+         snprintf(buf, sizeof(buf), "%d° %02d′", (int) lat, (int) (frac(lat) * 60));
+         set_const_tag(&n->obj.otag[9], "lat:str", strdup(buf));
+         snprintf(buf, sizeof(buf), "%d° %02d′", (int) lon, (int) (frac(lon) * 60));
+         set_const_tag(&n->obj.otag[10], "lon:str", strdup(buf));
 
          (void) cfunc(&n->lat, &n->lon, a0, b);
 
@@ -939,7 +969,7 @@ int act_global_grid_main(smrule_t *r, osm_obj_t *UNUSED(o))
    struct grid *grd = r->data;
 
    log_debug("generating global longitude grid");
-   for (double a = -180; a < 180; a += grd->lon_g)
+   for (double a = -90; a < 90; a += grd->lon_g)
       meridian(a, grd->lat_g, grd->gpcnt);
    log_debug("generating global latitude grid");
    for (double a = -90; a <= 90; a += grd->lat_g)
