@@ -540,14 +540,14 @@ int traverse(const bx_node_t *nt, int d, int idx, tree_func_t dhandler, void *p)
       if (!sig_msg)
       {
          sig_msg = 1;
-         log_msg(LOG_NOTICE, "SIGINT catched, breaking rendering recursion");
+         log_msg(LOG_NOTICE, "SIGINT caught, breaking rendering recursion");
       }
       return 0;
    }
 
    if (nt == NULL)
    {
-      log_msg(LOG_WARN, "null pointer catched...breaking recursion");
+      log_msg(LOG_WARN, "null pointer caught...breaking recursion");
       return -1;
    }
 

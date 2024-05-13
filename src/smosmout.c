@@ -116,7 +116,7 @@ int print_onode(FILE *f, const osm_obj_t *o)
 
    if (o == NULL)
    {
-      log_warn("NULL pointer catched in print_onode()");
+      log_warn("NULL pointer caught in print_onode()");
       return -1;
    }
 
