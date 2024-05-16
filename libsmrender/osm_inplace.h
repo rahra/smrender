@@ -54,6 +54,8 @@ struct otag
 /*! The osm_obj_t stucture is the definition of all common attributes which
  * nodes, ways, and relations share.
  */
+#define OSM_INPLACE_2024
+#ifndef OSM_INPLACE_2024
 typedef struct osm_obj
 {
    short type;
@@ -64,6 +66,19 @@ typedef struct osm_obj
    short tag_cnt;
    struct otag *otag;
 } osm_obj_t;
+#else
+// memory optimized layout 2024
+typedef struct osm_obj
+{
+   int8_t type;
+   int8_t vis;
+   short tag_cnt;
+   int ver, cs, uid;
+   int64_t id;
+   time_t tim;
+   struct otag *otag;
+} osm_obj_t;
+#endif
 
 typedef struct osm_node
 {
@@ -78,12 +93,22 @@ typedef struct osm_way
    int64_t *ref;
 } osm_way_t;
 
+#ifndef OSM_INPLACE_2024
 struct rmember
 {
    short type;
    int64_t id;
    short role;
 };
+#else
+// memory optimized layout 2024
+struct rmember
+{
+   short type;
+   short role;
+   int64_t id;
+};
+#endif
 
 typedef struct osm_rel
 {
