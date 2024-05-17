@@ -615,6 +615,9 @@ int parse_alignment_str(const char *s)
 {
    int pos = 0;
 
+   if (s == NULL || *s == '\0')
+      return 0;
+
    if (!strcasecmp(s, "east"))
       pos |= POS_E;
    else if (!strcasecmp(s, "west"))
@@ -631,6 +634,10 @@ int parse_alignment_str(const char *s)
       pos |= POS_E | POS_S;
    else if (!strcasecmp(s, "southwest"))
       pos |= POS_W | POS_S;
+   else if (!strcasecmp(s, "center"))
+      pos = 0;
+   else if (!strcasecmp(s, "middle"))
+      pos = 0;
    else
    {
       log_msg(LOG_WARN, "unknown alignment '%s'", s);
