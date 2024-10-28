@@ -19,7 +19,7 @@
  * This file contains fundamental definitions for Smrender.
  *
  * @author Bernhard R. Fischer, <bf@abenteuerland.at>
- * @date 2024/01/15
+ * @date 2024/10/28
  */
 #ifndef SMRENDER_H
 #define SMRENDER_H
@@ -90,6 +90,7 @@ int bs_match(const bstring_t *, const bstring_t *, const struct specialTag *);
 int match_attr(const osm_obj_t*, const char *, const char *);
 char *get_param_err(const char *, double *, const action_t *, int *);
 char *get_param(const char*, double*, const action_t*);
+double get_paramd(const char*, const action_t*, double);
 char *get_parami(const char*, int*, const action_t*);
 char *get_paraml(const char*, long*, const action_t*);
 int get_param_bool2(const char*, const action_t*, int);
