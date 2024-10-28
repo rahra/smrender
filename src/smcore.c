@@ -287,7 +287,7 @@ int apply_rule(osm_obj_t *o, smrule_t *r, int *ret)
 }
 
 
-int apply_smrules0(osm_obj_t *o, smrule_t *r)
+int apply_rule0(osm_obj_t *o, smrule_t *r)
 {
    int ret = 0;
 
@@ -450,15 +450,15 @@ int apply_smrules(smrule_t *r, trv_info_t *ti)
    {
 #ifdef THREADED_RULES
       if (sm_is_threaded(r))
-         e = traverse_queue(ti->objtree, r->oo->type - 1, (tree_func_t) apply_smrules0, r);
+         e = traverse_queue(ti->objtree, r->oo->type - 1, (tree_func_t) apply_rule0, r);
       else
 #endif
-         e = traverse(ti->objtree, 0, r->oo->type - 1, (tree_func_t) apply_smrules0, r);
+         e = traverse(ti->objtree, 0, r->oo->type - 1, (tree_func_t) apply_rule0, r);
    }
    else
       log_debug("   -> no main function");
 
-   if (e) log_debug("traverse(apply_smrules0) returned %d", e);
+   if (e) log_debug("traverse(apply_rule0) returned %d", e);
 
    if (e >= 0)
    {
@@ -511,7 +511,7 @@ int execute_rules0(bx_node_t *rules, tree_func_t func, void *p)
 
  
 /* This function traverses the rules and for each rule traverses the objects.
- * execute_rules() -> traverse(apply_smrules()) -> traverse(apply_smrules0()) -> apply_rule()
+ * execute_rules() -> traverse(apply_smrules()) -> traverse(apply_rule0()) -> apply_rule()
 */
 int execute_rules(bx_node_t *rules, int version)
 {
