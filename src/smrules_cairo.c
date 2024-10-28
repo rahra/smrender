@@ -1463,14 +1463,16 @@ static int strupper(char *s)
 {
    wchar_t wc;
    char *su, *ss, *ostr = s;
-   int wl, sl, len;
+   int wl, sl, len, ulen;
 
    // safety check
    if (s == NULL)
       return -1;
 
    len = strlen(s);
-   if ((ss = su = malloc(len + 1)) == NULL)
+   // add some spare bytes to upper string buffer to avoid overflow
+   ulen = len + 1 + MB_CUR_MAX;
+   if ((ss = su = malloc(ulen)) == NULL)
       return -1;
 
    for (;;)
@@ -1479,27 +1481,41 @@ static int strupper(char *s)
       {
          log_msg(LOG_ERR, "mbtowc() failed at '%s'", s);
          break;
-         /* free(su);
-         return NULL; */
       }
 
       if (!wl)
          break;
 
-      // FIXME: len should be decremented?
       s += wl;
+      len -= wl;
+
       wc = towupper(wc);
+
+      // make sure ss is long enough
+      if ((unsigned) ulen < MB_CUR_MAX)
+      {
+         log_msg(LOG_ERR, "mb conversion error: len = %d, ulen = %d, MB_CUR_MAX = %ld", len, ulen, MB_CUR_MAX);
+         break;
+      }
+
       if ((sl = wctomb(ss, wc)) == -1)
       {
          log_msg(LOG_ERR, "wctomb() failed");
          break;
-         /*free(su);
-         return NULL;*/
       }
       ss += sl;
+      ulen -= sl;
    }
 
    *ss = '\0';
+
+   if (strlen(ostr) < strlen(su))
+   {
+      log_msg(LOG_ERR, "len = %lu < ulen = %lu", strlen(ostr), strlen(su));
+      // terminate earlier
+      su[strlen(ostr)] = '\0';
+   }
+
    strcpy(ostr, su);
    free(su);
    return 0;
