@@ -73,8 +73,10 @@ struct tile_info
 };
 
 volatile sig_atomic_t int_ = 0;
+extern volatile sig_atomic_t alarm_;
 static volatile sig_atomic_t pipe_ = 0;
 int render_all_nodes_ = 0;
+extern int traverse_alarm_;
 #ifdef HAVE_GETOPT_LONG
 //! long options for getopt_long()
 static const struct option lopts_[] =
@@ -101,6 +103,7 @@ static const struct option lopts_[] =
    {"out-rules", required_argument, NULL, 'R'},
    {"img-scale", required_argument, NULL, 's'},
    {"title", required_argument, NULL, 't'},
+   {"traverse-alarm", required_argument, NULL, 't' + 256},
    {"tiles", required_argument, NULL, 'T'},
    {"out", required_argument, NULL, 'o'},
    {"projection", required_argument, NULL, 'p'},
@@ -234,7 +237,35 @@ void int_handler(int sig)
       case SIGPIPE:
          pipe_++;
          break;
+      case SIGALRM:
+         alarm_++;
+         break;
    }
+}
+
+
+static const char *sigstr(int sig)
+{
+   switch (sig)
+   {
+      case SIGINT:
+         return "SIGINT";
+      case SIGPIPE:
+         return "SIGPIPE";
+      case SIGALRM:
+         return "SIGALRM";
+      default:
+         return "SIGxxxx";
+   }
+}
+
+
+static void sigaction0(struct sigaction *sa, int sig)
+{
+   if (sigaction(sig, sa, NULL) == -1)
+      log_msg(LOG_WARNING, "%s handler cannot be installed: %s", sigstr(sig), strerror(errno));
+   else
+      log_msg(LOG_INFO, "%s installed (pid = %ld)", sigstr(sig), (long) getpid());
 }
 
 
@@ -245,15 +276,9 @@ void install_sigint(void)
    memset(&sa, 0, sizeof(sa));
    sa.sa_handler = int_handler;
 
-   if (sigaction(SIGINT, &sa, NULL) == -1)
-      log_msg(LOG_WARNING, "SIGINT handler cannot be installed: %s", strerror(errno));
-   else
-      log_msg(LOG_INFO, "SIGINT installed (pid = %ld)", (long) getpid());
-
-   if (sigaction(SIGPIPE, &sa, NULL) == -1)
-      log_msg(LOG_WARNING, "SIGPIPE handler cannot be installed: %s", strerror(errno));
-   else
-      log_msg(LOG_INFO, "SIGPIPE installed (pid = %ld)", (long) getpid());
+   sigaction0(&sa, SIGINT);
+   sigaction0(&sa, SIGPIPE);
+   sigaction0(&sa, SIGALRM);
 }
 
 
@@ -1179,6 +1204,10 @@ int main(int argc, char *argv[])
 
          case 't':
             rd->title = optarg;
+            break;
+
+         case 't' + 256:
+            traverse_alarm_ = atoi(optarg);
             break;
 
          case 'T':

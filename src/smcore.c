@@ -19,7 +19,7 @@
  * This file contains the code of the main execution process.
  *
  *  \author Bernhard R. Fischer, <bf@abenteuerland.at>
- *  \date 2024/02/02
+ *  \date 2024/05/17
  */
 
 #ifdef HAVE_CONFIG_H
@@ -32,6 +32,7 @@
 #include <errno.h>
 #include <string.h>
 #include <stdio.h>
+#include <unistd.h>
 
 #include "smrender.h"
 #include "smcore.h"
@@ -40,7 +41,10 @@
 #include "lists.h"
 
 extern volatile sig_atomic_t int_;
+volatile sig_atomic_t alarm_;
 extern int render_all_nodes_;
+//! Number of seconds after a message is logged during a traverse. This may be useful for huge datasets.
+int traverse_alarm_ = 60;
 
 
 //#define ADD_RULE_TAG
@@ -534,7 +538,9 @@ int traverse(const bx_node_t *nt, int d, int idx, tree_func_t dhandler, void *p)
    int i, e, sidx, eidx;
    static int sig_msg = 0;
    char buf[32];
+   static long _leaf_cnt;
 
+   // handle CTRL-C
    if (int_)
    {
       if (!sig_msg)
@@ -543,6 +549,24 @@ int traverse(const bx_node_t *nt, int d, int idx, tree_func_t dhandler, void *p)
          log_msg(LOG_NOTICE, "SIGINT caught, breaking rendering recursion");
       }
       return 0;
+   }
+
+   // handle first entrance of traverse
+   if (!d)
+   {
+      alarm(traverse_alarm_);
+      _leaf_cnt = 0;
+   }
+
+   // handler timer alarm
+   if (alarm_)
+   {
+      alarm(traverse_alarm_);
+      alarm_ = 0;
+      if (idx >= 0 && idx < 4)
+         log_msg(LOG_INFO, "traverse(nt = %p, d =%d, idx = %d), _leaf_cnt = %ld, %.1f%%", nt, d, idx, _leaf_cnt, 100.0 * _leaf_cnt / get_rdata()->ds.cnt[idx]);
+      else
+         log_msg(LOG_INFO, "traverse(nt = %p, d =%d, idx = %d), _leaf_cnt = %ld", nt, d, idx, _leaf_cnt);
    }
 
    if (nt == NULL)
@@ -574,6 +598,7 @@ int traverse(const bx_node_t *nt, int d, int idx, tree_func_t dhandler, void *p)
       {
          if (nt->next[i] != NULL)
          {
+            _leaf_cnt++;
             if ((e = dhandler(nt->next[i], p)))
             {
                (void) func_name(buf, sizeof(buf), dhandler);
@@ -595,6 +620,10 @@ int traverse(const bx_node_t *nt, int d, int idx, tree_func_t dhandler, void *p)
          if ((e = traverse(nt->next[i], d + 1, idx, dhandler, p)))
             return e;
       }
+
+   // disable timer before exit of last traverseal
+   if (!d)
+         alarm(0);
 
    return 0;
 }
