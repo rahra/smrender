@@ -88,9 +88,9 @@ int ruler(struct rdata *rd, ruler_t *rl)
       else
       {
          if (!rl->unit)
-            snprintf(buf, sizeof(buf), "%d km", (int) ((i + 1) * rl->rsec));
+            snprintf(buf, sizeof(buf), "%d km", (int) round((i + 1) * rl->rsec));
          else
-            snprintf(buf, sizeof(buf), "%d nm", (int) ((i + 1) * rl->rsec / 1.852));
+            snprintf(buf, sizeof(buf), "%d nm", (int) round((i + 1) * rl->rsec / 1.852));
       }
       set_const_tag(&on[1]->obj.otag[1], "distance", strdup(buf));
 
