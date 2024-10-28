@@ -19,7 +19,7 @@
  * This file contains all graphical rendering functions using libcairo.
  *
  * \author Bernhard R. Fischer, <bf@abenteuerland.at>
- * \date 2024/01/09
+ * \date 2024/10/28
  */
 
 #ifdef HAVE_CONFIG_H
