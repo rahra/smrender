@@ -19,7 +19,7 @@
  * This file contains the code of the main execution process.
  *
  *  \author Bernhard R. Fischer, <bf@abenteuerland.at>
- *  \date 2024/05/17
+ *  \date 2024/10/29
  */
 
 #ifdef HAVE_CONFIG_H
@@ -296,6 +296,17 @@ int apply_rule0(osm_obj_t *o, smrule_t *r)
 }
 
 
+int apply_rule0_threaded(osm_obj_t *o, th_param_t *p)
+{
+   int ret = 0;
+
+   // execute rule only if object id is multiple of thread id
+   if (o->id % p->cnt == p->id)
+      (void) apply_rule(o, p->param, &ret);
+   return ret;
+}
+
+
 int call_fini(smrule_t *r)
 {
    int e = 0;
@@ -351,55 +362,6 @@ int call_ini(smrule_t *r)
 }
 
 
-#ifdef THREADED_RULES
-
-static list_t *li_fini_;
-
-
-static void __attribute__((constructor)) init_fini_list(void)
-{
-   if ((li_fini_ = li_new()) == NULL)
-      perror("li_new()"), exit(EXIT_FAILURE);
-}
-
-
-static void __attribute__((destructor)) del_fini_list(void)
-{
-   li_destroy(li_fini_, NULL);
-}
-
-
-int queue_fini(smrule_t *r)
-{
-   if ((li_add(li_fini_, r)) == NULL)
-   {
-      log_msg(LOG_ERR, "li_add() failed: %s", strerror(errno));
-      return -1;
-   }
-   return 0;
-}
-
-
-int dequeue_fini(void)
-{
-   list_t *elem, *prev;
-
-   log_msg(LOG_INFO, "calling pending _finis");
-   for (elem = li_last(li_fini_); elem != li_head(li_fini_); elem = prev)
-   {
-      li_unlink(elem);
-      call_fini(elem->data);
-      prev = elem->prev;
-      li_del(elem, NULL);
-   }
-
-   return 0;
-}
-
-
-#endif
-
-
 int apply_smrules(smrule_t *r, trv_info_t *ti)
 {
    int e = 0;
@@ -433,27 +395,16 @@ int apply_smrules(smrule_t *r, trv_info_t *ti)
       return 0;
    }
 
-#ifdef THREADED_RULES
-   // if rule is not threaded
-   if (!sm_is_threaded(r))
-   {
-      // wait for all threads (previous rules) to finish
-      sm_wait_threads();
-      // call finalization functions in the appropriate order
-      dequeue_fini();
-   }
-#endif
-
    log_msg(LOG_INFO, "applying rule id 0x%"PRIx64" '%s'", r->oo->id, r->act->func_name);
 
    if (r->act->main.func != NULL)
    {
 #ifdef THREADED_RULES
       if (sm_is_threaded(r))
-         e = traverse_queue(ti->objtree, r->oo->type - 1, (tree_func_t) apply_rule0, r);
+         e = traverse_queue(ti->objtree, 0, r->oo->type - 1, (tree_func_t) apply_rule0_threaded, r);
       else
 #endif
-         e = traverse(ti->objtree, 0, r->oo->type - 1, (tree_func_t) apply_rule0, r);
+      e = traverse(ti->objtree, 0, r->oo->type - 1, (tree_func_t) apply_rule0, r);
    }
    else
       log_debug("   -> no main function");
@@ -463,11 +414,7 @@ int apply_smrules(smrule_t *r, trv_info_t *ti)
    if (e >= 0)
    {
       e = 0;
-#ifdef THREADED_RULES
-      queue_fini(r);
-#else
       call_fini(r);
-#endif
    }
 
    return e;
@@ -493,11 +440,6 @@ int execute_treefunc(const bx_node_t *nt, int dir, tree_func_t dhandler, void *p
       j = dir == NODES_FIRST ? i : NUM_OBJ_INDEX - 1 - i;
       log_msg(LOG_INFO, "%ss...", type_str(j + 1));
       e = traverse(nt, 0, j, dhandler, p);
-#ifdef THREADED_RULES
-      sm_wait_threads();
-      dequeue_fini();
-#endif
-
    }
 
    return e;

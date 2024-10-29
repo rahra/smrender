@@ -739,8 +739,6 @@ int act_draw_ini(smrule_t *r)
       }
    }
 
-   sm_threaded(r);
-
    // check if parameter combination makes sense
    if (d->directional)
    {
@@ -1430,10 +1428,6 @@ int act_cap_ini(smrule_t *r)
       log_msg(LOG_ERR, "cannot malloc: %s", strerror(errno));
       return -1;
    }
-
-   // activate multi-threading if angle is not "auto"
-   if (!isnan(cap.angle))
-      sm_threaded(r);
 
    log_debug("pos = 0x%04x, col = 0x%08x, colkey = '%s', font = '%s', key = '%s', size = %.1f, scl = {%.1f, %.1f, %.1f, %.2f}, angle = %.1f, xoff = %.1f, yoff =%.1f, rot = {%.1f, %08x, %.1f}, {fill = %d, fillcol 0x%08x, filcolkey \"%s\"}, bgbox_scale = %.2f, fontbox = %d",
          cap.pos, cap.cs.col, safe_null_str(cap.cs.key), cap.font, cap.key, cap.size,
@@ -2790,9 +2784,6 @@ int act_img_ini(smrule_t *r)
       log_msg(LOG_ERR, "cannot malloc: %s", strerror(errno));
       return -1;
    }
-
-//   if (!isnan(img.angle))
-//      sm_threaded(r);
 
    memcpy(r->data, &img, sizeof(img));
 
