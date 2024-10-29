@@ -2290,6 +2290,9 @@ int act_zeroway_main(smrule_t *r, osm_node_t *n)
 }
 
 
+/*! Split init.
+ * \note Function not thread-safe.
+ */
 int act_split_ini(smrule_t *r)
 {
    // force Smrender to create reverse pointers
@@ -3303,6 +3306,9 @@ int act_transcoord_fini(smrule_t *r)
 }
 
 
+/*! Init transversal.
+ * \note Function not thread-safe.
+ */
 int act_transversal_ini(smrule_t *r)
 {
    r->data = rdata_get();
@@ -3341,6 +3347,9 @@ int act_transversal_fini(smrule_t *r)
 }
 
 
+/*! Wrapdetect init.
+ * \note Function not thread-safe.
+ */
 int act_wrapdetect_ini(smrule_t *r)
 {
    r->data = get_param_bool("noinsert", r->act) ? (void*) 1 : NULL;
@@ -3473,6 +3482,7 @@ int act_virtclosed_ini(smrule_t *r)
 {
    double dist;
 
+   sm_threaded(r);
    //FIXME: parse_length_def() should be used
    if (get_param("dist", &dist, r->act) == NULL)
    {
