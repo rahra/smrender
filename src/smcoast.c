@@ -581,7 +581,7 @@ static int count_poly_refs(struct poly *pl, int *cnt)
       // safety check to detect incorrect pointers in double-linked list
       if (list->next != NULL && list->next->prev != NULL && list != list->next->prev)
       {
-         log_msg(LOG_WARN, "loop error! this may indicated broken input data (or an incorrect ruleset)");
+         log_msg(LOG_WARN, "possible data error: loop error in ways %"PRId64" and %"PRId64", overlapping?", list->w->obj.id, list->next->prev->w->obj.id);
          return -1;
       }
    }
@@ -740,7 +740,7 @@ static int loop_detect(struct wlist *wl)
 
       if ((ret = count_poly_refs(&wl->ref[i], &cnt)) == -1)
       {
-         log_msg(LOG_WARN, "something went wrong in count_poly_refs()");
+         //log_msg(LOG_WARN, "something went wrong in count_poly_refs()");
          continue;
       }
 
