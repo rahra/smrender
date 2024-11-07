@@ -1,4 +1,4 @@
-/* Copyright 2011 Bernhard R. Fischer, 2048R/5C5FFD47 <bf@abenteuerland.at>
+/* Copyright 2011-2024 Bernhard R. Fischer, 4096R/8E24F29D <bf@abenteuerland.at>
  *
  * This file is part of libhpxml.
  *
@@ -16,10 +16,9 @@
  */
 
 /*! \file libhpxml.h
- * This file contains all structures and prototypes for the high performance
- * XML parser library libhpxml.
- * 
- * @author Bernhard R. Fischer
+ * This file contains all declarations and prototypes for libhpxml.
+ * \author Bernhard R. Fischer, <bf@abenteuerland.at>
+ * \version 2024/08/29
  */
 
 #ifndef HPXML_H
@@ -43,7 +42,6 @@
 typedef struct hpx_ctrl
 {
    //! data buffer containing pointer and number of bytes in buffer
-   //bstring_t buf;
    struct bstringl buf;
    //! file descriptor of input file
    int fd;
@@ -53,7 +51,7 @@ typedef struct hpx_ctrl
    long len;
    //! current working position
    long pos;
-   //! flag to deter if next element is in or out of tag
+   //! flag to determine if next element is in or out of tag
    int in_tag;
    //! flag set if data should be read from file
    short empty;
@@ -65,6 +63,10 @@ typedef struct hpx_ctrl
    long pg_siz;
    //! length of advised region (multiple of sysconf(_SC_PAGESIZE))
    long pg_blk_siz;
+   //! structure contains a pointer to the latest tag name if it was an open tag
+   bstringl_t last_open;
+   //! line number counter
+   long lineno;
 } hpx_ctrl_t;
 
 typedef struct hpx_attr
@@ -94,7 +96,7 @@ typedef struct hpx_tree
 
 enum
 {
-   HPX_ILL, HPX_OPEN, HPX_SINGLE, HPX_CLOSE, HPX_LITERAL, HPX_ATT, HPX_INSTR, HPX_COMMENT
+   HPX_ILL, HPX_OPEN, HPX_SINGLE, HPX_CLOSE, HPX_LITERAL, HPX_ATT, HPX_INSTR, HPX_COMMENT, HPX_CDATA
 };
 
 
