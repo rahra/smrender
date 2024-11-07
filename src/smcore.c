@@ -19,7 +19,7 @@
  * This file contains the code of the main execution process.
  *
  *  \author Bernhard R. Fischer, <bf@abenteuerland.at>
- *  \date 2024/02/02
+ *  \date 2024/10/29
  */
 
 #ifdef HAVE_CONFIG_H
@@ -32,6 +32,7 @@
 #include <errno.h>
 #include <string.h>
 #include <stdio.h>
+#include <unistd.h>
 
 #include "smrender.h"
 #include "smcore.h"
@@ -40,7 +41,10 @@
 #include "lists.h"
 
 extern volatile sig_atomic_t int_;
+volatile sig_atomic_t alarm_;
 extern int render_all_nodes_;
+//! Number of seconds after a message is logged during a traverse. This may be useful for huge datasets.
+int traverse_alarm_ = 60;
 
 
 //#define ADD_RULE_TAG
@@ -283,11 +287,22 @@ int apply_rule(osm_obj_t *o, smrule_t *r, int *ret)
 }
 
 
-int apply_smrules0(osm_obj_t *o, smrule_t *r)
+int apply_rule0(osm_obj_t *o, smrule_t *r)
 {
    int ret = 0;
 
    (void) apply_rule(o, r, &ret);
+   return ret;
+}
+
+
+int apply_rule0_threaded(osm_obj_t *o, th_param_t *p)
+{
+   int ret = 0;
+
+   // execute rule only if object id is multiple of thread id
+   if (o->id % p->cnt == p->id)
+      (void) apply_rule(o, p->param, &ret);
    return ret;
 }
 
@@ -347,55 +362,6 @@ int call_ini(smrule_t *r)
 }
 
 
-#ifdef THREADED_RULES
-
-static list_t *li_fini_;
-
-
-static void __attribute__((constructor)) init_fini_list(void)
-{
-   if ((li_fini_ = li_new()) == NULL)
-      perror("li_new()"), exit(EXIT_FAILURE);
-}
-
-
-static void __attribute__((destructor)) del_fini_list(void)
-{
-   li_destroy(li_fini_, NULL);
-}
-
-
-int queue_fini(smrule_t *r)
-{
-   if ((li_add(li_fini_, r)) == NULL)
-   {
-      log_msg(LOG_ERR, "li_add() failed: %s", strerror(errno));
-      return -1;
-   }
-   return 0;
-}
-
-
-int dequeue_fini(void)
-{
-   list_t *elem, *prev;
-
-   log_msg(LOG_INFO, "calling pending _finis");
-   for (elem = li_last(li_fini_); elem != li_head(li_fini_); elem = prev)
-   {
-      li_unlink(elem);
-      call_fini(elem->data);
-      prev = elem->prev;
-      li_del(elem, NULL);
-   }
-
-   return 0;
-}
-
-
-#endif
-
-
 int apply_smrules(smrule_t *r, trv_info_t *ti)
 {
    int e = 0;
@@ -429,41 +395,26 @@ int apply_smrules(smrule_t *r, trv_info_t *ti)
       return 0;
    }
 
-#ifdef THREADED_RULES
-   // if rule is not threaded
-   if (!sm_is_threaded(r))
-   {
-      // wait for all threads (previous rules) to finish
-      sm_wait_threads();
-      // call finalization functions in the appropriate order
-      dequeue_fini();
-   }
-#endif
-
    log_msg(LOG_INFO, "applying rule id 0x%"PRIx64" '%s'", r->oo->id, r->act->func_name);
 
    if (r->act->main.func != NULL)
    {
 #ifdef THREADED_RULES
       if (sm_is_threaded(r))
-         e = traverse_queue(ti->objtree, r->oo->type - 1, (tree_func_t) apply_smrules0, r);
+         e = traverse_queue(ti->objtree, 0, r->oo->type - 1, (tree_func_t) apply_rule0_threaded, r);
       else
 #endif
-         e = traverse(ti->objtree, 0, r->oo->type - 1, (tree_func_t) apply_smrules0, r);
+      e = traverse(ti->objtree, 0, r->oo->type - 1, (tree_func_t) apply_rule0, r);
    }
    else
       log_debug("   -> no main function");
 
-   if (e) log_debug("traverse(apply_smrules0) returned %d", e);
+   if (e) log_debug("traverse(apply_rule0) returned %d", e);
 
    if (e >= 0)
    {
       e = 0;
-#ifdef THREADED_RULES
-      queue_fini(r);
-#else
       call_fini(r);
-#endif
    }
 
    return e;
@@ -489,11 +440,6 @@ int execute_treefunc(const bx_node_t *nt, int dir, tree_func_t dhandler, void *p
       j = dir == NODES_FIRST ? i : NUM_OBJ_INDEX - 1 - i;
       log_msg(LOG_INFO, "%ss...", type_str(j + 1));
       e = traverse(nt, 0, j, dhandler, p);
-#ifdef THREADED_RULES
-      sm_wait_threads();
-      dequeue_fini();
-#endif
-
    }
 
    return e;
@@ -507,7 +453,7 @@ int execute_rules0(bx_node_t *rules, tree_func_t func, void *p)
 
  
 /* This function traverses the rules and for each rule traverses the objects.
- * execute_rules() -> traverse(apply_smrules()) -> traverse(apply_smrules0()) -> apply_rule()
+ * execute_rules() -> traverse(apply_smrules()) -> traverse(apply_rule0()) -> apply_rule()
 */
 int execute_rules(bx_node_t *rules, int version)
 {
@@ -534,7 +480,9 @@ int traverse(const bx_node_t *nt, int d, int idx, tree_func_t dhandler, void *p)
    int i, e, sidx, eidx;
    static int sig_msg = 0;
    char buf[32];
+   static long _leaf_cnt;
 
+   // handle CTRL-C
    if (int_)
    {
       if (!sig_msg)
@@ -543,6 +491,24 @@ int traverse(const bx_node_t *nt, int d, int idx, tree_func_t dhandler, void *p)
          log_msg(LOG_NOTICE, "SIGINT caught, breaking rendering recursion");
       }
       return 0;
+   }
+
+   // handle first entrance of traverse
+   if (!d)
+   {
+      alarm(traverse_alarm_);
+      _leaf_cnt = 0;
+   }
+
+   // handler timer alarm
+   if (alarm_)
+   {
+      alarm(traverse_alarm_);
+      alarm_ = 0;
+      if (idx >= 0 && idx < 4)
+         log_msg(LOG_INFO, "traverse(nt = %p, d =%d, idx = %d), _leaf_cnt = %ld, %.1f%%", nt, d, idx, _leaf_cnt, 100.0 * _leaf_cnt / get_rdata()->ds.cnt[idx]);
+      else
+         log_msg(LOG_INFO, "traverse(nt = %p, d =%d, idx = %d), _leaf_cnt = %ld", nt, d, idx, _leaf_cnt);
    }
 
    if (nt == NULL)
@@ -574,6 +540,7 @@ int traverse(const bx_node_t *nt, int d, int idx, tree_func_t dhandler, void *p)
       {
          if (nt->next[i] != NULL)
          {
+            _leaf_cnt++;
             if ((e = dhandler(nt->next[i], p)))
             {
                (void) func_name(buf, sizeof(buf), dhandler);
@@ -595,6 +562,10 @@ int traverse(const bx_node_t *nt, int d, int idx, tree_func_t dhandler, void *p)
          if ((e = traverse(nt->next[i], d + 1, idx, dhandler, p)))
             return e;
       }
+
+   // disable timer before exit of last traverseal
+   if (!d)
+         alarm(0);
 
    return 0;
 }

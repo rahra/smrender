@@ -20,7 +20,7 @@
  * engine.
  *
  *  @author Bernhard R. Fischer
- *  @data 2024/02/02
+ *  @data 2024/10/29
  */
 
 #ifndef SMCORE_H
@@ -51,6 +51,15 @@ typedef struct trv_info
    long ver;
 } trv_info_t;
 
+//! Structure to pass parameter to tree function including the thread id.
+typedef struct th_param
+{
+   tree_func_t dhandler;   //!< tree function
+   void *param;            //!< parameter to pass to tree function
+   int id;                 //!< thread id
+   int cnt;                //!< total number of threads
+} th_param_t;
+
 // indexes to object tree
 enum {IDX_NODE, IDX_WAY, IDX_REL};
 
@@ -67,12 +76,13 @@ int insert_refs(osm_way_t *, osm_node_t **, int, int);
 int apply_smrules(smrule_t *, trv_info_t *);
 int apply_smrules0(osm_obj_t*, smrule_t*);
 int apply_rule(osm_obj_t*, smrule_t*, int*);
+int apply_rule_threaded(osm_obj_t*, th_param_t*);
 int call_fini(smrule_t*);
 int call_ini(smrule_t*);
 
 /* smthread.c */
 void sm_wait_threads(void);
-int traverse_queue(const bx_node_t *, int , tree_func_t , void *);
+int traverse_queue(const bx_node_t *, int, int, tree_func_t, void *);
 int sm_is_threaded(const smrule_t *);
 
 #endif

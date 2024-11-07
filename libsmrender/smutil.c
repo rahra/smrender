@@ -22,7 +22,7 @@
  * before execution the rules' actions.
  *
  *  @author Bernhard R. Fischer
- *  @date 2024/01/12
+ *  @date 2024/10/28
  */
 
 #ifdef HAVE_CONFIG_H
@@ -456,6 +456,21 @@ int strcnt(const char *s, int c)
 }
 
 
+/*! This function returns a pointer to the value of an attribute attr in the
+ * list of attributes of the action act. If the string contains a decimal value
+ * and dval is not NULL, its converted double value is written to dval.
+ * @param attr String to attribute name.
+ * @param dval Pointer to a variable to receive the double value, or NULL.
+ * @param act Pointer to the action which contains the list of attributes.
+ * @param err Pointer to int variable to receive the conversion error. This is
+ * if the value string could not be converted into a double value. The error is
+ * set to an errno value accoring to strtod(3) or EDOM if the value string
+ * contained no decimal value at all.
+ * @return The function returns a pointer to the beginning of the string of the
+ * value or NULL if no such attribute as pointed to by attr exists. If the
+ * attribute exists but the value is empty, a pointer to an empty string is
+ * returned.
+ */
 char *get_param_err(const char *attr, double *dval, const action_t *act, int *err)
 {
    fparam_t **fp;
@@ -478,9 +493,33 @@ char *get_param_err(const char *attr, double *dval, const action_t *act, int *er
 }
 
 
+/*! This function works exactly like get_param_err() except that no error value
+ * for the double conversion is returned.
+ * See get_param_err() for more information.
+ */
 char *get_param(const char *attr, double *dval, const action_t *act)
 {
    return get_param_err(attr, dval, act, NULL);
+}
+
+
+/*! This function returns the converted double value of an attribute. If no
+ * such attribute exists or the value could not be converted, the default value
+ * def is returned instead.
+ * @param attr String to attribute name.
+ * @param act Pointer to the action which contains the list of attributes.
+ * @param def Default value to return.
+ * @return The function returns the converted double value, or def if no such
+ * attribute exists.
+ */
+double get_paramd(const char *attr, const action_t *act, double def)
+{
+   double v;
+   int err;
+
+   if (get_param_err(attr, &v, act, &err) == NULL || err)
+      return def;
+   return v;
 }
 
 

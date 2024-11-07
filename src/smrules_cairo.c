@@ -19,7 +19,7 @@
  * This file contains all graphical rendering functions using libcairo.
  *
  * \author Bernhard R. Fischer, <bf@abenteuerland.at>
- * \date 2024/01/09
+ * \date 2024/10/28
  */
 
 #ifdef HAVE_CONFIG_H
@@ -739,8 +739,6 @@ int act_draw_ini(smrule_t *r)
       }
    }
 
-   sm_threaded(r);
-
    // check if parameter combination makes sense
    if (d->directional)
    {
@@ -1431,10 +1429,6 @@ int act_cap_ini(smrule_t *r)
       return -1;
    }
 
-   // activate multi-threading if angle is not "auto"
-   if (!isnan(cap.angle))
-      sm_threaded(r);
-
    log_debug("pos = 0x%04x, col = 0x%08x, colkey = '%s', font = '%s', key = '%s', size = %.1f, scl = {%.1f, %.1f, %.1f, %.2f}, angle = %.1f, xoff = %.1f, yoff =%.1f, rot = {%.1f, %08x, %.1f}, {fill = %d, fillcol 0x%08x, filcolkey \"%s\"}, bgbox_scale = %.2f, fontbox = %d",
          cap.pos, cap.cs.col, safe_null_str(cap.cs.key), cap.font, cap.key, cap.size,
          cap.scl.max_auto_size, cap.scl.min_auto_size, cap.scl.min_area_size, cap.scl.auto_scale,
@@ -1463,14 +1457,16 @@ static int strupper(char *s)
 {
    wchar_t wc;
    char *su, *ss, *ostr = s;
-   int wl, sl, len;
+   int wl, sl, len, ulen;
 
    // safety check
    if (s == NULL)
       return -1;
 
    len = strlen(s);
-   if ((ss = su = malloc(len + 1)) == NULL)
+   // add some spare bytes to upper string buffer to avoid overflow
+   ulen = len + 1 + MB_CUR_MAX;
+   if ((ss = su = malloc(ulen)) == NULL)
       return -1;
 
    for (;;)
@@ -1479,27 +1475,41 @@ static int strupper(char *s)
       {
          log_msg(LOG_ERR, "mbtowc() failed at '%s'", s);
          break;
-         /* free(su);
-         return NULL; */
       }
 
       if (!wl)
          break;
 
-      // FIXME: len should be decremented?
       s += wl;
+      len -= wl;
+
       wc = towupper(wc);
+
+      // make sure ss is long enough
+      if ((unsigned) ulen < MB_CUR_MAX)
+      {
+         log_msg(LOG_ERR, "mb conversion error: len = %d, ulen = %d, MB_CUR_MAX = %ld", len, ulen, MB_CUR_MAX);
+         break;
+      }
+
       if ((sl = wctomb(ss, wc)) == -1)
       {
          log_msg(LOG_ERR, "wctomb() failed");
          break;
-         /*free(su);
-         return NULL;*/
       }
       ss += sl;
+      ulen -= sl;
    }
 
    *ss = '\0';
+
+   if (strlen(ostr) < strlen(su))
+   {
+      log_msg(LOG_ERR, "len = %lu < ulen = %lu", strlen(ostr), strlen(su));
+      // terminate earlier
+      su[strlen(ostr)] = '\0';
+   }
+
    strcpy(ostr, su);
    free(su);
    return 0;
@@ -2774,9 +2784,6 @@ int act_img_ini(smrule_t *r)
       log_msg(LOG_ERR, "cannot malloc: %s", strerror(errno));
       return -1;
    }
-
-//   if (!isnan(img.angle))
-//      sm_threaded(r);
 
    memcpy(r->data, &img, sizeof(img));
 

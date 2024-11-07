@@ -20,7 +20,7 @@
  * make up the grid, the legend, and the chart border.
  *
  * @author Bernhard R. Fischer
- * @date 2023/12/18
+ * @date 2024/10/28
  */
 
 #include <string.h>
@@ -43,9 +43,14 @@ int ruler(struct rdata *rd, ruler_t *rl)
    double lon_diff;
    int i, j;
 
-   // FIXME: G_ macros should be replaced by variables
-   p.lon = rd->bb.ll.lon + MM2LON(G_MARGIN + G_TW + G_STW * 3);
-   p.lat = rd->bb.ll.lat + MM2LAT(G_MARGIN + G_TW + G_STW * 3);
+   if (rl->x >= 0.0)
+      p.lon = rd->bb.ll.lon + MM2LON(rl->x);
+   else
+      p.lon = rd->bb.ru.lon + MM2LON(rl->x);
+   if (rl->y >= 0.0)
+      p.lat = rd->bb.ll.lat + MM2LAT(rl->y);
+   else
+      p.lat = rd->bb.ru.lat + MM2LAT(rl->y);
 
 //   if (rd->proj == PROJ_TRANSVERSAL)
 //      transtraversal(-rd->transversal_lat, rd->mean_lon, &p.lat, &p.lon);
@@ -88,9 +93,9 @@ int ruler(struct rdata *rd, ruler_t *rl)
       else
       {
          if (!rl->unit)
-            snprintf(buf, sizeof(buf), "%d km", (int) ((i + 1) * rl->rsec));
+            snprintf(buf, sizeof(buf), "%d km", (int) round((i + 1) * rl->rsec));
          else
-            snprintf(buf, sizeof(buf), "%d nm", (int) ((i + 1) * rl->rsec / 1.852));
+            snprintf(buf, sizeof(buf), "%d nm", (int) round((i + 1) * rl->rsec / 1.852));
       }
       set_const_tag(&on[1]->obj.otag[1], "distance", strdup(buf));
 
@@ -144,7 +149,10 @@ int ruler_ini(smrule_t *r)
    if (rl->unit)
       rl->rsec *= 1.852;
 
-   log_msg(LOG_INFO, "ruler sectioning = %.2f km x %d, unit = %d", rl->rsec, rl->rcnt, rl->unit);
+   rl->x = get_paramd("x", r->act, G_MARGIN + G_TW + G_STW * 3);
+   rl->y = get_paramd("y", r->act, G_MARGIN + G_TW + G_STW * 3);
+
+   log_msg(LOG_INFO, "ruler sectioning = %.2f km x %d, unit = %d; pos = %.3f/%.3f", rl->rsec, rl->rcnt, rl->unit, rl->x, rl->y);
 
    r->data = rl;
    return 0;

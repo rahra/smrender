@@ -296,6 +296,8 @@ typedef struct ruler
    double rsec;
    //! units: 0 = km, 1 = nm
    int unit;
+   //! position on paper
+   double x, y;
 } ruler_t;
 
 struct file
