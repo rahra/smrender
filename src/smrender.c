@@ -309,6 +309,12 @@ int norm_rule_way(osm_obj_t *o, void *p)
 }
 
 
+/*! This function removes all nodes from a way which do not exist within the
+ * data.
+ * @param w Pointer to way.
+ * @param p Parameter is unused.
+ * @return This function always returns 0.
+ */
 int strip_ways(osm_way_t *w, void * UNUSED(p))
 {
    struct onode *n;
