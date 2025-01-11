@@ -1,4 +1,4 @@
-/* Copyright 2011-2024 Bernhard R. Fischer, 4096R/8E24F29D <bf@abenteuerland.at>
+/* Copyright 2011-2025 Bernhard R. Fischer, 4096R/8E24F29D <bf@abenteuerland.at>
  *
  * This file is part of smrender.
  *
@@ -19,7 +19,7 @@
  * This file contains all graphical rendering functions using libcairo.
  *
  * \author Bernhard R. Fischer, <bf@abenteuerland.at>
- * \date 2024/10/28
+ * \date 2025/01/11
  */
 
 #ifdef HAVE_CONFIG_H
@@ -419,7 +419,13 @@ void save_main_image(FILE *f, int ftype)
          log_debug("PDF: width = %.2f pt (%.2f mm), height = %.2f pt (%.2f mm)",
                rdata_page_width(U_PT), rdata_page_width(U_MM), rdata_page_height(U_PT), rdata_page_height(U_MM));
          sfc = cairo_pdf_surface_create_for_stream(cairo_smr_write_func, f, rdata_page_width(U_PT), rdata_page_height(U_PT));
-         //cairo_pdf_surface_restrict_to_version(sfc, CAIRO_PDF_VERSION_1_4);
+#if CAIRO_VERSION >= CAIRO_VERSION_ENCODE(1, 16, 0)
+         if (cairo_version() >= CAIRO_VERSION_ENCODE(1, 16, 0))
+         {
+            cairo_pdf_surface_set_metadata(sfc, CAIRO_PDF_METADATA_TITLE, get_rdata()->title);
+            cairo_pdf_surface_set_metadata(sfc, CAIRO_PDF_METADATA_CREATOR, "smrender "PACKAGE_VERSION" (https://github.com/rahra/smrender)");
+         }
+#endif
          dst = cairo_create(sfc);
          cairo_smr_log_status(dst);
          cairo_translate(dst, rdata_page_width(U_PT) / 2, rdata_page_height(U_PT) / 2);

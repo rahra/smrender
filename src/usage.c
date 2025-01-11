@@ -1,4 +1,4 @@
-/* Copyright 2024 Bernhard R. Fischer, 4096R/8E24F29D <bf@abenteuerland.at>
+/* Copyright 2024-2025 Bernhard R. Fischer, 4096R/8E24F29D <bf@abenteuerland.at>
  *
  * This file is part of smrender.
  *
@@ -19,7 +19,7 @@
  * This file contains the usage output
  *
  *  \author Bernhard R. Fischer, <bf@abenteuerland.at>
- *  \date 2024/01/26
+ *  \date 2025/01/11
  */
 
 #ifdef HAVE_CONFIG_H
@@ -63,7 +63,7 @@ static const char *usage_txt_ =
    "\n"
    "   --out <image_file>\n"
    "   -o <image_file> ........ Name of output file. The extensions determines the output format.\n"
-   "                         Currently supported formats: .PDF, .PNG, .SVG.\n"
+   "                            Currently supported formats: .PDF, .PNG, .SVG.\n"
    "   -O <pdf_file> .......... Filename of output PDF file (DEPRECATED: use -o).\n"
    "\n"
    "   --write <osm_file>\n"
@@ -119,7 +119,8 @@ static const char *usage_txt_ =
    "   -s <img_scale> ......... Set global image scale (default = 1.0).\n"
    "\n"
    "   --title <title>\n"
-   "   -t <title> .......... Set descriptional chart title.\n"
+   "   -t <title> ............. Set descriptional chart title. This title will also be used\n"
+   "                            as title in the PDF metadata.\n"
    "\n"
    "Logging:\n"
    "   --logfile [+]<logfile>[:<lopt]\n"
@@ -145,19 +146,19 @@ static const char *usage_txt_ =
    "\n"
    "Miscellaneous Options:\n"
    "   --urls\n"
-   "   -u .................. Output URLs suitable for OSM data download and exit.\n"
+   "   -u ..................... Output URLs suitable for OSM data download and exit.\n"
    "\n"
    "   --params\n"
-   "   -V .................. Show chart parameters and exit.\n"
+   "   -V ..................... Show chart parameters and exit.\n"
    "\n"
    "   --version\n"
-   "   -v .................. Print version and exit.\n"
+   "   -v ..................... Print version and exit.\n"
    ;
 
 
 void print_version(void)
 {
-   printf("Seamark renderer V" PACKAGE_VERSION ", (c) 2011-2024, Bernhard R. Fischer, 4096R/8E24F29D <bf@abenteuerland.at>.\n"
+   printf("smrender " PACKAGE_VERSION ", (c) 2011-2025, Bernhard R. Fischer, 4096R/8E24F29D <bf@abenteuerland.at>.\n"
           "See https://github.com/rahra/smrender for more information.\n");
 #ifdef HAVE_CAIRO
    printf("Using libcairo %s.\n", cairo_version_string());
