@@ -1405,6 +1405,12 @@ int act_cap_ini(smrule_t *r)
    if (cairo_smr_log_status(cap.ctx) != CAIRO_STATUS_SUCCESS)
       return -1;
 
+   // configure font
+   cairo_font_options_t *fo = cairo_font_options_create();
+   cairo_font_options_set_hint_metrics(fo, CAIRO_HINT_METRICS_OFF);
+   cairo_set_font_options(cap.ctx, fo);
+   cairo_font_options_destroy(fo);
+
 #ifdef CAIRO_HAS_FC_FONT
    if ((pat = FcNameParse((FcChar8*) cap.font)) == NULL)
    {
