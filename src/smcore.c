@@ -591,6 +591,12 @@ int get_rev_index(osm_obj_t **optr, const osm_obj_t *o)
 }
 
 
+/*! Add object to reverse pointer index.
+ * @param idx_root Pointer to reverse object pointer index.
+ * @param id Id of object to add.
+ * @param o Pointer to the parent of the object.
+ * @return Returns the index of the added object in the index list.
+ */
 int add_rev_ptr(bx_node_t **idx_root, int64_t id, int idx, osm_obj_t *o)
 {
    osm_obj_t **optr;
@@ -621,6 +627,11 @@ int add_rev_ptr(bx_node_t **idx_root, int64_t id, int idx, osm_obj_t *o)
 }
 
  
+/*! Add all nodes of a way to the reverse pointer index.
+ * @param w Pointer to way.
+ * @param idx_root Pointer to reverse object pointer index.
+ * @return On success 0 is returned, otherwise -1 (if add_rev_ptr() failes).
+ */
 int rev_index_way_nodes(osm_way_t *w, bx_node_t **idx_root)
 {
    int i;
@@ -640,6 +651,11 @@ int rev_index_way_nodes(osm_way_t *w, bx_node_t **idx_root)
 }
 
 
+/*! Add all nodes of a relation to the reverse pointer index.
+ * @param r Pointer to relation.
+ * @param idx_root Pointer to reverse object pointer index.
+ * @return On success 0 is returned, otherwise -1 is returned and errno is set.
+ */
 int rev_index_rel_nodes(osm_rel_t *r, bx_node_t **idx_root)
 {
    int i, incomplete = 0;
@@ -665,6 +681,14 @@ int rev_index_rel_nodes(osm_rel_t *r, bx_node_t **idx_root)
 }
 
 
+/*! Add nodes (refs) to way and update reverse pointer index.
+ * @param w Pointer to way.
+ * @param n Pointer to array of nodes.
+ * @param n_cnt Number of nodes in array.
+ * @param pos Index within ref list of way at which the new nodes shall be
+ * inserted.
+ * @return On success 0 is returned, otherwise -1 is returned and errno is set.
+ */
 int insert_refs(osm_way_t *w, osm_node_t **n, int n_cnt, int pos)
 {
    log_debug("inserting nodes into way %"PRId64" at index %d", w->obj.id, pos);
