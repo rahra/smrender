@@ -1065,7 +1065,6 @@ int ins_eqdist(osm_way_t *w, double dist)
    osm_node_t *s, *d, *n;
    double ddist;
    char buf[32];
-   int64_t *ref;
    int i, pcnt;
 
    if (w->obj.type != OSM_WAY)
@@ -1133,19 +1132,8 @@ int ins_eqdist(osm_way_t *w, double dist)
          sc.lon = s->lon;
          ddist = dist;
 
-         // FIXME: does not update rev pointers, should call int insert_refs() instead
-
-         // add node reference to way
-         if ((ref = realloc(w->ref, sizeof(int64_t) * (w->ref_cnt + 1))) == NULL)
-         {
-            log_msg(LOG_ERR, "realloc() failed in ins_eqdist(): %s", strerror(errno));
-            return -1;
-         }
-         w->ref = ref;
-         memmove(&ref[i + 1], &ref[i], sizeof(int64_t) * (w->ref_cnt - i));
-         ref[i] = n->obj.id;
-         w->ref_cnt++;
-         //i--;
+         if (insert_refs(w, &n, 1, i) == -1)
+            log_msg(LOG_ERR, "insert_refs() failed in ins_eqdist(): %s", strerror(errno));
       }
       else
       {
