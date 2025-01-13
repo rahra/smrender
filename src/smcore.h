@@ -72,6 +72,7 @@ int rev_index_way_nodes(osm_way_t *, bx_node_t **);
 int rev_index_rel_nodes(osm_rel_t *, bx_node_t **);
 int get_rev_index(osm_obj_t**, const osm_obj_t*);
 int insert_refs(osm_way_t *, osm_node_t **, int, int);
+int find_shared_node_by_rev(osm_obj_t **, void *);
 
 int apply_smrules(smrule_t *, trv_info_t *);
 int apply_smrules0(osm_obj_t*, smrule_t*);
@@ -79,6 +80,7 @@ int apply_rule(osm_obj_t*, smrule_t*, int*);
 int apply_rule_threaded(osm_obj_t*, th_param_t*);
 int call_fini(smrule_t*);
 int call_ini(smrule_t*);
+
 
 /* smthread.c */
 void sm_wait_threads(void);

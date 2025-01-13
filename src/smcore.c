@@ -1,4 +1,4 @@
-/* Copyright 2011-2024 Bernhard R. Fischer, 4096R/8E24F29D <bf@abenteuerland.at>
+/* Copyright 2011-2025 Bernhard R. Fischer, 4096R/8E24F29D <bf@abenteuerland.at>
  *
  * This file is part of smrender.
  *
@@ -19,7 +19,7 @@
  * This file contains the code of the main execution process.
  *
  *  \author Bernhard R. Fischer, <bf@abenteuerland.at>
- *  \date 2024/10/29
+ *  \date 2025/01/13
  */
 
 #ifdef HAVE_CONFIG_H
@@ -704,6 +704,32 @@ int insert_refs(osm_way_t *w, osm_node_t **n, int n_cnt, int pos)
       if (add_rev_ptr(&get_rdata()->index, w->ref[i + pos], IDX_NODE, (osm_obj_t*) w) == -1)
          return -1;
    }
+
+   return 0;
+}
+
+
+/*! This function lists all parent ids if the object is shared by more than 1
+ * parent.
+ * The function is a tree function and is to be called by traverse() on the
+ * index tree (rd->index).
+ */
+int find_shared_node_by_rev(osm_obj_t **optr, void *p)
+{
+   char buf[1024];
+   int len;
+
+   if (optr == NULL || optr[0] == NULL || optr[1] == NULL)
+      return 0;
+
+   len = snprintf(buf, sizeof(buf), "node is member of ");
+   for (; *optr != NULL; optr++)
+   {
+      len += snprintf(&buf[len], sizeof(buf) - len, "%ld, ", (*optr)->id);
+      if (len >= (int) sizeof(buf))
+         break;
+   }
+   log_msg(LOG_NOTICE, "%s", buf);
 
    return 0;
 }
