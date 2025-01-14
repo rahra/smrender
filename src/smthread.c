@@ -1,4 +1,4 @@
-/* Copyright 2012-2024 Bernhard R. Fischer, 4096R/8E24F29D <bf@abenteuerland.at>
+/* Copyright 2012-2025 Bernhard R. Fischer, 4096R/8E24F29D <bf@abenteuerland.at>
  *
  * This file is part of Smrender.
  *
@@ -19,7 +19,7 @@
  * This file contains the code for multi-threaded execution of rules.
  *
  * \author Bernhard R. Fischer, <bf@abenteuerland.at>
- * \version 2024/10/29
+ * \version 2024/01/14
  */
 
 #include "smrender_dev.h"
@@ -29,13 +29,6 @@
 #include <pthread.h>
 #include <signal.h>
 
-
-#ifdef THREADED_RULES
-
-
-#ifndef SM_THREADS
-#define SM_THREADS 4
-#endif
 
 #define SM_THREAD_EXEC 1
 #define SM_THREAD_WAIT 0
@@ -47,15 +40,10 @@ struct sm_thread
    const bx_node_t *tree;  // tree to traverse
    int depth;                 //!< depth to start traversal at
    int idx;                // leaf index
-   //tree_func_t dhandler;   // function to call at each tree node
    th_param_t th_param;    //!< parameter to dhandler
    int result;             // result of dhandler
    int status;             // state of process (EXEC/WAIT/EXIT)
-   //int nr;                 // number of thread
-//   pthread_mutex_t *mutex; // global mutex
-//   pthread_cond_t *smr_cond;  // global condition
    pthread_t rule_thread;
-//   pthread_cond_t rule_cond;
 };
 
 
@@ -68,28 +56,63 @@ static pthread_cond_t mcond_ = PTHREAD_COND_INITIALIZER;
 //! condition of rule threads
 static pthread_cond_t tcond_ = PTHREAD_COND_INITIALIZER;
 //! pointer to thread structures
-static struct sm_thread *smth_;
- 
+static struct sm_thread *smth_ = NULL;
+//! total number of threads
+static int nthreads_ = 0;
 
-void __attribute__((constructor)) init_threads(void)
+
+/*! This function reads the number of CPUs from /proc/cpuinfo and returns it.
+ * @return The function returns the number of processors found in
+ * /proc/cpuinfo. If the file does not exist, -1 is returned. If the file
+ * exists but no processors are found, 0 is returned.
+ */
+int get_ncpu(void)
 {
-   static struct sm_thread smth[SM_THREADS];
+   char buf[1024];
+   FILE *cpuinfo;
+   int n;
+
+   if ((cpuinfo = fopen("/proc/cpuinfo", "r")) == NULL)
+      return -1;
+
+   for (n = 0; fgets(buf, sizeof(buf), cpuinfo) != NULL;)
+      if (!strncmp(buf, "processor", 9))
+         n++;
+
+   fclose(cpuinfo);
+   return n;
+}
+
+
+int init_threads(int nthreads)
+{
    int i, e;
 
-   memset(smth, 0, sizeof(smth));
-   smth_ = smth;
-   for (i = 0; i < SM_THREADS; i++)
+   if (nthreads < 1)
+      nthreads = 1;
+   nthreads_ = nthreads;
+
+   log_msg(LOG_INFO, "initializing %d threads...", nthreads);
+   if ((smth_ = calloc(nthreads, sizeof(*smth_))) == NULL)
    {
-      smth[i].status = SM_THREAD_WAIT;
-//      smth[i].mutex = &mutex_;
-//      smth[i].smr_cond = &cond_;
-      smth[i].th_param.id = i;
-      smth[i].th_param.cnt = SM_THREADS;
-//      pthread_cond_init(&smth[i].rule_cond, NULL);
-      // FIXME: error handling should be improved!
-      if ((e = pthread_create(&smth[i].rule_thread, NULL, (void*(*)(void*)) sm_traverse_thread, &smth[i])))
-         log_msg(LOG_ERR, "pthread_create() failed: %s", strerror(e));
+      log_errno(LOG_ERR, "calloc() failed:");
+      return -1;
    }
+
+   for (i = 0; i < nthreads; i++)
+   {
+      smth_[i].status = SM_THREAD_WAIT;
+      smth_[i].th_param.id = i;
+      smth_[i].th_param.cnt = nthreads;
+      // FIXME: error handling should be improved!
+      if ((e = pthread_create(&smth_[i].rule_thread, NULL, (void*(*)(void*)) sm_traverse_thread, &smth_[i])))
+      {
+         log_msg(LOG_ERR, "pthread_create() failed: %s", strerror(e));
+         smth_[i].status = SM_THREAD_EXIT;
+      }
+   }
+
+   return 0;
 }
 
 
@@ -101,13 +124,13 @@ void __attribute__((destructor)) delete_threads(void)
 
    // instruct all threads to exit
    pthread_mutex_lock(&mmutex_);
-   for (i = 0; i < SM_THREADS; i++)
+   for (i = 0; i < nthreads_; i++)
       smth_[i].status = SM_THREAD_EXIT;
    pthread_cond_broadcast(&tcond_);
    pthread_mutex_unlock(&mmutex_);
 
    // join all threads
-   for (i = 0; i < SM_THREADS; i++)
+   for (i = 0; i < nthreads_; i++)
       pthread_join(smth_[i].rule_thread, NULL);
 }
 
@@ -154,7 +177,7 @@ void sm_wait_threads(void)
    int i;
 
    log_debug("waiting for all threads to finish action");
-   for (i = 0; i < SM_THREADS; i++)
+   for (i = 0; i < nthreads_; i++)
    {
       pthread_mutex_lock(&mmutex_);
       while (smth_[i].status == SM_THREAD_EXEC)
@@ -170,7 +193,7 @@ int traverse_queue(const bx_node_t *tree, int d, int idx, tree_func_t dhandler, 
 
    // init thread parameters
    pthread_mutex_lock(&mmutex_);
-   for (i = 0; i < SM_THREADS; i++)
+   for (i = 0; i < nthreads_; i++)
    {
       // safety check
       if (smth_[i].status != SM_THREAD_WAIT)
@@ -193,7 +216,7 @@ int traverse_queue(const bx_node_t *tree, int d, int idx, tree_func_t dhandler, 
    // collect results
    res = 0;
    pthread_mutex_lock(&mmutex_);
-   for (i = 0; i < SM_THREADS; i++)
+   for (i = 0; i < nthreads_; i++)
    {
       // prefer most negative value
       if (smth_[i].result < 0 && smth_[i].result < res)
@@ -206,7 +229,4 @@ int traverse_queue(const bx_node_t *tree, int d, int idx, tree_func_t dhandler, 
 
    return res;
 }
-
-
-#endif
 

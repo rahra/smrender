@@ -1,4 +1,4 @@
-/* Copyright 2011-2021 Bernhard R. Fischer, 4096R/8E24F29D <bf@abenteuerland.at>
+/* Copyright 2011-2025 Bernhard R. Fischer, 4096R/8E24F29D <bf@abenteuerland.at>
  *
  * This file is part of smrender.
  *
@@ -19,6 +19,7 @@
  * This file contains definitions for all rendering relevant data.
  *
  * \author Bernhard R. Fischer, <bf@abenteuerland.at>
+ * \date 2025/01/14
  */
 #ifndef RDATA_H
 #define RDATA_H
@@ -152,6 +153,8 @@ struct rdata
    double img_scale;
    //! projection type (0 = default, i.e. Mercator)
    proj_t proj;
+   //! number of threads per rule (0 = no threads, i.e. default bevavior as in prev revisions)
+   int nthreads;
 };
 
 

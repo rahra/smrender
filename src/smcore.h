@@ -1,4 +1,4 @@
-/* Copyright 2011-2024 Bernhard R. Fischer, 4096R/8E24F29D <bf@abenteuerland.at>
+/* Copyright 2011-2025 Bernhard R. Fischer, 4096R/8E24F29D <bf@abenteuerland.at>
  *
  * This file is part of smrender.
  *
@@ -20,7 +20,7 @@
  * engine.
  *
  *  @author Bernhard R. Fischer
- *  @data 2024/10/29
+ *  @data 2025/01/14
  */
 
 #ifndef SMCORE_H
@@ -86,6 +86,8 @@ int call_ini(smrule_t*);
 void sm_wait_threads(void);
 int traverse_queue(const bx_node_t *, int, int, tree_func_t, void *);
 int sm_is_threaded(const smrule_t *);
+int get_ncpu(void);
+int init_threads(int);
 
 #endif
 

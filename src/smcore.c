@@ -19,7 +19,7 @@
  * This file contains the code of the main execution process.
  *
  *  \author Bernhard R. Fischer, <bf@abenteuerland.at>
- *  \date 2025/01/13
+ *  \date 2025/01/14
  */
 
 #ifdef HAVE_CONFIG_H
@@ -399,12 +399,10 @@ int apply_smrules(smrule_t *r, trv_info_t *ti)
 
    if (r->act->main.func != NULL)
    {
-#ifdef THREADED_RULES
-      if (sm_is_threaded(r))
+      if (get_rdata()->nthreads > 0 && sm_is_threaded(r))
          e = traverse_queue(ti->objtree, 0, r->oo->type - 1, (tree_func_t) apply_rule0_threaded, r);
       else
-#endif
-      e = traverse(ti->objtree, 0, r->oo->type - 1, (tree_func_t) apply_rule0, r);
+         e = traverse(ti->objtree, 0, r->oo->type - 1, (tree_func_t) apply_rule0, r);
    }
    else
       log_debug("   -> no main function");
@@ -714,7 +712,7 @@ int insert_refs(osm_way_t *w, osm_node_t **n, int n_cnt, int pos)
  * The function is a tree function and is to be called by traverse() on the
  * index tree (rd->index).
  */
-int find_shared_node_by_rev(osm_obj_t **optr, void *p)
+int find_shared_node_by_rev(osm_obj_t **optr, void *UNUSED(p))
 {
    char buf[1024];
    int len;

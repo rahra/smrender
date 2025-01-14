@@ -1,4 +1,4 @@
-/* Copyright 2011-2024 Bernhard R. Fischer, 4096R/8E24F29D <bf@abenteuerland.at>
+/* Copyright 2011-2025 Bernhard R. Fischer, 4096R/8E24F29D <bf@abenteuerland.at>
  *
  * This file is part of smrender.
  *
@@ -19,7 +19,7 @@
  * This file contains the main() function and main initialization functions.
  *
  *  \author Bernhard R. Fischer, <bf@abenteuerland.at>
- *  \date 2024/01/15
+ *  \date 2025/01/14
  */
 
 #ifdef HAVE_CONFIG_H
@@ -103,6 +103,7 @@ static const struct option lopts_[] =
    {"out-rules", required_argument, NULL, 'R'},
    {"img-scale", required_argument, NULL, 's'},
    {"title", required_argument, NULL, 't'},
+   {"threads", required_argument, NULL, 't' + 257},
    {"traverse-alarm", required_argument, NULL, 't' + 256},
    {"tiles", required_argument, NULL, 'T'},
    {"out", required_argument, NULL, 'o'},
@@ -1216,6 +1217,10 @@ int main(int argc, char *argv[])
             traverse_alarm_ = atoi(optarg);
             break;
 
+         case 't' + 257:
+            rd->nthreads = atoi(optarg);
+            break;
+
          case 'T':
             if (parse_tile_info(optarg, &ti))
             {
@@ -1263,6 +1268,14 @@ int main(int argc, char *argv[])
 
    // install exit handlers
    osm_read_exit();
+
+   // organize threads
+   if (rd->nthreads < 0)
+      rd->nthreads = get_ncpu();
+   if (rd->nthreads < 0)
+      rd->nthreads = 0;
+   if (rd->nthreads > 0)
+      init_threads(rd->nthreads);
 
    // preparing image
 #ifdef HAVE_CAIRO
