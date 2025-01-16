@@ -88,6 +88,7 @@ int traverse_queue(const bx_node_t *, int, int, tree_func_t, void *);
 int sm_is_threaded(const smrule_t *);
 int get_ncpu(void);
 int init_threads(int);
+int get_thread_id(void);
 
 #endif
 

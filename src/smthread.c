@@ -37,7 +37,7 @@
 #define SM_THREAD_EXIT -1
 
 
-struct sm_thread
+typedef struct sm_thread
 {
    const bx_node_t *tree;  // tree to traverse
    int depth;                 //!< depth to start traversal at
@@ -46,10 +46,10 @@ struct sm_thread
    int result;             // result of dhandler
    int status;             // state of process (EXEC/WAIT/EXIT)
    pthread_t rule_thread;
-};
+} sm_thread_t;
 
 
-void *sm_traverse_thread(struct sm_thread*);
+void *sm_traverse_thread(sm_thread_t*);
 
 //! mutex for thread structures
 static pthread_mutex_t mmutex_ = PTHREAD_MUTEX_INITIALIZER;
@@ -58,7 +58,7 @@ static pthread_cond_t mcond_ = PTHREAD_COND_INITIALIZER;
 //! condition of rule threads
 static pthread_cond_t tcond_ = PTHREAD_COND_INITIALIZER;
 //! pointer to thread structures
-static struct sm_thread *smth_ = NULL;
+static sm_thread_t *smth_ = NULL;
 //! total number of threads
 static int nthreads_ = 0;
 
@@ -86,21 +86,30 @@ int get_ncpu(void)
 }
 
 
+/*! This function initializes the threads for rule parallel processing.
+ * @param nthreads Number of threads to initialize, 0 <= nthreads.
+ * @return This function returns the number if threads initialized.
+ */
 int init_threads(int nthreads)
 {
+   static sm_thread_t _smth; // static fallback memory
    int i, e;
 
-   if (nthreads < 1)
-      nthreads = 1;
-   nthreads_ = nthreads;
+   if (nthreads < 0)
+      nthreads = 0;
 
    log_msg(LOG_INFO, "initializing %d threads...", nthreads);
-   if ((smth_ = calloc(nthreads, sizeof(*smth_))) == NULL)
+   if ((smth_ = calloc(nthreads + 1, sizeof(*smth_))) == NULL)
    {
       log_errno(LOG_ERR, "calloc() failed:");
-      return -1;
+
+      log_msg(LOG_NOTICE, "continuing without threads");
+      nthreads = 0;
+      memset(&_smth, 0, sizeof(_smth));
+      smth_ = &_smth;
    }
 
+   nthreads_ = nthreads;
    for (i = 0; i < nthreads; i++)
    {
       smth_[i].status = SM_THREAD_WAIT;
@@ -114,7 +123,22 @@ int init_threads(int nthreads)
       }
    }
 
-   return 0;
+   // set values for main thread
+   smth_[nthreads].rule_thread = pthread_self();
+   smth_[nthreads].th_param.id = nthreads;
+
+   return nthreads;
+}
+
+
+/*! Return internal thread id of calling thread.
+ * @return Returns id of calling thread.
+ */
+int get_thread_id(void)
+{
+   int i = 0;
+   for (pthread_t id = pthread_self(); i < nthreads_ && id != smth_[i].rule_thread; i++);
+   return smth_[i].th_param.id;
 }
 
 
@@ -139,7 +163,7 @@ void __attribute__((destructor)) delete_threads(void)
 }
 
 
-void *sm_traverse_thread(struct sm_thread *smth)
+void *sm_traverse_thread(sm_thread_t *smth)
 {
    sigset_t sset;
    int e;

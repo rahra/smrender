@@ -1154,8 +1154,7 @@ int main(int argc, char *argv[])
       rd->nthreads = get_ncpu();
    if (rd->nthreads < 0)
       rd->nthreads = 0;
-   if (rd->nthreads > 0)
-      init_threads(rd->nthreads);
+   rd->nthreads = init_threads(rd->nthreads);
 
    // preparing image
 #ifdef HAVE_CAIRO
