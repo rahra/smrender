@@ -23,8 +23,7 @@
 
 #include <math.h>
 
-#include "smrender_dev.h"
-
+#include "smath.h"
 
 /*! Calculate bearing and distance from src to dst.
  *  @param src Source coodinates (struct coord).

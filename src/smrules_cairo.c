@@ -35,7 +35,6 @@
 #include <syslog.h>
 #include <errno.h>
 #include <inttypes.h>
-#include <ctype.h>
 #include <wctype.h>
 #ifdef WITH_THREADS
 #include <pthread.h>

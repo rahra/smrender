@@ -22,12 +22,14 @@
  * \version 2024/01/14
  */
 
-#include "smrender_dev.h"
-#include "smcore.h"
-
+#include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <pthread.h>
 #include <signal.h>
+
+#include "smrender.h"
+#include "smcore.h"
 
 
 #define SM_THREAD_EXEC 1

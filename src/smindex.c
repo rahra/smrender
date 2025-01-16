@@ -31,7 +31,6 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <unistd.h>
-#include <signal.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <inttypes.h>
@@ -41,7 +40,6 @@
 #include "smrender_dev.h"
 #include "smcore.h"
 #include "smloadosm.h"
-#include "smcoast.h"
 
 #define INDEX_FDIRTY 1
 #define INDEX_EXT ".index"
