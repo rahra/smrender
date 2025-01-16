@@ -1,4 +1,4 @@
-/* Copyright 2011-2024 Bernhard R. Fischer, 4096R/8E24F29D <bf@abenteuerland.at>
+/* Copyright 2011-2025 Bernhard R. Fischer, 4096R/8E24F29D <bf@abenteuerland.at>
  *
  * This file is part of smrender.
  *
@@ -19,7 +19,7 @@
  * This file contains almost all internal declarations.
  *
  * \author Bernhard R. Fischer, <bf@abenteuerland.at>
- * \version 2024/01/08
+ * \version 2025/01/16
  */
 #ifndef SMRENDER_DEV_H
 #define SMRENDER_DEV_H
@@ -69,6 +69,12 @@
 #define POS_S1 (POS_S | POS_1)
 #define POS_W1 (POS_W | POS_1)
 #define POS_DIR_MSK (POS_N | POS_S | POS_E | POS_W)
+
+#define COORD_LAT 0
+#define COORD_LON 1
+
+#define MAJORAXIS 720.0
+#define AUTOROT NAN
 
 #define ESM_OK 0
 #define ESM_ERROR -1
@@ -371,6 +377,10 @@ int parse_length(const char *, value_t *);
 int parse_length_def(const char *, value_t *, unit_t );
 int parse_length_mm_array(const char *, double *, int );
 int parse_keylist(const char *, keylist_t *);
+int parse_coord(const char *, double *);
+int parse_coord2(const char *, double *, int );
+void parse_auto_rot(const action_t *, double *, struct auto_rot *);
+void parse_dash_style(const char *, struct drawStyle *);
 
 /* smkap.c */
 int save_kap(FILE *, struct rdata *);

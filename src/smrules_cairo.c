@@ -113,9 +113,6 @@
 #define WAVY_LENGTH 0.0015
 #define PIPE_DOT_SCALE 2.5
 
-#define MAJORAXIS 720.0
-#define AUTOROT NAN
-
 #define RENDER_IMMEDIATE 0
 #define CREATE_PATH 1
 #define PUSH_GROUP
@@ -580,78 +577,6 @@ int cairo_smr_get_pixel(cairo_surface_t *sfc, int x, int y)
    return cairo_smr_get_raw_pixel(data + cairo_smr_pixel_pos(x, y,
                   cairo_image_surface_get_stride(sfc), cairo_smr_bpp(cairo_image_surface_get_format(sfc))),
          cairo_image_surface_get_format(sfc));
-}
-
-//FIXME: This should be moved to smrparse.c
-static void parse_auto_rot(const action_t *act, double *angle, struct auto_rot *rot)
-{
-   char *val;
-
-   if ((val = get_param("angle", angle, act)) == NULL)
-      return;
-
-   if (!strcasecmp("auto", val))
-   {
-      *angle = AUTOROT;
-      if (get_param("auto-color", NULL, act) != NULL)
-         log_msg(LOG_NOTICE, "parameter 'auto-color' deprecated");
-
-      if ((val = get_param("weight", &rot->weight, act)) == NULL)
-         rot->weight = 1.0;
-
-      // boundary check for 'weight' parameter
-      if (rot->weight > 1.0)
-      {
-         rot->weight = 1.0;
-         log_msg(LOG_NOTICE, "weight limited to %.1f", rot->weight);
-      }
-      else if (rot->weight < -1.0)
-      {
-         rot->weight = -1.0;
-         log_msg(LOG_NOTICE, "weight limited to %.1f", rot->weight);
-      }
-
-      (void) get_param("phase", &rot->phase, act);
-      rot->mkarea = get_param_bool("mkarea", act);
-   }
-   else if (!strcasecmp("majoraxis", val))
-   {
-      *angle = MAJORAXIS;
-   }
-   else
-   {
-      *angle = fmod(*angle, 360.0);
-   }
-
-   log_debug("auto_rot = {phase: %.2f, autocol(deprecated): 0x%08x, weight: %.2f, mkarea: %d}", rot->phase, rot->autocol, rot->weight, rot->mkarea);
-}
-
- 
-static void parse_dash_style(const char *s, struct drawStyle *ds)
-{
-   if (s != NULL)
-      ds->dashlen = parse_length_mm_array(s, ds->dash, sizeof(ds->dash) / sizeof(*ds->dash));
-   if (s == NULL || ds->dashlen <= 0)
-      switch (ds->style)
-      {
-         case DRAW_DASHED:
-         case DRAW_PIPE:
-            ds->dash[0] = 7;
-            ds->dash[1] = 3;
-            ds->dashlen = 2;
-            break;
-         case DRAW_DOTTED:
-            ds->dash[0] = 1;
-            ds->dashlen = 1;
-            break;
-         case DRAW_ROUNDDOT:
-            ds->dash[0] = 0;
-            ds->dash[1] = 2;
-            ds->dashlen = 2;
-            break;
-         default:
-            ds->dashlen = 0;
-      }
 }
 
 

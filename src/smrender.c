@@ -19,7 +19,7 @@
  * This file contains the main() function and main initialization functions.
  *
  *  \author Bernhard R. Fischer, <bf@abenteuerland.at>
- *  \date 2025/01/14
+ *  \date 2025/01/16
  */
 
 #ifdef HAVE_CONFIG_H
@@ -52,17 +52,6 @@
 #include "smloadosm.h"
 #include "rdata.h"
 #include "lists.h"
-
-
-#define COORD_LAT 0
-#define COORD_LON 1
-
-#define ISNORTH(x) (strchr("Nn", (x)) != NULL)
-#define ISSOUTH(x) (strchr("Ss", (x)) != NULL)
-#define ISEAST(x) (strchr("EeOo", (x)) != NULL)
-#define ISWEST(x) (strchr("Ww", (x)) != NULL)
-#define ISLAT(x) (ISNORTH(x) || ISSOUTH(x))
-#define ISLON(x) (ISEAST(x) || ISWEST(x))
 
 
 struct tile_info
@@ -117,115 +106,6 @@ static const struct option lopts_[] =
    {NULL, 0, NULL, 0}
 };
 #endif
-
-
-/*! This function parse a coordinate string of format "[-]dd.ddd[NESW]" or
- * "[-]dd[NESW](dd.ddd)?" into a correctly signed double value. The function
- * returns either COORD_LAT (0) if the string contains a latitude coordinate,
- * or COORD_LON (1) if the string contains a longitude coordinate, or -1
- * otherwise.
- * @param s Pointer to string.
- * @param a Pointer to double variable which will receive the converted value.
- * @return 0 for latitude, 1 for longitude, or -1 otherwise. In any case a will
- * be set to 0.0.
- */
-int parse_coord(const char *s, double *a)
-{
-   double e, f, n = 1.0;
-   int r;
-
-   for (; isspace((int) *s); s++);
-   if (*s == '-')
-   {
-      s++;
-      n = -1.0;
-   }
-   for (*a = 0.0; isdigit((int) *s); s++)
-   {
-      *a *= 10.0;
-      *a += *s - '0';
-   }
-
-   for (; isspace((int) *s); s++);
-   if (*s == '\0')
-   {
-      *a *= n;
-      return -1;
-   }
-
-   if (ISLAT(*s))
-   {
-      r = COORD_LAT;
-      if (ISSOUTH(*s)) n *= -1.0;
-   }
-   else if (ISLON(*s))
-   {
-      r = COORD_LON;
-      if (ISWEST(*s)) n *= -1.0;
-   }
-   else if (*s == '.')
-   {
-      s++;
-      for (e = 1.0, f = 0.0; isdigit((int) *s); e *= 10.0, s++)
-      {
-         f *= 10.0;
-         f += *s - '0';
-      }
-      *a += f / e;
-      *a *= n;
-
-      for (; isspace((int) *s); s++);
-      if (*s == '\0') return -1;
-
-      if (ISLAT(*s))
-      {
-         if (ISSOUTH(*s)) *a *= -1.0;
-         return COORD_LAT;
-      }
-      else if (ISLON(*s))
-      {
-         if (ISWEST(*s)) *a *= -1.0;
-         return COORD_LON;
-      }
-      else
-         return -1;
-   }
-   else
-   {
-      *a *= n;
-      return -1;
-   }
-
-   s++;
-   for (; isspace((int) *s); s++);
-   f = atof(s);
-   *a += f / 60.0;
-   *a *= n;
-
-   return r;
-}
-
-
-/*! This function behaves exactly like parse_coord() except that it does return
- * def instead of -1.
- * @param s Pointer to string.
- * @param a Pointer to double variable which will receive the converted value.
- * @return 0 for latitude, 1 for longitude, or the value contained in def
- * otherwise. In any case a will be set to 0.0.
- */
-int parse_coord2(const char *s, double *a, int def)
-{
-   int c = parse_coord(s, a);
-
-   switch (c)
-   {
-      case COORD_LAT:
-      case COORD_LON:
-         return c;
-      default:
-         return def;
-   }
-}
 
 
 void int_handler(int sig)

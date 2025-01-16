@@ -1,4 +1,4 @@
-/* Copyright 2011-2024 Bernhard R. Fischer, 4096R/8E24F29D <bf@abenteuerland.at>
+/* Copyright 2011-2025 Bernhard R. Fischer, 4096R/8E24F29D <bf@abenteuerland.at>
  *
  * This file is part of smrender.
  *
@@ -19,8 +19,8 @@
  * This file contains the code of the rule parser and main loop of the render
  * as well as the code for traversing the object (nodes/ways) tree.
  *
- *  \author Bernhard R. Fischer
- *  \date 2024/02/02
+ * \author Bernhard R. Fischer, <bf@abenteuerland.at>
+ * \date 2025/01/16
  */
 #include <string.h>
 #include <errno.h>
@@ -33,6 +33,13 @@
 
 
 #include "colors.c"
+
+#define ISNORTH(x) (strchr("Nn", (x)) != NULL)
+#define ISSOUTH(x) (strchr("Ss", (x)) != NULL)
+#define ISEAST(x) (strchr("EeOo", (x)) != NULL)
+#define ISWEST(x) (strchr("Ww", (x)) != NULL)
+#define ISLAT(x) (ISNORTH(x) || ISSOUTH(x))
+#define ISLON(x) (ISEAST(x) || ISWEST(x))
 
 
 static char *skipb(const char *s)
@@ -166,6 +173,13 @@ short ppos(const char *s)
 }
 
 
+/*! This function returns the RGB value of a color by index n. All colors are
+ * defined in color.c.
+ * @param n Index of color, 0 <= n < MAXCOLOR.
+ * @return The function returns the RGB value which is always a positive
+ * number. In case of error, i.e. if n was outside the valid range, -1 is
+ * returned.
+ */
 int get_color(int n)
 {
    if (n < 0 || n >= MAXCOLOR)
@@ -174,6 +188,12 @@ int get_color(int n)
 }
 
 
+/*! This function sets the RGB value of a color by its name.
+ * @param s Color name, e.g. "green".
+ * @param col RGB value to be set.
+ * @return The function returns the old RGB value. If the name could not be
+ * found in the color list, -1 is returned.
+ */
 int set_color(const char *s, int col)
 {
    int i, c = -1;
@@ -181,7 +201,7 @@ int set_color(const char *s, int col)
    for (i = 0; color_def_[i].name != NULL; i++)
       if (!strcasecmp(s, color_def_[i].name))
       {
-         c = color_def_[i].col;
+         c = color_def_[i].col & 0x7fffffff;
          color_def_[i].col = col;
          break;
       }
@@ -189,6 +209,15 @@ int set_color(const char *s, int col)
 }
 
 
+/*! This function parsed the string s and determines and returns its RGB value.
+ * @param s Color value to be parse. This can be either an X11 color name, e.g.
+ * "green", as defined in colors.c or an ARGB value if the string starts with a
+ * '#'. This is similar to the HTML-style color definition '#AARRGGBB'. The
+ * transparency values may range between 0x00 (opaque) and 0x7f (transparent).
+ * The MSB is always cleared by the function.
+ * @return Returns the ARGB value of the color as integer number. If the string
+ * could not be parsed, 0 (black) is returned. If s is NULL, -1 is returned.
+ */
 int parse_color(const char *s)
 {
    long c;
@@ -216,7 +245,7 @@ int parse_color(const char *s)
          return 0;
       }
 
-      return c;
+      return c & 0x7fffffff;
    }
 
    for (i = 0; color_def_[i].name != NULL; i++)
@@ -332,12 +361,6 @@ int init_rule(osm_obj_t *o, smrule_t **r)
    {
       if (parse_matchtag(&o->otag[i], &rl->act->stag[i]) < 0)
          return 0;
-#if 0
-      if (parse_matchtype(&o->otag[i].k, &rl->act->stag[i].stk) < 0)
-         return 0;
-      if (parse_matchtype(&o->otag[i].v, &rl->act->stag[i].stv) < 0)
-         return 0;
-#endif
    }
 
    if ((i = match_attr(o, "_action_", NULL)) == -1)
@@ -419,7 +442,7 @@ int init_rule(osm_obj_t *o, smrule_t **r)
 
    return 0;
 }
- 
+
 
 int init_rules(osm_obj_t *o, void *p)
 {
@@ -867,3 +890,183 @@ int parse_keylist(const char *key, keylist_t *keylist)
    return keylist->count;
 }
 
+
+/*! This function parse a coordinate string of format "[-]dd.ddd[NESW]" or
+ * "[-]dd[NESW](dd.ddd)?" into a correctly signed double value. The function
+ * returns either COORD_LAT (0) if the string contains a latitude coordinate,
+ * or COORD_LON (1) if the string contains a longitude coordinate, or -1
+ * otherwise.
+ * @param s Pointer to string.
+ * @param a Pointer to double variable which will receive the converted value.
+ * @return 0 for latitude, 1 for longitude, or -1 otherwise. In any case a will
+ * be set to 0.0.
+ */
+int parse_coord(const char *s, double *a)
+{
+   double e, f, n = 1.0;
+   int r;
+
+   for (; isspace((int) *s); s++);
+   if (*s == '-')
+   {
+      s++;
+      n = -1.0;
+   }
+   for (*a = 0.0; isdigit((int) *s); s++)
+   {
+      *a *= 10.0;
+      *a += *s - '0';
+   }
+
+   for (; isspace((int) *s); s++);
+   if (*s == '\0')
+   {
+      *a *= n;
+      return -1;
+   }
+
+   if (ISLAT(*s))
+   {
+      r = COORD_LAT;
+      if (ISSOUTH(*s)) n *= -1.0;
+   }
+   else if (ISLON(*s))
+   {
+      r = COORD_LON;
+      if (ISWEST(*s)) n *= -1.0;
+   }
+   else if (*s == '.')
+   {
+      s++;
+      for (e = 1.0, f = 0.0; isdigit((int) *s); e *= 10.0, s++)
+      {
+         f *= 10.0;
+         f += *s - '0';
+      }
+      *a += f / e;
+      *a *= n;
+
+      for (; isspace((int) *s); s++);
+      if (*s == '\0') return -1;
+
+      if (ISLAT(*s))
+      {
+         if (ISSOUTH(*s)) *a *= -1.0;
+         return COORD_LAT;
+      }
+      else if (ISLON(*s))
+      {
+         if (ISWEST(*s)) *a *= -1.0;
+         return COORD_LON;
+      }
+      else
+         return -1;
+   }
+   else
+   {
+      *a *= n;
+      return -1;
+   }
+
+   s++;
+   for (; isspace((int) *s); s++);
+   f = atof(s);
+   *a += f / 60.0;
+   *a *= n;
+
+   return r;
+}
+
+
+/*! This function behaves exactly like parse_coord() except that it does return
+ * def instead of -1.
+ * @param s Pointer to string.
+ * @param a Pointer to double variable which will receive the converted value.
+ * @return 0 for latitude, 1 for longitude, or the value contained in def
+ * otherwise. In any case a will be set to 0.0.
+ */
+int parse_coord2(const char *s, double *a, int def)
+{
+   int c = parse_coord(s, a);
+
+   switch (c)
+   {
+      case COORD_LAT:
+      case COORD_LON:
+         return c;
+      default:
+         return def;
+   }
+}
+
+
+void parse_auto_rot(const action_t *act, double *angle, struct auto_rot *rot)
+{
+   char *val;
+
+   if ((val = get_param("angle", angle, act)) == NULL)
+      return;
+
+   if (!strcasecmp("auto", val))
+   {
+      *angle = AUTOROT;
+      if (get_param("auto-color", NULL, act) != NULL)
+         log_msg(LOG_NOTICE, "parameter 'auto-color' deprecated");
+
+      if ((val = get_param("weight", &rot->weight, act)) == NULL)
+         rot->weight = 1.0;
+
+      // boundary check for 'weight' parameter
+      if (rot->weight > 1.0)
+      {
+         rot->weight = 1.0;
+         log_msg(LOG_NOTICE, "weight limited to %.1f", rot->weight);
+      }
+      else if (rot->weight < -1.0)
+      {
+         rot->weight = -1.0;
+         log_msg(LOG_NOTICE, "weight limited to %.1f", rot->weight);
+      }
+
+      (void) get_param("phase", &rot->phase, act);
+      rot->mkarea = get_param_bool("mkarea", act);
+   }
+   else if (!strcasecmp("majoraxis", val))
+   {
+      *angle = MAJORAXIS;
+   }
+   else
+   {
+      *angle = fmod(*angle, 360.0);
+   }
+
+   log_debug("auto_rot = {phase: %.2f, autocol(deprecated): 0x%08x, weight: %.2f, mkarea: %d}", rot->phase, rot->autocol, rot->weight, rot->mkarea);
+}
+
+
+void parse_dash_style(const char *s, struct drawStyle *ds)
+{
+   if (s != NULL)
+      ds->dashlen = parse_length_mm_array(s, ds->dash, sizeof(ds->dash) / sizeof(*ds->dash));
+   if (s == NULL || ds->dashlen <= 0)
+      switch (ds->style)
+      {
+         case DRAW_DASHED:
+         case DRAW_PIPE:
+            ds->dash[0] = 7;
+            ds->dash[1] = 3;
+            ds->dashlen = 2;
+            break;
+         case DRAW_DOTTED:
+            ds->dash[0] = 1;
+            ds->dashlen = 1;
+            break;
+         case DRAW_ROUNDDOT:
+            ds->dash[0] = 0;
+            ds->dash[1] = 2;
+            ds->dashlen = 2;
+            break;
+         default:
+            ds->dashlen = 0;
+      }
+}
