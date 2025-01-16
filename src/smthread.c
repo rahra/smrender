@@ -132,6 +132,8 @@ void __attribute__((destructor)) delete_threads(void)
    // join all threads
    for (i = 0; i < nthreads_; i++)
       pthread_join(smth_[i].rule_thread, NULL);
+
+   free(smth_);
 }
 
 
