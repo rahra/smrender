@@ -1738,12 +1738,12 @@ static void cairo_smr_diff(cairo_t *ctx, cairo_surface_t *bg, int x, int y, doub
 {
    // drehpunkt festlegen
    cairo_save(ctx);
-   cairo_translate(ctx, x / 2, y / 2);
+   cairo_translate(ctx, x / 2.0, y / 2.0);
    // winkel, ccw, ost = 0
    cairo_rotate(ctx, a);
    // ausschneiden
    cairo_set_operator(ctx, CAIRO_OPERATOR_OVER);
-   cairo_set_source_surface(ctx, bg, cairo_image_surface_get_width(bg) / -2, cairo_image_surface_get_height(bg) / -2);
+   cairo_set_source_surface(ctx, bg, cairo_image_surface_get_width(bg) / -2.0, cairo_image_surface_get_height(bg) / -2.0);
    cairo_paint(ctx);
    cairo_restore(ctx);
    return;
