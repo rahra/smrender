@@ -22,7 +22,7 @@
  * @author Bernhard R. Fischer
  * @date 2024/10/28
  */
-
+#include <stdlib.h>
 #include <string.h>
 #include <time.h>
 #include <errno.h>

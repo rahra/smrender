@@ -22,6 +22,7 @@
  * \author Bernhard R. Fischer, <bf@abenteuerland.at>
  * \date 2025/01/16
  */
+#include <stdlib.h>
 #include <string.h>
 #include <errno.h>
 #include <dlfcn.h>
