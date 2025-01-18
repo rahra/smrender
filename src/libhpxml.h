@@ -25,7 +25,6 @@
 #define HPXML_H
 
 #include <stdio.h>
-#include <stdlib.h>
 #include <ctype.h>
 
 #include "bstring.h"
@@ -100,7 +99,6 @@ enum
 };
 
 
-long hpx_lineno(void);
 void hpx_tm_free(hpx_tag_t *t);
 void hpx_tm_free_tree(hpx_tree_t *);
 hpx_tag_t *hpx_tm_create(int n);

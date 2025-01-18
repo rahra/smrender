@@ -1,4 +1,4 @@
-/* Copyright 2011-2024 Bernhard R. Fischer, 4096R/8E24F29D <bf@abenteuerland.at>
+/* Copyright 2011-2025 Bernhard R. Fischer, 4096R/8E24F29D <bf@abenteuerland.at>
  *
  * This file is part of libhpxml.
  *
@@ -16,10 +16,9 @@
  */
 
 /*! \file libhpxml.c
- * This file contains all functions for the XML input parser.
- *
- * \author Bernhard R. Fischer <bf@abenteuerland.at>
- * \date 2024/01/27
+ * This file contains the complete source for the parser.
+ * \author Bernhard R. Fischer, <bf@abenteuerland.at>
+ * \date 2025/01/18
  */
 
 #ifdef HAVE_CONFIG_H
@@ -64,16 +63,8 @@
 #include "libhpxml.h"
 
 
-static long hpx_lineno_;
-
-
-long hpx_lineno(void)
-{
-   return hpx_lineno_;
-}
-
-
-/*! 
+/*! This function skips white spaces at the beginning of a bstring, i.e. it
+ * removes them by increasing the base pointer.
  *  @param b Pointer to bstring.
  *  @return Number of remaining characters in b.
  */
@@ -95,12 +86,14 @@ void hpx_tm_free(hpx_tag_t *t)
  */
 void hpx_tm_free_tree(hpx_tree_t *tlist)
 {
+   int i;
+
    // break recursion
    if (tlist == NULL)
       return;
 
    // recursively free all subtrees
-   for (int i = 0; i < tlist->msub; i++)
+   for (i = 0; i < tlist->msub; i++)
       hpx_tm_free_tree(tlist->subtag[i]);
 
    // free tag element of tree
@@ -188,8 +181,6 @@ int hpx_parse_attr_list(bstring_t *b, hpx_tag_t *t)
  * single XML element with correct boundaries. This is either a tag (<....>) or
  * just text.
  * @param b Bstring containing pointer to an element.
- * @param in Must be set to 0 if element is literal text, otherwise 1 if it is
- * a tag.
  * @param p Pointer to valid hpx_tag_t structure. The structure will we filled
  * out.
  * @return Returns 0 if the bstring could be successfully parsed, otherwise -1.
@@ -268,18 +259,39 @@ int hpx_process_elem(bstring_t b, hpx_tag_t *p)
    if (*b.buf == '!')
    {
       bs_advance(&b);
+
+      // check for comment
       if ((b.len >= 2) && !strncmp(b.buf, "--", 2))
       {
          b.buf += 2;
          b.len -= 2;
          p->tag.buf = b.buf;
 
+         // find end marker
          for (p->tag.len = 0; (b.len >= 3) && strncmp(b.buf, "-->", 3); bs_advance(&b), p->tag.len++);
 
          if (b.len < 3)
             return -1;
 
          p->type = HPX_COMMENT;
+         //call tag processor
+         return 0;
+      }
+
+      // check for CDATA
+      if ((b.len >= 7) && !strncmp(b.buf, "[CDATA[", 7))
+      {
+         b.buf += 7;
+         b.len -= 7;
+         p->tag.buf = b.buf;
+
+         // find end marker
+         for (p->tag.len = 0; (b.len >= 3) && strncmp(b.buf, "]]>", 3); bs_advance(&b), p->tag.len++);
+
+         if (b.len < 3)
+            return -1;
+
+         p->type = HPX_CDATA;
          //call tag processor
          return 0;
       }
@@ -315,40 +327,17 @@ int hpx_process_elem(bstring_t b, hpx_tag_t *p)
 }
 
 
-/*! Changes white spaces ([\t\n\r]) to space ([ ]).
+/*! Checks for XML white spaces ([\t\n\r]) and increases the line number counter.
  * @param c Pointer to character.
  * @return Returns 0 if character contains any of [ \t\r\n], otherwise 1.
  */
-int cblank(char *c)
+int cblank(const char *c, long *lno)
 {
    switch (*c)
    {
       case '\n':
-         hpx_lineno_++;
-         /* fall through */
-      case '\t':
-      case '\r':
-#ifdef MODMEM
-         *c = ' ';
-#endif
-      case ' ':
-         return 0;
-   }
-
-   return 1;
-}
-
-
-/*! Works like cblank() but does not change any character.
- * @param c Pointer to character.
- * @return Returns 0 if character contains any of [ \t\r\n], otherwise 1.
- */
-int cblank1(const char *c)
-{
-   switch (*c)
-   {
-      case '\n':
-         hpx_lineno_++;
+         if (lno != NULL)
+            (*lno)++;
          /* fall through */
       case '\t':
       case '\r':
@@ -360,31 +349,57 @@ int cblank1(const char *c)
 }
 
 
-/*! Returns length if tag.
+/*! Returns length of tag.
  *  @param buf Pointer to buffer.
  *  @param len Length of buffer.
+ *  @param lno Pointer to line number counter. May be NULL.
  *  @return Lendth of tag content including '<' and '>'. If return value > len,
  *  the tag is unclosed.
  */
-int count_tag(bstringl_t b)
+int count_tag(bstringl_t b, long *lno)
 {
-   int i, c = 0;
+#define HPX_DOCTYPE 0x100
+   int i, c = HPX_ILL, sqcnt = 0;
 
+   // manage comments
    if ((b.len >= 7) && !strncmp(b.buf + 1, "!--", 3))
-      c = 1;
+      c = HPX_COMMENT;
+   // manage CDATA
+   if ((b.len >= 12) && !strncmp(b.buf + 1, "![CDATA[", 8))
+      c = HPX_CDATA;
+   // manage DOCTYPE sub entities
+   if ((b.len >= 10) && !strncasecmp(b.buf + 1 , "!DOCTYPE", 8) && (isspace(b.buf[9]) || (b.buf[9] == '>')))
+      c = HPX_DOCTYPE;
 
    for (i = 0; i < b.len; i++, b.buf++)
    {
       if (*b.buf == '>')
       {
-         if (!c)
+         if (c == HPX_ILL)
             break;
-         if ((i >= 7) && !strncmp(b.buf - 2, "--", 2))
+         if ((c == HPX_COMMENT) && (i >= 7) && !strncmp(b.buf - 2, "--", 2))
+            break;
+         if ((c == HPX_CDATA) && (i >= 12) && !strncmp(b.buf - 2, "]]", 2))
+            break;
+         if ((c == HPX_DOCTYPE) && !sqcnt)
             break;
          else
             continue;
       }
-      (void) cblank(b.buf);
+      // count square brackets in DOCTYPE
+      else if (c == HPX_DOCTYPE)
+         switch (*b.buf)
+         {
+            case '[':
+               sqcnt++;
+               break;
+
+            case ']':
+               sqcnt--;
+               break;
+         }
+
+      (void) cblank(b.buf, lno);
    }
 
    return i + 1;
@@ -394,9 +409,10 @@ int count_tag(bstringl_t b)
 /*! Returns length of literal.
  *  @param b Bstring_t of buffer to check.
  *  @param nbc Pointer to integer which counts non-blank characters.
+ *  @param lno Pointer to line number counter. May be NULL.
  *  @return Length of literal. Return value == len if literal is unclosed.
  */
-int count_literal(bstringl_t b, int *nbc)
+int count_literal(bstringl_t b, int *nbc, long *lno)
 {
    int i, t;
 
@@ -410,7 +426,7 @@ int count_literal(bstringl_t b, int *nbc)
       if (*b.buf == '<')
          break;
 
-      *nbc += cblank1(b.buf);
+      *nbc += cblank(b.buf, lno);
    }
 
    return i;
@@ -431,32 +447,53 @@ int hpx_proc_buf(hpx_ctrl_t *ctl, bstringl_t *b, long *lno)
    if (ctl->in_tag)
    {
       if (lno != NULL)
-         *lno = hpx_lineno_;
-      s = count_tag(*b);
+         *lno = ctl->lineno;
+      s = count_tag(*b, &ctl->lineno);
       if (s > b->len)
          return -1;
       b->len = s;
+
+      // check if it is a regular opening tag and preserve its name
+      if (IS_XML1CHAR(b->buf[1]))
+      {
+         ctl->last_open.buf = b->buf + 1;
+         for (ctl->last_open.len = 1; IS_XMLCHAR((unsigned) ctl->last_open.buf[ctl->last_open.len]) && (ctl->last_open.len < b->len - 2); ctl->last_open.len++);
+      }
+      else
+         ctl->last_open.len = 0;
    }
    else
    {
-      // skip leading white spaces
-      for (i = 0; i < b->len && !cblank(b->buf); i++)
-         bs_advancel(b);
-      if (i == b->len)
-         return -1;
-
       if (lno != NULL)
-         *lno = hpx_lineno_;
-      s = count_literal(*b, &n);
+         *lno = ctl->lineno;
+
+      s = count_literal(*b, &n, &ctl->lineno);
       // check if literal had no end tag (i.e. '<')
       if (s == b->len)
          return -1;
 
-      // cut trailing white spaces
-      //for (b->len = s; b->len && (b->buf[b->len - 1] == ' '); b->len--);
-      for (b->len = s; b->len && isspace((unsigned) b->buf[b->len - 1]); b->len--);
+      // !(check if we are within an opening tag and there's the corresponding closing tag)
+      if (!ctl->last_open.len || (b->len - s <= ctl->last_open.len + 2) || (b->buf[s + 1] != '/') || strncmp(&b->buf[s + 2], ctl->last_open.buf, ctl->last_open.len))
+      {
+         // reset line number
+         if (lno != NULL)
+            ctl->lineno = *lno;
+         // skip leading white spaces
+         for (i = 0; i < b->len && !cblank(b->buf, &ctl->lineno); i++)
+            bs_advancel(b);
+         if (i == b->len)
+            return -1;
 
-      s += i;
+         if (lno != NULL)
+            *lno = ctl->lineno;
+
+         // cut trailing white spaces
+         for (b->len = s - i; b->len && isspace((unsigned) b->buf[b->len - 1]); b->len--);
+      }
+      else
+         b->len = s;
+
+      ctl->last_open.len = 0;
    }
 
    return s;
@@ -477,11 +514,12 @@ static int hpx_madvise(void *addr, size_t length, int advice)
 }
 
 
-/*!
+/*! This function initializes the control structure which is the foundation for
+ * all other functions. Please note that memory mapping is the recommended
+ * method (see parameter len).
  *  @param fd Input file descriptor.
  *  @param len Read buffer length. If len is negative, the file is memory
  *  mapped with mmap(). This works only if it was compiled with WITH_MMAP.
- *  @param mattr Maximum number of attributes per tag.
  *  @return Pointer to allocated hpx_ctrl_t structure. On error NULL is
  *  returned and errno is set. If compiled without WITH_MMAP and hpx_init() is
  *  called with negative len parameter, NULL is returned and errno is set to
@@ -497,7 +535,7 @@ hpx_ctrl_t *hpx_init(int fd, long len)
    memset(ctl, 0, sizeof(*ctl));
    ctl->fd = fd;
    // init line counter
-   hpx_lineno_ = 1;
+   ctl->lineno = 1;
 
    if (len < 0)
    {
@@ -525,7 +563,7 @@ hpx_ctrl_t *hpx_init(int fd, long len)
                      MADV_WILLNEED) == -1)
          log_msg(LOG_ERR, "madvise(%p, %ld, MADV_WILLNEED) failed: %s",
                ctl->madv_ptr, ctl->pg_blk_siz, strerror(errno));
- 
+
       return ctl;
 #else
       errno = EINVAL;
@@ -556,6 +594,7 @@ void hpx_init_membuf(hpx_ctrl_t *ctl, void *buf, int len)
    ctl->buf.buf = buf;
    ctl->fd = -1;
    ctl->len = len;
+   ctl->lineno = 1;
 }
 
 
@@ -608,7 +647,6 @@ long hpx_get_eleml(hpx_ctrl_t *ctl, bstringl_t *b, int *in_tag, long *lno)
                if (hpx_madvise(ctl->madv_ptr - ctl->pg_blk_siz, ctl->pg_blk_siz, MADV_DONTNEED) == -1)
                   log_msg(LOG_ERR, "madvise(%p, %ld, MADV_DONTNEED) failed: %s",
                         ctl->madv_ptr - ctl->pg_blk_siz, ctl->pg_blk_siz, strerror(errno));
- 
             }
             ctl->madv_ptr += ctl->pg_blk_siz;
          }
