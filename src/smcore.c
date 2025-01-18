@@ -287,6 +287,7 @@ int apply_rule(osm_obj_t *o, smrule_t *r, int *ret)
 }
 
 
+#ifndef TH_COMBINED
 int apply_rule0(osm_obj_t *o, smrule_t *r)
 {
    int ret = 0;
@@ -294,6 +295,7 @@ int apply_rule0(osm_obj_t *o, smrule_t *r)
    (void) apply_rule(o, r, &ret);
    return ret;
 }
+#endif
 
 
 int apply_rule0_threaded(osm_obj_t *o, th_param_t *p)
@@ -301,7 +303,11 @@ int apply_rule0_threaded(osm_obj_t *o, th_param_t *p)
    int ret = 0;
 
    // execute rule only if object id is multiple of thread id
+#ifdef TH_COMBINED
+   if (!p->cnt || o->id % p->cnt == p->id)
+#else
    if (o->id % p->cnt == p->id)
+#endif
       (void) apply_rule(o, p->param, &ret);
    return ret;
 }
@@ -402,7 +408,15 @@ int apply_smrules(smrule_t *r, trv_info_t *ti)
       if (get_rdata()->nthreads > 0 && sm_is_threaded(r))
          e = traverse_queue(ti->objtree, 0, r->oo->type - 1, (tree_func_t) apply_rule0_threaded, r);
       else
+      {
+#ifdef TH_COMBINED
+         static th_param_t th = {NULL, NULL, 0, 0};
+         th.param = r;
+         e = traverse(ti->objtree, 0, r->oo->type - 1, (tree_func_t) apply_rule0_threaded, &th);
+#else
          e = traverse(ti->objtree, 0, r->oo->type - 1, (tree_func_t) apply_rule0, r);
+#endif
+      }
    }
    else
       log_debug("   -> no main function");
