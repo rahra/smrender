@@ -20,7 +20,7 @@
  * engine.
  *
  *  @author Bernhard R. Fischer
- *  @data 2025/01/14
+ *  @date 2025/01/23
  */
 
 #ifndef SMCORE_H
@@ -60,6 +60,13 @@ typedef struct th_param
    int cnt;                //!< total number of threads
 } th_param_t;
 
+//! Structure to pass rule and thread info to tree function.
+typedef struct smrule_threaded
+{
+   smrule_t r;
+   th_param_t *th;
+} smrule_threaded_t;
+
 // indexes to object tree
 enum {IDX_NODE, IDX_WAY, IDX_REL};
 
@@ -89,6 +96,8 @@ int sm_is_threaded(const smrule_t *);
 int get_ncpu(void);
 int init_threads(int);
 int get_thread_id(void);
+th_param_t *get_th_param(int);
+int get_nthreads(void);
 
 #endif
 

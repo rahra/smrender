@@ -19,7 +19,7 @@
  * This file contains the code for multi-threaded execution of rules.
  *
  * \author Bernhard R. Fischer, <bf@abenteuerland.at>
- * \version 2024/01/14
+ * \version 2024/01/23
  */
 
 #include <stdio.h>
@@ -128,6 +128,30 @@ int init_threads(int nthreads)
    smth_[nthreads].th_param.id = nthreads;
 
    return nthreads;
+}
+
+
+/*! This function returns a pointer to the th_param_t of the thread by id.
+ * @param n Id of thread, 0 <= n <= nthreads_.
+ * @return A pointer the the associated th_param_t.
+ */
+th_param_t *get_th_param(int n)
+{
+   if (n < 0)
+      n = 0;
+   else if (n > nthreads_)
+      n = nthreads_;
+
+   return &smth_[n].th_param;
+}
+
+
+/*! Return the number of threads.
+ * @return Returns the number of returns which is always >= 0.
+ */
+int get_nthreads(void)
+{
+   return nthreads_;
 }
 
 
