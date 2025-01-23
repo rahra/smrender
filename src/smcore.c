@@ -308,7 +308,10 @@ int apply_rule0_threaded(osm_obj_t *o, th_param_t *p)
 #else
    if ((unsigned) o->id % p->cnt == p->id)
 #endif
-      (void) apply_rule(o, p->param, &ret);
+   {
+      smrule_threaded_t *rth = ((smrule_threaded_t*) p->param) - p->cnt;
+      (void) apply_rule(o, &rth[p->id].r, &ret);
+   }
    return ret;
 }
 
@@ -333,20 +336,23 @@ int call_fini(smrule_t *r)
    // call de-initialization rule of function rule if available
    if (r->act->fini.func != NULL && !sm_is_flag_set(r, ACTION_FINISHED))
    {
-      log_msg(LOG_INFO, "calling rule %016lx, %s_fini", (long) r->oo->id, r->act->func_name);
-      if ((e = r->act->fini.func(r)))
-         log_debug("_fini returned %d", e);
-      sm_set_flag(r, ACTION_FINISHED);
-
       // if it is threaded execution and rule is threaded fini remaining thread rules
       int nth = get_nthreads();
       if (nth > 0 && sm_is_threaded(r))
       {
          smrule_threaded_t *rth = ((smrule_threaded_t*) r) - nth;
-         for (int i = 1; i < nth; i++)
-            if ((e = r->act->fini.func(r)))
+         for (int i = nth - 1; i > 0; i--)
+         {
+            log_msg(LOG_INFO, "calling rule %016lx, %s_fini()[%d]", (long) r->oo->id, r->act->func_name, i);
+            if ((e = r->act->fini.func(&rth[i].r)))
                log_debug("%s_fini()[%d] returned %d", r->act->func_name, i, e);
+         }
       }
+
+      log_msg(LOG_INFO, "calling rule %016lx, %s_fini", (long) r->oo->id, r->act->func_name);
+      if ((e = r->act->fini.func(r)))
+         log_debug("_fini returned %d", e);
+      sm_set_flag(r, ACTION_FINISHED);
    }
 
    return e;
