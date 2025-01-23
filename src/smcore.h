@@ -56,8 +56,8 @@ typedef struct th_param
 {
    tree_func_t dhandler;   //!< tree function
    void *param;            //!< parameter to pass to tree function
-   int id;                 //!< thread id
-   int cnt;                //!< total number of threads
+   unsigned id;            //!< thread id
+   unsigned cnt;           //!< total number of threads
 } th_param_t;
 
 //! Structure to pass rule and thread info to tree function.
@@ -97,6 +97,7 @@ int sm_is_threaded(const smrule_t *);
 int get_ncpu(void);
 int init_threads(int);
 int get_thread_id(void);
+int get_thread_id_by_oid(unsigned);
 th_param_t *get_th_param(int);
 int get_nthreads(void);
 

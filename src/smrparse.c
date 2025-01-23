@@ -319,6 +319,8 @@ static smrule_t *alloc_rule(int tcnt)
    // set action and thread_param in each rule block
    for (int i = 0; i <= nth; i++)
    {
+      rl[i].r.oo = NULL;
+      rl[i].r.data = NULL;
       rl[i].r.act = (action_t*) (rl + nth + 1);
       rl[i].th = get_th_param(i);
       rl[i].shared_data = &rl[nth].r.data;

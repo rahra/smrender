@@ -167,6 +167,12 @@ int get_thread_id(void)
 }
 
 
+int get_thread_id_by_oid(unsigned id)
+{
+   return id % nthreads_;
+}
+
+
 void __attribute__((destructor)) delete_threads(void)
 {
    int i;

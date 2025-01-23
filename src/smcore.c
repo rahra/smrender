@@ -304,9 +304,9 @@ int apply_rule0_threaded(osm_obj_t *o, th_param_t *p)
 
    // execute rule only if object id is multiple of thread id
 #ifdef TH_COMBINED
-   if (!p->cnt || o->id % p->cnt == p->id)
+   if (!p->cnt || (unsigned) o->id % p->cnt == p->id)
 #else
-   if (o->id % p->cnt == p->id)
+   if ((unsigned) o->id % p->cnt == p->id)
 #endif
       (void) apply_rule(o, p->param, &ret);
    return ret;
@@ -337,6 +337,16 @@ int call_fini(smrule_t *r)
       if ((e = r->act->fini.func(r)))
          log_debug("_fini returned %d", e);
       sm_set_flag(r, ACTION_FINISHED);
+
+      // if it is threaded execution and rule is threaded fini remaining thread rules
+      int nth = get_nthreads();
+      if (nth > 0 && sm_is_threaded(r))
+      {
+         smrule_threaded_t *rth = ((smrule_threaded_t*) r) - nth;
+         for (int i = 1; i < nth; i++)
+            if ((e = r->act->fini.func(r)))
+               log_debug("%s_fini()[%d] returned %d", r->act->func_name, i, e);
+      }
    }
 
    return e;
@@ -351,7 +361,24 @@ int call_ini(smrule_t *r)
    {
       log_msg(LOG_DEBUG, "calling %s_ini()", r->act->func_name);
       e = r->act->ini.func(r);
-      if (e < 0)
+
+      // if _ini was successful and it is threaded execution and rule is threaded init remaining thread rules
+      int nth = get_nthreads();
+      if (!e && nth > 0 && sm_is_threaded(r))
+      {
+         smrule_threaded_t *rth = ((smrule_threaded_t*) r) - nth;
+         rth[0].r.oo = r->oo;
+         rth[0].r.data = r->data;
+         for (int i = 1; i < nth; i++)
+         {
+            log_msg(LOG_DEBUG, "calling %s_ini()[%d]", r->act->func_name, i);
+            rth[i].r.oo = r->oo;
+            e = r->act->ini.func(&rth[i].r);
+            if (e)
+               log_msg(LOG_ERR, "%s_ini()[%d] returned %d.", r->act->func_name, i, e);
+         }
+      }
+      else if (e < 0)
       {
          log_msg(LOG_ERR, "%s_ini() failed: %d. Exiting.", r->act->func_name, e);
       }
@@ -405,7 +432,7 @@ int apply_smrules(smrule_t *r, trv_info_t *ti)
 
    if (r->act->main.func != NULL)
    {
-      if (get_rdata()->nthreads > 0 && sm_is_threaded(r))
+      if (get_nthreads() > 0 && sm_is_threaded(r))
          e = traverse_queue(ti->objtree, 0, r->oo->type - 1, (tree_func_t) apply_rule0_threaded, r);
       else
       {
