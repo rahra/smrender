@@ -19,7 +19,7 @@
  * This file contains almost all internal declarations.
  *
  * \author Bernhard R. Fischer, <bf@abenteuerland.at>
- * \version 2025/01/16
+ * \version 2025/01/23
  */
 #ifndef SMRENDER_DEV_H
 #define SMRENDER_DEV_H
@@ -368,6 +368,7 @@ int parse_color(const char *);
 void parse_col_spec(char *, struct col_spec *);
 int parse_style(const char *s);
 int parse_matchtag(struct otag *, struct stag *);
+void free_rule(smrule_t*);
 int init_rules(osm_obj_t*, void*);
 fparam_t **parse_fparam(char*);
 void free_fparam(fparam_t **);

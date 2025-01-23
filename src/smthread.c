@@ -126,6 +126,7 @@ int init_threads(int nthreads)
    // set values for main thread
    smth_[nthreads].rule_thread = pthread_self();
    smth_[nthreads].th_param.id = nthreads;
+   smth_[nthreads].th_param.cnt = nthreads;
 
    return nthreads;
 }

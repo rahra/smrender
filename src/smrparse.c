@@ -20,7 +20,7 @@
  * as well as the code for traversing the object (nodes/ways) tree.
  *
  * \author Bernhard R. Fischer, <bf@abenteuerland.at>
- * \date 2025/01/16
+ * \date 2025/01/23
  */
 #include <stdlib.h>
 #include <string.h>
@@ -300,18 +300,40 @@ int get_structor(void *lhandle, void **stor, const char *sym, const char *trail)
 }
 
 
-static smrule_t *alloc_rule(osm_obj_t *o)
+/*! Allocate memory for a rule for all threads.
+ * @param tcnt Number of tags in the object defining the rule.
+ * @return On success, the function returns a valid pointer. On error, NULL is
+ * returned and errno is set according to malloc(3).
+ */
+static smrule_t *alloc_rule(int tcnt)
 {
-   smrule_t *rl;
+   smrule_threaded_t *rl;
+   int nth = get_nthreads();
 
-   if ((rl = malloc(sizeof(smrule_t) + sizeof(action_t) + sizeof(struct stag) * o->tag_cnt)) == NULL)
+   if ((rl = malloc(sizeof(smrule_threaded_t) * (nth + 1) + sizeof(action_t) + sizeof(struct stag) * tcnt)) == NULL)
    {
       log_msg(LOG_ERR, "alloc_rule failed: %s", strerror(errno));
       return NULL; 
    }
 
-   rl->act = (action_t*) (rl + 1);
-   return rl;
+   // set action and thread_param in each rule block
+   for (int i = 0; i <= nth; i++)
+   {
+      rl[i].r.act = (action_t*) (rl + nth + 1);
+      rl[i].th = get_th_param(i);
+      rl[i].shared_data = &rl[nth].r.data;
+   }
+
+   return (smrule_t*) (&rl[nth]);
+}
+
+
+/*! Free a rule which was allocated by alloc_rule().
+ * @param r Pointer a rule as returned by alloc_rule().
+ */
+void free_rule(smrule_t *r)
+{
+   free(((smrule_threaded_t*) r) - get_nthreads());
 }
 
 
@@ -348,7 +370,7 @@ int init_rule(osm_obj_t *o, smrule_t **r)
 
    log_debug("initializing rule %"PRId64" (0x%016"PRIx64", %"PRId64")", o->id, o->id, o->id & 0x000000ffffffffff);
 
-   if ((*r = alloc_rule(o)) == NULL)
+   if ((*r = alloc_rule(o->tag_cnt)) == NULL)
       return -1;
 
    rl = *r;
@@ -445,6 +467,13 @@ int init_rule(osm_obj_t *o, smrule_t **r)
 }
 
 
+/*! This is the tree function to be called by traverse(). It initializes each
+ * rule in the tree p by calling init_rule().
+ * @param o Object to create a rule from.
+ * @param p Pointer to the tree of rules.
+ * @return The function returns 0 on success. On error it returns the return
+ * value of init_rule().
+ */
 int init_rules(osm_obj_t *o, void *p)
 {
    bx_node_t *bn;

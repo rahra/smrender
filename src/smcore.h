@@ -63,8 +63,9 @@ typedef struct th_param
 //! Structure to pass rule and thread info to tree function.
 typedef struct smrule_threaded
 {
-   smrule_t r;
-   th_param_t *th;
+   smrule_t r;             //!< rule per thread, act points to the same in all threads
+   void **shared_data;     //!< points to the same r.data as of the "main" thread
+   th_param_t *th;         //!< pointer to individual thread's th_param_t
 } smrule_threaded_t;
 
 // indexes to object tree

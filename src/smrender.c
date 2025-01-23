@@ -19,7 +19,7 @@
  * This file contains the main() function and main initialization functions.
  *
  *  \author Bernhard R. Fischer, <bf@abenteuerland.at>
- *  \date 2025/01/16
+ *  \date 2025/01/23
  */
 
 #ifdef HAVE_CONFIG_H
@@ -315,8 +315,7 @@ int free_rules(smrule_t *r, void * UNUSED(p))
 {
    free_obj(r->oo);
    free_fparam(r->act->fp);
-   // action must not be freed because it is part of the rule (see alloc_rule())
-   free(r);
+   free_rule(r);
    return 0;
 }
 

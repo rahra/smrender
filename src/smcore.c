@@ -19,7 +19,7 @@
  * This file contains the code of the main execution process.
  *
  *  \author Bernhard R. Fischer, <bf@abenteuerland.at>
- *  \date 2025/01/14
+ *  \date 2025/01/23
  */
 
 #ifdef HAVE_CONFIG_H
@@ -410,9 +410,8 @@ int apply_smrules(smrule_t *r, trv_info_t *ti)
       else
       {
 #ifdef TH_COMBINED
-         static th_param_t th = {NULL, NULL, 0, 0};
-         th.param = r;
-         e = traverse(ti->objtree, 0, r->oo->type - 1, (tree_func_t) apply_rule0_threaded, &th);
+         ((smrule_threaded_t*) r)->th->param = r;
+         e = traverse(ti->objtree, 0, r->oo->type - 1, (tree_func_t) apply_rule0_threaded, ((smrule_threaded_t*) r)->th);
 #else
          e = traverse(ti->objtree, 0, r->oo->type - 1, (tree_func_t) apply_rule0, r);
 #endif
