@@ -27,17 +27,6 @@ static int free_objects(osm_obj_t *o, void * UNUSED(p))
 }
 
 
-/*! Override threaded traversal function. It is called in smcore.c and defined
- * in smthread.c. The latter is not linked into smrenderd so we redefine it
- * here. parallel traversal does not make sense in smrenderd being a daemon
- * sequentially serving tree objects.
- */
-int traverse_queue(const bx_node_t *tree, int d, int idx, tree_func_t dhandler, void *p)
-{
-   return traverse(tree, d, idx, dhandler, p);
-}
-
-
 int main(int argc, char **argv)
 {
    char *osm_ifile = "/dev/stdin";
@@ -49,6 +38,7 @@ int main(int argc, char **argv)
    int fd = 0;
 
    (void) init_log("stderr", LOG_DEBUG);
+   (void) init_threads(0);
 
    if (argc > 1)
       osm_ifile = argv[1];
