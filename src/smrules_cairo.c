@@ -36,6 +36,7 @@
 #include <errno.h>
 #include <inttypes.h>
 #include <wctype.h>
+#include <wchar.h>
 #ifdef WITH_THREADS
 #include <pthread.h>
 #endif
@@ -1373,6 +1374,10 @@ int act_cap_ini(smrule_t *r)
    for (int i = 0; i < cap.klist.count; i++)
       log_debug("filter[%d] = '%s'", i, cap.klist.key[i]);
    memcpy(r->data, &cap, sizeof(cap));
+
+   if (!isnan(cap.angle))
+      sm_threaded(r);
+
    return 0;
 }
 
@@ -1391,6 +1396,7 @@ static void strupper(char *s)
 
 static int strupper(char *s)
 {
+   mbstate_t ps;
    wchar_t wc;
    char *su, *ss, *ostr = s;
    int wl, sl, len, ulen;
@@ -1401,15 +1407,17 @@ static int strupper(char *s)
 
    len = strlen(s);
    // add some spare bytes to upper string buffer to avoid overflow
-   ulen = len + 1 + MB_CUR_MAX;
+   ulen = len * MB_CUR_MAX + 1;
    if ((ss = su = malloc(ulen)) == NULL)
       return -1;
 
-   for (;;)
+   log_debug("starting mb conversion: len = %d, ulen = %d", len, ulen);
+   for (; len > 0;)
    {
-      if ((wl = mbtowc(&wc, s, len)) == -1)
+      memset(&ps, 0, sizeof(ps));
+      if ((wl = mbrtowc(&wc, s, len, &ps)) < 0)
       {
-         log_msg(LOG_ERR, "mbtowc() failed at '%s'", s);
+         log_msg(LOG_ERR, "mbrtowc() failed at '%s'", s);
          break;
       }
 
@@ -1428,7 +1436,8 @@ static int strupper(char *s)
          break;
       }
 
-      if ((sl = wctomb(ss, wc)) == -1)
+      memset(&ps, 0, sizeof(ps));
+      if ((sl = wcrtomb(ss, wc, &ps)) == -1)
       {
          log_msg(LOG_ERR, "wctomb() failed");
          break;
