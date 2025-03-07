@@ -1375,6 +1375,7 @@ int act_cap_ini(smrule_t *r)
       log_debug("filter[%d] = '%s'", i, cap.klist.key[i]);
    memcpy(r->data, &cap, sizeof(cap));
 
+   // FIXME: auto angle is not thread-safe yet
    if (!isnan(cap.angle))
       sm_threaded(r);
 

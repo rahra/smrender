@@ -26,6 +26,9 @@
 #include "config.h"
 #endif
 
+// Measure traversal and execution time. Works only in single-threaded mode.
+//#define DEBUG_T_TRV
+
 #include <inttypes.h>
 #include <signal.h>
 #include <stdlib.h>
@@ -33,6 +36,9 @@
 #include <string.h>
 #include <stdio.h>
 #include <unistd.h>
+#ifdef DEBUG_T_TRV
+#include <sys/time.h>
+#endif
 
 #include "smrender.h"
 #include "smcore.h"
@@ -45,7 +51,16 @@ volatile sig_atomic_t alarm_;
 extern int render_all_nodes_;
 //! Number of seconds after a message is logged during a traverse. This may be useful for huge datasets.
 int traverse_alarm_ = 60;
+#ifdef DEBUG_T_TRV
+uint64_t t_trv_ = 0, t_exec_ = 0;
+#endif
 
+#ifdef DEBUG_T_TRV
+void __attribute__((destructor)) print_trv_time(void)
+{
+   log_msg(LOG_DEBUG, "t_trv_ = %lu.%lu, t_exec_ = %lu.%lu", t_trv_ / 1000000, (t_trv_ % 1000000) / 1000, t_exec_ / 1000000, (t_exec_ % 1000000) / 1000);
+}
+#endif
 
 //#define ADD_RULE_TAG
 #ifdef ADD_RULE_TAG
@@ -525,6 +540,10 @@ int traverse(const bx_node_t *nt, int d, int idx, tree_func_t dhandler, void *p)
    static int sig_msg = 0;
    char buf[32];
    static long _leaf_cnt;
+#ifdef DEBUG_T_TRV
+   struct timeval tv;
+   static uint64_t _t_last, _t_cur;
+#endif
 
    // handle CTRL-C
    if (int_)
@@ -542,6 +561,10 @@ int traverse(const bx_node_t *nt, int d, int idx, tree_func_t dhandler, void *p)
    {
       alarm(traverse_alarm_);
       _leaf_cnt = 0;
+#ifdef DEBUG_T_TRV
+      gettimeofday(&tv, NULL);
+      _t_last = tv.tv_sec * 1000000 + tv.tv_usec;
+#endif
    }
 
    // handler timer alarm
@@ -585,7 +608,24 @@ int traverse(const bx_node_t *nt, int d, int idx, tree_func_t dhandler, void *p)
          if (nt->next[i] != NULL)
          {
             _leaf_cnt++;
-            if ((e = dhandler(nt->next[i], p)))
+
+#ifdef DEBUG_T_TRV
+            gettimeofday(&tv, NULL);
+            _t_cur = tv.tv_sec * 1000000 + tv.tv_usec;
+            t_trv_ += _t_cur - _t_last;
+            _t_last = _t_cur;
+#endif
+
+            e = dhandler(nt->next[i], p);
+
+#ifdef DEBUG_T_TRV
+            gettimeofday(&tv, NULL);
+            _t_cur = tv.tv_sec * 1000000 + tv.tv_usec;
+            t_exec_ += _t_cur - _t_last;
+            _t_last = _t_cur;
+#endif
+
+            if (e)
             {
                (void) func_name(buf, sizeof(buf), dhandler);
                log_msg(LOG_WARNING, "dhandler(), sym = '%s', addr = '%p' returned %d", buf, dhandler, e);
@@ -609,7 +649,15 @@ int traverse(const bx_node_t *nt, int d, int idx, tree_func_t dhandler, void *p)
 
    // disable timer before exit of last traverseal
    if (!d)
-         alarm(0);
+   {
+      alarm(0);
+#ifdef DEBUG_T_TRV
+      gettimeofday(&tv, NULL);
+      _t_cur = tv.tv_sec * 1000000 + tv.tv_usec;
+      t_trv_ += _t_cur - _t_last;
+      _t_last = _t_cur;
+#endif
+   }
 
    return 0;
 }
