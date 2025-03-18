@@ -26,6 +26,9 @@ AC_DEFINE([WITH_THREADS], [], [enable multi-threading])
 AC_ARG_ENABLE([threads], [AS_HELP_STRING([--enable-threads],[compile with pthreads support])],
    AC_DEFINE([WITH_THREADS], [], [enable multi-threading]))
 
+# experimental thread variants
+AC_DEFINE([TH_OBJ_LIST], [], [use threaded apply_rules (called from within traverse() but with a collected obj list)])
+
 AC_ARG_WITH([cairo], [AS_HELP_STRING([--without-cairo], [disable support for libcairo])], [], [with_cairo=yes])
 AC_ARG_WITH([fontconfig], [AS_HELP_STRING([--without-fontconfig], [disable support for fontconfig])], [], [with_fontconfig=yes])
 AC_ARG_WITH([libjpeg], [AS_HELP_STRING([--without-libjpeg], [disable support for libjpeg])], [], [with_libjpeg=yes])
@@ -83,7 +86,7 @@ AC_SEARCH_LIBS([sin], [m])
 AC_SEARCH_LIBS([dlopen], [dl])
 #AC_SEARCH_LIBS([RAND_bytes], [crypto])
 
-AC_CHECK_FUNCS([strptime dladdr mbtowc execvpe getopt_long madvise posix_madvise])
+AC_CHECK_FUNCS([strptime dladdr mbtowc mbrtowc execvpe getopt_long madvise posix_madvise])
 
 PKG_CHECK_MODULES([GLIB], [glib-2.0],
                   [AC_DEFINE([HAVE_GLIB], [1], [using glib version check])],

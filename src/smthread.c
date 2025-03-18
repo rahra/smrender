@@ -37,30 +37,20 @@
 #define SM_THREAD_EXIT -1
 
 
-typedef struct sm_thread
-{
-   const bx_node_t *tree;  // tree to traverse
-   int depth;                 //!< depth to start traversal at
-   int idx;                // leaf index
-   th_param_t th_param;    //!< parameter to dhandler
-   int result;             // result of dhandler
-   int status;             // state of process (EXEC/WAIT/EXIT)
-   pthread_t rule_thread;
-} sm_thread_t;
-
-
-void *sm_traverse_thread(sm_thread_t*);
+void *sm_thread_loop(sm_thread_t*);
 
 //! mutex for thread structures
 static pthread_mutex_t mmutex_ = PTHREAD_MUTEX_INITIALIZER;
 //! condition of main thread
 static pthread_cond_t mcond_ = PTHREAD_COND_INITIALIZER;
-//! condition of rule threads
-static pthread_cond_t tcond_ = PTHREAD_COND_INITIALIZER;
 //! pointer to thread structures
 static sm_thread_t *smth_ = NULL;
 //! total number of threads
 static int nthreads_ = 0;
+//! max number of objs in obj list
+static int obj_max_ = 1024;
+//! current thread id to queue objects to
+static int cur_id_ = -1;
 
 
 /*! This function reads the number of CPUs from /proc/cpuinfo and returns it.
@@ -109,14 +99,26 @@ int init_threads(int nthreads)
       smth_ = &_smth;
    }
 
+   if ((smth_[0].obj = malloc(sizeof(*smth_[0].obj) * obj_max_ * (nthreads + 1))) == NULL)
+   {
+      free(smth_);
+      log_errno(LOG_ERR, "malloc() failed");
+      log_msg(LOG_NOTICE, "continuing without threads");
+      nthreads = 0;
+      memset(&_smth, 0, sizeof(_smth));
+      smth_ = &_smth;
+   }
+
    nthreads_ = nthreads;
    for (i = 0; i < nthreads; i++)
    {
       smth_[i].status = SM_THREAD_WAIT;
-      smth_[i].th_param.id = i;
-      smth_[i].th_param.cnt = nthreads;
+      smth_[i].id = i;
+      smth_[i].cnt = nthreads;
+      smth_[i].obj = smth_[0].obj + obj_max_ * i;
+      pthread_cond_init(&smth_[i].cond, NULL);
       // FIXME: error handling should be improved!
-      if ((e = pthread_create(&smth_[i].rule_thread, NULL, (void*(*)(void*)) sm_traverse_thread, &smth_[i])))
+      if ((e = pthread_create(&smth_[i].thandle, NULL, (void*(*)(void*)) sm_thread_loop, &smth_[i])))
       {
          log_msg(LOG_ERR, "pthread_create() failed: %s", strerror(e));
          smth_[i].status = SM_THREAD_EXIT;
@@ -124,26 +126,12 @@ int init_threads(int nthreads)
    }
 
    // set values for main thread
-   smth_[nthreads].rule_thread = pthread_self();
-   smth_[nthreads].th_param.id = nthreads;
-   smth_[nthreads].th_param.cnt = nthreads;
+   smth_[nthreads].thandle = pthread_self();
+   smth_[nthreads].id = nthreads;
+   smth_[nthreads].cnt = nthreads;
+   smth_[nthreads].obj = smth_[0].obj + obj_max_ * nthreads;
 
    return nthreads;
-}
-
-
-/*! This function returns a pointer to the th_param_t of the thread by id.
- * @param n Id of thread, 0 <= n <= nthreads_.
- * @return A pointer the the associated th_param_t.
- */
-th_param_t *get_th_param(int n)
-{
-   if (n < 0)
-      n = 0;
-   else if (n > nthreads_)
-      n = nthreads_;
-
-   return &smth_[n].th_param;
 }
 
 
@@ -162,14 +150,14 @@ int get_nthreads(void)
 int get_thread_id(void)
 {
    int i = 0;
-   for (pthread_t id = pthread_self(); i < nthreads_ && id != smth_[i].rule_thread; i++);
-   return smth_[i].th_param.id;
+   for (pthread_t id = pthread_self(); i < nthreads_ && !pthread_equal(id, smth_[i].thandle); i++);
+   return smth_[i].id;
 }
 
 
-int get_thread_id_by_oid(unsigned id)
+sm_thread_t *get_th_param(int n)
 {
-   return id % nthreads_;
+   return &smth_[n];
 }
 
 
@@ -182,22 +170,27 @@ void __attribute__((destructor)) delete_threads(void)
    // instruct all threads to exit
    pthread_mutex_lock(&mmutex_);
    for (i = 0; i < nthreads_; i++)
+   {
       smth_[i].status = SM_THREAD_EXIT;
-   pthread_cond_broadcast(&tcond_);
+      pthread_cond_signal(&smth_[i].cond);
+   }
    pthread_mutex_unlock(&mmutex_);
 
    // join all threads
    for (i = 0; i < nthreads_; i++)
-      pthread_join(smth_[i].rule_thread, NULL);
+   {
+      pthread_join(smth_[i].thandle, NULL);
+      pthread_cond_destroy(&smth_[i].cond);
+   }
 
    free(smth_);
 }
 
 
-void *sm_traverse_thread(sm_thread_t *smth)
+void *sm_thread_loop(sm_thread_t *smth)
 {
    sigset_t sset;
-   int e;
+   int e, res;
 
    sigemptyset(&sset);
    if ((e = pthread_sigmask(SIG_BLOCK, &sset, NULL)))
@@ -205,6 +198,7 @@ void *sm_traverse_thread(sm_thread_t *smth)
 
    for (;;)
    {
+      log_debug("thread %d waiting for objects", smth->id);
       pthread_mutex_lock(&mmutex_);
       while (smth->status != SM_THREAD_EXEC)
       {
@@ -213,15 +207,22 @@ void *sm_traverse_thread(sm_thread_t *smth)
             pthread_mutex_unlock(&mmutex_);
             return NULL;
          }
-         pthread_cond_wait(&tcond_, &mmutex_);
+         pthread_cond_wait(&smth->cond, &mmutex_);
       }
       pthread_mutex_unlock(&mmutex_);
 
       // execute rule
-      log_debug("thread %d executing action", smth->th_param.id);
-      smth->result = traverse(smth->tree, smth->depth, smth->idx, smth->th_param.dhandler, &smth->th_param);
+#if defined(TH_OBJ_LIST)
+      log_debug("processing object list");
+      for (res = 0; !res && smth->obj_cnt;)
+      {
+         smth->obj_cnt--;
+         res = smth->main(smth->param, smth->obj[smth->obj_cnt]);
+      }
+#endif
 
       pthread_mutex_lock(&mmutex_);
+      smth->result = res;
       smth->status = SM_THREAD_WAIT;
       pthread_cond_signal(&mcond_);
       pthread_mutex_unlock(&mmutex_);
@@ -231,61 +232,119 @@ void *sm_traverse_thread(sm_thread_t *smth)
 }
 
 
-void sm_wait_threads(void)
+/*! This function blocks as long as at least one thread is execution, i.e. its
+ * state == SM_THREAD_EXEC. The mutex mmutex_ must be acquired before calling
+ * this function.
+ */
+void block_while_exec(void)
 {
-   int i;
-
-   log_debug("waiting for all threads to finish action");
-   for (i = 0; i < nthreads_; i++)
+   for (int i = 0;;)
    {
-      pthread_mutex_lock(&mmutex_);
-      while (smth_[i].status == SM_THREAD_EXEC)
-         pthread_cond_wait(&mcond_, &mmutex_);
-      pthread_mutex_unlock(&mmutex_);
+      for (; i < nthreads_ && smth_[i].status != SM_THREAD_EXEC; i++);
+
+      if (i >= nthreads_)
+         return;
+
+      pthread_cond_wait(&mcond_, &mmutex_);
    }
 }
 
 
-int traverse_queue(const bx_node_t *tree, int d, int idx, tree_func_t dhandler, void *p)
+/*! Wait for all threads to finish execution, i.e. their state becomes !=
+ * SM_THREAD_EXEC.
+ */
+void sm_wait_threads(void)
 {
-   int i, res;
-
-   // init thread parameters
+   log_debug("waiting for all threads to finish action");
    pthread_mutex_lock(&mmutex_);
-   for (i = 0; i < nthreads_; i++)
-   {
-      // safety check
-      if (smth_[i].status != SM_THREAD_WAIT)
-         log_msg(LOG_ERR, "thread %d not ready!", smth_[i].th_param.id);
-
-      smth_[i].tree = tree;
-      smth_[i].depth = d;
-      smth_[i].idx = idx;
-      smth_[i].th_param.dhandler = dhandler;
-      smth_[i].th_param.param = p;
-      smth_[i].status = SM_THREAD_EXEC;
-   }
-   // signal threads to start
-   pthread_cond_broadcast(&tcond_);
+   block_while_exec();
    pthread_mutex_unlock(&mmutex_);
+   log_debug("threads ready");
+}
 
-   // wait for all threads to finish
-   sm_wait_threads();
 
-   // collect results
-   res = 0;
+/*! This function returns the number if a free (not working) thread, i.e. whose
+ * status is SM_THREAD_WAIT. If no thread is ready it waits for the condition
+ * to be signalled.
+ * @return Returns the number of the thread which is 0 <= n < nthreads_.
+ */
+int get_free_thread(void)
+{
+   for (;;)
+   {
+      for (int i = 0; i < nthreads_; i++)
+         if (smth_[i].status == SM_THREAD_WAIT)
+            return i;
+      pthread_cond_wait(&mcond_, &mmutex_);
+   }
+}
+
+
+void obj_queue_ini(int (*main)(void*, osm_obj_t*), void *p)
+{
+   cur_id_ = -1;
    pthread_mutex_lock(&mmutex_);
-   for (i = 0; i < nthreads_; i++)
+   for (int n = 0; n < nthreads_; n++)
    {
-      // prefer most negative value
-      if (smth_[i].result < 0 && smth_[i].result < res)
-         res = smth_[i].result;
-      // otherwise get most positive value
-      else if (res >= 0 && smth_[i].result > res)
-         res = smth_[i].result;
+      smth_[n].main = main;
+      smth_[n].param = p;
+      //smth_[n].obj_cnt = 0;
    }
    pthread_mutex_unlock(&mmutex_);
+}
 
-   return res;
+
+int obj_queue(osm_obj_t *obj)
+{
+   int res;
+
+   if (cur_id_ < 0)
+   {
+      pthread_mutex_lock(&mmutex_);
+      cur_id_ = get_free_thread();
+
+      // save previous result
+      if ((res = smth_[cur_id_].result))
+      {
+         smth_[cur_id_].obj_cnt = 0;
+         smth_[cur_id_].result = 0;
+         smth_[cur_id_].status = SM_THREAD_WAIT;
+         pthread_mutex_unlock(&mmutex_);
+         return res;
+      }
+      pthread_mutex_unlock(&mmutex_);
+   }
+
+   // add obj to obj list
+   smth_[cur_id_].obj[smth_[cur_id_].obj_cnt++] = obj;
+
+   if (smth_[cur_id_].obj_cnt >= obj_max_)
+   {
+      log_debug("signalling thread %d to process objects", cur_id_);
+      // signal threads to start
+      pthread_mutex_lock(&mmutex_);
+      smth_[cur_id_].status = SM_THREAD_EXEC;
+      pthread_cond_signal(&smth_[cur_id_].cond);
+      pthread_mutex_unlock(&mmutex_);
+
+      cur_id_ = -1;
+   }
+
+   return 0;
+}
+
+
+void obj_queue_signal(void)
+{
+   //FIXME: check result
+   log_debug("signalling threads for remaining objects");
+   pthread_mutex_lock(&mmutex_);
+   for (int n = 0; n < nthreads_; n++)
+      if (smth_[n].obj_cnt && smth_[n].status == SM_THREAD_WAIT)
+      {
+         smth_[n].status = SM_THREAD_EXEC;
+         pthread_cond_signal(&smth_[n].cond);
+      }
+   pthread_mutex_unlock(&mmutex_);
 }
 

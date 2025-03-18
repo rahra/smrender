@@ -310,7 +310,7 @@ static smrule_t *alloc_rule(int tcnt)
    smrule_threaded_t *rl;
    int nth = get_nthreads();
 
-   if ((rl = malloc(sizeof(smrule_threaded_t) * (nth + 1) + sizeof(action_t) + sizeof(struct stag) * tcnt)) == NULL)
+   if ((rl = calloc(1, sizeof(smrule_threaded_t) * (nth + 1) + sizeof(action_t) + sizeof(struct stag) * tcnt)) == NULL)
    {
       log_msg(LOG_ERR, "alloc_rule failed: %s", strerror(errno));
       return NULL; 
@@ -319,8 +319,6 @@ static smrule_t *alloc_rule(int tcnt)
    // set action and thread_param in each rule block
    for (int i = 0; i <= nth; i++)
    {
-      rl[i].r.oo = NULL;
-      rl[i].r.data = NULL;
       rl[i].r.act = (action_t*) (rl + nth + 1);
       rl[i].th = get_th_param(i);
       rl[i].shared_data = &rl[nth].r.data;

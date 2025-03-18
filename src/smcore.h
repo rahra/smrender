@@ -51,21 +51,27 @@ typedef struct trv_info
    long ver;
 } trv_info_t;
 
-//! Structure to pass parameter to tree function including the thread id.
-typedef struct th_param
+//! Structure to handle thread
+typedef struct sm_thread
 {
-   tree_func_t dhandler;   //!< tree function
+   int (*main)(void*, osm_obj_t*);  //!< function to execute (this.main())
    void *param;            //!< parameter to pass to tree function
+   void **obj;             //!< list of objects
+   int obj_cnt;            //!< number of elements in object list
    unsigned id;            //!< thread id
    unsigned cnt;           //!< total number of threads
-} th_param_t;
+   int result;             //!< result of this.main()
+   int status;             //!< state of process (EXEC/WAIT/EXIT)
+   pthread_t thandle;      //!< thread handle
+   pthread_cond_t cond;    //!< condition of thread
+} sm_thread_t;
 
 //! Structure to pass rule and thread info to tree function.
 typedef struct smrule_threaded
 {
    smrule_t r;             //!< rule per thread, act points to the same in all threads
    void **shared_data;     //!< points to the same r.data as of the "main" thread
-   th_param_t *th;         //!< pointer to individual thread's th_param_t
+   sm_thread_t *th;        //!< pointer to individual thread's th_param_t
 } smrule_threaded_t;
 
 // indexes to object tree
@@ -85,20 +91,20 @@ int find_shared_node_by_rev(osm_obj_t **, void *);
 int apply_smrules(smrule_t *, trv_info_t *);
 int apply_smrules0(osm_obj_t*, smrule_t*);
 int apply_rule(osm_obj_t*, smrule_t*, int*);
-int apply_rule_threaded(osm_obj_t*, th_param_t*);
 int call_fini(smrule_t*);
 int call_ini(smrule_t*);
 
 
 /* smthread.c */
 void sm_wait_threads(void);
-int traverse_queue(const bx_node_t *, int, int, tree_func_t, void *);
+void obj_queue_ini(int (*)(void*, osm_obj_t*), void *);
+int obj_queue(osm_obj_t *);
+void obj_queue_signal(void);
 int sm_is_threaded(const smrule_t *);
 int get_ncpu(void);
 int init_threads(int);
 int get_thread_id(void);
-int get_thread_id_by_oid(unsigned);
-th_param_t *get_th_param(int);
+sm_thread_t *get_th_param(int);
 int get_nthreads(void);
 
 #endif

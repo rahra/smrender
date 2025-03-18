@@ -289,6 +289,11 @@ int apply_rule(osm_obj_t *o, smrule_t *r, int *ret)
       return ERULE_EXECUTED;
 
    // call function with this object
+#ifdef TH_OBJ_LIST
+   if (get_nthreads() > 0 && sm_is_threaded(r))
+      i = obj_queue(o);
+   else
+#endif
    i = r->act->main.func(r, o);
    if (ret != NULL)
       *ret = i;
@@ -302,31 +307,11 @@ int apply_rule(osm_obj_t *o, smrule_t *r, int *ret)
 }
 
 
-#ifndef TH_COMBINED
 int apply_rule0(osm_obj_t *o, smrule_t *r)
 {
    int ret = 0;
 
    (void) apply_rule(o, r, &ret);
-   return ret;
-}
-#endif
-
-
-int apply_rule0_threaded(osm_obj_t *o, th_param_t *p)
-{
-   int ret = 0;
-
-   // execute rule only if object id is multiple of thread id
-#ifdef TH_COMBINED
-   if (!p->cnt || (unsigned) o->id % p->cnt == p->id)
-#else
-   if ((unsigned) o->id % p->cnt == p->id)
-#endif
-   {
-      smrule_threaded_t *rth = ((smrule_threaded_t*) p->param) - p->cnt;
-      (void) apply_rule(o, &rth[p->id].r, &ret);
-   }
    return ret;
 }
 
@@ -351,7 +336,8 @@ int call_fini(smrule_t *r)
    // call de-initialization rule of function rule if available
    if (r->act->fini.func != NULL && !sm_is_flag_set(r, ACTION_FINISHED))
    {
-      // if it is threaded execution and rule is threaded fini remaining thread rules
+      sm_wait_threads();
+      // if it is threaded execution and rule is threaded, fini remaining thread rules
       int nth = get_nthreads();
       if (nth > 0 && sm_is_threaded(r))
       {
@@ -453,17 +439,13 @@ int apply_smrules(smrule_t *r, trv_info_t *ti)
 
    if (r->act->main.func != NULL)
    {
-      if (get_nthreads() > 0 && sm_is_threaded(r))
-         e = traverse_queue(ti->objtree, 0, r->oo->type - 1, (tree_func_t) apply_rule0_threaded, r);
-      else
-      {
-#ifdef TH_COMBINED
-         ((smrule_threaded_t*) r)->th->param = r;
-         e = traverse(ti->objtree, 0, r->oo->type - 1, (tree_func_t) apply_rule0_threaded, ((smrule_threaded_t*) r)->th);
-#else
-         e = traverse(ti->objtree, 0, r->oo->type - 1, (tree_func_t) apply_rule0, r);
+#ifdef TH_OBJ_LIST
+      obj_queue_ini(r->act->main.func, r);
 #endif
-      }
+      e = traverse(ti->objtree, 0, r->oo->type - 1, (tree_func_t) apply_rule0, r);
+#ifdef TH_OBJ_LIST
+      obj_queue_signal();
+#endif
    }
    else
       log_debug("   -> no main function");
