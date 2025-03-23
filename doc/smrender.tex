@@ -1187,7 +1187,7 @@ right and above of the lower left page corner.
 
 The action \textsf{set\_tags} allows to add an arbitrary number of OSM tags to an
 object. The tags have to be defined through an object within the rules file.
-This object may have no action tag. The template should have an id because
+This object must not have an action tag. The template should have an id because
 the action \textsf{set\_tags} needs to have a reference to it. The format simply
 looks like the following.
 
@@ -1199,6 +1199,9 @@ looks like the following.
 
 Please note that the object type of the rule must be the same as the object
 type of the template.
+
+Have a look at \textsf{strfmt} in Section \ref{\label{sec:act-strfmt}} which
+allows you to dynamically construct and add tags to objects.
 
 \paragraph{Example} The following example adds the tags
 \textsf{natural=coastline} and \textsf{foo=bar} to all ways which have the tags
@@ -1286,6 +1289,8 @@ This action is intended to create formatted strings out of a set of tags. It
 works in a similar but yet more simple manner as \textsf{printf(3)} does. The
 newly constructed string will be added as a new tag to the OSM object. This
 tag may then be used to match on in subsequent rules.
+
+If the tag already exists in an object it will be overwritten.
 
 \begin{verbatim}
    <action>       := 'strfmt:' <param>
