@@ -48,7 +48,7 @@ static sm_thread_t *smth_ = NULL;
 //! total number of threads
 static int nthreads_ = 0;
 //! max number of objs in obj list
-static int obj_max_ = 1024;
+static int obj_max_ = 32;
 //! current thread id to queue objects to
 static int cur_id_ = -1;
 
@@ -217,6 +217,7 @@ void *sm_thread_loop(sm_thread_t *smth)
       for (res = 0; !res && smth->obj_cnt;)
       {
          smth->obj_cnt--;
+         smth->call_cnt++;
          res = smth->main(smth->param, smth->obj[smth->obj_cnt]);
       }
 #endif
@@ -289,6 +290,7 @@ void obj_queue_ini(int (*main)(void*, osm_obj_t*), void *p)
       smth_[n].main = main;
       smth_[n].param = p;
       //smth_[n].obj_cnt = 0;
+      smth_[n].call_cnt = 0;
    }
    pthread_mutex_unlock(&mmutex_);
 }

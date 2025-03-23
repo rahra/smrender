@@ -62,6 +62,7 @@ typedef struct sm_thread
    unsigned cnt;           //!< total number of threads
    int result;             //!< result of this.main()
    int status;             //!< state of process (EXEC/WAIT/EXIT)
+   unsigned call_cnt;      //!< stats: counts how often this.main() is called
    pthread_t thandle;      //!< thread handle
    pthread_cond_t cond;    //!< condition of thread
 } sm_thread_t;

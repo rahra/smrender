@@ -52,8 +52,9 @@ extern int render_all_nodes_;
 //! Number of seconds after a message is logged during a traverse. This may be useful for huge datasets.
 int traverse_alarm_ = 60;
 #ifdef DEBUG_T_TRV
-uint64_t t_trv_ = 0, t_exec_ = 0;
+static uint64_t t_trv_ = 0, t_exec_ = 0;
 #endif
+static uint64_t t_apply_ = 0;    //!< to measure execution time (only relevant for stats)
 
 #ifdef DEBUG_T_TRV
 void __attribute__((destructor)) print_trv_time(void)
@@ -294,7 +295,10 @@ int apply_rule(osm_obj_t *o, smrule_t *r, int *ret)
       i = obj_queue(o);
    else
 #endif
-   i = r->act->main.func(r, o);
+   {
+      ((smrule_threaded_t*) r)->th->call_cnt++;
+      i = r->act->main.func(r, o);
+   }
    if (ret != NULL)
       *ret = i;
 
@@ -336,7 +340,7 @@ int call_fini(smrule_t *r)
    // call de-initialization rule of function rule if available
    if (r->act->fini.func != NULL && !sm_is_flag_set(r, ACTION_FINISHED))
    {
-      sm_wait_threads();
+     // sm_wait_threads();
       // if it is threaded execution and rule is threaded, fini remaining thread rules
       int nth = get_nthreads();
       if (nth > 0 && sm_is_threaded(r))
@@ -347,12 +351,14 @@ int call_fini(smrule_t *r)
             log_msg(LOG_INFO, "calling rule %016lx, %s_fini()[%d]", (long) r->oo->id, r->act->func_name, i);
             if ((e = r->act->fini.func(&rth[i].r)))
                log_debug("%s_fini()[%d] returned %d", r->act->func_name, i, e);
+            log_debug("main() was called %u times", rth[i].th->call_cnt);
          }
       }
 
       log_msg(LOG_INFO, "calling rule %016lx, %s_fini", (long) r->oo->id, r->act->func_name);
       if ((e = r->act->fini.func(r)))
          log_debug("_fini returned %d", e);
+      log_debug("main() was called %u times", ((smrule_threaded_t*)r)->th->call_cnt);
       sm_set_flag(r, ACTION_FINISHED);
    }
 
@@ -442,10 +448,16 @@ int apply_smrules(smrule_t *r, trv_info_t *ti)
 #ifdef TH_OBJ_LIST
       obj_queue_ini(r->act->main.func, r);
 #endif
+      struct timeval tv;
+      gettimeofday(&tv, NULL);
+      tv_apply_ = tv.tv_usec + tv_tv_sec * 1000000;
       e = traverse(ti->objtree, 0, r->oo->type - 1, (tree_func_t) apply_rule0, r);
 #ifdef TH_OBJ_LIST
       obj_queue_signal();
+      sm_wait_threads();
 #endif
+      gettimeofday(&tv, NULL);
+      tv_apply_ = tv.tv_usec + tv_tv_sec * 1000000 - tv_apply_;
    }
    else
       log_debug("   -> no main function");
