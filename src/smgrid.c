@@ -839,7 +839,7 @@ static char dirc(double a0, const char *circt)
 
 static double frac(double a)
 {
-   return a - floor(a);
+   return a - trunc(a);
 }
 
 
@@ -899,14 +899,14 @@ osm_way_t *circle(double a0, double g, int cnt, char *circt, double (*cfunc)(dou
          snprintf(buf, sizeof(buf), "%f", lon);
          set_const_tag(&n->obj.otag[6], "lon:dec", strdup(buf));
 
-         snprintf(buf, sizeof(buf), "%d", (int) (frac(lat) * 60));
+         snprintf(buf, sizeof(buf), "%d", (int) fabs(frac(lat) * 60));
          set_const_tag(&n->obj.otag[7], "lat:min", strdup(buf));
-         snprintf(buf, sizeof(buf), "%d", (int) (frac(lon) * 60));
+         snprintf(buf, sizeof(buf), "%d", (int) fabs(frac(lon) * 60));
          set_const_tag(&n->obj.otag[8], "lon:min", strdup(buf));
 
-         snprintf(buf, sizeof(buf), "%d° %02d′", (int) lat, (int) (frac(lat) * 60));
+         snprintf(buf, sizeof(buf), "%d° %02d′", (int) lat, (int) fabs(frac(lat) * 60));
          set_const_tag(&n->obj.otag[9], "lat:str", strdup(buf));
-         snprintf(buf, sizeof(buf), "%d° %02d′", (int) lon, (int) (frac(lon) * 60));
+         snprintf(buf, sizeof(buf), "%d° %02d′", (int) lon, (int) fabs(frac(lon) * 60));
          set_const_tag(&n->obj.otag[10], "lon:str", strdup(buf));
 
          (void) cfunc(&n->lat, &n->lon, a0, b);
