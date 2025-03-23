@@ -36,9 +36,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <unistd.h>
-#ifdef DEBUG_T_TRV
-#include <sys/time.h>
-#endif
+#include <sys/time.h>   // gettimeofday
 
 #include "smrender.h"
 #include "smcore.h"
@@ -450,14 +448,14 @@ int apply_smrules(smrule_t *r, trv_info_t *ti)
 #endif
       struct timeval tv;
       gettimeofday(&tv, NULL);
-      tv_apply_ = tv.tv_usec + tv_tv_sec * 1000000;
+      t_apply_ = tv.tv_usec + tv.tv_sec * 1000000;
       e = traverse(ti->objtree, 0, r->oo->type - 1, (tree_func_t) apply_rule0, r);
 #ifdef TH_OBJ_LIST
       obj_queue_signal();
       sm_wait_threads();
 #endif
       gettimeofday(&tv, NULL);
-      tv_apply_ = tv.tv_usec + tv_tv_sec * 1000000 - tv_apply_;
+      t_apply_ = tv.tv_usec + tv.tv_sec * 1000000 - t_apply_;
    }
    else
       log_debug("   -> no main function");
