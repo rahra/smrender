@@ -1376,7 +1376,7 @@ int act_cap_ini(smrule_t *r)
    memcpy(r->data, &cap, sizeof(cap));
 
    // FIXME: auto angle is not thread-safe yet
-   if (!isnan(cap.angle))
+   if (0 && !isnan(cap.angle))
       sm_threaded(r);
 
    return 0;

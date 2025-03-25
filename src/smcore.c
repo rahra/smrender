@@ -52,7 +52,10 @@ int traverse_alarm_ = 60;
 #ifdef DEBUG_T_TRV
 static uint64_t t_trv_ = 0, t_exec_ = 0;
 #endif
+#define DEBUG_T_APPLY
+#ifdef DEBUG_T_APPLY
 static uint64_t t_apply_ = 0;    //!< to measure execution time (only relevant for stats)
+#endif
 
 #ifdef DEBUG_T_TRV
 void __attribute__((destructor)) print_trv_time(void)
@@ -338,7 +341,9 @@ int call_fini(smrule_t *r)
    // call de-initialization rule of function rule if available
    if (r->act->fini.func != NULL && !sm_is_flag_set(r, ACTION_FINISHED))
    {
-     // sm_wait_threads();
+#ifdef DEBUG_T_APPLY
+      unsigned acnt = ((smrule_threaded_t*)r)->th->call_cnt;
+#endif
       // if it is threaded execution and rule is threaded, fini remaining thread rules
       int nth = get_nthreads();
       if (nth > 0 && sm_is_threaded(r))
@@ -350,6 +355,9 @@ int call_fini(smrule_t *r)
             if ((e = r->act->fini.func(&rth[i].r)))
                log_debug("%s_fini()[%d] returned %d", r->act->func_name, i, e);
             log_debug("main() was called %u times", rth[i].th->call_cnt);
+#ifdef DEBUG_T_APPLY
+            acnt += rth[i].th->call_cnt;
+#endif
          }
       }
 
@@ -357,6 +365,9 @@ int call_fini(smrule_t *r)
       if ((e = r->act->fini.func(r)))
          log_debug("_fini returned %d", e);
       log_debug("main() was called %u times", ((smrule_threaded_t*)r)->th->call_cnt);
+#ifdef DEBUG_T_APPLY
+      log_debug("exec stats: %016lx: %s() acnt = %u, t_apply_ = %.3f ms, %.3f us", (long) r->oo->id, r->act->func_name, acnt, t_apply_ / 1000.0, (double) t_apply_ / acnt);
+#endif
       sm_set_flag(r, ACTION_FINISHED);
    }
 
@@ -446,16 +457,20 @@ int apply_smrules(smrule_t *r, trv_info_t *ti)
 #ifdef TH_OBJ_LIST
       obj_queue_ini(r->act->main.func, r);
 #endif
+#ifdef DEBUG_T_APPLY
       struct timeval tv;
       gettimeofday(&tv, NULL);
       t_apply_ = tv.tv_usec + tv.tv_sec * 1000000;
+#endif
       e = traverse(ti->objtree, 0, r->oo->type - 1, (tree_func_t) apply_rule0, r);
 #ifdef TH_OBJ_LIST
       obj_queue_signal();
       sm_wait_threads();
 #endif
+#ifdef DEBUG_T_APPLY
       gettimeofday(&tv, NULL);
       t_apply_ = tv.tv_usec + tv.tv_sec * 1000000 - t_apply_;
+#endif
    }
    else
       log_debug("   -> no main function");
