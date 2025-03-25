@@ -48,7 +48,7 @@ static sm_thread_t *smth_ = NULL;
 //! total number of threads
 static int nthreads_ = 0;
 //! max number of objs in obj list
-static int obj_max_ = 32;
+static int obj_max_ = 128;
 //! current thread id to queue objects to
 static int cur_id_ = -1;
 
