@@ -359,6 +359,10 @@ int call_fini(smrule_t *r)
             acnt += rth[i].th->call_cnt;
 #endif
          }
+#ifdef DEBUG_T_APPLY
+         rth[nth].th->call_cnt = rth[0].th->call_cnt;
+         acnt += rth[0].th->call_cnt;
+#endif
       }
 
       log_msg(LOG_INFO, "calling rule %016lx, %s_fini()[%d]", (long) r->oo->id, r->act->func_name, 0);
