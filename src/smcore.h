@@ -20,7 +20,7 @@
  * engine.
  *
  *  @author Bernhard R. Fischer
- *  @date 2025/01/23
+ *  @date 2025/03/28
  */
 
 #ifndef SMCORE_H
@@ -98,7 +98,7 @@ int call_ini(smrule_t*);
 
 /* smthread.c */
 void sm_wait_threads(void);
-void obj_queue_ini(int (*)(void*, osm_obj_t*), void *);
+void obj_queue_ini(int (*)(void*, osm_obj_t*), smrule_threaded_t *);
 int obj_queue(osm_obj_t *);
 void obj_queue_signal(void);
 int sm_is_threaded(const smrule_t *);

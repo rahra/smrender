@@ -19,7 +19,7 @@
  * This file contains the code of the main execution process.
  *
  *  \author Bernhard R. Fischer, <bf@abenteuerland.at>
- *  \date 2025/01/23
+ *  \date 2025/03/28
  */
 
 #ifdef HAVE_CONFIG_H
@@ -459,7 +459,7 @@ int apply_smrules(smrule_t *r, trv_info_t *ti)
    if (r->act->main.func != NULL)
    {
 #ifdef TH_OBJ_LIST
-      obj_queue_ini(r->act->main.func, r);
+      obj_queue_ini(r->act->main.func, (smrule_threaded_t*) r);
 #endif
 #ifdef DEBUG_T_APPLY
       struct timeval tv;

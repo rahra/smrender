@@ -19,7 +19,7 @@
  * This file contains the code for multi-threaded execution of rules.
  *
  * \author Bernhard R. Fischer, <bf@abenteuerland.at>
- * \version 2024/01/23
+ * \version 2025/03/28
  */
 
 #include <stdio.h>
@@ -290,14 +290,15 @@ int get_free_thread(void)
 }
 
 
-void obj_queue_ini(int (*main)(void*, osm_obj_t*), void *p)
+void obj_queue_ini(int (*main)(void*, osm_obj_t*), smrule_threaded_t *rth)
 {
    cur_id_ = -1;
+   rth -= nthreads_;
    pthread_mutex_lock(&mmutex_);
    for (int n = 0; n <= nthreads_; n++)
    {
       smth_[n].main = main;
-      smth_[n].param = p;
+      smth_[n].param = &rth[n];
       //smth_[n].obj_cnt = 0;
       smth_[n].call_cnt = 0;
    }
