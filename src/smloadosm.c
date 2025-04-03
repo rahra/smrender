@@ -20,7 +20,7 @@
  * Originally it was written for smfilter and was reused and adapted.
  *
  * \author Bernhard R. Fischer, <bf@abenteuerland.at>
- * \date 2025/01/18
+ * \date 2025/04/03
  */
 #include <stdio.h>
 #include <stdlib.h>
@@ -544,6 +544,8 @@ int read_osm_obj(hpx_ctrl_t *ctl, hpx_tree_t **tlistptr, osm_obj_t **obj)
             tag = tlist->subtag[tlist->nsub]->tag;
          }
       } // if (!hpx_process_elem(b, tag))
+      else
+         log_msg(LOG_ERR, "XML error in line %ld in element `%.*s`", tag->line, b.len, b.buf);
    } //while ((e = hpx_get_elem(ctl, &b, NULL, &tag->line)) > 0)
 
    *tlistptr = tlist;
