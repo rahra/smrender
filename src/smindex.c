@@ -49,6 +49,10 @@
 #define INDEX_VH_DSTS 0x44535453
 #define INDEX_VH_OBJS 0x4f424a53
 
+#if defined(__APPLE__)
+#define st_mtim st_mtimespec
+#endif
+
 
 typedef struct indexf
 {
