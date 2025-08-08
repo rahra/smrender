@@ -34,8 +34,8 @@
 <div class="p"><!----></div>
 
 <div class="p"><!----></div>
-                                                                            
-<h1>Contents </h1> american 
+                                                                             
+<h1>Contents </h1> 
 <a href="#tth_sEc1"
 >1&nbsp; Release Notes</a><br /><a href="#tth_sEc2"
 >2&nbsp; Name</a><br /><a href="#tth_sEc3"
@@ -1418,7 +1418,7 @@ right and above of the lower left page corner.
 <div class="p"><!----></div>
 The action <span style="font-family:helvetica">set_tags</span> allows to add an arbitrary number of OSM tags to an
 object. The tags have to be defined through an object within the rules file.
-This object may have no action tag. The template should have an id because
+This object must not have an action tag. The template should have an id because
 the action <span style="font-family:helvetica">set_tags</span> needs to have a reference to it. The format simply
 looks like the following.
 
@@ -1434,6 +1434,10 @@ looks like the following.
 <div class="p"><!----></div>
 Please note that the object type of the rule must be the same as the object
 type of the template.
+
+<div class="p"><!----></div>
+Have a look at <span style="font-family:helvetica">strfmt</span> in Section <a href="#sec:act-strfmt">6.2.4</a> which
+allows you to dynamically construct and add tags to objects.
 
 <div class="p"><!----></div>
 
@@ -1552,6 +1556,9 @@ newly constructed string will be added as a new tag to the OSM object. This
 tag may then be used to match on in subsequent rules.
 
 <div class="p"><!----></div>
+If the tag already exists in an object it will be overwritten.
+
+<div class="p"><!----></div>
 
 <pre>
 &nbsp;&nbsp;&nbsp;&lt;action&#62;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;:=&nbsp;'strfmt:'&nbsp;&lt;param&#62;
@@ -1627,23 +1634,32 @@ rendered in the second rule.
 
 <div class="p"><!----></div>
 
+<pre>
+&nbsp;&nbsp;&nbsp;&lt;action&#62;&nbsp;&nbsp;&nbsp;:=&nbsp;'cat_poly:'&nbsp;&lt;param&#62;&nbsp;[&nbsp;';'&nbsp;&lt;param&#62;&nbsp;]
+&nbsp;&nbsp;&nbsp;&lt;param&#62;&nbsp;&nbsp;&nbsp;&nbsp;:=&nbsp;&lt;nocorner&#62;&nbsp;|&nbsp;&lt;incomp&#62;&nbsp;|&nbsp;&lt;copy&#62;&nbsp;|&nbsp;&lt;vcdist&#62;
+&nbsp;&nbsp;&nbsp;&lt;nocorner&#62;&nbsp;:=&nbsp;'no_corner'&nbsp;'='&nbsp;&lt;bool&#62;
+&nbsp;&nbsp;&nbsp;&lt;incomp&#62;&nbsp;&nbsp;&nbsp;:=&nbsp;'ign_incomplete'&nbsp;'='&nbsp;&lt;bool&#62;
+&nbsp;&nbsp;&nbsp;&lt;copy&#62;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;:=&nbsp;'copy'&nbsp;'='&nbsp;&lt;string&#62;
+
+</pre>
+
 <div class="p"><!----></div>
       This function closes open polygons. To have closed polygons is
-      highly important because just such polygons can be filled with a
-      background color.
+      highly important because just such polygons can be filled.
 
 <div class="p"><!----></div>
       Polygons which are literally closed, such as the coastline or lakes are
       very often found as a set of open ways whose beginning and end share the
       same nodes. This is because different tags may be attached to different
-      parts of the polygon. Furthermore, just partial data sets are used as
+      parts of the polygon. Furthermore, partial data sets may be used as
       input because typically just a small area out of the world's data is
       selected.<br />
 
 <div class="p"><!----></div>
       <span style="font-family:helvetica">Cat_poly</span> has three optional parameters: <span style="font-family:helvetica">ign_incomplete</span>,
-      <span style="font-family:helvetica">no_corner</span>, and <span style="font-family:helvetica">copy</span>. The first two can both be set to either 0 or 1. If these
-      parameters are omitted, both are internally set to 0 by default.
+      <span style="font-family:helvetica">no_corner</span>, and <span style="font-family:helvetica">copy</span>. The 1st two are of type boolean.
+      If these
+      parameters are omitted, both are set to 0 (false) by default.
 
 <div class="p"><!----></div>
       If <span style="font-family:helvetica">ign_incomplete</span> is set to 1, <span style="font-family:helvetica">cat_poly</span> will only
@@ -1666,7 +1682,7 @@ rendered in the second rule.
 <div class="p"><!----></div>
       The parameter <span style="font-family:helvetica">copy</span> can occur multiple times and it is used to
       specify the keys of the tags of the ways which should be copied to the
-      newly joined long way. If the values of these keys differ than
+      newly joined longer and closed way. If the values of these keys differ than
       <span style="font-family:helvetica"><i><span class="small">Smrender</span></i></span> takes just the first one. All others are ignored. This is
       because OSM defines that a tag can appear just excatly one time in an OSM
       object. <br />
