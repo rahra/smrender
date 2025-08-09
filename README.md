@@ -70,6 +70,11 @@ project there would be of course a lot of improvements. The main task which
 bothers me the most at the moment is multi-threading which would speed a
 processing a lot with modern CPUs.
 
+Use option `-x` to speed up the loading process of the OSM source, specifically
+if you are dealing with large input files. This creates an index at the 1st run
+which will be pulled in at subsequent runs at a signifficantly higher speed than
+parsing the raw OSM data.
+
 Basically multi-threading is implemented but it requires for each action
 function to be thread-safe by itself. This is true for many of the functions
 but unfortunately not for the actual graphics rendering functions since Cairo
