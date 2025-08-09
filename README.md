@@ -36,7 +36,7 @@ Even older versions of Smrender have been moved to the [archive/](https://www.ab
 
 ## Documentation
 
-The latest documentation for version 4.0 is found in the [doc/
+The latest documentation is found in the [doc/
 folder](https://github.com/rahra/smrender/tree/master/doc) of the source
 repository. You directly view it [here as HTML
 page](https://htmlpreview.github.io/?https://github.com/rahra/smrender/blob/master/doc/smrender.html)
@@ -58,14 +58,27 @@ make
 make install
 ```
 
-If it was checked out from SVN or GIT: run `/autoconf.sh` first (you have to
+If it was checked out from GIT run `/autoconf.sh` first (you have to
 have the *GNU Autotools* installed in this case.).
 
 See documentation for more information.
 
-## Bugs
+## Notes
 
-Smrender seems not to work in non-memory-mapped mode.
+Smrender is basically in a pretty mature state but since it being a one-man
+project there would be of course a lot of improvements. The main task which
+bothers me the most at the moment is multi-threading which would speed a
+processing a lot with modern CPUs.
+
+Basically multi-threading is implemented but it requires for each action
+function to be thread-safe by itself. This is true for many of the functions
+but unfortunately not for the actual graphics rendering functions since Cairo
+graphics by itself is not thread-safe. This means that these functions have to
+be adapted. I did this partially but not for the most time-consuming once such
+as rendering captions with auto-rotation. Actually I could not yet find out
+where it clashes but I'm on the hunt.
+
+Smrender is an open source project so I appreciate help from everybody out there ;)
 
 ## Author
 
