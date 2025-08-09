@@ -26,6 +26,8 @@
 #ifndef SMCORE_H
 #define SMCORE_H
 
+#include <pthread.h>
+
 #define NODES_FIRST 0
 #define RELS_FIRST 1
 
