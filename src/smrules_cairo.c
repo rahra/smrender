@@ -2604,6 +2604,7 @@ static int img_ini(smrule_t *r, struct actImage *img)
       g_object_unref(rh);
 #else
       log_msg(LOG_WARN, "unabled to load file %s: compiled without SVG support", name);
+      return 1;
 #endif
    }
    else
@@ -2620,6 +2621,7 @@ static int img_ini(smrule_t *r, struct actImage *img)
          }
 #else
          log_msg(LOG_WARN, "unabled to load file %s: compiled without JPG support", name);
+         return 1;
 #endif
       }
       else
@@ -2753,6 +2755,10 @@ int img_place(const struct actImage *img, const osm_node_t *n)
 {
    double x, y, a;
    struct coord c;
+
+   // safety check
+   if (img->img == NULL)
+      return -1;
 
    cairo_save(img->ctx);
    geo2pxf(n->lon, n->lat, &x, &y);
