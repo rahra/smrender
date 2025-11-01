@@ -1,0 +1,37 @@
+{
+   "data_format": 1,
+   "data_url": "https://github.com/rahra/smrender/tree/master/doc/taginfo.json",
+   "project":
+   {
+      "name": "Smrender",
+      "description": "A powerful, flexible, and modular rule-based OSM data processing and rendering engine, primarily designed to render sea charts for print-out.",
+      "project_url": "https://github.com/rahra/smrender",
+      "doc_url": "https://github.com/rahra/smrender/tree/master/doc",
+      "contact_name": "Bernhard R. Fischer",
+      "contact_email": "smrender@abenteuerland.at"
+   },
+   "tags":
+   [
+      {"description": "Sea chart specific tags", "key": "seamark:type"},
+      {"key": "natural", "value": "coastline"},
+      {"key": "natural", "value": "bay"},
+      {"key": "natural", "value": "water"},
+      {"key": "natural", "value": "wetland"},
+      {"key": "natural", "value": "cliff"},
+      {"key": "natural", "value": "peak"},
+      {"key": "place", "value": "island"},
+      {"key": "place", "value": "islet"},
+      {"key": "place", "value": "town"},
+      {"key": "place", "value": "city"},
+      {"key": "place", "value": "hamlet"},
+      {"key": "place", "value": "village"},
+      {"key": "railway", "value": "rail"},
+      {"key": "ele"},
+      {"key": "name"},
+      {"key": "building"},
+      {"key": "waterway"},
+      {"key": "highway"},
+      {"key": "tidal", "value": "yes"},
+      {"key": "man_made", "value":  "breakwater"}
+   ]
+}
