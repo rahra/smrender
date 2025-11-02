@@ -1,6 +1,6 @@
 {
    "data_format": 1,
-   "data_url": "https://github.com/rahra/smrender/tree/master/doc/taginfo.json",
+   "data_url": "https://raw.githubusercontent.com/rahra/smrender/refs/heads/master/doc/taginfo.json",
    "project":
    {
       "name": "Smrender",
