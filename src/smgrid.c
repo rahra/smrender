@@ -1,4 +1,4 @@
-/* Copyright 2011-2024 Bernhard R. Fischer, 4096R/8E24F29D <bf@abenteuerland.at>
+/* Copyright 2011-2025 Bernhard R. Fischer, 4096R/8E24F29D <bf@abenteuerland.at>
  *
  * This file is part of smrender.
  *
@@ -20,7 +20,7 @@
  * make up the grid, the legend, and the chart border.
  *
  * @author Bernhard R. Fischer
- * @date 2024/10/28
+ * @date 2025/12/31
  */
 #include <stdlib.h>
 #include <string.h>
@@ -66,9 +66,10 @@ int ruler(struct rdata *rd, ruler_t *rl)
 
    on[0] = malloc_node(1);
    osm_node_default(on[0]);
-   on[1] = malloc_node(2);
+   on[1] = malloc_node(3);
    osm_node_default(on[1]);
    set_const_tag(&on[1]->obj.otag[1], "distance", rl->unit ? "0 nm" : "0 km");
+   set_const_tag(&on[1]->obj.otag[2], "smrender:type", "ruler");
 
    on[0]->lat = p.lat;
    on[0]->lon = p.lon;
@@ -85,19 +86,36 @@ int ruler(struct rdata *rd, ruler_t *rl)
 
       on[0] = n[1] = malloc_node(1);
       osm_node_default(n[1]);
-      on[1] = n[2] = malloc_node(2);
+      on[1] = n[2] = malloc_node(3);
       osm_node_default(n[2]);
 
-      if (rl->rsec < 1.0)
-         snprintf(buf, sizeof(buf), "%d m", (int) ((i + 1) * rl->rsec * 1000.0));
-      else
+      double rsec = (i + 1) * rl->rsec;
+      if (rsec < 1.0)
       {
          if (!rl->unit)
-            snprintf(buf, sizeof(buf), "%d km", (int) round((i + 1) * rl->rsec));
+            snprintf(buf, sizeof(buf), "%d m", (int) (rsec * 1000.0));
          else
-            snprintf(buf, sizeof(buf), "%d nm", (int) round((i + 1) * rl->rsec / 1.852));
+            snprintf(buf, sizeof(buf), "%d kbl", (int) (rsec / .1852));
+      }
+      else
+      {
+         if (rl->rsec < 1.0)
+         {
+            if (!rl->unit)
+               snprintf(buf, sizeof(buf), "%.1f km", rsec);
+            else
+               snprintf(buf, sizeof(buf), "%.1f nm", rsec / 1.852);
+         }
+         else
+         {
+            if (!rl->unit)
+               snprintf(buf, sizeof(buf), "%d km", (int) round(rsec));
+            else
+               snprintf(buf, sizeof(buf), "%d nm", (int) round(rsec / 1.852));
+         }
       }
       set_const_tag(&on[1]->obj.otag[1], "distance", strdup(buf));
+      set_const_tag(&on[1]->obj.otag[2], "smrender:type", "ruler");
 
       n[1]->lat = n[0]->lat;
       n[1]->lon = n[0]->lon + lon_diff;
