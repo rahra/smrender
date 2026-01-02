@@ -52,6 +52,9 @@
 #if defined(__APPLE__)
 #define st_mtim st_mtimespec
 #endif
+#ifndef MAP_NORESERVE
+#define MAP_NORESERVE 0
+#endif
 
 
 typedef struct indexf
