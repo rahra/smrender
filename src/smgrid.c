@@ -1,4 +1,4 @@
-/* Copyright 2011-2025 Bernhard R. Fischer, 4096R/8E24F29D <bf@abenteuerland.at>
+/* Copyright 2011-2026 Bernhard R. Fischer, 4096R/8E24F29D <bf@abenteuerland.at>
  *
  * This file is part of smrender.
  *
@@ -20,7 +20,7 @@
  * make up the grid, the legend, and the chart border.
  *
  * @author Bernhard R. Fischer
- * @date 2025/12/31
+ * @date 2026/01/02
  */
 #include <stdlib.h>
 #include <string.h>
@@ -62,7 +62,7 @@ int ruler(struct rdata *rd, ruler_t *rl)
    //rcnt = 5;   // number of ruler sections -> 5
    lon_diff = rl->rsec / (60.0 * 1.852 * cos(DEG2RAD(p.lat)));
 
-   log_msg(LOG_INFO, "generating ruler: %d sections, %f degrees lon", rl->rcnt, lon_diff);
+   log_debug("generating ruler: %d sections, %f degrees lon", rl->rcnt, lon_diff);
 
    on[0] = malloc_node(1);
    osm_node_default(on[0]);
@@ -589,13 +589,13 @@ void grid(struct rdata *rd, const struct grid *grd)
       }
    }
 
-   log_msg(LOG_INFO, "grid parameters: margin = %.2f mm, tickswidth = %.2f mm, "
+   log_debug("grid parameters: margin = %.2f mm, tickswidth = %.2f mm, "
          "substickswidth = %.2f mm, grid = %.2f', ticks = %.2f', subticks = %.2f'",
          grd->g_margin, grd->g_tw, grd->g_stw, grd->lon_g * 60.0,
          grd->lon_ticks * 60.0, grd->lon_sticks * 60.0);
-   log_msg(LOG_INFO, "grid top    %.3f %.3f -- %.3f %.3f",
+   log_debug("grid top    %.3f %.3f -- %.3f %.3f",
          bb.ru.lat, bb.ll.lon, bb.ru.lat, bb.ru.lon);
-   log_msg(LOG_INFO, "grid bottom %.3f %.3f -- %.3f %.3f",
+   log_debug("grid bottom %.3f %.3f -- %.3f %.3f",
          bb.ll.lat, bb.ll.lon, bb.ll.lat, bb.ru.lon);
  
    geo_square(pw, grd->g_margin, "outer_border", grd->gpcnt);
@@ -737,7 +737,7 @@ int act_grid2_ini(smrule_t *r)
 int act_grid2_main(smrule_t *r, osm_obj_t *UNUSED(o))
 {
    grid(get_rdata(), r->data);
-   return 1;
+   return 0;
 }
 
 
@@ -758,6 +758,7 @@ int act_grid_ini(smrule_t *r)
    if (!(e = act_grid2_ini(r)))
       grid(get_rdata(), r->data);
 
+   sm_set_flag(r, ACTION_EXEC_ONCE);
    return e;
 }
 

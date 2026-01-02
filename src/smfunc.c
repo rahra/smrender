@@ -1,4 +1,4 @@
-/* Copyright 2011-2023 Bernhard R. Fischer, 4096R/8E24F29D <bf@abenteuerland.at>
+/* Copyright 2011-2026 Bernhard R. Fischer, 4096R/8E24F29D <bf@abenteuerland.at>
  *
  * This file is part of smrender.
  *
@@ -19,7 +19,7 @@
  * This file contains all rule functions which do not create graphics output.
  *
  *  @author Bernhard R. Fischer
- *  \date 2023/09/24
+ *  \date 2026/01/02
  */
 #include <stdio.h>
 #include <stdlib.h>
@@ -2648,7 +2648,7 @@ int act_add_fini(smrule_t *r)
    n->lon = ((osm_node_t*) r->oo)->lon;
    put_object((osm_obj_t*) n);
 
-   log_msg(LOG_INFO, "placing node to lat = %f, lon = %f", n->lat, n->lon);
+   log_debug("placing node to lat = %f, lon = %f", n->lat, n->lon);
    return 0;
 }
 
