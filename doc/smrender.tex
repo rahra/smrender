@@ -19,7 +19,7 @@
 
 \hypersetup{
 pdftitle={Smrender – A rule-based Renderer for OSM Data},
-pdfauthor={Bernhard R. Fischer, 2048R/5C5FFD47, <bf@abenteuerland.at>},
+pdfauthor={Bernhard R. Fischer, 4096R/8E24F29D, <bf@abenteuerland.at>},
 pdfsubject={},
 pdfkeywords={renderer,sea map,sea chart,osm,openstreetmap,openseamap,xml,png,pdf,svg,kap,bsb,C,framework,data processing,scripting},
 pdflang={en}
@@ -74,7 +74,7 @@ pdflang={en}
 
 \section{Release Notes}
 
-This document describes the current (2024/02/02) version of \smrender{}.
+This document describes the current (2025/12/31) version of \smrender{}.
 
 Although I put a lot of effort into writing this manual it still may be
 incomplete. Please don't hesitate to contact me if there is something unclear
@@ -295,7 +295,7 @@ In the following all options are explained in alphabetical order.
    acts exactly like option \optk{G}.
 
    A grid may optionally be generated with the action \textsf{grid}. See
-   Section \ref{sec:special}.
+   Section \ref{sec:act-grid}.
    
 \item[\optk{G}]
 
@@ -1471,8 +1471,22 @@ rendered in the second rule.
          \subsubsection{Generating a Grid}\label{sec:act-grid}\label{sec:act-grid2} %FIXME: not finished
 
          \begin{verbatim}
-         grid()
-         grid2()
+   <action>   := ( 'grid:' | 'grid2:' ) <param> [ ';' <param> ]
+   <param>    := <margin> | <ticksw> | <sticksw>
+                 | <grid> | <ticks> | <sticks>
+                 | <copyrgt> | <cmdline>
+                 | <gridpts> | <polygon>
+
+   <margin>   := 'margin' '=' <length>
+   <ticksw>   := 'tickswidth' '=' <length>
+   <sticksw>  := 'subtickswidth' '=' <length>
+   <grid>     := 'grid' '=' grid spacing in arc minutes
+   <ticks>    := 'ticks' '=' major axis spacing in arc minutes
+   <sticks>   := 'subticks' '=' minor axis spacing in arc minutes
+   <copyrgt>  := 'copyright' '=' <bool>
+   <cmdline>  := 'cmdline' '=' <bool>
+   <gridpts>  := 'gridpoints' '=' integer >= 2
+   <polygon>  := 'polygon_window' '=' <bool>
          \end{verbatim}
 
       This action creates a grid exactly like the command line option \optk{g}
@@ -1483,17 +1497,17 @@ rendered in the second rule.
       exactly like the command line option (see Section \ref{sec:options}).
       Missing parameters are initialized with default values.
 
-      The boolean argumenta \optk{copyright} and \optk{cmdline} do not generate
+      The boolean arguments \optv{copyright} and \optv{cmdline} do not generate
       these nodes.
 
       Each grid line can be generated with a number of intermediate points. The
-      option \optk{gridpoints} sets the total number of grid points. It has to
+      option \optv{gridpoints} sets the total number of grid points. It has to
       be greater or equal to 2. If this option is not given or a number smaller
       than 2 is set, it is internally reset to 2.
 
       The difference between \textsf{grid()} and \textsf{grid2()} is that the
       1st generates the grid within the initialization function of the rule
-      while as the latter creates it in the main function at the first match.
+      while the latter creates it in the main function at the first match.
       This may be of interest if some rules should be called before the grid is
       constructed.
 
