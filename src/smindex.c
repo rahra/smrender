@@ -1,4 +1,4 @@
-/* Copyright 2024 Bernhard R. Fischer, 4096R/8E24F29D <bf@abenteuerland.at>
+/* Copyright 2024-2026 Bernhard R. Fischer, 4096R/8E24F29D <bf@abenteuerland.at>
  *
  * This file is part of smrender.
  *
@@ -19,7 +19,7 @@
  * This file contains all functions regarding the index file.
  *
  *  \author Bernhard R. Fischer
- *  \date 2024/01/29
+ *  \date 2026/01/17
  */
 
 #ifdef HAVE_CONFIG_H
@@ -289,7 +289,7 @@ void index_init_header(index_hdr_t *ih, int flags)
 }
 
 
-int index_write(const char *fname, bx_node_t *tree, const void *base, const struct dstats *ds)
+int index_write(const char *fname, const char *xname, bx_node_t *tree, const void *base, const struct dstats *ds)
 {
    indexf_t idxf;
    index_hdr_t ih;
@@ -303,13 +303,16 @@ int index_write(const char *fname, bx_node_t *tree, const void *base, const stru
       return -1;
    }
 
+   // make index file name
    char buf[strlen(fname) + strlen(INDEX_EXT) + 1];
    snprintf(buf, sizeof(buf), "%s%s", fname, INDEX_EXT);
+   if (xname == NULL)
+      xname = buf;
 
    memset(&idxf, 0, sizeof(idxf));
    idxf.base = base;
-   log_msg(LOG_NOTICE, "creating index file \"%s\"", buf);
-   if ((idxf.fd = creat(buf, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH )) == -1)
+   log_msg(LOG_NOTICE, "creating index file \"%s\"", xname);
+   if ((idxf.fd = creat(xname, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH )) == -1)
    {
       log_errno(LOG_ERR, "could not create index file");
       return -1;
@@ -519,11 +522,12 @@ int cmp_timespec(const struct timespec *a, const struct timespec *b)
 
 /*! This function reads the index from the index file.
  * @param fname Name of OSM data file. The index file name ist constructed by
- * concattenating INDEX_EXT.
+ * concattenating INDEX_EXT if the 2nd argument xname is NULL.
+ * @param xname Name of index file.
  * @param base Pointer to memory mapped OSM data.
  * @return On success, the function returns 0, otherwise -1.
  */
-int index_read(const char *fname, const void *base, struct dstats *ds)
+int index_read(const char *fname, const char *xname, const void *base, struct dstats *ds)
 {
    indexf_t idxf;
    index_hdr_t *ih;
@@ -553,13 +557,15 @@ int index_read(const char *fname, const void *base, struct dstats *ds)
    // make index file name
    char buf[strlen(fname) + strlen(INDEX_EXT) + 1];
    snprintf(buf, sizeof(buf), "%s%s", fname, INDEX_EXT);
+   if (xname == NULL)
+      xname = buf;
 
-   log_msg(LOG_NOTICE, "reading index file \"%s\"", buf);
+   log_msg(LOG_NOTICE, "reading index file \"%s\"", xname);
 
    // open index file
    memset(&idxf, 0, sizeof(idxf));
    idxf.base = base;
-   if ((idxf.fd = open(buf, O_RDWR)) == -1)
+   if ((idxf.fd = open(xname, O_RDWR)) == -1)
    {
       log_errno(LOG_NOTICE, "could not open index file");
       return ESM_NOFILE;
@@ -568,7 +574,7 @@ int index_read(const char *fname, const void *base, struct dstats *ds)
    // stat index file
    if (fstat(idxf.fd, &st) == -1)
    {
-      log_msg(LOG_ERR, "fstat(%d [\"%s\"]) failed: %s", idxf.fd, buf, strerror(errno));
+      log_msg(LOG_ERR, "fstat(%d [\"%s\"]) failed: %s", idxf.fd, xname, strerror(errno));
       goto ri_err;
    }
 

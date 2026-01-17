@@ -1,4 +1,4 @@
-/* Copyright 2011-2025 Bernhard R. Fischer, 4096R/8E24F29D <bf@abenteuerland.at>
+/* Copyright 2011-2026 Bernhard R. Fischer, 4096R/8E24F29D <bf@abenteuerland.at>
  *
  * This file is part of smrender.
  *
@@ -19,7 +19,7 @@
  * This file contains the main() function and main initialization functions.
  *
  *  \author Bernhard R. Fischer, <bf@abenteuerland.at>
- *  \date 2025/01/23
+ *  \date 2026/01/17
  */
 
 #ifdef HAVE_CONFIG_H
@@ -103,6 +103,7 @@ static const struct option lopts_[] =
    {"version", no_argument, NULL, 'v'},
    {"write", required_argument, NULL, 'w'},
    {"index", no_argument, NULL, 'x'},
+   {"indexfile", required_argument, NULL, 'X'},
    {NULL, 0, NULL, 0}
 };
 #endif
@@ -857,7 +858,7 @@ int main(int argc, char *argv[])
    FILE *f;
    char *cf = "rules.osm", *img_file = NULL, *osm_ifile = NULL, *osm_ofile =
       NULL, *osm_rfile = NULL, *kap_file = NULL, *kap_hfile = NULL, *pdf_file = NULL,
-      *svg_file = NULL;
+      *svg_file = NULL, *osm_xfile = NULL;
    struct rdata *rd;
    struct timeval tv_start, tv_end;
    int w_mmap = 1, load_filter = 0, init_exit = 0, gen_grid = AUTO_GRID, prt_url = 0;
@@ -887,10 +888,11 @@ int main(int argc, char *argv[])
    memset(&ri, 0, sizeof(ri));
    ri.nindent = DEFAULT_NINDENT;
 
+   const char *optstring = "ab:B:DCd:fg:Ghi:k:K:lL:MmN:no:O:p:P:r:R:s:S:t:T:uVvw:xX:";
 #ifdef HAVE_GETOPT_LONG
-   while ((n = getopt_long(argc, argv, "ab:B:DCd:fg:Ghi:k:K:lL:MmN:no:O:p:P:r:R:s:S:t:T:uVvw:x", lopts_, NULL)) != -1)
+   while ((n = getopt_long(argc, argv, optstring, lopts_, NULL)) != -1)
 #else
-   while ((n = getopt(argc, argv, "ab:B:DCd:fg:Ghi:k:K:lL:MmN:no:O:p:P:r:R:s:S:t:T:uVvw:x")) != -1)
+   while ((n = getopt(argc, argv, optstring)) != -1)
 #endif
       switch (n)
       {
@@ -1124,6 +1126,10 @@ int main(int argc, char *argv[])
             osm_ofile = optarg;
             break;
 
+         case 'X':
+            osm_xfile = optarg;
+            /* fall through */
+
          case 'x':
             index = 1;
             break;
@@ -1235,7 +1241,7 @@ int main(int argc, char *argv[])
    {
       int e = ESM_NOFILE;
       if (index)
-         e = index_read(osm_ifile, ctl->buf.buf, &rd->ds);
+         e = index_read(osm_ifile, osm_xfile, ctl->buf.buf, &rd->ds);
 
       switch (e)
       {
@@ -1250,7 +1256,7 @@ int main(int argc, char *argv[])
                (long) labs(st.st_size) / 1024, ctl->buf.buf);
             (void) read_osm_file(ctl, get_objtree(), NULL, &rd->ds);
             if (index)
-               index_write(osm_ifile, *get_objtree(), ctl->buf.buf, &rd->ds);
+               index_write(osm_ifile, osm_xfile, *get_objtree(), ctl->buf.buf, &rd->ds);
             break;
 
          default:

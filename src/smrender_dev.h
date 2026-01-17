@@ -1,4 +1,4 @@
-/* Copyright 2011-2025 Bernhard R. Fischer, 4096R/8E24F29D <bf@abenteuerland.at>
+/* Copyright 2011-2026 Bernhard R. Fischer, 4096R/8E24F29D <bf@abenteuerland.at>
  *
  * This file is part of smrender.
  *
@@ -19,7 +19,7 @@
  * This file contains almost all internal declarations.
  *
  * \author Bernhard R. Fischer, <bf@abenteuerland.at>
- * \version 2025/01/23
+ * \version 2026/01/17
  */
 #ifndef SMRENDER_DEV_H
 #define SMRENDER_DEV_H
@@ -407,9 +407,9 @@ int rules_info(const struct rdata *, rinfo_t *, const struct dstats *);
 size_t save_json(const char *, bx_node_t *, int );
 
 /* smindex.c */
-int index_write(const char *, bx_node_t *, const void *, const struct dstats *);
+int index_write(const char *, const char *, bx_node_t *, const void *, const struct dstats *);
 ssize_t sm_write(int , const void *, size_t );
-int index_read(const char *, const void *, struct dstats *);
+int index_read(const char *, const char *, const void *, struct dstats *);
 
 #endif
 

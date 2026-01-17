@@ -1,4 +1,4 @@
-/* Copyright 2024-2025 Bernhard R. Fischer, 4096R/8E24F29D <bf@abenteuerland.at>
+/* Copyright 2024-2026 Bernhard R. Fischer, 4096R/8E24F29D <bf@abenteuerland.at>
  *
  * This file is part of smrender.
  *
@@ -19,7 +19,7 @@
  * This file contains the usage output
  *
  *  \author Bernhard R. Fischer, <bf@abenteuerland.at>
- *  \date 2025/01/11
+ *  \date 2026/01/17
  */
 
 #ifdef HAVE_CONFIG_H
@@ -71,6 +71,10 @@ static const char *usage_txt_ =
    "\n"
    "   --index\n"
    "   -x ..................... Use index file to speed up data loading.\n"
+   "\n"
+   "   --indexfile <filename>\n"
+   "   -X <filename> .......... Specify index filename. This is useful if the\n"
+   "                            input file resides on a read-only storage.\n"
    "\n"
    "Rules Options:\n"
    "   --rules <rules_file>\n"
