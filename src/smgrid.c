@@ -33,6 +33,51 @@
 
 #define RULER_HEIGHT MM2LAT(2.0)
 
+typedef struct sm_coord
+{
+   int c;   // signed coordnate in seconds
+   int t;   // coordinate in seconds (abs(c))
+   int d;   // degrees
+   int m;   // minutes
+   int s;   // seconds
+   int z;   // tenth of minute
+} sm_coord_t;
+
+
+void split_coord(double c, sm_coord_t *sc)
+{
+   sc->c = round(c * 3600);
+   sc->t = abs(sc->c);
+   sc->d = sc->t / 3600;
+   sc->m = (sc->t / 60) % 60;
+   sc->s = sc->t % 60;
+   sc->z = (sc->t / 6) % 10;
+}
+
+
+static double frac(double a)
+{
+   return a - trunc(a);
+}
+
+
+/*! This function works like strdup(3) but it always returns a valid pointer.
+ * If the memory is full the program will exit immediately with exit(3).
+ * @param s Pointer to string to copy.
+ * @return New pointer of string.
+ */
+char *smstrdup(const char *s)
+{
+   char *r;
+
+   if ((r = strdup(s)) == NULL)
+   {
+      log_errno(LOG_ERR, "strdup() failed");
+      exit(EXIT_FAILURE);
+   }
+   return r;
+}
+
 
 int ruler(struct rdata *rd, ruler_t *rl)
 {
@@ -114,7 +159,7 @@ int ruler(struct rdata *rd, ruler_t *rl)
                snprintf(buf, sizeof(buf), "%d nm", (int) round(rsec / 1.852));
          }
       }
-      set_const_tag(&on[1]->obj.otag[1], "distance", strdup(buf));
+      set_const_tag(&on[1]->obj.otag[1], "distance", smstrdup(buf));
       set_const_tag(&on[1]->obj.otag[2], "smrender:type", "ruler");
 
       n[1]->lat = n[0]->lat;
@@ -253,7 +298,7 @@ void geo_description(double lat, double lon, char *text, const char *pos)
    n->lon = lon;
    set_const_tag(&n->obj.otag[1], "grid", "text");
    set_const_tag(&n->obj.otag[2], "name", text);
-   set_const_tag(&n->obj.otag[3], "border", strdup(pos));
+   set_const_tag(&n->obj.otag[3], "border", smstrdup(pos));
    put_object((osm_obj_t*) n);
 }
 
@@ -268,7 +313,7 @@ void grid_date(const bbox_t *bb, const struct grid *grd)
    n->lat = bb->ll.lat + MM2LAT(grd->g_margin - grd->g_stw);
    n->lon = bb->ll.lon + MM2LON(grd->g_margin);
    strftime(buf, sizeof(buf), "%e. %b. %Y, %R", localtime(&n->obj.tim));
-   set_const_tag(&n->obj.otag[1], "chartdate", strdup(buf));
+   set_const_tag(&n->obj.otag[1], "chartdate", smstrdup(buf));
    put_object((osm_obj_t*) n);
 }
 
@@ -306,11 +351,11 @@ void geo_square(const struct coord *pw0, double b, char *v, int cnt)
       n->lon = pw[i].lon;
       set_const_tag(&n->obj.otag[1], "grid", v);
       coord_str(pw[i].lat, LAT_CHAR, buf, sizeof(buf));
-      set_const_tag(&n->obj.otag[2], "lat", strdup(buf));
+      set_const_tag(&n->obj.otag[2], "lat", smstrdup(buf));
       coord_str(pw[i].lon, LON_CHAR, buf, sizeof(buf));
-      set_const_tag(&n->obj.otag[3], "lon", strdup(buf));
+      set_const_tag(&n->obj.otag[3], "lon", smstrdup(buf));
       snprintf(buf, sizeof(buf), "%d", i);
-      set_const_tag(&n->obj.otag[4], "pointindex", strdup(buf));
+      set_const_tag(&n->obj.otag[4], "pointindex", smstrdup(buf));
       put_object((osm_obj_t*) n);
       log_debug("border polygon lat/lon = %.8f/%.8f, \"%s\"", n->lat, n->lon, v);
 
@@ -333,11 +378,57 @@ void geo_square(const struct coord *pw0, double b, char *v, int cnt)
 }
 
 
+void set_coord_info(osm_node_t *n, char *info, char *index)
+{
+   sm_coord_t sc;
+   char buf[32];
+   int k = 7;     // number of tags per axis
+   int j;
+
+   if ((j = realloc_tags(&n->obj, n->obj.tag_cnt + k * 2)) == -1)
+   {
+      log_errno(LOG_WARN, "realloc_tags() failed");
+      return;
+   }
+
+   split_coord(n->lat, &sc);
+   set_const_tag(&n->obj.otag[j + 0], "smrender:lat:info", info);
+   snprintf(buf, sizeof(buf), "%02d° %02d.%d′", sc.d, sc.m, sc.z);
+   set_const_tag(&n->obj.otag[j + 1], "smrender:lat:str", smstrdup(buf));
+   snprintf(buf, sizeof(buf), "%02d°", sc.d);
+   set_const_tag(&n->obj.otag[j + 2], "smrender:lat:deg", smstrdup(buf));
+   snprintf(buf, sizeof(buf), "%02d.%d′", sc.m, sc.z);
+   set_const_tag(&n->obj.otag[j + 3], "smrender:lat:min", smstrdup(buf));
+   snprintf(buf, sizeof(buf), "%02d′", sc.m);
+   set_const_tag(&n->obj.otag[j + 4], "smrender:lat:minint", smstrdup(buf));
+   snprintf(buf, sizeof(buf), "%02d″", sc.s);
+   set_const_tag(&n->obj.otag[j + 5], "smrender:lat:sec", smstrdup(buf));
+   set_const_tag(&n->obj.otag[j + 6], "smrender:lat:index", index);
+
+   j += k;
+
+   split_coord(n->lon, &sc);
+   set_const_tag(&n->obj.otag[j + 0], "smrender:lon:info", info);
+   snprintf(buf, sizeof(buf), "%03d° %02d.%d′", sc.d, sc.m, sc.z);
+   set_const_tag(&n->obj.otag[j + 1], "smrender:lon:str", smstrdup(buf));
+   snprintf(buf, sizeof(buf), "%03d°", sc.d);
+   set_const_tag(&n->obj.otag[j + 2], "smrender:lon:deg", smstrdup(buf));
+   snprintf(buf, sizeof(buf), "%02d.%d′", sc.m, sc.z);
+   set_const_tag(&n->obj.otag[j + 3], "smrender:lon:min", smstrdup(buf));
+   snprintf(buf, sizeof(buf), "%02d′", sc.m);
+   set_const_tag(&n->obj.otag[j + 4], "smrender:lon:minint", smstrdup(buf));
+   snprintf(buf, sizeof(buf), "%02d″", sc.s);
+   set_const_tag(&n->obj.otag[j + 5], "smrender:lon:sec", smstrdup(buf));
+   set_const_tag(&n->obj.otag[j + 6], "smrender:lon:index", index);
+}
+
+
 void geo_tick0(double lat1, double lon1, double lat2, double lon2, char *v, int cnt)
 {
    double dlat, dlon;
    osm_node_t *n;
    osm_way_t *w;
+   char buf[32];
 
    // safety check
    if (cnt < 2)
@@ -356,6 +447,8 @@ void geo_tick0(double lat1, double lon1, double lat2, double lon2, char *v, int 
       osm_node_default(n);
       n->lat = lat1 + dlat * i;
       n->lon = lon1 + dlon * i;
+      snprintf(buf, sizeof(buf), "%d/%d/%d", i, dlat >= 0, dlon >= 0);
+      set_coord_info(n, v, smstrdup(buf));
       put_object((osm_obj_t*) n);
       insert_refs(w, &n, 1, w->ref_cnt);
    }
@@ -392,12 +485,12 @@ void geo_lon_ticks0(const struct coord *pw, int c0, int c1, const char *desc,  d
       latm = latlen_at_lon(pw, lonf);
       log_debug("latf = %.3f, lonf = %.3f, latm = %.3f", latf, lonf, latm);
 
-      geo_tick(latf + MM2LAT0(b3, latm), lonf, latf + MM2LAT0((lon % t) ? b2 : b1, latm), lonf, lon % t ? "subtick" : "tick");
+      geo_tick(latf + MM2LAT0(b3, latm), lonf, latf + MM2LAT0((lon % t) ? b2 : b1, latm), lonf, lon % t ? "subtick:lon" : "tick:lon");
 
       if (!(lon % g))
       {
          coord_str(lonf, (double) g / T_RESCALE < 1 ? LON_DEG : LON_DEG_ONLY, buf, sizeof(buf));
-         s = strdup(buf);
+         s = smstrdup(buf);
          geo_description(latf + MM2LAT0(b2, latm), lonf, s, desc);
       }
    }
@@ -439,12 +532,12 @@ void geo_lat_ticks0(const struct coord *pw, int c0, int c1, const char *desc, do
       lonm = lonlen_at_lat(pw, latf);
       log_debug("latf = %.3f, lonf = %.3f, lonm = %.3f", latf, lonf, lonm);
 
-      geo_tick(latf, lonf + MM2LON0(b3, lonm), latf, lonf + MM2LON0((lat % t) ? b2 : b1, lonm), lat % t ? "subtick" : "tick");
+      geo_tick(latf, lonf + MM2LON0(b3, lonm), latf, lonf + MM2LON0((lat % t) ? b2 : b1, lonm), lat % t ? "subtick:lat" : "tick:lat");
 
       if (!(lat % g))
       {
          coord_str(latf, (double) g / T_RESCALE < 1 ? LAT_DEG : LAT_DEG_ONLY, buf, sizeof(buf));
-         s = strdup(buf);
+         s = smstrdup(buf);
          geo_description(latf, lonf + MM2LON0(b2, lonm), s, desc);
       }
    }
@@ -538,7 +631,7 @@ void geo_legend(const bbox_t *bb, struct rdata *rd, const struct grid *grd)
 
    lat = rd->mean_lat * T_RESCALE;
    snprintf(buf, sizeof(buf), "Mean Latitude %02d %c %.1f', Scale = 1:%.0f, %.1f x %.1f mm", lat / T_RESCALE, lat < 0 ? 'S' : 'N', (double) (lat % T_RESCALE) / TM_RESCALE, rd->scale, PX2MM(rd->w) - 2 * grd->g_margin, PX2MM(rd->h) - 2 * grd->g_margin);
-   s = strdup(buf);
+   s = smstrdup(buf);
    geo_description(bb->ru.lat - MM2LAT(grd->g_margin), bb->ll.lon + rd->wc / 2, s, "top");
    geo_description(bb->ru.lat - MM2LAT(grd->g_margin), bb->ll.lon + MM2LON(grd->g_margin), rd->title, "title");
    if (grd->copyright)
@@ -856,12 +949,6 @@ static char dirc(double a0, const char *circt)
 }
 
 
-static double frac(double a)
-{
-   return a - trunc(a);
-}
-
-
 /*! This function generates a generic geographic circle on the surface of the
  * Earth.
  */
@@ -881,9 +968,9 @@ osm_way_t *circle(double a0, double g, int cnt, char *circt, double (*cfunc)(dou
    set_const_tag(&w->obj.otag[2], "circle", circt);
    /*
    snprintf(buf, sizeof(buf), "%d", (int) a0);
-   set_const_tag(&w->obj.otag[3], "deg", strdup(buf));
+   set_const_tag(&w->obj.otag[3], "deg", smstrdup(buf));
    snprintf(buf, sizeof(buf), "%d %c", abs((int) a0), dirc(a0, circt));
-   set_const_tag(&w->obj.otag[4], "deg:naut", strdup(buf));
+   set_const_tag(&w->obj.otag[4], "deg:naut", smstrdup(buf));
    */
 
    for (double a = 0; a < 360; a += g)
@@ -906,27 +993,27 @@ osm_way_t *circle(double a0, double g, int cnt, char *circt, double (*cfunc)(dou
          }
 
          snprintf(buf, sizeof(buf), "%d", i);
-         set_const_tag(&n->obj.otag[2], "index", strdup(buf));
+         set_const_tag(&n->obj.otag[2], "index", smstrdup(buf));
 
          snprintf(buf, sizeof(buf), "%d", (int) lat);
-         set_const_tag(&n->obj.otag[3], "lat", strdup(buf));
+         set_const_tag(&n->obj.otag[3], "lat", smstrdup(buf));
          snprintf(buf, sizeof(buf), "%d", (int) lon);
-         set_const_tag(&n->obj.otag[4], "lon", strdup(buf));
+         set_const_tag(&n->obj.otag[4], "lon", smstrdup(buf));
 
          snprintf(buf, sizeof(buf), "%f", lat);
-         set_const_tag(&n->obj.otag[5], "lat:dec", strdup(buf));
+         set_const_tag(&n->obj.otag[5], "lat:dec", smstrdup(buf));
          snprintf(buf, sizeof(buf), "%f", lon);
-         set_const_tag(&n->obj.otag[6], "lon:dec", strdup(buf));
+         set_const_tag(&n->obj.otag[6], "lon:dec", smstrdup(buf));
 
          snprintf(buf, sizeof(buf), "%d", (int) fabs(frac(lat) * 60));
-         set_const_tag(&n->obj.otag[7], "lat:min", strdup(buf));
+         set_const_tag(&n->obj.otag[7], "lat:min", smstrdup(buf));
          snprintf(buf, sizeof(buf), "%d", (int) fabs(frac(lon) * 60));
-         set_const_tag(&n->obj.otag[8], "lon:min", strdup(buf));
+         set_const_tag(&n->obj.otag[8], "lon:min", smstrdup(buf));
 
          snprintf(buf, sizeof(buf), "%d° %02d′", (int) lat, (int) fabs(frac(lat) * 60));
-         set_const_tag(&n->obj.otag[9], "lat:str", strdup(buf));
+         set_const_tag(&n->obj.otag[9], "lat:str", smstrdup(buf));
          snprintf(buf, sizeof(buf), "%d° %02d′", (int) lon, (int) fabs(frac(lon) * 60));
-         set_const_tag(&n->obj.otag[10], "lon:str", strdup(buf));
+         set_const_tag(&n->obj.otag[10], "lon:str", smstrdup(buf));
 
          (void) cfunc(&n->lat, &n->lon, a0, b);
 
