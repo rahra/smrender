@@ -728,6 +728,7 @@ int act_set_tags_main(smrule_t *r, osm_obj_t *o)
       return -1;
    }
 
+   //FIXME: set_tags() does not care if tags do already exist. This may end up with duplicate tags.
    o->otag = ot;
    memcpy(&o->otag[o->tag_cnt], templ_o->otag, sizeof(struct otag) * templ_o->tag_cnt);
    o->tag_cnt += templ_o->tag_cnt;
