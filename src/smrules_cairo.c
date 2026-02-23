@@ -1254,7 +1254,6 @@ int act_cap_ini(smrule_t *r)
    cap.scl.max_auto_size = MAX_AUTO_SIZE;
    cap.scl.min_area_size = MIN_AREA_SIZE;
    cap.scl.auto_scale = AUTO_SCALE;
-   //cap.xoff = cap.yoff = POS_OFFSET;
    cap.bgbox_scale = BGBOX_SCALE;
 
    if ((cap.font = get_param("font", NULL, r->act)) == NULL)
@@ -1270,7 +1269,6 @@ int act_cap_ini(smrule_t *r)
          log_msg(LOG_NOTICE, "parameter 'size' missing, defaulting to %.1f", cap.size);
       }
    }
-   cap.xoff = cap.yoff = mm2unit(cap.size) / 2;
    if ((cap.key = get_param("key", NULL, r->act)) == NULL)
    {
       log_msg(LOG_WARN, "parameter 'key' missing");
@@ -1284,8 +1282,9 @@ int act_cap_ini(smrule_t *r)
    (void) get_param("min_area", &cap.scl.min_area_size, r->act);
    (void) get_param("auto_scale", &cap.scl.auto_scale, r->act);
 
-   (void) get_param("xoff", &cap.xoff, r->act);
-   (void) get_param("yoff", &cap.yoff, r->act);
+   //FIXME: text position is a little bit off, dependent on its alignement. Further investigation needed!
+   cap.xoff = get_paramd("xoff", r->act, 0);
+   cap.yoff = get_paramd("yoff", r->act, 0);
    (void) get_param("bgbox_scale", &cap.bgbox_scale, r->act);
 
    cap.fontbox = get_param_bool("fontbox", r->act);
@@ -1488,7 +1487,7 @@ static void pos_offset(int pos, double width, double height, double xoff, double
          break;
 
       default:
-         *oy = height / 2;
+         *oy = height / 2 + yoff;
    }
    
    switch (pos & 0xc)
@@ -1502,7 +1501,7 @@ static void pos_offset(int pos, double width, double height, double xoff, double
          break;
 
       default:
-         *ox = -width / 2;
+         *ox = -width / 2 + xoff;
    }
    log_debug("pos = %04x, ox = %.2f, oy = %.2f, width = %.2f, height = %.2f", pos, *ox, *oy, width, height);
 }
