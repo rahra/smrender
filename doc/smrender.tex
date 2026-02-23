@@ -1136,7 +1136,7 @@ The parameter \optv{transparency} makes the image transparent. It can be a decim
 \subsubsection{Adding Objects}\label{sec:act-add}
 
 With this action you can add OSM objects as defined in the ruleset to the data.
-You can use this to add specific OSM objects during during the stage of
+You can use this to add specific OSM objects during the stage of
 rendering. Thus, you don't have to ``pollute'' your source data with
 map-specific data before. Typically, those objects added are graphically
 rendered by a subsequent rule. Currently, \smrender{} only OSM nodes are supported.
@@ -1183,7 +1183,7 @@ right and above of the lower left page corner.
 </node>
 \end{verbatim}
 
-\subsubsection{Adding Tags to Objects} \label{sec:addtag}\label{sec:act-addtag}
+\subsubsection{Adding Tags to Objects} \label{sec:act-set-tags}
 
 The action \textsf{set\_tags} allows to add an arbitrary number of OSM tags to an
 object. The tags have to be defined through an object within the rules file.
@@ -1550,7 +1550,7 @@ rendered in the second rule.
    the name of the key will be appended by the string '\textsf{:local}'.\\
 
    The translation table is defined in the ruleset as well like a template (see
-   Section \ref{sec:addtag}). This is a rule node with an action. It has to have a node
+   Section \ref{sec:act-set-tags}). This is a rule node with an action. It has to have a node
    id because it is referred to by the \textsf{translate()}-rule. This
    translation object (the template) lists key-value-pairs being the key \textsf{k} the
    original value and the value \textsf{v} the one translated one.
