@@ -19,7 +19,7 @@
  * This file contains all functions regarding the index file.
  *
  *  \author Bernhard R. Fischer
- *  \date 2026/01/17
+ *  \date 2026/03/03
  */
 
 #ifdef HAVE_CONFIG_H
@@ -86,7 +86,7 @@ typedef struct index_varhdr
    //! type field of variable header
    union
    {
-      char type_str[4];
+      __attribute__((nonstring)) char type_str[4];
       int type;
    };
    //! flags (no flags yet defined)
