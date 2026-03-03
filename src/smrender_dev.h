@@ -19,7 +19,7 @@
  * This file contains almost all internal declarations.
  *
  * \author Bernhard R. Fischer, <bf@abenteuerland.at>
- * \version 2026/01/17
+ * \version 2026/03/03
  */
 #ifndef SMRENDER_DEV_H
 #define SMRENDER_DEV_H
@@ -395,6 +395,7 @@ int dist_median(const osm_way_t *, double *);
 void init_grid(struct grid *);
 void auto_grid(const struct rdata *, struct grid *);
 void grid(struct rdata *, const struct grid *);
+char *smstrdup(const char *);
 
 /* smqr.c */
 image_t *smqr_image(void);

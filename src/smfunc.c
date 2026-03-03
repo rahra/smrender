@@ -19,7 +19,7 @@
  * This file contains all rule functions which do not create graphics output.
  *
  *  @author Bernhard R. Fischer
- *  \date 2026/01/02
+ *  \date 2026/03/03
  */
 #include <stdio.h>
 #include <stdlib.h>
@@ -487,7 +487,8 @@ int act_poly_centroid_main(smrule_t * UNUSED(r), osm_way_t *w)
    struct coord c;
    double ar;
    osm_node_t *n;
-   char buf[256], *s;
+   char buf[32];
+   int k;
 
    if (!is_closed_poly(w))
       return 0;
@@ -495,21 +496,16 @@ int act_poly_centroid_main(smrule_t * UNUSED(r), osm_way_t *w)
    if (poly_area(w, &c, &ar))
       return 1;
 
-   n = malloc_node(w->obj.tag_cnt + 1);
-   // FIXME: generator=smrender gets overwritten
+   n = malloc_node(w->obj.tag_cnt + 2);
    osm_node_default(n);
    n->lat = c.lat;
    n->lon = c.lon;
 
    snprintf(buf, sizeof(buf), "%"PRId64, w->obj.id);
-   if ((s = strdup(buf)) == NULL)
-   {
-      free_obj((osm_obj_t*) n);
-      log_errno(LOG_ERR, "could not strdup()");
-      return 0;
-   }
-   set_const_tag(&n->obj.otag[0], "smrender:id:way", s);
-   memcpy(&n->obj.otag[1], &w->obj.otag[0], sizeof(struct otag) * w->obj.tag_cnt);
+   k = match_attr(&w->obj, "generator", "smrender") < 0;
+   set_const_tag(&n->obj.otag[k], "smrender:id:way", smstrdup(buf));
+   memcpy(&n->obj.otag[k + 1], &w->obj.otag[0], sizeof(struct otag) * w->obj.tag_cnt);
+   n->obj.tag_cnt = k + w->obj.tag_cnt + 1;
    put_object((osm_obj_t*) n);
  
    //log_debug("centroid %.3f/%.3f, ar = %f, way = %ld, node %ld", n->lat, n->lon, ar, w->obj.id, n->obj.id);
