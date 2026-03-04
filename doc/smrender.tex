@@ -231,7 +231,7 @@ In the following all options are explained in alphabetical order.
    \item[\optk{B}] \optv{border}
 
       Add an additional border to the page on all edges. This may be useful to
-      add e.g. a bleed margin for printing. Rendering is always done in respect
+      add e.g. add a bleed margin for printing. Rendering is always done in respect
       to the page size as defined by option \optk{P} but the final page size
       will be larger by twice the value defined by option \optk{B}. The value
       \optv{border} is given in millimeters. If this option is omitted, no
@@ -241,6 +241,8 @@ In the following all options are explained in alphabetical order.
 
       This option allows to set a background color. The color may be defined either as a color preset
       or an HTML-style definition (see Section \ref{sec:act-cap}). The default color is white.
+
+      This also allows to specify a transparent (e.g. with \textsf{-b transparent}) background which could be of special interest if you create a PNG file as output image.
 
       Please note that some Shells (such as the \textsf{bash}) interpret the
       \textsf{\#} character if the color is specified in HTML-style. In this
@@ -475,13 +477,13 @@ In the following all options are explained in alphabetical order.
 
 \item[\optk{w}] \optv{file}
 
-   This option specifies the file name of an output OSM file. \smrender{} will dump all nodes/ways to this file that have been
-   selected by the import process and all nodes/ways which have been generated during the rendering process.
+   This option specifies the file name of an OSM output file. \smrender{} will dump all nodes, ways, and relations of its internal in-memory database to this file.
 
-   These nodes/ways include the objects generated for the grid and also the close coastline ways.
-   Thus the output depends on the options \optk{f}, \optk{C}, and \optk{G}.
+   During processing and rendering, \smrender{} may generate a lot of additional nodes and ways depending on options and the ruleset, in addition to the input data.
 
-   If this option is omitted, no output will be generated.
+   This data will include e.g. the grid but also objects and tags which have been modified or added by the actions found in Section \ref{sec:manipulation}.
+
+   The output file is a valid OSM data file and could be opened in other OSM processing tools such as JOSM.
 
 \item[\optk{x}]
 
@@ -489,9 +491,17 @@ In the following all options are explained in alphabetical order.
 
    Basically at the startup \smrender{} pulls in the input data file (from option \optk{i}). By reading it it parses the whole data file and creates an in-memory index which obviously takes some time. Although the XML processor of \smrender{} is pretty fast it is still a time consuming task.
    
-   With this option set it will save this internal index to a file after the input data was parsed. In a subsequent run of \smrender{} it will pull in the index directly from the file instead of parsing the whole XML file of the raw input data. This drastically speeds up the initialization process which is very usefull if your render several files in a row if they are based on the same input data. It is also very useful if you are developing a ruleset and have to restart \smrender{} over and over again, specifically if the input file has a reasonable size.
+   With this option set it will save this internal index to a file after the input data was parsed. In a subsequent run of \smrender{} it will pull in the index directly from the file instead of parsing the whole XML file of the raw input data. This drastically speeds up the initialization process which is very usefull if you render several files in a row if they are based on the same input data. It is also very useful if you are developing a ruleset and have to restart \smrender{} over and over again, specifically if the input file has a reasonable size.
 
    Before loading the index it compares the timestmaps of the index file and the input file. If the input file is newer it will drop and rebuild the index file. This comparison is based on the \emph{modification time} of the files in the file system. Please note that if you tamper with these timestamps or your system had a timewarp (system time changed) this may lead to accidentally reading an outdated index. In this case just delete the index file manually and restart \smrender{}.
+
+   The index file is created in the same directory as the input file as specified by \optk{i} and its name will have the extension \textsf{.index} added. This location can be changed with option \optk{X}.
+
+\item[\optk{X}]
+
+   This option specifies the name and location of the index file (see option \optk{x}). This may be desirable if e.g. the OSM input file rests on a read only storage.
+
+   If this option is set, option \optk{x} is implied automatically.
 
 \end{itemize}
 
