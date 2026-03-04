@@ -175,11 +175,7 @@ int act_out_ini(smrule_t *r)
       return -1;
    }
 
-   if (((*oh)->name = strdup(s)) == NULL)
-   {
-      log_msg(LOG_ERR, "strdup() failed: %s", strerror(errno));
-      return -1;
-   }
+   (*oh)->name = smstrdup(s);
 
    if ((s = get_param("format", NULL, r->act)) != NULL)
    {
@@ -444,7 +440,7 @@ int act_poly_area_main(smrule_t * UNUSED(r), osm_way_t *w)
    double ar;
    struct otag *ot;
    struct coord c;
-   char buf[256], *s;
+   char buf[32];
 
    if (!poly_area(w, &c, &ar))
    {
@@ -456,12 +452,7 @@ int act_poly_area_main(smrule_t * UNUSED(r), osm_way_t *w)
       }
       w->obj.otag = ot;
       snprintf(buf, sizeof(buf), "%.8f", fabs(ar));
-      if ((s = strdup(buf)) == NULL)
-      {
-         log_msg(LOG_DEBUG, "could not strdup");
-         return 0;
-      }
-      set_const_tag(&w->obj.otag[w->obj.tag_cnt], "smrender:area", s);
+      set_const_tag(&w->obj.otag[w->obj.tag_cnt], "smrender:area", smstrdup(buf));
       w->obj.tag_cnt++;
    }
 
@@ -1109,9 +1100,9 @@ int ins_eqdist(osm_way_t *w, double dist)
          memcpy(&n->obj.otag[3], w->obj.otag, sizeof(struct otag) * w->obj.tag_cnt);
          pcnt++;
          snprintf(buf, sizeof(buf), "%.1f", dist * pcnt * 60.0);
-         set_const_tag(&n->obj.otag[1], "distance", strdup(buf));
+         set_const_tag(&n->obj.otag[1], "distance", smstrdup(buf));
          snprintf(buf, sizeof(buf), "%.1f", pc.bearing);
-         set_const_tag(&n->obj.otag[2], "bearing", strdup(buf));
+         set_const_tag(&n->obj.otag[2], "bearing", smstrdup(buf));
 
          // calculate coordinates
          n->lat = s->lat + ddist * cos(DEG2RAD(pc.bearing));
@@ -1258,7 +1249,7 @@ int act_dist_median_main(smrule_t * UNUSED(r), osm_way_t *w)
 
    w->obj.otag = ot;
    snprintf(buf, sizeof(buf), "%.8f", dist);
-   set_const_tag(&w->obj.otag[w->obj.tag_cnt], "smrender:dist_median", strdup(buf));
+   set_const_tag(&w->obj.otag[w->obj.tag_cnt], "smrender:dist_median", smstrdup(buf));
    w->obj.tag_cnt++;
 
    return 0;
@@ -1465,7 +1456,7 @@ int act_poly_len_main(smrule_t * UNUSED(r), osm_way_t *w)
 
    w->obj.otag = ot;
    snprintf(buf, sizeof(buf), "%.8f", dist);
-   set_const_tag(&w->obj.otag[w->obj.tag_cnt], "smrender:length", strdup(buf));
+   set_const_tag(&w->obj.otag[w->obj.tag_cnt], "smrender:length", smstrdup(buf));
    w->obj.tag_cnt++;
    return 0;
 }
@@ -1792,7 +1783,7 @@ int act_strfmt_ini(smrule_t *r)
 int act_strfmt_main(smrule_t *r, osm_obj_t *o)
 {
    struct otag *ot;
-   char buf[2048], *s;
+   char buf[2048];
    int len, n;
 
    if ((len = mk_fmt_str(buf, sizeof(buf), ((struct fmt_info*) r->data)->fmt, r->act->fp, o)) <= 0)
@@ -1822,13 +1813,7 @@ int act_strfmt_main(smrule_t *r, osm_obj_t *o)
       log_debug("reusing tag '%s'=*", (char*) ((struct fmt_info*) r->data)->addtag);
    }
 
-
-   if ((s = strdup(buf)) == NULL)
-   {
-      log_msg(LOG_ERR, "strdup() failed in strfmt(): %s", strerror(errno));
-      return -1;
-   }
-   o->otag[n].v.buf = s;
+   o->otag[n].v.buf = smstrdup(buf);
    o->otag[n].v.len = len;
 
    return 0;
@@ -2431,7 +2416,7 @@ int act_split_main(smrule_t *r, osm_node_t *n)
          memcpy(w->ref, ((osm_way_t*) (*optr))->ref + i - 1 + rs, refs * sizeof(*((osm_way_t*) (*optr))->ref));
          // set reference tag to original way
          snprintf(buf, sizeof(buf), "%"PRId64, (*optr)->id);
-         set_const_tag(&w->obj.otag[w->obj.tag_cnt - 1], "smrender:split:id", strdup(buf));
+         set_const_tag(&w->obj.otag[w->obj.tag_cnt - 1], "smrender:split:id", smstrdup(buf));
 
          // store new way
          put_object(&w->obj);
@@ -3071,7 +3056,7 @@ int set_ftag(osm_obj_t *o, char *key, double f)
    }
 
    snprintf(buf, sizeof(buf), "%.1f", f);
-   set_const_tag(&o->otag[m], key, strdup(buf));
+   set_const_tag(&o->otag[m], key, smstrdup(buf));
    return 0;
 }
 
@@ -3215,7 +3200,7 @@ int act_random_main(smrule_t *r, osm_obj_t *o)
    }
 
    log_debug("setting key '%s' to '%s'", rnd->key, buf);
-   set_const_tag(&o->otag[n], rnd->key, strdup(buf));
+   set_const_tag(&o->otag[n], rnd->key, smstrdup(buf));
    return 0;
 }
 

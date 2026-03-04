@@ -1,4 +1,4 @@
-/* Copyright 2011-2025 Bernhard R. Fischer, 4096R/8E24F29D <bf@abenteuerland.at>
+/* Copyright 2011-2026 Bernhard R. Fischer, 4096R/8E24F29D <bf@abenteuerland.at>
  *
  * This file is part of smrender.
  *
@@ -19,7 +19,7 @@
  * This file contains all graphical rendering functions using libcairo.
  *
  * \author Bernhard R. Fischer, <bf@abenteuerland.at>
- * \date 2025/01/11
+ * \date 2026/03/04
  */
 
 #ifdef HAVE_CONFIG_H
@@ -1792,7 +1792,7 @@ static void dv_mkarea(const struct coord *cnode, double r, const diffvec_t *dv, 
 
       //log_debug("i = %d, angle = %.1f, diff = %.2f, quant = %.2f", i, fmod2(RAD2DEG(M_PI_2 - dv[i].dv_angle), 360), dv[i].dv_diff, dv[i].dv_quant);
       snprintf(buf, sizeof(buf), "%.1f;%.1f", fmod2(RAD2DEG(M_PI_2 - dv[i].dv_angle), 360), dv[i].dv_quant * 100);
-      set_const_tag(&n->obj.otag[1], "smrender:autorot:angle", strdup(buf));
+      set_const_tag(&n->obj.otag[1], "smrender:autorot:angle", smstrdup(buf));
       put_object((osm_obj_t*) n);
    }
    w->ref[i] = w->ref[0];
