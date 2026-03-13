@@ -338,7 +338,7 @@ int hpx_process_elem(bstring_t b, hpx_tag_t *p)
       return -1;
    }
 
-   // FIXME: return value correct?
+   // all other characters after '<' are invalid
    return -1;
 }
 
