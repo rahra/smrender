@@ -1,4 +1,4 @@
-/* Copyright 2011-2021 Bernhard R. Fischer, 4096R/8E24F29D <bf@abenteuerland.at>
+/* Copyright 2011-2026 Bernhard R. Fischer, 4096R/8E24F29D <bf@abenteuerland.at>
  *
  * This file is part of smrender.
  *
@@ -19,7 +19,8 @@
  * This file contains functions for rendering initialization, such as unit
  * conversions and paper and coordinate initialization.
  *
- * @author Bernhard R. Fischer
+ * \author Bernhard R. Fischer, <bf@abenteuerland.at>
+ * \date 2026/03/13
  */
 
 #ifdef HAVE_CONFIG_H
@@ -476,6 +477,7 @@ static void __attribute__((constructor)) init_rdata(void)
    rd_.title = "";
    rd_.img_scale = 1;
    //set_static_obj_tree(&rd_.obj);
+   rd_.fontscale = 1.0;
 }
 
 

@@ -19,7 +19,7 @@
  * This file contains all graphical rendering functions using libcairo.
  *
  * \author Bernhard R. Fischer, <bf@abenteuerland.at>
- * \date 2026/03/04
+ * \date 2026/03/13
  */
 
 #ifdef HAVE_CONFIG_H
@@ -1269,6 +1269,7 @@ int act_cap_ini(smrule_t *r)
          log_msg(LOG_NOTICE, "parameter 'size' missing, defaulting to %.1f", cap.size);
       }
    }
+   cap.size *= get_rdata()->fontscale;
    if ((cap.key = get_param("key", NULL, r->act)) == NULL)
    {
       log_msg(LOG_WARN, "parameter 'key' missing");

@@ -19,7 +19,7 @@
  * This file contains the main() function and main initialization functions.
  *
  *  \author Bernhard R. Fischer, <bf@abenteuerland.at>
- *  \date 2026/01/17
+ *  \date 2026/03/13
  */
 
 #ifdef HAVE_CONFIG_H
@@ -78,6 +78,7 @@ static const struct option lopts_[] =
    {"inc-loglevel", no_argument, NULL, 'D'},
    {"loglevel", no_argument, NULL, 'D' + 256},
    {"dpi", no_argument, NULL, 'd'},
+   {"font-scale", required_argument, NULL, 'F'},
    {"filter", no_argument, NULL, 'f'},
    {"grid", required_argument, NULL, 'g'},
    {"no-grid", no_argument, NULL, 'G'},
@@ -888,7 +889,7 @@ int main(int argc, char *argv[])
    memset(&ri, 0, sizeof(ri));
    ri.nindent = DEFAULT_NINDENT;
 
-   const char *optstring = "ab:B:DCd:fg:Ghi:k:K:lL:MmN:no:O:p:P:r:R:s:S:t:T:uVvw:xX:";
+   const char *optstring = "ab:B:DCd:F:fg:Ghi:k:K:lL:MmN:no:O:p:P:r:R:s:S:t:T:uVvw:xX:";
 #ifdef HAVE_GETOPT_LONG
    while ((n = getopt_long(argc, argv, optstring, lopts_, NULL)) != -1)
 #else
@@ -928,6 +929,16 @@ int main(int argc, char *argv[])
             if ((rd->dpi = atoi(optarg)) <= 0)
                log_msg(LOG_ERR, "illegal dpi argument %s", optarg),
                   exit(EXIT_FAILURE);
+            break;
+
+         case 'F':
+            errno = 0;
+            double fontscale = strtod(optarg, NULL);
+            if (errno)
+               log_msg(LOG_ERR, "ill font scale '%s': %s, ignoring argument", optarg, strerror(errno));
+            else
+               rd->fontscale = fontscale;
+            log_debug("fontscale = %f", rd->fontscale);
             break;
 
          case 'g':

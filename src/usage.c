@@ -19,7 +19,7 @@
  * This file contains the usage output
  *
  *  \author Bernhard R. Fischer, <bf@abenteuerland.at>
- *  \date 2026/01/17
+ *  \date 2026/03/13
  */
 
 #ifdef HAVE_CONFIG_H
@@ -104,6 +104,9 @@ static const char *usage_txt_ =
    "\n"
    "   --dpi <density>\n"
    "   -d <density> ........... Set image density (300 is default).\n"
+   "\n"
+   "   --font-scale <fs>\n"
+   "   -F <fs> ................ Scale all fonts by <fs> (1.0 is default).\n"
    "\n"
    "   --grid <grd>[:<t>[:<s>]]\n"
    "   -g <grd>[:<t>[:<s>]]     Distance of grid/ticks/subticks in minutes.\n"
