@@ -370,7 +370,7 @@ int call_fini(smrule_t *r)
          log_debug("%s_fini()[%d] returned %d", r->act->func_name, 0, e);
       log_debug("main() was called %u times", ((smrule_threaded_t*)r)->th->call_cnt);
 #ifdef DEBUG_T_APPLY
-      log_debug("exec stats: %016lx: %s() acnt = %u, t_apply_ = %.3f ms, %.3f us", (long) r->oo->id, r->act->func_name, acnt, t_apply_ / 1000.0, (double) t_apply_ / acnt);
+      log_debug("exec stats: %"PRId64": %s() acnt = %u, t_apply_ = %.3f ms, %.3f us", r->oo->id, r->act->func_name, acnt, t_apply_ / 1000.0, (double) t_apply_ / acnt);
 #endif
       sm_set_flag(r, ACTION_FINISHED);
    }
