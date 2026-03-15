@@ -95,6 +95,8 @@ typedef struct dstats
    const void *lo_addr, *hi_addr;   // lowest and highest memory address
    int ver_cnt;
    int ver[MAX_ITER];
+   //! pointer to tree to which this stats belong to
+   bx_node_t *tree;
 } dstats_t;
 
 /*! This structure contains all core parameters and settings which are

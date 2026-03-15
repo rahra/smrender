@@ -165,6 +165,26 @@ void install_sigint(void)
 }
 
 
+int renumber_rule(osm_obj_t *o, void *p)
+{
+   dstats_t *ds = p;
+
+   if (o->id < 0)
+   {
+      int64_t id = o->id - ds->max_neg_id[o->type] - 1;
+      log_debug("renumbering %"PRId64" to %"PRId64, o->id, id);
+      o->id = id;
+   }
+
+   if (!o->id)
+      log_msg(LOG_WARN, "rule id is 0!");
+
+   put_object0(&ds->tree, o->id, o, o->type - 1);
+
+   return 0;
+}
+
+
 int norm_rule_node(osm_obj_t *o, void * UNUSED(p))
 {
 #define RULE_LON_DIFF 1.0/600.0
@@ -1193,6 +1213,22 @@ int main(int argc, char *argv[])
    qsort(rstats.ver, rstats.ver_cnt, sizeof(int), (int(*)(const void*, const void*)) cmp_int);
    for (n = 0; n < rstats.ver_cnt; n++)
       log_msg(LOG_DEBUG, " rstats.ver[%d] = %d", n, rstats.ver[n]);
+
+   // renumbering rules
+   log_msg(LOG_INFO, "renumbering rules");
+   rstats.tree = NULL;
+   traverse(rd->rules, 0, IDX_NODE, renumber_rule, &rstats);
+   traverse(rd->rules, 0, IDX_WAY, renumber_rule, &rstats);
+   traverse(rd->rules, 0, IDX_REL, renumber_rule, &rstats);
+   log_debug("freeing temporary rules tree");
+   bx_free_tree(rd->rules);
+   rd->rules = rstats.tree;
+   log_debug("updating rules stats");
+   init_stats(&rstats);
+   rstats.tree = rd->rules;
+   traverse(rd->rules, 0, IDX_NODE, (tree_func_t) update_stats, &rstats);
+   traverse(rd->rules, 0, IDX_WAY, (tree_func_t) update_stats, &rstats);
+   traverse(rd->rules, 0, IDX_REL, (tree_func_t) update_stats, &rstats);
 
    if (osm_rfile != NULL)
    {
