@@ -351,7 +351,7 @@ int call_fini(smrule_t *r)
          smrule_threaded_t *rth = ((smrule_threaded_t*) r) - nth;
          for (int i = nth - 1; i > 0; i--)
          {
-            log_msg(LOG_INFO, "calling rule %016lx, %s_fini()[%d]", (long) r->oo->id, r->act->func_name, i);
+            log_msg(LOG_INFO, "calling rule %"PRId64", %s_fini()[%d]", r->oo->id, r->act->func_name, i);
             if ((e = r->act->fini.func(&rth[i].r)))
                log_debug("%s_fini()[%d] returned %d", r->act->func_name, i, e);
             log_debug("main() was called %u times", rth[i].th->call_cnt);
@@ -365,7 +365,7 @@ int call_fini(smrule_t *r)
 #endif
       }
 
-      log_msg(LOG_INFO, "calling rule %016lx, %s_fini()[%d]", (long) r->oo->id, r->act->func_name, 0);
+      log_msg(LOG_INFO, "calling rule %"PRId64", %s_fini()[%d]", r->oo->id, r->act->func_name, 0);
       if ((e = r->act->fini.func(r)))
          log_debug("%s_fini()[%d] returned %d", r->act->func_name, 0, e);
       log_debug("main() was called %u times", ((smrule_threaded_t*)r)->th->call_cnt);
@@ -436,7 +436,7 @@ int apply_smrules(smrule_t *r, trv_info_t *ti)
 
    if (!r->oo->vis)
    {
-      log_msg(LOG_INFO, "ignoring invisible rule %016"PRIx64, r->oo->id);
+      log_msg(LOG_INFO, "ignoring invisible rule %"PRId64, r->oo->id);
       return 0;
    }
 
@@ -454,7 +454,7 @@ int apply_smrules(smrule_t *r, trv_info_t *ti)
       return 0;
    }
 
-   log_msg(LOG_INFO, "applying rule id 0x%"PRIx64" '%s'", r->oo->id, r->act->func_name);
+   log_msg(LOG_INFO, "applying rule id %"PRId64" '%s'", r->oo->id, r->act->func_name);
 
    if (r->act->main.func != NULL)
    {

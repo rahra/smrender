@@ -368,7 +368,7 @@ int init_rule(osm_obj_t *o, smrule_t **r)
    smrule_t *rl;
    int i;
 
-   log_debug("initializing rule %"PRId64" (0x%016"PRIx64", %"PRId64")", o->id, o->id, o->id & 0x000000ffffffffff);
+   log_debug("initializing rule %"PRId64, o->id);
 
    if ((*r = alloc_rule(o->tag_cnt)) == NULL)
       return -1;
