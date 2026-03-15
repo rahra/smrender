@@ -1,30 +1,31 @@
-/* Copyright 2011 Bernhard R. Fischer, 2048R/5C5FFD47 <bf@abenteuerland.at>
+/* Copyright 2011-2026 Bernhard R. Fischer, 4096R/8E24F29D <bf@abenteuerland.at>
  *
- * This file is part of smfilter.
+ * This file is part of smrender.
  *
- * Smfilter is free software: you can redistribute it and/or modify
+ * Smrender is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, version 3 of the License.
  *
- * Smfilter is distributed in the hope that it will be useful,
+ * Smrender is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with smfilter. If not, see <http://www.gnu.org/licenses/>.
+ * along with smrender. If not, see <http://www.gnu.org/licenses/>.
  */
 
 /*! \file seamark.h
  * This file contains the definitions for the light arcs and the captions.
  *
  * \author Bernhard R. Fischer, <bf@abenteuerland.at>
+ * \version 2026/03/15
  */
+
 #ifndef SEAMARK_H
 #define SEAMARK_H
 
 #include "bstring.h"
-//#include "libhpxml.h"
 #include "smrender.h"
 
 #define ARC_DIV 6.0
@@ -83,20 +84,6 @@ struct sector
    struct sector_frac sf[MAX_SFRAC];
    struct lchar lc;
 };
-
-
-/*
-char *smstrdup(const char *);
-int get_sectors(struct rdata*, const struct onode *, struct sector *sec, int nmax);
-void node_calc(const struct osm_node *nd, double r, double a, double *lat, double *lon);
-int sector_calc3(struct rdata *, const struct onode *, const struct sector *, bstring_t);
-void init_sector(struct sector *sec);
-int proc_sfrac(struct sector *sec);
-static const char *color(int);
-static const char *color_abbr(int);
-static void sort_sectors(struct sector *, int);
-static int parse_color(bstring_t);
-*/
 
 #endif
 
