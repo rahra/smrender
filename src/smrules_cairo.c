@@ -2366,7 +2366,8 @@ static int cap_coord(const struct actCaption *cap, const struct coord *c, const 
    pos_offset(pos, tx.width + tx.x_bearing, hgt, cap->xoff, cap->yoff, &x, &y);
    if (cap->fill.used)
    {
-      cap_rect(cap, x, y, tx.width + tx.x_bearing, -hgt, fe.descent, color_by_cs(o, &cap->fill.cs));
+      //cap_rect(cap, x, y, tx.width + tx.x_bearing, -hgt, fe.descent, color_by_cs(o, &cap->fill.cs));
+      cap_rect(cap, x + tx.x_bearing, y + tx.y_bearing, tx.width, tx.height, 0, color_by_cs(o, &cap->fill.cs));
    }
    if (cap->fontbox)
    {
