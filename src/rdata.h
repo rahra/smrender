@@ -19,7 +19,7 @@
  * This file contains definitions for all rendering relevant data.
  *
  * \author Bernhard R. Fischer, <bf@abenteuerland.at>
- * \date 2026/03/13
+ * \date 2026/03/15
  */
 #ifndef RDATA_H
 #define RDATA_H
@@ -80,18 +80,22 @@ typedef struct bbox
    struct coord ll, ru;
 } bbox_t;
 
-struct dstats
+typedef struct dstats
 {
    bbox_t bb;
    long cnt[4];
+   //! lowest ids
    int64_t min_id[4];
+   //! largest negative ids (i.e. closest to 0)
+   int64_t max_neg_id[4];
+   //! largest ids
    int64_t max_id[4];
    int id_bits[4];
    int64_t id_mask[4];
    const void *lo_addr, *hi_addr;   // lowest and highest memory address
    int ver_cnt;
    int ver[MAX_ITER];
-};
+} dstats_t;
 
 /*! This structure contains all core parameters and settings which are
  * necessary for Smrender to operate properly.

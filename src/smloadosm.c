@@ -1,4 +1,4 @@
-/* Copyright 2011-2025 Bernhard R. Fischer, 4096R/8E24F29D <bf@abenteuerland.at>
+/* Copyright 2011-2026 Bernhard R. Fischer, 4096R/8E24F29D <bf@abenteuerland.at>
  *
  * This file is part of Smrender.
  *
@@ -20,7 +20,7 @@
  * Originally it was written for smfilter and was reused and adapted.
  *
  * \author Bernhard R. Fischer, <bf@abenteuerland.at>
- * \date 2025/04/03
+ * \date 2026/03/15
  */
 #include <stdio.h>
 #include <stdlib.h>
@@ -123,6 +123,7 @@ void init_stats(struct dstats *ds)
    for (int i = 0; i < 4; i++)
    {
       ds->min_id[i] = INT64_MAX;
+      ds->max_neg_id[i] = INT64_MIN;
       ds->max_id[i] = INT64_MIN;
    }
    ds->bb.ll.lat = 90;
@@ -137,8 +138,8 @@ void init_stats(struct dstats *ds)
 static void log_stats(const struct dstats *ds)
 {
    for (int i = 1; i < 4; i++)
-      log_debug("[%d] cnt = %ld, min_id = %ld, max_id = %ld (%d bits)",
-            i, ds->cnt[i], ds->min_id[i], ds->max_id[i], ds->id_bits[i]);
+      log_debug("[%d] cnt = %ld, min_id = %ld, max_neg_id = %ld, max_id = %ld (%d bits)",
+            i, ds->cnt[i], ds->min_id[i], ds->max_neg_id[i], ds->max_id[i], ds->id_bits[i]);
    log_debug(" left lower %.3f,%.3f right bottom %.3f,%.3f", ds->bb.ll.lon, ds->bb.ll.lat, ds->bb.ru.lon, ds->bb.ru.lat);
    log_debug(" lo_addr = %p, hi_addr = %p", ds->lo_addr, ds->hi_addr);
 }
@@ -166,6 +167,7 @@ int update_stats(const osm_obj_t *o, struct dstats *ds)
       case OSM_REL:
          ds->cnt[o->type]++;
          if (ds->min_id[o->type] > o->id) ds->min_id[o->type] = o->id;
+         if (ds->max_neg_id[o->type] < o->id && o->id < 0) ds->max_neg_id[o->type] = o->id;
          if (ds->max_id[o->type] < o->id) ds->max_id[o->type] = o->id;
          break;
 
