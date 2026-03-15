@@ -1,4 +1,4 @@
-/* Copyright 2011-2023 Bernhard R. Fischer, 4096R/8E24F29D <bf@abenteuerland.at>
+/* Copyright 2011-2026 Bernhard R. Fischer, 4096R/8E24F29D <bf@abenteuerland.at>
  *
  * This file is part of smrender.
  *
@@ -16,10 +16,11 @@
  */
 
 /*! \file libsmfilter.c
- * This file contains the code for generating the light arcs and the light
- * captions.
+ * This file contains the code for generating the light arcs, the light
+ * captions, and the variation compass.
  *
  *  \author Bernhard R. Fischer, <bf@abenteuerland.at>
+ *  \date 2026/03/15
  */
 
 #include <stdio.h>
@@ -39,12 +40,15 @@
 #define COL_ABBR_CNT COL_CNT
 #define ATYPE_CNT 4
 #define TAG_CNT 7
-#define SMFILTER_REV "$Rev$"
+#define SMFILTER_REV "2026031401"
 
 
 enum { SEAMARK_LIGHT_CHARACTER, SEAMARK_LIGHT_OBJECT, SEAMARK_LIGHT_RADIAL,
    SEAMARK_LIGHT_SECTOR_NR, SEAMARK_ARC_STYLE, SEAMARK_LIGHT_ARC_AL,
    SEAMARK_LIGHT_ARC};
+
+//! compass styles
+enum {CSTYLE_INT1, CSTYLE_INT1VAR};
 
 struct compass_data
 {
@@ -52,6 +56,7 @@ struct compass_data
    double r1;        //!< radius in mm
    double r2;
    int ticks;        //!< number of ticks on circle
+   int style;        //!< compass style (0 = default, or 1)
 };
 
 struct vsec_data
@@ -1312,6 +1317,7 @@ int act_sounding_main(smrule_t * UNUSED(rl), osm_obj_t *o)
 int act_compass_ini(smrule_t *r)
 {
    struct compass_data *cd;
+   char *s;
 
    if (r->oo->type != OSM_NODE)
    {
@@ -1335,18 +1341,28 @@ int act_compass_ini(smrule_t *r)
       return 1;
    }
 
+   if ((s = get_param("style", NULL, r->act)) != NULL)
+   {
+      if (!strcasecmp(s, "int1"))
+         cd->style = CSTYLE_INT1;
+      else if (!strcasecmp(s, "int1var"))
+         cd->style = CSTYLE_INT1VAR;
+      else
+         log_msg(LOG_WARN, "compass style '%s' unknown", s);
+   }
+
    cd->r2 = cd->r1 * 0.9;
    cd->var = DEG2RAD(cd->var);
    r->data = cd;
 
-   log_debug("var = %.2f, r1 = %f, ticks = %d", cd->var * 180.0 / M_PI, cd->r1, cd->ticks);
+   log_debug("var = %.2f, r1 = %f, ticks = %d, style = %d", cd->var * 180.0 / M_PI, cd->r1, cd->ticks, cd->style);
    return 0;
 }
 
 
 static int64_t circle_node(const osm_node_t *cn, double radius, double angle, const char *ndesc)
 {
-   char buf[8], *s;
+   char buf[16];
    osm_node_t *n;
    int tcnt;
 
@@ -1358,12 +1374,7 @@ static int64_t circle_node(const osm_node_t *cn, double radius, double angle, co
 
    // add bearing
    snprintf(buf, sizeof(buf), "%.2f", RAD2DEG(M_PI_2 - angle));
-   if ((s = strdup(buf)) == NULL)
-   {
-      log_errno(LOG_ERR, "strdup() failed");
-      s = ""; //FIXME: error handling?
-   }
-   set_const_tag(&n->obj.otag[1], "smrender:compass", s);
+   set_const_tag(&n->obj.otag[1], "smrender:compass", smstrdup(buf));
 
    if (ndesc != NULL)
       set_const_tag(&n->obj.otag[2], "smrender:compass:description", (char*) ndesc); //FIXME: typecasting removes const
@@ -1374,17 +1385,12 @@ static int64_t circle_node(const osm_node_t *cn, double radius, double angle, co
 
 static int circle_line(const osm_node_t *cn, double angle, double r1, double r2, double phase, const char *ndesc)
 {
-   char buf[8], *s;
+   char buf[16];
 
    osm_way_t *w = malloc_way(2, 2);
    osm_way_default(w);
    snprintf(buf, sizeof(buf), "%.2f", RAD2DEG(angle));
-   if ((s = strdup(buf)) == NULL)
-   {
-      log_errno(LOG_ERR, "strdup() failed");
-      return 1;
-   }
-   set_const_tag(&w->obj.otag[1], "smrender:compass", s);
+   set_const_tag(&w->obj.otag[1], "smrender:compass", smstrdup(buf));
 
    w->ref[0] = circle_node(cn, r1, M_PI_2 - angle, ndesc);
    w->ref[1] = circle_node(cn, r2, M_PI_2 - angle + phase, NULL);
@@ -1394,7 +1400,8 @@ static int circle_line(const osm_node_t *cn, double angle, double r1, double r2,
 }
 
 
-//FIXME: function not finished yet
+/*! Generate nodes and ways for variation compass.
+ */
 int act_compass_main(smrule_t *r, osm_obj_t *o)
 {
    struct compass_data *cd = r->data;
@@ -1406,6 +1413,7 @@ int act_compass_main(smrule_t *r, osm_obj_t *o)
    if (o->type != OSM_NODE)
       return 1;
 
+   // make ticks in a circle around the center of o
    angle_step = 2 * M_PI / cd->ticks;
    for (i = 0; i < cd->ticks; i++)
    {
@@ -1416,8 +1424,7 @@ int act_compass_main(smrule_t *r, osm_obj_t *o)
          ro = cd->r1 * 1.02;
          ri = cd->r2 * 0.9;
          snprintf(buf, sizeof(buf), "%03d", (int) round(RAD2DEG(angle)));
-         if ((s = strdup(buf)) == NULL)
-            log_errno(LOG_ERR, "strdup() failed");
+         s = smstrdup(buf);
       }
       else if (!((int) round(RAD2DEG(angle)) % 5))
       {
@@ -1433,10 +1440,28 @@ int act_compass_main(smrule_t *r, osm_obj_t *o)
       circle_line((osm_node_t*) o, angle, ro, ri, 0, s);
    }
 
+   if (cd->style == CSTYLE_INT1VAR)
+   {
+      // variation arrow (line)
+      circle_line((osm_node_t*) o, cd->var, cd->r1 * 0.8, 0, 0, NULL);
+      // variation arrow (arrow head)
+      angle = cd->var >= 0 ? DEG2RAD(-3) : DEG2RAD(3);
+      circle_line((osm_node_t*) o, cd->var, cd->r1 * 0.8, cd->r1 * 0.75, angle, NULL);
+      circle_line((osm_node_t*) o, cd->var, cd->r1 * 0.7, cd->r1 * 0.75, angle, NULL);
+      // set angle for crosslines
+      angle = 0;
+   }
+   else
+   {
+      // set angle for crosslines rotated by variation
+      angle = cd->var;
+   }
+
+   // crosslines
    // N - S axis
-   circle_line((osm_node_t*) o, cd->var, cd->r1 / 0.9, cd->r1 / 0.9, M_PI, NULL);
+   circle_line((osm_node_t*) o, angle, cd->r1 / 0.9, cd->r1 / 0.9, M_PI, NULL);
    // E - W axis
-   circle_line((osm_node_t*) o, cd->var + M_PI_2, cd->r1 / 0.9, cd->r1 / 0.9, M_PI, NULL);
+   circle_line((osm_node_t*) o, angle + M_PI_2, cd->r1 / 0.9, cd->r1 / 0.9, M_PI, NULL);
 
    return 0;
 }
