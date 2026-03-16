@@ -1,4 +1,4 @@
-/* Copyright 2011-2023 Bernhard R. Fischer, 4096R/8E24F29D <bf@abenteuerland.at>
+/* Copyright 2011-2026 Bernhard R. Fischer, 4096R/8E24F29D <bf@abenteuerland.at>
  *
  * This file is part of smrender.
  *
@@ -19,6 +19,7 @@
  * This file contains the definitions for loading the OSM files.
  *
  *  \author Bernhard R. Fischer, <bf@abenteuerland.at>
+ *  \date 2026/03/16
  */
 #ifndef SMLOADOSM_H
 #define SMLOADOSM_H
@@ -39,6 +40,7 @@ struct filter
 };
 
 
+void set_nid(int64_t );
 void osm_read_exit(void);
 int read_osm_obj(hpx_ctrl_t *, hpx_tree_t **, osm_obj_t **);
 int read_osm_file(hpx_ctrl_t*, bx_node_t**, const struct filter*, struct dstats*);

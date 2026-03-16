@@ -20,7 +20,7 @@
  * Originally it was written for smfilter and was reused and adapted.
  *
  * \author Bernhard R. Fischer, <bf@abenteuerland.at>
- * \date 2026/03/15
+ * \date 2026/03/16
  */
 #include <stdio.h>
 #include <stdlib.h>
@@ -45,6 +45,18 @@
 
 static size_t oline_ = 0;
 static volatile sig_atomic_t usr1_ = 0;
+static int64_t nid_ = MIN_ID + 1;
+
+
+/*! This is the value from which objects without ID or numbered ascendingly.
+ * This typically is the case for rules files where most of the object aren't
+ * numbered explicitly.
+ * @param nid ID to start numbering with.
+ */
+void set_nid(int64_t nid)
+{
+   nid_ = nid;
+}
 
 
 static int proc_osm_node(const hpx_tag_t *tag, osm_obj_t *o)
@@ -331,7 +343,6 @@ int read_osm_obj(hpx_ctrl_t *ctl, hpx_tree_t **tlistptr, osm_obj_t **obj)
    osm_storage_t o;
    hpx_tag_t *tag;
    int64_t *ref;
-   static int64_t nid = MIN_ID + 1;
    struct rmember *mem;
    // FIXME: this is temporary
    hpx_tree_t *tlist = *tlistptr;
@@ -363,7 +374,7 @@ int read_osm_obj(hpx_ctrl_t *ctl, hpx_tree_t **tlistptr, osm_obj_t **obj)
                clear_ostor(&o);
                proc_osm_node(tag, (osm_obj_t*) &o);
                o.o.type = t;
-               if (!o.o.id) o.o.id = nid++;
+               if (!o.o.id) o.o.id = nid_++;
                //if (o.o.id <= 0) o.o.id = get_osm_id(&o.o);
 
                if (tlist->nsub >= tlist->msub)
@@ -386,7 +397,7 @@ int read_osm_obj(hpx_ctrl_t *ctl, hpx_tree_t **tlistptr, osm_obj_t **obj)
                clear_ostor(&o);
                proc_osm_node(tag, (osm_obj_t*) &o);
                o.o.type = t;
-               if (!o.o.id) o.o.id = nid++;
+               if (!o.o.id) o.o.id = nid_++;
                //if (o.o.id <= 0) o.o.id = get_osm_id(&o.o);
 
                switch (o.o.type)

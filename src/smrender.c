@@ -19,7 +19,7 @@
  * This file contains the main() function and main initialization functions.
  *
  *  \author Bernhard R. Fischer, <bf@abenteuerland.at>
- *  \date 2026/03/13
+ *  \date 2026/03/16
  */
 
 #ifdef HAVE_CONFIG_H
@@ -1201,6 +1201,7 @@ int main(int argc, char *argv[])
       exit(EXIT_FAILURE);
 
    log_msg(LOG_NOTICE, "reading rules (file size %ld kb)", (long) cfctl->len / 1024);
+   set_nid(-1024);
    (void) read_osm_file(cfctl, &rd->rules, NULL, &rstats);
    (void) close(cfctl->fd);
 
@@ -1213,8 +1214,8 @@ int main(int argc, char *argv[])
    qsort(rstats.ver, rstats.ver_cnt, sizeof(int), (int(*)(const void*, const void*)) cmp_int);
    for (n = 0; n < rstats.ver_cnt; n++)
       log_msg(LOG_DEBUG, " rstats.ver[%d] = %d", n, rstats.ver[n]);
-
-   // renumbering rules
+#if 0
+   // renumbering rules (does not work flawlessly. Note: somemhow translate() will fail)
    log_msg(LOG_INFO, "renumbering rules");
    rstats.tree = NULL;
    traverse(rd->rules, 0, IDX_NODE, renumber_rule, &rstats);
@@ -1229,7 +1230,7 @@ int main(int argc, char *argv[])
    traverse(rd->rules, 0, IDX_NODE, (tree_func_t) update_stats, &rstats);
    traverse(rd->rules, 0, IDX_WAY, (tree_func_t) update_stats, &rstats);
    traverse(rd->rules, 0, IDX_REL, (tree_func_t) update_stats, &rstats);
-
+#endif
    if (osm_rfile != NULL)
    {
       traverse(rd->rules, 0, IDX_NODE, norm_rule_node, NULL);
@@ -1281,6 +1282,7 @@ int main(int argc, char *argv[])
             fi.c1.lat, fi.c1.lon, fi.c2.lat, fi.c2.lon);
       log_msg(LOG_NOTICE, "reading osm data (file size %ld kb, memory at %p)",
          (long) labs(st.st_size) / 1024, ctl->buf.buf);
+      set_nid(MIN_ID);
       (void) read_osm_file(ctl, get_objtree(), &fi, &rd->ds);
 
      }
