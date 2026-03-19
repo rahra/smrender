@@ -602,11 +602,12 @@ int act_set_cw_fini(smrule_t * UNUSED(r))
 }
 
 
+/*! This function generates a random number between 0 and (2^62) - 1 using the
+ * standard function random(3).
+ * @return The function returns a value between 0 and (2^62) - 1.
+ * */
 int64_t random64(void)
 {
-   /* FIXME: this assumes that RAND_MAX == 1 << 31 - 1, hence, the result
-    * will be between 0 and 1 << 63 - 1. If RAND_MAX < 1 << 31 - 1 the result
-    * will not be appropriate. */
    return ((int64_t) random()) << 31 | random();
 }
 
@@ -1663,7 +1664,7 @@ static int mk_fmt_str(char *buf, int len, const char *fmt, fparam_t **fp, const 
             cnt++;
             continue;
          }
-         // FIXME: What's that?
+         // copy ';' to output string
          else if (*fmt == 'v')
          {
             *buf = ';';
