@@ -1,4 +1,4 @@
-/* Copyright 2011-2025 Bernhard R. Fischer, 4096R/8E24F29D <bf@abenteuerland.at>
+/* Copyright 2011-2026 Bernhard R. Fischer, 4096R/8E24F29D <bf@abenteuerland.at>
  *
  * This file is part of smrender.
  *
@@ -19,7 +19,7 @@
  * This file contains the code of the main execution process.
  *
  *  \author Bernhard R. Fischer, <bf@abenteuerland.at>
- *  \date 2025/03/28
+ *  \date 2026/03/19
  */
 
 #ifdef HAVE_CONFIG_H
@@ -370,10 +370,10 @@ int apply_smrules(smrule_t *r, trv_info_t *ti)
       sm_clear_flag(r, ACTION_FINISHED);
    }
 
-   // FIXME: wtf is this?
+   // ignore template rules
    if (r->act->func_name == NULL)
    {
-      log_debug("function has no name");
+      log_debug("ignoring template rule %"PRId64, r->oo->id);
       return 0;
    }
 
@@ -707,6 +707,20 @@ int rev_index_rel_nodes(osm_rel_t *r, bx_node_t **idx_root)
 }
 
 
+/*! Set ref in way w at index i to node id and update reverse pointers.
+ * @param w Pointer way.
+ * @param i index of ref in the ref list of the way.
+ * @param id Node id to which the ref should be set.
+ * @return Returns 0 on success, otherwise -1 is returned (see return value of
+ * add_rev_ptr()).
+ */
+int set_ref(osm_way_t *w, int i, int64_t id)
+{
+   w->ref[i] = id;
+   return add_rev_ptr(&get_rdata()->index, id, IDX_NODE, &w->obj);
+}
+
+
 /*! Add nodes (refs) to way and update reverse pointer index.
  * @param w Pointer to way.
  * @param n Pointer to array of nodes.
@@ -726,8 +740,7 @@ int insert_refs(osm_way_t *w, osm_node_t **n, int n_cnt, int pos)
    memmove(&w->ref[pos + n_cnt], &w->ref[pos], (w->ref_cnt - pos - n_cnt) * sizeof(*w->ref));
    for (int i = 0; i < n_cnt; i++)
    {
-      w->ref[i + pos] = n[i]->obj.id;
-      if (add_rev_ptr(&get_rdata()->index, w->ref[i + pos], IDX_NODE, (osm_obj_t*) w) == -1)
+      if (set_ref(w, i + pos, n[i]->obj.id) == -1)
          return -1;
    }
 

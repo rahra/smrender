@@ -1,4 +1,4 @@
-/* Copyright 2011-2025 Bernhard R. Fischer, 4096R/8E24F29D <bf@abenteuerland.at>
+/* Copyright 2011-2026 Bernhard R. Fischer, 4096R/8E24F29D <bf@abenteuerland.at>
  *
  * This file is part of smrender.
  *
@@ -20,7 +20,7 @@
  * engine.
  *
  *  @author Bernhard R. Fischer
- *  @date 2025/03/28
+ *  @date 2026/03/19
  */
 
 #ifndef SMCORE_H
@@ -88,6 +88,7 @@ int execute_rules(bx_node_t *, int );
 int rev_index_way_nodes(osm_way_t *, bx_node_t **);
 int rev_index_rel_nodes(osm_rel_t *, bx_node_t **);
 int get_rev_index(osm_obj_t**, const osm_obj_t*);
+int set_ref(osm_way_t *w, int , int64_t );
 int insert_refs(osm_way_t *, osm_node_t **, int, int);
 int find_shared_node_by_rev(osm_obj_t **, void *);
 

@@ -20,7 +20,7 @@
  * make up the grid, the legend, and the chart border.
  *
  * @author Bernhard R. Fischer
- * @date 2026/01/02
+ * @date 2026/03/19
  */
 #include <stdlib.h>
 #include <string.h>
@@ -346,7 +346,7 @@ void geo_square(const struct coord *pw0, double b, char *v, int cnt)
    {
       n = malloc_node(5);
       osm_node_default(n);
-      w->ref[i * cnt] = n->obj.id; // FIXME: insert_refs() must be used instead!
+      set_ref(w, i * cnt, n->obj.id);
       n->lat = pw[i].lat;
       n->lon = pw[i].lon;
       set_const_tag(&n->obj.otag[1], "grid", v);
@@ -366,7 +366,7 @@ void geo_square(const struct coord *pw0, double b, char *v, int cnt)
       {
          n = malloc_node(1);
          osm_node_default(n);
-         w->ref[i * cnt + j] = n->obj.id; // FIXME: insert_refs() must be used instead!
+         set_ref(w, i * cnt + j, n->obj.id);
          n->lat = pw[i].lat + dlat * j;
          n->lon = pw[i].lon + dlon * j;
          put_object((osm_obj_t*) n);

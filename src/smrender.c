@@ -1031,6 +1031,7 @@ int main(int argc, char *argv[])
 
          case 'M':
             w_mmap = 1;
+            log_msg(LOG_NOTICE, "option -M is deprecated and will be removed soon");
             break;
 
          case 'm':
