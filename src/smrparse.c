@@ -43,6 +43,13 @@
 #define ISLON(x) (ISEAST(x) || ISWEST(x))
 
 
+/*! Skip leading white spaces as defined by isspace(3) and return pointer to
+ * 1st non-whitespace character.
+ * @param s Pointer to string to analyze.
+ * @return The function returns a pointer to the 1st non-whitespace character.
+ * If the function hits a '\0' character (i.e. it is an empty string), NULL is
+ * returned.
+ */
 static char *skipb(const char *s)
 {
    for (; isspace((unsigned) *s); s++);
@@ -396,7 +403,7 @@ int init_rule(osm_obj_t *o, smrule_t **r)
 
    // FIXME: init_rule() should work without the following \0-termination
    o->otag[i].v.buf[o->otag[i].v.len] = '\0';
-   log_msg(LOG_DEBUG, "parsing '%s'", o->otag[i].v.buf);
+   log_msg(LOG_DEBUG, "parsing '%.*s'", o->otag[i].v.len, o->otag[i].v.buf);
 
    if ((s = skipb(o->otag[i].v.buf)) == NULL)
    {
