@@ -1,4 +1,4 @@
-/* Copyright 2022-2023 Bernhard R. Fischer, 4096R/8E24F29D <bf@abenteuerland.at>
+/* Copyright 2022-2026 Bernhard R. Fischer, 4096R/8E24F29D <bf@abenteuerland.at>
  *
  * This file is part of smrender.
  *
@@ -21,7 +21,7 @@
  * https://www.json.org/json-en.html
  *
  *  \author Bernhard R. Fischer, <bf@abenteuerland.at>
- *  \date 2023/09/24
+ *  \date 2026/04/06
  */
 
 #ifdef HAVE_CONFIG_H
@@ -232,7 +232,10 @@ static void fcchar(rinfo_t *ri, char c)
 static void fkey0(const rinfo_t *ri, const char *k, void (fsepchar)(const rinfo_t*))
 {
    findent(ri);
-   fprintf(ri->f, "\"%s\":", k);
+   if (ri->flags & RI_JS)
+      fprintf(ri->f, "%s:", k);
+   else
+      fprintf(ri->f, "\"%s\":", k);
    fsepchar(ri);
 }
 
@@ -266,6 +269,24 @@ static void fint(const rinfo_t *ri, const char *k, int64_t v)
    fkey(ri, k);
    fprintf(ri->f, "%"PRId64",", v);
    fnl(ri);
+}
+
+
+static void fdoublep(const rinfo_t *ri, const char *k, double v, unsigned p)
+{
+   char fmt[64];
+
+   snprintf(fmt, sizeof(fmt), "%c.%df,", '%', p > 16 ? 7 : p);
+
+   fkey(ri, k);
+   fprintf(ri->f, fmt, v);
+   fnl(ri);
+}
+
+
+static void fdouble(const rinfo_t *ri, const char *k, double v)
+{
+   fdoublep(ri, k, v, 7);
 }
 
 
@@ -443,15 +464,15 @@ int rules_info(const struct rdata *rd, rinfo_t *ri, const struct dstats *rstats)
 }
 
 
-typedef enum {JTYPE, JVERSION, JID, JVIS, JTAGS, JCOORDS, JREF, JMEM, JROLE, J_MAX} jkey_t;
+typedef enum {JTYPE, JVERSION, JID, JVIS, JTAGS, JCOORDS, JREF, JMEM, JROLE, JLAT, JLON, J_MAX} jkey_t;
 
 
 static const char *jkeystr(const rinfo_t *ri, jkey_t k)
 {
    const char *jstr[2][J_MAX] =
    {
-      {"type", "version", "id", "visible", "tags", "coords", "ref", "members", "role"},
-      {"o", "v", "i", "s", "t", "c", "r", "m", "l"}
+      {"type", "version", "id", "visible", "tags", "coords", "ref", "members", "role", "lat", "lon"},
+      {"o", "v", "i", "s", "t", "c", "r", "m", "l", "N", "E"}
    };
 
    // safety check
@@ -571,30 +592,126 @@ static int print_onode_json(const osm_obj_t *o, rinfo_t *ri)
 }
 
 
-/*! Save OSM data of tree to file s in JSON format.
- *  @param s Filename of output file.
- *  @param Pointer to bxtree containing the information.
- *  @return The function returns 0, or -1 in case of error.
+/*! Write coordinates of refs of ways to disk.
  */
-size_t save_json(const char *s, bx_node_t *tree, int flags)
+static void fwrefs_compact(rinfo_t *ri, const osm_way_t *w)
 {
-   rinfo_t _ri, *ri = &_ri;
+   osm_node_t *n;
+   if (!w->ref_cnt)
+      return;
 
-   if (s == NULL)
-      return -1;
-
-   memset(&_ri, 0, sizeof(_ri));
-
-   log_msg(LOG_INFO, "saving JSON output to '%s'", s);
-   if ((ri->f = fopen(s, "w")) == NULL)
+   fkeyblock(ri, jkeystr(ri, JREF));
+   fochar(ri, '[');
+   for (int i = 0; i < w->ref_cnt; i++)
    {
-      log_msg(LOG_WARN, "could not open '%s': %s", s, strerror(errno));
-      return -1;
+      if ((n = get_object(OSM_NODE, w->ref[i])) != NULL)
+      {
+         fochar(ri, '{');
+         fdouble(ri, jkeystr(ri, JLAT), n->lat);
+         fdouble(ri, jkeystr(ri, JLON), n->lon);
+         funsep(ri);
+         fcchar(ri, '}');
+      }
+   }
+   funsep(ri);
+   fcchar(ri, ']');
+}
+
+
+/*! Write single object in compact format to disk.
+ */
+static int print_onode_json_compact(const osm_obj_t *o, rinfo_t *ri)
+{
+   // omit invisible objects if visible-only flag (RI_VISIBLE) is set
+   if ((ri->flags & RI_VISIBLE) && !o->vis)
+      return 0;
+
+   // ignore nodes without tags
+   if (o->type == OSM_NODE && !o->tag_cnt)
+      return 0;
+
+   // ignore relations
+   if (o->type == OSM_REL)
+      return 0;
+
+   call_cnt_++;
+
+   fochar(ri, '{');
+   onode_info_tags(ri, o);
+
+   switch (o->type)
+   {
+      case OSM_NODE:
+         fdouble(ri, jkeystr(ri, JLAT), ((osm_node_t*) o)->lat);
+         fdouble(ri, jkeystr(ri, JLON), ((osm_node_t*) o)->lon);
+         break;
+
+      case OSM_WAY:
+         fwrefs_compact(ri, (osm_way_t*) o);
+        break;
+
+        /*
+      case OSM_REL:
+         frmembers(ri, (osm_rel_t*) o);
+         break;
+         */
+
+      default:
+         fstring(ri, "note", "*** type unknown");
    }
 
-   ri->flags = flags;
-   ri->nindent = flags >> 16;
+   funsep(ri);
+   fcchar(ri, '}');
+   return 0;
+}
 
+
+/*! Traverse tree and write compact JSON format to disk.
+ * @param ri Pointer to initialized rinfo_t structure.
+ * @param tree Pointer to tree of objects.
+ */
+void save_compact(rinfo_t *ri, bx_node_t *tree)
+{
+   fochar(ri, '{');
+   fkeyblock(ri, "node");
+   fochar(ri, '[');
+   call_cnt_ = 0;
+   traverse(tree, 0, IDX_NODE, (tree_func_t) print_onode_json_compact, ri);
+   if (!call_cnt_)
+      fnl(ri);
+   funsep(ri);
+   fcchar(ri, ']');
+   fkeyblock(ri, "way");
+   fochar(ri, '[');
+   call_cnt_ = 0;
+   traverse(tree, 0, IDX_WAY, (tree_func_t) print_onode_json_compact, ri);
+   if (!call_cnt_)
+      fnl(ri);
+   funsep(ri);
+   fcchar(ri, ']');
+   /*
+   fkeyblock(ri, "relation");
+   fochar(ri, '[');
+   call_cnt_ = 0;
+   traverse(tree, 0, IDX_REL, (tree_func_t) print_onode_json, ri);
+   if (!call_cnt_)
+      fnl(ri);
+   funsep(ri);
+   fcchar(ri, ']');
+   */
+   funsep(ri);
+   fcchar(ri, '}');
+   funsep(ri);
+}
+
+
+/*! Traverse tree and write objects to disk.
+ * This is the original JSON output format as implemented in 2023.
+ * @param ri Pointer to initialized rinfo_t structure.
+ * @param tree Pointer to tree of objects.
+ */
+void save_json_v1(rinfo_t *ri, bx_node_t *tree)
+{
    fochar(ri, '{');
    fkeyblock(ri, "node");
    fochar(ri, '[');
@@ -623,6 +740,43 @@ size_t save_json(const char *s, bx_node_t *tree, int flags)
    funsep(ri);
    fcchar(ri, '}');
    funsep(ri);
+}
+
+
+/*! Save OSM data of tree to file s in JSON format.
+ *  @param s Filename of output file.
+ *  @param Pointer to bxtree containing the information.
+ *  @return The function returns 0, or -1 in case of error.
+ */
+size_t save_json(const char *s, bx_node_t *tree, int flags)
+{
+   rinfo_t _ri, *ri = &_ri;
+
+   if (s == NULL)
+      return -1;
+
+   memset(&_ri, 0, sizeof(_ri));
+
+   log_msg(LOG_INFO, "saving JSON output to '%s'", s);
+   if ((ri->f = fopen(s, "w")) == NULL)
+   {
+      log_msg(LOG_WARN, "could not open '%s': %s", s, strerror(errno));
+      return -1;
+   }
+
+   ri->flags = flags;
+   ri->nindent = flags >> 16;
+
+   if (ri->flags & RI_JS)
+      fprintf(ri->f, "const o = \n");
+
+   if (ri->flags & RI_COMPACT)
+      save_compact(ri, tree);
+   else
+      save_json_v1(ri, tree);
+
+   if (ri->flags & RI_JS)
+      fprintf(ri->f, ";\nmodule.exports = { o }\n");
 
    fflush(ri->f);
    if (ftruncate(fileno(ri->f), ftell(ri->f)) == -1)

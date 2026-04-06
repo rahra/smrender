@@ -19,7 +19,7 @@
  * This file contains all rule functions which do not create graphics output.
  *
  *  @author Bernhard R. Fischer
- *  \date 2026/03/03
+ *  \date 2026/04/06
  */
 #include <stdio.h>
 #include <stdlib.h>
@@ -179,8 +179,11 @@ int act_out_ini(smrule_t *r)
 
    if ((s = get_param("format", NULL, r->act)) != NULL)
    {
-      if (!strcasecmp(s, "json"))
+      if (!strcasecmp(s, "json") || !strcasecmp(s, "js"))
       {
+         if (!strcasecmp(s, "js"))
+            (*oh)->flags |= RI_JS;
+
          (*oh)->flags |= OUT_JSON;
 
          if (get_param_bool("condensed", r->act))
@@ -189,6 +192,8 @@ int act_out_ini(smrule_t *r)
             (*oh)->flags |= RI_SHORT;
          if (get_param_bool("visible", r->act))
             (*oh)->flags |= RI_VISIBLE;
+         if (get_param_bool("compact", r->act))
+            (*oh)->flags |= RI_COMPACT;
 
          int n = DEFAULT_NINDENT;
          get_parami("nindent", &n, r->act);
