@@ -150,6 +150,7 @@ enum {SHAPE_REGULAR, SHAPE_SECTORED, SHAPE_STARED};
 #define RI_SHORT (1 << 1)
 #define RI_VISIBLE (1 << 2)
 #define RI_COMPACT (1 << 3)
+#define RI_JS (1 << 4)
 typedef struct rinfo
 {
    int version;

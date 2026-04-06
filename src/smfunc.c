@@ -179,8 +179,11 @@ int act_out_ini(smrule_t *r)
 
    if ((s = get_param("format", NULL, r->act)) != NULL)
    {
-      if (!strcasecmp(s, "json"))
+      if (!strcasecmp(s, "json") || !strcasecmp(s, "js"))
       {
+         if (!strcasecmp(s, "js"))
+            (*oh)->flags |= RI_JS;
+
          (*oh)->flags |= OUT_JSON;
 
          if (get_param_bool("condensed", r->act))

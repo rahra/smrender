@@ -232,7 +232,10 @@ static void fcchar(rinfo_t *ri, char c)
 static void fkey0(const rinfo_t *ri, const char *k, void (fsepchar)(const rinfo_t*))
 {
    findent(ri);
-   fprintf(ri->f, "\"%s\":", k);
+   if (ri->flags & RI_JS)
+      fprintf(ri->f, "%s:", k);
+   else
+      fprintf(ri->f, "\"%s\":", k);
    fsepchar(ri);
 }
 
@@ -764,10 +767,16 @@ size_t save_json(const char *s, bx_node_t *tree, int flags)
    ri->flags = flags;
    ri->nindent = flags >> 16;
 
+   if (ri->flags & RI_JS)
+      fprintf(ri->f, "const o = \n");
+
    if (ri->flags & RI_COMPACT)
       save_compact(ri, tree);
    else
       save_json_v1(ri, tree);
+
+   if (ri->flags & RI_JS)
+      fprintf(ri->f, ";\nmodule.exports = { o }\n");
 
    fflush(ri->f);
    if (ftruncate(fileno(ri->f), ftell(ri->f)) == -1)
