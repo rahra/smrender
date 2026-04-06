@@ -679,7 +679,8 @@ void save_compact(rinfo_t *ri, bx_node_t *tree)
    traverse(tree, 0, IDX_NODE, (tree_func_t) print_onode_json_compact, ri);
    if (!call_cnt_)
       fnl(ri);
-   funsep(ri);
+   if (call_cnt_ || !(ri->flags & RI_CONDENSED))
+      funsep(ri);
    fcchar(ri, ']');
    fkeyblock(ri, "way");
    fochar(ri, '[');
@@ -687,7 +688,8 @@ void save_compact(rinfo_t *ri, bx_node_t *tree)
    traverse(tree, 0, IDX_WAY, (tree_func_t) print_onode_json_compact, ri);
    if (!call_cnt_)
       fnl(ri);
-   funsep(ri);
+   if (call_cnt_ || !(ri->flags & RI_CONDENSED))
+      funsep(ri);
    fcchar(ri, ']');
    /*
    fkeyblock(ri, "relation");
@@ -719,7 +721,8 @@ void save_json_v1(rinfo_t *ri, bx_node_t *tree)
    traverse(tree, 0, IDX_NODE, (tree_func_t) print_onode_json, ri);
    if (!call_cnt_)
       fnl(ri);
-   funsep(ri);
+   if (call_cnt_ || !(ri->flags & RI_CONDENSED))
+      funsep(ri);
    fcchar(ri, ']');
    fkeyblock(ri, "way");
    fochar(ri, '[');
@@ -727,7 +730,8 @@ void save_json_v1(rinfo_t *ri, bx_node_t *tree)
    traverse(tree, 0, IDX_WAY, (tree_func_t) print_onode_json, ri);
    if (!call_cnt_)
       fnl(ri);
-   funsep(ri);
+   if (call_cnt_ || !(ri->flags & RI_CONDENSED))
+      funsep(ri);
    fcchar(ri, ']');
    fkeyblock(ri, "relation");
    fochar(ri, '[');
@@ -735,7 +739,8 @@ void save_json_v1(rinfo_t *ri, bx_node_t *tree)
    traverse(tree, 0, IDX_REL, (tree_func_t) print_onode_json, ri);
    if (!call_cnt_)
       fnl(ri);
-   funsep(ri);
+   if (call_cnt_ || !(ri->flags & RI_CONDENSED))
+      funsep(ri);
    fcchar(ri, ']');
    funsep(ri);
    fcchar(ri, '}');
@@ -764,11 +769,21 @@ size_t save_json(const char *s, bx_node_t *tree, int flags)
       return -1;
    }
 
+// this is for stream debugging only
+//#define JFLUSH
+#ifdef JFLUSH
+   if (setvbuf(ri->f, NULL, _IONBF, 0) != 0)
+      log_errno(LOG_ERR, "setvbuf() failed");
+#endif
+
    ri->flags = flags;
    ri->nindent = flags >> 16;
 
    if (ri->flags & RI_JS)
-      fprintf(ri->f, "const o = \n");
+   {
+      fprintf(ri->f, "const o = ");
+      fnl(ri);
+   }
 
    if (ri->flags & RI_COMPACT)
       save_compact(ri, tree);
@@ -776,7 +791,11 @@ size_t save_json(const char *s, bx_node_t *tree, int flags)
       save_json_v1(ri, tree);
 
    if (ri->flags & RI_JS)
-      fprintf(ri->f, ";\nmodule.exports = { o }\n");
+   {
+      fprintf(ri->f, ";");
+      fnl(ri);
+      fprintf(ri->f, "module.exports = { o }");
+   }
 
    fflush(ri->f);
    if (ftruncate(fileno(ri->f), ftell(ri->f)) == -1)
