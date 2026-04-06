@@ -19,7 +19,7 @@
  * This file contains all rule functions which do not create graphics output.
  *
  *  @author Bernhard R. Fischer
- *  \date 2026/03/03
+ *  \date 2026/04/06
  */
 #include <stdio.h>
 #include <stdlib.h>
@@ -189,6 +189,8 @@ int act_out_ini(smrule_t *r)
             (*oh)->flags |= RI_SHORT;
          if (get_param_bool("visible", r->act))
             (*oh)->flags |= RI_VISIBLE;
+         if (get_param_bool("compact", r->act))
+            (*oh)->flags |= RI_COMPACT;
 
          int n = DEFAULT_NINDENT;
          get_parami("nindent", &n, r->act);

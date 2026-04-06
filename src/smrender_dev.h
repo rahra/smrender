@@ -19,7 +19,7 @@
  * This file contains almost all internal declarations.
  *
  * \author Bernhard R. Fischer, <bf@abenteuerland.at>
- * \version 2026/03/03
+ * \version 2026/04/06
  */
 #ifndef SMRENDER_DEV_H
 #define SMRENDER_DEV_H
@@ -149,6 +149,7 @@ enum {SHAPE_REGULAR, SHAPE_SECTORED, SHAPE_STARED};
 #define RI_CONDENSED (1 << 0)
 #define RI_SHORT (1 << 1)
 #define RI_VISIBLE (1 << 2)
+#define RI_COMPACT (1 << 3)
 typedef struct rinfo
 {
    int version;
