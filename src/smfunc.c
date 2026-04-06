@@ -3756,6 +3756,54 @@ int act_check_main(smrule_t *UNUSED(r), osm_obj_t *o)
 
 int act_check_fini(smrule_t *UNUSED(r))
 {
+  return 0;
+}
+
+
+int act_boundingbox_ini(smrule_t *UNUSED(r))
+{
+   return 0;
+}
+
+
+/*! Determine bounding box of way add at tag
+ * "smrender:bbox=lat0,lon0,lat1,lon1" to way with lat0/lon0 being the lower
+ * left (southeast) corner and lat1/lon1 the upper right (northeast) corner of
+ * the rectangle.
+ */
+int act_boundingbox_main(smrule_t *UNUSED(r), osm_obj_t *o)
+{
+   bbox_t bb;
+
+   // safety check
+   if (o->type != OSM_WAY)
+      return 0;
+
+   bbox_way((osm_way_t*) o, &bb);
+
+   struct otag ot;
+   osm_obj_t oo;
+   char buf[128];
+
+   oo.otag = &ot;
+   oo.tag_cnt = 1;
+   ot.k.buf = "smrender:bbox";
+   ot.k.len = strlen(ot.k.buf);
+
+   ot.v.len = snprintf(buf, sizeof(buf), "%f,%f,%f,%f", bb.ll.lat, bb.ll.lon, bb.ru.lat, bb.ru.lon);
+   // safety check
+   if (ot.v.len >= (int) sizeof(buf))
+      ot.v.len = sizeof(buf) - 1;
+   ot.v.buf = smstrdup(buf);
+
+   (void) copy_tag_cond(&oo, o, 0, 1);
+
+   return 0;
+}
+
+
+int act_boundingbox_fini(smrule_t *UNUSED(r))
+{
    return 0;
 }
 
