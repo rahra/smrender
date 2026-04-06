@@ -286,7 +286,7 @@ static void fdoublep(const rinfo_t *ri, const char *k, double v, unsigned p)
 
 static void fdouble(const rinfo_t *ri, const char *k, double v)
 {
-   fdoublep(ri, k, v, 7);
+   fdoublep(ri, k, v, ri->precision);
 }
 
 
@@ -776,8 +776,9 @@ size_t save_json(const char *s, bx_node_t *tree, int flags)
       log_errno(LOG_ERR, "setvbuf() failed");
 #endif
 
-   ri->flags = flags;
-   ri->nindent = flags >> 16;
+   ri->flags = flags & 0xffff;
+   ri->nindent = (flags >> 16) & 0xff;
+   ri->precision = (flags >> 24) & 0x7f;
 
    if (ri->flags & RI_JS)
    {

@@ -40,7 +40,6 @@
 
 #define DIR_CW 0
 #define DIR_CCW 1
-#define OUT_JSON 0x8000
 
 
 struct out_handle
@@ -197,11 +196,15 @@ int act_out_ini(smrule_t *r)
 
          int n = DEFAULT_NINDENT;
          get_parami("nindent", &n, r->act);
-         (*oh)->flags |= n << 16;
+         (*oh)->flags |= (n << 16) & 0xff0000;
       }
       else if (strcasecmp(s, "osm"))
          log_msg(LOG_WARN, "unknown file type \"%s\", defaulting to OSM", s);
    }
+
+   int n = DEFAULT_PRECISION;
+   get_parami("precision", &n, r->act);
+   (*oh)->flags |= (n >= 0 && n < 32 ? n : DEFAULT_PRECISION) << 24;
 
    (*oh)->renum = get_param_bool("renumber", r->act);
 
