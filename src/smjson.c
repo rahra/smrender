@@ -34,6 +34,7 @@
 #include <inttypes.h>
 #include <errno.h>
 #include <unistd.h>
+#include <ctype.h>
 
 #include "smrender_dev.h"
 #include "smcore.h"
@@ -135,6 +136,31 @@ int jesc(const char *src, int slen, char *dst, int dlen)
 }
 
 
+static int isjschar(char c)
+{
+   return isalnum(c) || c == '_' || c == '$';
+}
+
+
+/*! Test if string is valid JS name. This is only letters and digits, '_' and
+ * '$' and it does not start with a digit.
+ * @param k Pointer to \0-terminated string to test.
+ * @return The function returns 1 if it is a valid JS name, otherwise 0 is
+ * returned.
+ */
+static int isjsname(const char *k)
+{
+   if (k == NULL || isdigit(*k))
+      return 0;
+
+   for (; *k != '\0'; k++)
+      if (!isjschar(*k))
+         return 0;
+
+   return 1;
+}
+
+
 static const char *mod_str(int n)
 {
    n &= 0xffff;
@@ -232,7 +258,7 @@ static void fcchar(rinfo_t *ri, char c)
 static void fkey0(const rinfo_t *ri, const char *k, void (fsepchar)(const rinfo_t*))
 {
    findent(ri);
-   if (ri->flags & RI_JS)
+   if ((ri->flags & RI_JS) && isjsname(k))
       fprintf(ri->f, "%s:", k);
    else
       fprintf(ri->f, "\"%s\":", k);
