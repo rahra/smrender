@@ -821,7 +821,7 @@ size_t save_json(const char *s, bx_node_t *tree, int flags)
    {
       fprintf(ri->f, ";");
       fnl(ri);
-      fprintf(ri->f, "module.exports = { o }");
+      fprintf(ri->f, "if (typeof module !== \"undefined\") module.exports = { o }");
    }
 
    fflush(ri->f);
