@@ -1640,6 +1640,42 @@ rendered in the second rule.
 
    \begin{itemize}
 
+      \item {\sffamily bearings} \label{sec:act-bearings}
+
+         This functions adds tags containing bearing information to the nodes
+         of a way. Ways are series of nodes connected on after each other. If
+         we look from one node to the next, the next one lies in a specific
+         direction: this is the bearing and is set with the tag
+         \textsf{smrender:bearing=<brg>} where \textsf{brg} is the angle
+         between 0 and 360 degrees.
+
+         Additionally the tag \textsf{smrender:coursedev=<dev>} is added. It
+         contains an angle which states how much the bearing has changed in
+         comparison to the previous segment of the way. \textsf{Dev} is an
+         angle between -180 and 180 degrees.
+
+         The 3rd parameter is \textsf{smrender:peakdir=<pd>} which contains an
+         angle to wich the "peak" between segments (the middle node so to say)
+         points at. This could be used e.g. for putting captions at this points
+         in an appropriate angle to the way.
+
+         All angles are expressed as compass bearings.
+
+      \item {\sffamily boundingbox} \label{sec:act-boundingbox}
+
+         This function calculates the bounding box of way and adds the tag
+         \textsf{smrender:bbox=<lat0>,<lon0>,<lat1>,<lon1>} to the way. The
+         coordinats \textsf{lat0} and \textsf{lon0} are the left lower
+         (southwest) corner and \textsf{lat1} and \textsf{lon1} are the right
+         upper (northeast) corner of the rectangle.
+
+      \item {\sffamily check} \label{sec:act-check}
+
+         This function does an integrity check on ways. This is it checks for
+         subsequent duplicate nodes which will be removed from the list of
+         references. If the final way has 0 nodes, the whole way will be
+         removed from the data.
+
       \item {\sffamily clip} \label{sec:act-clip}
 
       This function
@@ -1668,6 +1704,13 @@ rendered in the second rule.
       latitudes of exactly ±90 degrees or longitudes of ±180 degrees.
 
       This function reduces the coordinates of such points by 1 arc second.
+
+   \item {\sffamily global\_grid} \label{sec:act-global-grid}
+
+      This function adds a global grid to the data, including the arctic
+      circles.
+
+      Parameters: \textsf{lat\_grid, lon\_grid, grid, gridpoints}
 
    \item {\sffamily ins\_eqdist} (\textsc{experimental}) \label{sec:act-ins-eqdist}
 
@@ -1711,6 +1754,24 @@ rendered in the second rule.
 
       This function calculates the length of a polygon in nautical miles. It
       adds the tag \textsf{smrender:length=*} to the way.
+
+   \item {\sffamily random} \label{sec:act-random}
+
+      This function sets a tag with a random number.
+
+\begin{verbatim}
+   <action> := 'random:' ['key' '=' <string> ';' ] 
+                         ['lo' '=' <num> ';'] 
+                         ['hi' '=' <num> ';']
+                         ['type' '=' <bool>]
+\end{verbatim}
+
+   The random number will be between \textsf{lo} and \textsf{hi}. If
+   \textsf{type} is not set or set to \textsf{false}, the random number will be
+   an integer number. Otherwise a random decimal number will be generated.
+
+   The number is set in the tag \textsf{smrender:random=<num>} except the key
+   is set differently with the parameter \textsf{key}.
 
    \item {\sffamily set\_ccw} and {\sffamily set\_cw}\label{sec:act-set-ccw}\label{sec:act-set-cw}
 
@@ -1902,7 +1963,10 @@ attacker with access to your system to compromise it.
 
 The action \textsf{out} outputs all matched OSM objects to a file. The default
 file format is OSM but with the option \textsf{format=json} it is possible to
-output it in JSON format as well. This action has one mandatory option which is
+output it in JSON format as well and \textsf{format=js} it outputs the data
+formated as Javascript file suitable to be included in a web page or node
+program.
+This action has one mandatory option which is
 \textsf{file} to choose the ouput file name. If several \textsf{out} rules with
 the same file name exist, all objects are collected into that single file. As
 shown below there are some additional options but these are honored only in the
@@ -1910,16 +1974,19 @@ first occurance of several rules which share the same file name.
 
 \begin{verbatim}
    <definition>  := 'out:' [ <param> [ ';' <param> ... ]]
-   <param>       := <file> | <format> | <renumber> | <jsonopts>
-   <jsonopts>    := <condensed> | <short> | <visible> | <nindent>
+   <param>       := <file> | <format> | <renumber> | <jsonopts> | <precision>
+   <jsonopts>    := <condensed> | <short> | <visible> | <nindent> |
+                    <compact>
    <file>        := 'file' '=' <filename>
    <format>      := 'format' '=' <type>
    <renumber>    := 'renumber' '=' <bool>
    <condensed>   := 'condensed' '=' <bool>
    <short>       := 'short' '=' <bool>
    <visible>     := 'visible' '=' <bool>
-   <nindent>     := <num>
-   <type>        := 'osm' | 'json'
+   <nindent>     := 'nindent' '=' <num>
+   <precision>   := 'precision' '=' <num>
+   <compact>     := 'compact' '=' <bool>
+   <type>        := 'osm' | 'json' | 'js'
 \end{verbatim}
 
 With \textsf{renumber} enabled all objects are renumbered ascendingly starting
@@ -1935,7 +2002,32 @@ structure to just a single character. \textsf{Visible} outputs only visible
 objects and ommits the \textsf{visible} attribute. This compacts the data even
 more. \textsf{Nindent} selects the default number of spaces to indent the data
 if it is output in non-condensed mode.
+The coordinates of nodes are output as decimal numbers with a precision of 7 by
+default. This can be changed with parameter \textsf{precision}. It should be an
+integer number between 0 and 20.
 
+There are currently three different output formats.
+
+\begin{itemize}
+   \item \textbf{OSM:} This is the traditional XML/OSM format containing nodes,
+      ways, and relations in that order. This files are well-formed and can be
+      read in any other OSM software (such as e.g. Josm).
+
+   \item \textbf{JSON:} This is a translation of the classic OSM format into
+      JSON containing three arrays which hold all nodes, ways, and relations.
+
+      The argument \textsf{compact=yes} modifies the format into much more
+      dense version. In this case the ways contain not references to nodes (as
+      they do in the original format) but directly the coordinates of the
+      nodes. In contrast, nodes are only found in the array of nodes if they
+      own at least one tag.
+
+   \item \textbf{JS:}
+      This format is almost the same as JSON but it is suitable to be directly
+      included in Javascript either e.g. with a script tag from HTML or with
+      \textsf{require()} in a node program.
+
+\end{itemize}
 
 \subsubsection{Executing Programs and Scripts} \label{sec:exec}\label{sec:act-exec}
 
