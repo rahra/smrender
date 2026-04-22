@@ -509,21 +509,51 @@ In the following all options are explained in alphabetical order.
 \section{Ruleset Definition} \label{sec:rules}
 
 The rule set is also defined in OSM format. It contains nodes, ways, and relations together
-with tags. Nodes are considered to be rules for rendering nodes and ways are
-rules applied to ways. Each object (node,  way, or relation) has a list of tags. These
+with tags. Nodes are considered to be rules for rendering nodes, ways are
+rules applied to ways, and relations are rules applied to relations. Each object (node,  way, or relation) has a list of tags. These
 tags represent patterns which are matched against the tags of the objects which
-are to be rendered. The values of a tag's key (\textsf{k=``\ldots''}) and/or value
+are to be rendered (as input by option \optk{i}). The values of a tag's key (\textsf{k=``\ldots''}) and/or value
 (\textsf{v=``\ldots''}) may be either just a string which is directly matched in a
 case-sensitive manner or a special match operation (see Section \ref{sec:match}).
 The match operations can be used for the key as well as for the value.
 
 Each object has to have a special tag which defines the action that should
 be carried out in case of a match. This tag has the form \textsf{\_action\_=*}. The actions are described
-below in Section \ref{sec:act}.
+below in Section \ref{sec:act}. Of course this tag is not taken into account during the matching process as described previously.
 
 The match algorithm always applies all tags to match, and all of them have to match in order
-to execute the action. If just a single tag does not match, the node is skipped.
+to execute the action. If just a single tag does not match, the object is skipped.
 
+\paragraph{Example:}
+
+The following rule places a caption with the specifed font at the center of all nodes which have the tags \textsf{scalerank=2} and \textsf{FEATURECL=Admin-1*} where the latter is matched as a regular expression. The caption is based on the value of the tag \textsf{NAME}.
+
+\begin{verbatim}
+<node>
+   <tag k='FEATURECLA' v='/Admin-1.*/'/>
+   <tag k='scalerank' v='2'/>
+   <tag k='_action_' v='cap:font=sans-serif:bold;size=1.8;key=NAME'/>
+</node>
+\end{verbatim}
+
+\subsection{Open and Closed Ways}
+
+Ways are a series of nodes. They can be open like lines or closed like polygons (see also Section \ref{sec:act-draw}). Closed ways are such where the first node in the list of nodes is the same as the last node.
+
+By default way-rules match all ways, independently if they are open or closed but there is an option to tell \smrender{} to match either just closed or open ways. This is done by adding two references to the rule with ids which are either equal or unequal to each other. \smrender{} does not care about the absolute value of the reference ids but just its equality.
+
+\paragraph{Example:}
+
+The following rule writes all closed ways -- and only closed ones -- with the tag \textsf{featurecla=Admin-0} to the file \textsf{admin0.osm}. Closed ways are chosen because there are two references which both share the same id (1 in this case).
+
+\begin{verbatim}
+<way>
+   <tag k='featurecla' v='Admin-0'/>
+   <tag k='_action_' v='out:file=admin0.osm'/>
+   <nd ref='1'/>
+   <nd ref='1'/>
+</way>
+\end{verbatim}
 
 \subsection{Order of Rule Execution} \label{ref:ruleorder}
 
