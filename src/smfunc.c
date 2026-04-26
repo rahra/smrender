@@ -19,7 +19,7 @@
  * This file contains all rule functions which do not create graphics output.
  *
  *  @author Bernhard R. Fischer
- *  \date 2026/04/06
+ *  \date 2026/04/26
  */
 #include <stdio.h>
 #include <stdlib.h>
@@ -2745,40 +2745,43 @@ int act_translate_main(smrule_t *r, osm_obj_t *o)
    for (i = 0; i < ocnt; i++)
    {
       // test if object has such a key
-      if ((n = bs_match_attr(o, &td->ot[i], &td->st[i])) < 0)
-         continue;
-
-      log_debug("match in tag(%d)@object(%"PRId64")", n, o->id);
-      // copy value to temporary tag 'ot' as key
-      ot.k = o->otag[n].v;
-      // lookup if translation table object (in r->data) contains such key
-      if ((m = bs_match_attr(td->o, &ot, &st)) < 0)
-         continue;
-
-      // add new tag if newtag is true
-      if (td->newtag)
+      for (n = 0; n < o->tag_cnt; n++)
       {
-         if ((tmp_ot = realloc(o->otag, sizeof(struct otag) * (o->tag_cnt + 1))) == NULL)
-         {
-            log_msg(LOG_DEBUG, "could not realloc tag list: %s", strerror(errno));
-            return 0;
-         }
-         o->otag = tmp_ot;
-         //o->otag[o->tag_cnt].v = td->o->otag[m].v;
-         o->otag[o->tag_cnt].k.len = o->otag[n].k.len + 6;
-         if ((o->otag[o->tag_cnt].k.buf = malloc(o->otag[o->tag_cnt].k.len)) == NULL)
-         {
-            log_msg(LOG_ERR, "malloc() failed: %s", strerror(errno));
-            return -1;
-         }
-         memcpy(o->otag[o->tag_cnt].k.buf, o->otag[n].k.buf, o->otag[n].k.len);
-         memcpy(o->otag[o->tag_cnt].k.buf + o->otag[n].k.len, ":local", 6);
-         n = o->tag_cnt;
-         o->tag_cnt++;
-      }
+         if ((n = bs_match_attr_n(o, &td->ot[i], &td->st[i], n)) < 0)
+            break;
 
-      // translate, i.e. set object value to value of translation object
-      o->otag[n].v = td->o->otag[m].v;
+         log_debug("match in tag(%d)@object(%"PRId64")", n, o->id);
+         // copy value to temporary tag 'ot' as key
+         ot.k = o->otag[n].v;
+         // lookup if translation table object (in r->data) contains such key
+         if ((m = bs_match_attr(td->o, &ot, &st)) < 0)
+            continue;
+
+         // add new tag if newtag is true
+         if (td->newtag)
+         {
+            if ((tmp_ot = realloc(o->otag, sizeof(struct otag) * (o->tag_cnt + 1))) == NULL)
+            {
+               log_msg(LOG_DEBUG, "could not realloc tag list: %s", strerror(errno));
+               return 0;
+            }
+            o->otag = tmp_ot;
+            //o->otag[o->tag_cnt].v = td->o->otag[m].v;
+            o->otag[o->tag_cnt].k.len = o->otag[n].k.len + 6;
+            if ((o->otag[o->tag_cnt].k.buf = malloc(o->otag[o->tag_cnt].k.len)) == NULL)
+            {
+               log_msg(LOG_ERR, "malloc() failed: %s", strerror(errno));
+               return -1;
+            }
+            memcpy(o->otag[o->tag_cnt].k.buf, o->otag[n].k.buf, o->otag[n].k.len);
+            memcpy(o->otag[o->tag_cnt].k.buf + o->otag[n].k.len, ":local", 6);
+            n = o->tag_cnt;
+            o->tag_cnt++;
+         }
+
+         // translate, i.e. set object value to value of translation object
+         o->otag[n].v = td->o->otag[m].v;
+      }
    }
    
    return 0;
