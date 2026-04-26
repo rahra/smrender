@@ -20,7 +20,7 @@
  * captions, and the variation compass.
  *
  *  \author Bernhard R. Fischer, <bf@abenteuerland.at>
- *  \date 2026/03/15
+ *  \date 2026/04/26
  */
 
 #include <stdio.h>
@@ -40,7 +40,7 @@
 #define COL_ABBR_CNT COL_CNT
 #define ATYPE_CNT 4
 #define TAG_CNT 7
-#define SMFILTER_REV "2026031401"
+#define SMFILTER_REV "2026042601"
 
 
 enum { SEAMARK_LIGHT_CHARACTER, SEAMARK_LIGHT_OBJECT, SEAMARK_LIGHT_RADIAL,
@@ -72,6 +72,10 @@ struct pchar_data
 {
    regex_t regex;
    int lang;
+   //! if set to 1 it behaves like rev <= 2026031401 (built-in color translation)
+   int compat;
+   //! regex string to match color tags
+   char *colkey;
 };
 
 enum {LANG_EN, LANG_DE, LANG_HR, LANG_GR};
@@ -177,23 +181,27 @@ void __attribute__ ((destructor)) fini_libsmfilter(void)
 int act_pchar_ini(smrule_t *r)
 {
    struct pchar_data *pd;
-   regex_t regex;
    char *s;
    int e;
 
-   if ((e = regcomp(&regex, "seamark:light:([0-9]+:)?colour", REG_EXTENDED | REG_NOSUB)))
-   {
-      log_msg(LOG_ERR, "regcomp failed: %d", e);
-      return -1;
-   }
-
-   if ((pd = malloc(sizeof(*pd))) == NULL)
+   if ((pd = calloc(1, sizeof(*pd))) == NULL)
    {
       log_msg(LOG_ERR, "cannot malloc: %s", strerror(errno));
       return -1;
    }
 
-   memcpy(&pd->regex, &regex, sizeof(regex));
+   pd->compat = get_param_bool2("compat", r->act, 1);
+
+   if ((pd->colkey = get_param("colkey", NULL, r->act)) == NULL)
+      pd->colkey = pd->compat ? "seamark:light:([0-9]+:)?colour$" : "seamark:light:([0-9]+:)?colour:local$";
+
+   if ((e = regcomp(&pd->regex, pd->colkey, REG_EXTENDED | REG_NOSUB)))
+   {
+      free(pd);
+      log_msg(LOG_ERR, "regcomp failed: %d", e);
+      return -1;
+   }
+
    pd->lang = LANG_DEFAULT;
 
    if ((s = get_param("lang", NULL, r->act)) != NULL)
@@ -206,6 +214,7 @@ int act_pchar_ini(smrule_t *r)
          pd->lang = LANG_GR;
    }
 
+   log_debug("lang = %d, compat = %d, colkey = '%s'", pd->lang, pd->compat, pd->colkey);
    r->data = pd;
    return 0;
 }
@@ -287,38 +296,71 @@ int act_pchar_main(smrule_t *r, osm_obj_t *o)
          snprintf(height, sizeof(height), " %.*sm", o->otag[n].v.len, o->otag[n].v.buf);
    }
 
-   memset(&col_mask, 0, sizeof(col_mask));
-   for (i = 0; i < o->tag_cnt; i++)
+   if (pd->compat)
    {
-      s = bs_dup(&o->otag[i].k);
-      if (!regexec(&pd->regex, s, 0, NULL, 0))
+      memset(&col_mask, 0, sizeof(col_mask));
+      for (i = 0; i < o->tag_cnt; i++)
       {
-         if ((n = parse_seamark_color(o->otag[i].v)) != -1)
-            col_mask[n]++;
-      }
-      free(s);
-   }
-
-   for (i = 0; i < COL_CNT; i++)
-      if (col_mask[i])
-      {
-         switch (((struct pchar_data*) r->data)->lang)
+         s = bs_dup(&o->otag[i].k);
+         if (!regexec(&pd->regex, s, 0, NULL, 0))
          {
-            case LANG_GR:
-               snprintf(buf, sizeof(buf), "%s ", col_abbr_gr_[i]);
-               break;
-            case LANG_HR:
-               snprintf(buf, sizeof(buf), "%s ", col_abbr_hr_[i]);
-               break;
-            case LANG_DE:
-               snprintf(buf, sizeof(buf), "%s/", col_abbr_de_[i]);
-               break;
-            default:
-               snprintf(buf, sizeof(buf), "%s", col_abbr_[i]);
+            if ((n = parse_seamark_color(o->otag[i].v)) != -1)
+               col_mask[n]++;
          }
-         //FIXME: strcat
-         strcat(col, buf);
+         free(s);
       }
+
+      for (i = 0; i < COL_CNT; i++)
+         if (col_mask[i])
+         {
+            switch (((struct pchar_data*) r->data)->lang)
+            {
+               case LANG_GR:
+                  snprintf(buf, sizeof(buf), "%s ", col_abbr_gr_[i]);
+                  break;
+               case LANG_HR:
+                  snprintf(buf, sizeof(buf), "%s ", col_abbr_hr_[i]);
+                  break;
+               case LANG_DE:
+                  snprintf(buf, sizeof(buf), "%s/", col_abbr_de_[i]);
+                  break;
+               default:
+                  snprintf(buf, sizeof(buf), "%s", col_abbr_[i]);
+            }
+            //FIXME: strcat
+            strcat(col, buf);
+         }
+   }
+   else
+   {
+      int len = 0;
+      for (i = 0; i < o->tag_cnt && len < (int) sizeof(col); i++)
+      {
+         s = bs_dup(&o->otag[i].k);
+         if (!regexec(&pd->regex, s, 0, NULL, 0))
+         {
+            switch (pd->lang)
+            {
+               case LANG_GR:
+                  n = snprintf(col + len, sizeof(col) - len, "%.*s ", o->otag[i].v.len, o->otag[i].v.buf);
+                  break;
+               case LANG_HR:
+                  n = snprintf(col + len, sizeof(col) - len, "%.*s ", o->otag[i].v.len, o->otag[i].v.buf);
+                  break;
+               case LANG_DE:
+                  n = snprintf(col + len, sizeof(col) - len, "%.*s/", o->otag[i].v.len, o->otag[i].v.buf);
+                  break;
+               default:
+                  n = snprintf(col + len, sizeof(col) - len, "%.*s", o->otag[i].v.len, o->otag[i].v.buf);
+            }
+           len += n;
+         }
+         free(s);
+      }
+      // check of col buffer is too small
+      if (len >= (int) sizeof(col))
+         log_msg(LOG_WARN, "col buffer too small: light character truncated");
+   }
 
    // remove trailing '/'
    if (((struct pchar_data*) r->data)->lang == LANG_DE && strlen(col))
