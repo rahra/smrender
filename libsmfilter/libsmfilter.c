@@ -252,7 +252,7 @@ char *bs_dup(const bstring_t *b)
 int act_pchar_main(smrule_t *r, osm_obj_t *o)
 {
    struct pchar_data *pd = r->data;
-   char lchar[8] = "", group[8] = "", period[8] = "", range[8] = "", col[32] = "", height[32] = "", buf[256];
+   char lchar[32] = "", lchar2[32] = "", group[8] = "", period[8] = "", range[8] = "", col[32] = "", height[32] = "", buf[256];
    int col_mask[COL_CNT];
    struct otag *ot;
    char *s;
@@ -275,16 +275,23 @@ int act_pchar_main(smrule_t *r, osm_obj_t *o)
    if ((n = match_attr(o, "seamark:light:character", NULL)) != -1 ||
          (n = match_attr(o, "seamark:light:1:character", NULL)) != -1)
    {
+      // find '+' in light character
+      for (i = 0; i < o->otag[n].v.len && o->otag[n].v.buf[i] != '+'; i++);
+      int d = o->otag[n].v.len - i;
+
       switch (((struct pchar_data*) r->data)->lang)
       {
          case LANG_GR:
-            snprintf(lchar, sizeof(lchar), "%.*s ", o->otag[n].v.len, o->otag[n].v.buf);
+            snprintf(lchar, sizeof(lchar), "%.*s ", i, o->otag[n].v.buf);
+            snprintf(lchar2, sizeof(lchar2), "%.*s%s", d, o->otag[n].v.buf + i, d > 0 ? " " : "");
             break;
          case LANG_HR:
-            snprintf(lchar, sizeof(lchar), "%.*s", o->otag[n].v.len, o->otag[n].v.buf);
+            snprintf(lchar, sizeof(lchar), "%.*s", i, o->otag[n].v.buf);
+            snprintf(lchar2, sizeof(lchar2), "%.*s", d, o->otag[n].v.buf + i);
             break;
          default:
-            snprintf(lchar, sizeof(lchar), "%.*s%s", o->otag[n].v.len, o->otag[n].v.buf, group[0] == '\0' ? "." : "");
+            snprintf(lchar, sizeof(lchar), "%.*s%s", i, o->otag[n].v.buf, group[0] == '\0' ? "." : "");
+            snprintf(lchar2, sizeof(lchar2), "%.*s%s", d, o->otag[n].v.buf + i, d > 0 ? "." : "");
       }
    }
    if ((n = match_attr(o, "seamark:light:height", NULL)) != -1 ||
@@ -369,7 +376,7 @@ int act_pchar_main(smrule_t *r, osm_obj_t *o)
    switch (((struct pchar_data*) r->data)->lang)
    {
       case LANG_HR:
-         if (!snprintf(buf, sizeof(buf), "%s%s%s%s%s%s", col, lchar, group, period, height, range))
+         if (!snprintf(buf, sizeof(buf), "%s%s%s%s%s%s%s", col, lchar, group, lchar2, period, height, range))
             return 0;
          break;
       case LANG_GR:
@@ -377,7 +384,7 @@ int act_pchar_main(smrule_t *r, osm_obj_t *o)
             return 0;
          break;
       default:
-         if (!snprintf(buf, sizeof(buf), "%s%s%s.%s%s%s", lchar, group, col, period, height, range))
+         if (!snprintf(buf, sizeof(buf), "%s%s%s%s.%s%s%s", lchar, group, lchar2, col, period, height, range))
             return 0;
    }
 
