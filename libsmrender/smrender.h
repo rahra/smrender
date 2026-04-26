@@ -1,4 +1,4 @@
-/* Copyright 2011-2024 Bernhard R. Fischer, 4096R/8E24F29D <bf@abenteuerland.at>
+/* Copyright 2011-2026 Bernhard R. Fischer, 4096R/8E24F29D <bf@abenteuerland.at>
  *
  * This file is part of smrender.
  *
@@ -19,7 +19,7 @@
  * This file contains fundamental definitions for Smrender.
  *
  * @author Bernhard R. Fischer, <bf@abenteuerland.at>
- * @date 2024/10/28
+ * @date 2026/04/26
  */
 #ifndef SMRENDER_H
 #define SMRENDER_H
@@ -85,6 +85,7 @@ int64_t unique_way_id(void);
 void set_unique_node_id(int64_t);
 void set_unique_way_id(int64_t);
 void set_const_tag(struct otag*, char*, char*);
+int bs_match_attr_n(const osm_obj_t*, const struct otag*, const struct stag*, int);
 int bs_match_attr(const osm_obj_t*, const struct otag *, const struct stag*);
 int bs_match(const bstring_t *, const bstring_t *, const struct specialTag *);
 int match_attr(const osm_obj_t*, const char *, const char *);

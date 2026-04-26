@@ -1,4 +1,4 @@
-/* Copyright 2011-2024 Bernhard R. Fischer, 4096R/8E24F29D <bf@abenteuerland.at>
+/* Copyright 2011-2026 Bernhard R. Fischer, 4096R/8E24F29D <bf@abenteuerland.at>
  *
  * This file is part of smrender.
  *
@@ -22,7 +22,7 @@
  * before execution the rules' actions.
  *
  *  @author Bernhard R. Fischer
- *  @date 2024/10/28
+ *  @date 2026/04/26
  */
 
 #ifdef HAVE_CONFIG_H
@@ -318,20 +318,23 @@ int bs_match(const bstring_t *dst, const bstring_t *pat, const struct specialTag
 }
 
 
-/*! This function matches the match tag defined by ot and st to the tags of the
+/*! This function matches the tag defined by ot and st to the tags of the
  * object o. 
  * @param o Object to with a specific tag is matched.
  * @param ot Tag which is matched to o.
  * @param st Special match information in respect to ot for additional
  * parameters, such as "greater than", "less than", "regex", and so on.
- * @return The function returns the index if the tag with o which matches the
+ * @param n Index within list of tags of o to start matching. This allows
+ * repeated matching which may be necessary if st contains a regular
+ * expression.
+ * @return The function returns the index of the tag of o which matches the
  * requirements or -1 if no tag matches.
  */
-int bs_match_attr(const osm_obj_t *o, const struct otag *ot, const struct stag *st)
+int bs_match_attr_n(const osm_obj_t *o, const struct otag *ot, const struct stag *st, int n)
 {
    int i, kmatch, vmatch;
 
-   for (i = 0; i < o->tag_cnt; i++)
+   for (i = n; i < o->tag_cnt; i++)
    {
       kmatch = vmatch = 0;
 
@@ -353,6 +356,16 @@ int bs_match_attr(const osm_obj_t *o, const struct otag *ot, const struct stag *
       return INT_MAX;
 
    return -1;
+}
+
+
+/*! This function is a simplified version of bs_match_attr_n() (see above).
+ * Calling bs_match_attr(o, ot, st) is identical to calling bs_match_attr_n(o,
+ * ot, st, 0).
+ */
+int bs_match_attr(const osm_obj_t *o, const struct otag *ot, const struct stag *st)
+{
+   return bs_match_attr_n(o, ot, st, 0);
 }
 
 
