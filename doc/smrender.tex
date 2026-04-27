@@ -1567,11 +1567,12 @@ rendered in the second rule.
 
 \begin{verbatim}
    <action>    := 'translate:' [ <param> [ ';' <param> ] ]
-   <param>     := <keydef> | <iddef> | <newtagdef>
-   <keydef>    := 'key' '=' <keyval>
+   <param>     := <keydef> | <iddef> | <newtagdef> | <coldef>
+   <keydef>    := 'key' '=' <keyval> [ ';' <keydef ]
    <keyval>    := <string> | '/' <regex> '/'
    <iddef>     := 'id' '=' <objid>
    <newtagdef> := 'newtag' '=' <bool>
+   <coldef>    := 'colkey' '=' <regex>
 \end{verbatim}
 
    This function translates tag values. It can be used to e.g. translate text
