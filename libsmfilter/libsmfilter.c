@@ -232,19 +232,6 @@ int act_pchar_fini(smrule_t *r)
 }
 
 
-
-char *bs_dup(const bstring_t *b)
-{
-   char *s;
-
-   if ((s = malloc(b->len + 1)) == NULL)
-      return NULL;
-   memcpy(s, b->buf, b->len);
-   s[b->len] = '\0';
-   return s;
-}
-
-
 /*! This function creates the new tag 'seamark:light_character' which is a
  * combined tag of several light attributes.
  * The function is intended to be called by a rule action.
@@ -308,7 +295,7 @@ int act_pchar_main(smrule_t *r, osm_obj_t *o)
       memset(&col_mask, 0, sizeof(col_mask));
       for (i = 0; i < o->tag_cnt; i++)
       {
-         s = bs_dup(&o->otag[i].k);
+         s = bs_strdup(&o->otag[i].k);
          if (!regexec(&pd->regex, s, 0, NULL, 0))
          {
             if ((n = parse_seamark_color(o->otag[i].v)) != -1)
@@ -341,7 +328,7 @@ int act_pchar_main(smrule_t *r, osm_obj_t *o)
    {
       for (i = 0, len = 0; i < o->tag_cnt && len < (int) sizeof(col); i++)
       {
-         s = bs_dup(&o->otag[i].k);
+         s = bs_strdup(&o->otag[i].k);
          if (!regexec(&pd->regex, s, 0, NULL, 0))
          {
             switch (pd->lang)
