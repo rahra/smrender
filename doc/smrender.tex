@@ -2414,8 +2414,15 @@ other rendering rules.
 
 \textsf{Pchar()} generates a string which contains the characteristics of the
 light as it is used in official sea charts and the \emph{List of Lights}. See
-Section P and P.16 in particular if the \emph{Chart No.
-1}.\footnote{\url{http://www.nauticalcharts.noaa.gov/mcd/chart1/ChartNo1.pdf}}
+\emph{INT1/Chart No. 1} Section P and P.16 in particular.\footnote{\url{http://www.nauticalcharts.noaa.gov/mcd/chart1/ChartNo1.pdf}}
+
+\begin{verbatim}
+   <action> := 'pchar@libsmfilter.so:' [ <param> [ ';' <param> ]]
+   <param>  := <lang> | <compat> | <colkey>
+   <lang>   := 'lang' '=' ( 'de' | 'en' | 'gr' | 'hr' )
+   <compat> := 'compat' '=' <bool>
+   <colkey> := 'colkey' '=' regular expression
+\end{verbatim}
 
 The function analyzes the tags of an object. If it contains valid
 \emph{OpenSeamap} tags\footnote{See
@@ -2425,10 +2432,15 @@ generates the light string and adds the new OSM tag
 the string which may be rendered by a subsequent rule.
 
 Since the description of lights varies in different languages, \smrender{}
-supports the optional parameter \optv{lang} which may be set to either
-\textsf{'de'} for German or \textsf{'hr'} for Croatian language. If the
-parameter is omitted it defaults to English. The following table shows language
-examples according to \emph{INT-1, IP 51}:\\
+supports the optional parameter \optv{lang} having \textsf{'en'} as default.
+It depends on the compatibility setting of \textsf{'compat'} how it will behave.
+
+By default it is set to \textsf{compat=yes} for backwards compatibility. In this case it will 1st translate
+the tags into the chosen language and then format it according to the local \emph{INT1}.
+
+Please note that this mode is deprecated since adding new languages would require to change the code the new suggested variant is to set \textsf{compat=no}. In this case it formats the string according the chosen language's \emph{INT1} but it does not translate the light characters and colors. This must be done beforehand by using the action \textsf{translate()} (see \ref{sec:act-translate}).
+
+The following table shows language examples according to \emph{INT-1, IP 51}:\\
 
 \begin{tabular}{l|l}
    English & \textsf{Fl.10s 40m 27M} \\
@@ -2447,10 +2459,12 @@ Those can then be graphically rendered by using one of \smrender's rendering
 primitives (s. Section \ref{sec:act-cap} and \ref{sec:draw}).
 
 \begin{verbatim}
-   <definition>  := 'compass@libsmfilter.so:' [ <param> [ ';'
-                                                <param> ... ]]
-   <param>       := <name> '=' <value>
-   <name>        := 'variation' | 'radius' | 'ticks'
+   <action> := 'compass@libsmfilter.so:' <param> [ ';' <param> ]
+   <param>  := <var> | <radius> | <ticks> | <stldef>
+   <var>    := 'variation' '=' decimal value
+   <radius> := 'radius' '=' decimal value
+   <ticks>  := 'ticks' '=' integer value
+   <stldef> := 'style' '=' ( 'int1' | 'int1var' )
 \end{verbatim}
 
 \begin{wrapfigure}{r}{45mm}
