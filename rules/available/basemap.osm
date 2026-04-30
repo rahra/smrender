@@ -43,10 +43,29 @@
    </way>
    <way>
       <tag k='seamark:type' v='depth_contour'/>
+      <tag k='seamark:depth_contour:depth' v='20'/>
+      <tag k='~distance~' v=''/>
+      <tag k='_action_' v='cat_poly'/>
+   </way>
+
+   <!-- The following two rules shade depths between 10 and 20 meters light
+        gray as usual on Croatian charts. -->
+   <way>
+      <tag k='seamark:type' v='depth_contour'/>
+      <tag k='seamark:depth_contour:depth' v='20'/>
+      <tag k='generator' v='smrender'/>
+      <tag k='~distance~' v=''/>
+      <tag k='_action_' v='draw:color=#dde7eb;ignore_open=1;directional=1;curve=1'/>
+      <!--<tag k='_action_' v='draw:color=#d3e4eb;ignore_open=1;directional=1;curve=1'/>
+      <tag k='_action_' v='draw:color=#cce2eb;ignore_open=1;directional=1;curve=1'/>-->
+   </way>
+   <way>
+      <tag k='seamark:type' v='depth_contour'/>
       <tag k='seamark:depth_contour:depth' v='10'/>
       <tag k='~distance~' v=''/>
       <tag k='_action_' v='cat_poly'/>
    </way>
+
    <way>
       <tag k='seamark:type' v='depth_contour'/>
       <tag k='seamark:depth_contour:depth' v='10'/>
@@ -61,10 +80,6 @@
    </way>
    <way>
       <tag k='tidal' v='yes'/>
-      <tag k='_action_' v='draw:color=darkseagreen'/>
-   </way>
-   <way>
-      <tag k='natural' v='wetland'/>
       <tag k='_action_' v='draw:color=darkseagreen'/>
    </way>
    <way>
@@ -123,6 +138,10 @@
       <tag k='_action_' v='draw:color=skyblue;bcolor=#000080'/>
    </way>
    <way>
+      <tag k='natural' v='wetland'/>
+      <tag k='_action_' v='draw:color=darkseagreen'/>
+   </way>
+   <way>
       <tag k='natural' v='water'/>
       <tag k='_action_' v='poly_area'/>
    </way>
@@ -144,13 +163,12 @@
       <tag k='type' v='multipolygon'/>
       <tag k='_action_' v='cat_poly:no_corner=1'/>
    </relation>
-<!-- the following rule somehow interferes with other cat_poly()s
+   <!-- the following rule somehow interferes with other cat_poly()s-->
    <relation>
       <tag k='natural' v='water'/>
       <tag k='type' v='multipolygon'/>
       <tag k='_action_' v='cat_poly:no_corner=1'/>
    </relation>
--->
    <relation>
       <tag k='waterway' v=''/>
       <tag k='type' v='multipolygon'/>

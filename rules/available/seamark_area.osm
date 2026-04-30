@@ -74,5 +74,23 @@
       <tag k='_action_' v='draw:bcolor=#40FF00FF;bwidth=0.5;bstyle=dashed'/>
    </way>
 
+   <way>
+      <tag k='seamark:type' v='marine_farm'/>
+      <tag k='_action_' v='poly_area'/>
+   </way>
+   <way>
+      <tag k='seamark:type' v='marine_farm'/>
+      <tag k='_action_' v='poly_centroid'/>
+   </way>
+   <way>
+      <tag k='seamark:type' v='marine_farm'/>
+      <tag k='_action_' v='draw:bcolor=black;bwidth=0.15;bstyle=dashed'/>
+   </way>
+   <node>
+      <tag k='seamark:type' v='marine_farm'/>
+      <tag k='smrender:area' v=']0.024['/>
+      <tag k='_action_' v='img:file=SeaMapSymbols/MarineFarm.svg;scale=1'/>
+   </node>
+
 </osm>
 

@@ -21,7 +21,7 @@
    </node>
    <node version="-10">
       <tag k='seamark:type' v=''/>
-      <tag k='_action_' v='pchar@libsmfilter.so:lang=de'/>
+      <tag k='_action_' v='pchar@libsmfilter.so:compat=no;lang=de'/>
    </node>
    <node version="5">
       <tag k='/seamark:light:.*/' v=''/>

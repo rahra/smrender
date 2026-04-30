@@ -9,8 +9,10 @@
       <tag k='F' v=' '/> <!-- FIXME... -->
       <tag k='Iso' v='Izo'/>
       <tag k='Q' v='K'/>
+      <tag k='Q+LFl' v='K+DBl'/>
       <tag k='IQ' v='KPk'/>
       <tag k='VQ' v='VK'/>
+      <tag k='VQ+LFl' v='VK+DBl'/>
       <tag k='IVQ' v='VKPk'/>
       <tag k='UQ' v='UK'/>
       <tag k='IUQ' v='UKPk'/>
@@ -21,6 +23,9 @@
       <tag k='yellow' v='Ž'/>
       <tag k='black' v='Cr'/>
       <tag k='violett' v='Lj'/>
+      <tag k='blue' v='Pl'/>
+      <tag k='orange' v='Or'/> <!-- there is no translation according to the Croatian INT1 -->
+      <tag k='amber' v='Am'/> <!-- there is no translation according to the Croatian INT1 -->
 
       <!-- seabed -->
       <tag k='sand' v='P'/>
@@ -31,6 +36,33 @@
       <tag k='shells' v='Šk'/>
    </node>
 
+   <!-- translation table for English lights -->
+   <node id='1003'>
+      <tag k='white' v='W'/>
+      <tag k='red' v='R'/>
+      <tag k='green' v='G'/>
+      <tag k='yellow' v='Y'/>
+      <tag k='black' v='B'/>
+      <tag k='violett' v='Vi'/>
+      <tag k='blue' v='Bu'/>
+      <tag k='orange' v='Or'/> <!-- there is no translation according to the Croatian INT1 -->
+      <tag k='amber' v='Am'/> <!-- there is no translation according to the Croatian INT1 -->
+
+      <!-- seabed -->
+      <tag k='sand' v='S'/>
+      <tag k='mud' v='M'/>
+      <tag k='clay' v='Cy'/>
+      <tag k='silt' v='Si'/>
+      <tag k='stones' v='St'/>
+      <tag k='gravel' v='G'/>
+      <tag k='pebbles' v='P'/>
+      <tag k='cobbles' v='Cb'/>
+      <tag k='rock' v='R'/>
+      <tag k='coral' v='Co'/>
+      <tag k='shells' v='Sh'/>
+      <tag k='weed' v='Wd'/>
+   </node>
+
    <!-- translation table for German lights -->
    <node id='1001'>
       <tag k='Fl' v='Blz'/>
@@ -39,8 +71,10 @@
       <tag k='F' v='F'/>
       <tag k='Iso' v='Glt'/>
       <tag k='Q' v='Fkl'/>
+      <tag k='Q+LFl' v='Fkl+Blk'/>
       <tag k='IQ' v='Fkl.unt'/>
       <tag k='VQ' v='SFkl'/>
+      <tag k='VQ+LFl' v='SFkl+Blk'/>
       <tag k='IVQ' v='SFkl.unt'/>
       <tag k='UQ' v='UFkl'/>
       <tag k='IUQ' v='UFkl.unt'/>
@@ -51,6 +85,9 @@
       <tag k='yellow' v='g.'/>
       <tag k='black' v='s.'/>
       <tag k='violett' v='viol.'/>
+      <tag k='blue' v='bl.'/>
+      <tag k='orange' v='or.'/>
+      <tag k='amber' v='or.'/>
    </node>
 
    <!-- translation table for Greek lights -->
@@ -84,7 +121,7 @@
    <!-- translation rule for light colour -->
    <node version='-100'>
       <tag k='/seamark:light:.*character/' v=''/>
-      <tag k='_action_' v='translate:id=1000;key=/seamark:light:.*character/'/>
+      <tag k='_action_' v='translate:id=1000;key=/seamark:light:.*colour/;newtag=yes'/>
    </node>
 
    <!-- translation rule for nature of seabed-->
