@@ -256,7 +256,7 @@ int act_pchar_main(smrule_t *r, osm_obj_t *o)
    int col_mask[COL_CNT];
    struct otag *ot;
    char *s;
-   int i, n;
+   int i, n, len;
 
    if ((n = match_attr(o, "seamark:light:group", NULL)) != -1 || 
          (n = match_attr(o, "seamark:light:1:group", NULL)) != -1)
@@ -317,31 +317,29 @@ int act_pchar_main(smrule_t *r, osm_obj_t *o)
          free(s);
       }
 
-      for (i = 0; i < COL_CNT; i++)
+      for (i = 0, len = 0; i < COL_CNT && len < (int) sizeof(col); i++)
          if (col_mask[i])
          {
             switch (((struct pchar_data*) r->data)->lang)
             {
                case LANG_GR:
-                  snprintf(buf, sizeof(buf), "%s ", col_abbr_gr_[i]);
+                  n = snprintf(col + len, sizeof(col) - len, "%s ", col_abbr_gr_[i]);
                   break;
                case LANG_HR:
-                  snprintf(buf, sizeof(buf), "%s ", col_abbr_hr_[i]);
+                  snprintf(col + len, sizeof(col) - len, "%s ", col_abbr_hr_[i]);
                   break;
                case LANG_DE:
-                  snprintf(buf, sizeof(buf), "%s/", col_abbr_de_[i]);
+                  snprintf(col + len, sizeof(col) - len, "%s/", col_abbr_de_[i]);
                   break;
                default:
-                  snprintf(buf, sizeof(buf), "%s", col_abbr_[i]);
+                  snprintf(col + len, sizeof(col) - len, "%s", col_abbr_[i]);
             }
-            //FIXME: strcat
-            strcat(col, buf);
+            len += n;
          }
    }
    else
    {
-      int len = 0;
-      for (i = 0; i < o->tag_cnt && len < (int) sizeof(col); i++)
+      for (i = 0, len = 0; i < o->tag_cnt && len < (int) sizeof(col); i++)
       {
          s = bs_dup(&o->otag[i].k);
          if (!regexec(&pd->regex, s, 0, NULL, 0))
