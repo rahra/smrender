@@ -49,6 +49,16 @@ void adams_square_ii_smr(double lambda, double phi, double *x, double *y)
 }
 
 
+void adams_square_ii_invert_smr(double x, double y, double *lambda, double *phi)
+{
+   xy_t xy = adams_square_ii_invert(x, y);
+   if (lambda != NULL)
+      *lambda = xy.x;
+   if (phi != NULL)
+      *phi = xy.y;
+}
+
+
 xy_t adams_square_i(double lambda, double phi)
 {
    double a, b, c, sm, sn, sp;
@@ -218,8 +228,6 @@ static double limit(double a, double b)
 /*! This function is the inverse of elliptic_f(). The code was translated from
  * the Torben Jansons's code (see above at elliptic_f()).
  *
- * FIXME: It is not yet checked if it works.
- *
  * Original remark by T. Janson:
  * Newton-Raphson inversion, based on code from PROJ written by Gerald Evenden.
  * https://github.com/OSGeo/PROJ/blob/master/src/projections/adams.cpp
@@ -285,4 +293,21 @@ xy_t inverse(double x, double y, double lam, double phi, xy_t (*proj)(double, do
 
    return (xy_t) {lam, phi};
 }
+
+#ifdef TEST_ADAMS_II
+int main()
+{
+   double l, f, x, y;
+
+   l = 13.3 * M_PI / 180;
+   f = 44.8 * M_PI / 180;
+   adams_square_ii_smr(l, f, &x, &y);
+   printf("%f/%f -> %f/%f\n", l, f, x, y);
+
+   adams_square_ii_invert_smr(x, y, &l, &f);
+   printf("%f/%f -> %f/%f\n", x, y, l, f);
+
+   return 0;
+}
+#endif
 
