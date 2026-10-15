@@ -44,10 +44,11 @@
 >4.1&nbsp; Rendering Window</a><br />&nbsp;&nbsp;&nbsp;&nbsp;<a href="#tth_sEc4.2"
 >4.2&nbsp; Options</a><br /><a href="#tth_sEc5"
 >5&nbsp; Ruleset Definition</a><br />&nbsp;&nbsp;&nbsp;&nbsp;<a href="#tth_sEc5.1"
->5.1&nbsp; Order of Rule Execution</a><br />&nbsp;&nbsp;&nbsp;&nbsp;<a href="#tth_sEc5.2"
->5.2&nbsp; Match Operations</a><br />&nbsp;&nbsp;&nbsp;&nbsp;<a href="#tth_sEc5.3"
->5.3&nbsp; Rule Actions</a><br />&nbsp;&nbsp;&nbsp;&nbsp;<a href="#tth_sEc5.4"
->5.4&nbsp; Measurement Units</a><br /><a href="#tth_sEc6"
+>5.1&nbsp; Open and Closed Ways</a><br />&nbsp;&nbsp;&nbsp;&nbsp;<a href="#tth_sEc5.2"
+>5.2&nbsp; Order of Rule Execution</a><br />&nbsp;&nbsp;&nbsp;&nbsp;<a href="#tth_sEc5.3"
+>5.3&nbsp; Match Operations</a><br />&nbsp;&nbsp;&nbsp;&nbsp;<a href="#tth_sEc5.4"
+>5.4&nbsp; Rule Actions</a><br />&nbsp;&nbsp;&nbsp;&nbsp;<a href="#tth_sEc5.5"
+>5.5&nbsp; Measurement Units</a><br /><a href="#tth_sEc6"
 >6&nbsp; Rendering Functions</a><br />&nbsp;&nbsp;&nbsp;&nbsp;<a href="#tth_sEc6.1"
 >6.1&nbsp; Graphical Rendering Primitives</a><br />&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#tth_sEc6.1.1"
 >6.1.1&nbsp; Captions</a><br />&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#tth_sEc6.1.2"
@@ -101,7 +102,7 @@
 1&nbsp;&nbsp;Release Notes</h2>
 
 <div class="p"><!----></div>
-This document describes the current (2024/02/02) version of <span style="font-family:helvetica"><i><span class="small">Smrender</span></i></span>.
+This document describes the current (2026/10/15) version of <span style="font-family:helvetica"><i><span class="small">Smrender</span></i></span>.
 
 <div class="p"><!----></div>
 Although I put a lot of effort into writing this manual it still may be
@@ -281,7 +282,7 @@ In the following all options are explained in alphabetical order.
 
 <div class="p"><!----></div>
       Add an additional border to the page on all edges. This may be useful to
-      add e.g. a bleed margin for printing. Rendering is always done in respect
+      add e.g. add a bleed margin for printing. Rendering is always done in respect
       to the page size as defined by option <span style="font-family:helvetica"><span class="small"><b>-P</b></span></span> but the final page size
       will be larger by twice the value defined by option <span style="font-family:helvetica"><span class="small"><b>-B</b></span></span>. The value
       <span style="font-family:helvetica"><span class="small"><u>border</u></span></span> is given in millimeters. If this option is omitted, no
@@ -291,6 +292,9 @@ In the following all options are explained in alphabetical order.
 <div class="p"><!----></div>
       This option allows to set a background color. The color may be defined either as a color preset
       or an HTML-style definition (see Section <a href="#sec:act-cap">6.1.1</a>). The default color is white.
+
+<div class="p"><!----></div>
+      This also allows to specify a transparent (e.g. with <span style="font-family:helvetica">-b transparent</span>) background which could be of special interest if you create a PNG file as output image.
 
 <div class="p"><!----></div>
       Please note that some Shells (such as the <span style="font-family:helvetica">bash</span>) interpret the
@@ -351,7 +355,7 @@ In the following all options are explained in alphabetical order.
 
 <div class="p"><!----></div>
    A grid may optionally be generated with the action <span style="font-family:helvetica">grid</span>. See
-   Section <a href="#sec:special">6.3.5</a>.
+   Section <a href="#sec:act-grid">6.2.7</a>.
 <br /><span style="font-family:helvetica"><span class="small"><b>-G</b></span></span>
 
 <div class="p"><!----></div>
@@ -410,7 +414,8 @@ In the following all options are explained in alphabetical order.
 <div class="p"><!----></div>
    Adams II is a very special projection. It is implemented specifically to
    create the <em>Spilhaus World Ocean Map</em> which was developed by
-   <em>Athelstan Spilhause</em>.
+   <em>Athelstan Spilhaus</em>. See section <a href="#sec:act-transcoord">6.2.10</a> for details
+   on how to realize the Spilhaus projection with <span style="font-family:helvetica"><i><span class="small">Smrender</span></i></span>.
 <br /><span style="font-family:helvetica"><span class="small"><b>-P</b></span></span> <span style="font-family:helvetica"><span class="small"><u>fmt geom</u></span></span>[:<span style="font-family:helvetica"><span class="small"><u>angle</u></span></span>]
 
 <div class="p"><!----></div>
@@ -540,15 +545,16 @@ In the following all options are explained in alphabetical order.
 <br /><span style="font-family:helvetica"><span class="small"><b>-w</b></span></span> <span style="font-family:helvetica"><span class="small"><u>file</u></span></span>
 
 <div class="p"><!----></div>
-   This option specifies the file name of an output OSM file. <span style="font-family:helvetica"><i><span class="small">Smrender</span></i></span> will dump all nodes/ways to this file that have been
-   selected by the import process and all nodes/ways which have been generated during the rendering process.
+   This option specifies the file name of an OSM output file. <span style="font-family:helvetica"><i><span class="small">Smrender</span></i></span> will dump all nodes, ways, and relations of its internal in-memory database to this file.
 
 <div class="p"><!----></div>
-   These nodes/ways include the objects generated for the grid and also the close coastline ways.
-   Thus the output depends on the options <span style="font-family:helvetica"><span class="small"><b>-f</b></span></span>, <span style="font-family:helvetica"><span class="small"><b>-C</b></span></span>, and <span style="font-family:helvetica"><span class="small"><b>-G</b></span></span>.
+   During processing and rendering, <span style="font-family:helvetica"><i><span class="small">Smrender</span></i></span> may generate a lot of additional nodes and ways depending on options and the ruleset, in addition to the input data.
 
 <div class="p"><!----></div>
-   If this option is omitted, no output will be generated.
+   This data will include e.g. the grid but also objects and tags which have been modified or added by the actions found in Section <a href="#sec:manipulation">6.2</a>.
+
+<div class="p"><!----></div>
+   The output file is a valid OSM data file and could be opened in other OSM processing tools such as JOSM.
 <br /><span style="font-family:helvetica"><span class="small"><b>-x</b></span></span>
 
 <div class="p"><!----></div>
@@ -558,10 +564,20 @@ In the following all options are explained in alphabetical order.
    Basically at the startup <span style="font-family:helvetica"><i><span class="small">Smrender</span></i></span> pulls in the input data file (from option <span style="font-family:helvetica"><span class="small"><b>-i</b></span></span>). By reading it it parses the whole data file and creates an in-memory index which obviously takes some time. Although the XML processor of <span style="font-family:helvetica"><i><span class="small">Smrender</span></i></span> is pretty fast it is still a time consuming task.
 
 <div class="p"><!----></div>
-   With this option set it will save this internal index to a file after the input data was parsed. In a subsequent run of <span style="font-family:helvetica"><i><span class="small">Smrender</span></i></span> it will pull in the index directly from the file instead of parsing the whole XML file of the raw input data. This drastically speeds up the initialization process which is very usefull if your render several files in a row if they are based on the same input data. It is also very useful if you are developing a ruleset and have to restart <span style="font-family:helvetica"><i><span class="small">Smrender</span></i></span> over and over again, specifically if the input file has a reasonable size.
+   With this option set it will save this internal index to a file after the input data was parsed. In a subsequent run of <span style="font-family:helvetica"><i><span class="small">Smrender</span></i></span> it will pull in the index directly from the file instead of parsing the whole XML file of the raw input data. This drastically speeds up the initialization process which is very usefull if you render several files in a row if they are based on the same input data. It is also very useful if you are developing a ruleset and have to restart <span style="font-family:helvetica"><i><span class="small">Smrender</span></i></span> over and over again, specifically if the input file has a reasonable size.
 
 <div class="p"><!----></div>
-   Before loading the index it compares the timestmaps of the index file and the input file. If the input file is newer it will drop and rebuild the index file. This comparison is based on the <em>modification time</em> of the files in the file system. Please note that if you tamper with these timestamps or your system had a timewarp (system time changed) this may lead to accidentally reading an outdated index. In this case just delete the index file manually and restart <span style="font-family:helvetica"><i><span class="small">Smrender</span></i></span>.</ul>
+   Before loading the index it compares the timestmaps of the index file and the input file. If the input file is newer it will drop and rebuild the index file. This comparison is based on the <em>modification time</em> of the files in the file system. Please note that if you tamper with these timestamps or your system had a timewarp (system time changed) this may lead to accidentally reading an outdated index. In this case just delete the index file manually and restart <span style="font-family:helvetica"><i><span class="small">Smrender</span></i></span>.
+
+<div class="p"><!----></div>
+   The index file is created in the same directory as the input file as specified by <span style="font-family:helvetica"><span class="small"><b>-i</b></span></span> and its name will have the extension <span style="font-family:helvetica">.index</span> added. This location can be changed with option <span style="font-family:helvetica"><span class="small"><b>-X</b></span></span>.
+<br /><span style="font-family:helvetica"><span class="small"><b>-X</b></span></span>
+
+<div class="p"><!----></div>
+   This option specifies the name and location of the index file (see option <span style="font-family:helvetica"><span class="small"><b>-x</b></span></span>). This may be desirable if e.g. the OSM input file rests on a read only storage.
+
+<div class="p"><!----></div>
+   If this option is set, option <span style="font-family:helvetica"><span class="small"><b>-x</b></span></span> is implied automatically.</ul>
 
 <div class="p"><!----></div>
  <a id="tth_sEc5"></a><h2>
@@ -570,26 +586,73 @@ In the following all options are explained in alphabetical order.
 
 <div class="p"><!----></div>
 The rule set is also defined in OSM format. It contains nodes, ways, and relations together
-with tags. Nodes are considered to be rules for rendering nodes and ways are
-rules applied to ways. Each object (node,  way, or relation) has a list of tags. These
+with tags. Nodes are considered to be rules for rendering nodes, ways are
+rules applied to ways, and relations are rules applied to relations. Each object (node,  way, or relation) has a list of tags. These
 tags represent patterns which are matched against the tags of the objects which
-are to be rendered. The values of a tag's key (<span style="font-family:helvetica">k="..."</span>) and/or value
+are to be rendered (as input by option <span style="font-family:helvetica"><span class="small"><b>-i</b></span></span>). The values of a tag's key (<span style="font-family:helvetica">k="..."</span>) and/or value
 (<span style="font-family:helvetica">v="..."</span>) may be either just a string which is directly matched in a
-case-sensitive manner or a special match operation (see Section <a href="#sec:match">5.2</a>).
+case-sensitive manner or a special match operation (see Section <a href="#sec:match">5.3</a>).
 The match operations can be used for the key as well as for the value.
 
 <div class="p"><!----></div>
 Each object has to have a special tag which defines the action that should
 be carried out in case of a match. This tag has the form <span style="font-family:helvetica">_action_=*</span>. The actions are described
-below in Section <a href="#sec:act">5.3</a>.
+below in Section <a href="#sec:act">5.4</a>. Of course this tag is not taken into account during the matching process as described previously.
 
 <div class="p"><!----></div>
 The match algorithm always applies all tags to match, and all of them have to match in order
-to execute the action. If just a single tag does not match, the node is skipped.
+to execute the action. If just a single tag does not match, the object is skipped.
+
+<div class="p"><!----></div>
+
+<b>Example:&nbsp;&nbsp;</b>
+
+<div class="p"><!----></div>
+The following rule places a caption with the specifed font at the center of all nodes which have the tags <span style="font-family:helvetica">scalerank=2</span> and <span style="font-family:helvetica">FEATURECL=Admin-1*</span> where the latter is matched as a regular expression. The caption is based on the value of the tag <span style="font-family:helvetica">NAME</span>.
+
+<div class="p"><!----></div>
+
+<pre>
+&lt;node&#62;
+&nbsp;&nbsp;&nbsp;&lt;tag&nbsp;k='FEATURECLA'&nbsp;v='/Admin-1.*/'/&#62;
+&nbsp;&nbsp;&nbsp;&lt;tag&nbsp;k='scalerank'&nbsp;v='2'/&#62;
+&nbsp;&nbsp;&nbsp;&lt;tag&nbsp;k='_action_'&nbsp;v='cap:font=sans-serif:bold;size=1.8;key=NAME'/&#62;
+&lt;/node&#62;
+
+</pre>
 
 <div class="p"><!----></div>
      <a id="tth_sEc5.1"></a><h3>
-5.1&nbsp;&nbsp;Order of Rule Execution</h3> <a id="ref:ruleorder">
+5.1&nbsp;&nbsp;Open and Closed Ways</h3>
+
+<div class="p"><!----></div>
+Ways are a series of nodes. They can be open like lines or closed like polygons (see also Section <a href="#sec:act-draw">6.1.2</a>). Closed ways are such where the first node in the list of nodes is the same as the last node.
+
+<div class="p"><!----></div>
+By default way-rules match all ways, independently if they are open or closed but there is an option to tell <span style="font-family:helvetica"><i><span class="small">Smrender</span></i></span> to match either just closed or open ways. This is done by adding two references to the rule with ids which are either equal or unequal to each other. <span style="font-family:helvetica"><i><span class="small">Smrender</span></i></span> does not care about the absolute value of the reference ids but just its equality.
+
+<div class="p"><!----></div>
+
+<b>Example:&nbsp;&nbsp;</b>
+
+<div class="p"><!----></div>
+The following rule writes all closed ways - and only closed ones - with the tag <span style="font-family:helvetica">featurecla=Admin-0</span> to the file <span style="font-family:helvetica">admin0.osm</span>. Closed ways are chosen because there are two references which both share the same id (1 in this case).
+
+<div class="p"><!----></div>
+
+<pre>
+&lt;way&#62;
+&nbsp;&nbsp;&nbsp;&lt;tag&nbsp;k='featurecla'&nbsp;v='Admin-0'/&#62;
+&nbsp;&nbsp;&nbsp;&lt;tag&nbsp;k='_action_'&nbsp;v='out:file=admin0.osm'/&#62;
+&nbsp;&nbsp;&nbsp;&lt;nd&nbsp;ref='1'/&#62;
+&nbsp;&nbsp;&nbsp;&lt;nd&nbsp;ref='1'/&#62;
+&lt;/way&#62;
+
+</pre>
+
+<div class="p"><!----></div>
+     <a id="tth_sEc5.2"></a><h3>
+5.2&nbsp;&nbsp;Order of Rule Execution</h3> <a id="ref:ruleorder">
 </a>
 
 <div class="p"><!----></div>
@@ -654,8 +717,8 @@ Please note that the initialization function of a rule still is called even if
 <span style="font-family:helvetica">visible=false</span>.
 
 <div class="p"><!----></div>
-     <a id="tth_sEc5.2"></a><h3>
-5.2&nbsp;&nbsp;Match Operations</h3> <a id="sec:match">
+     <a id="tth_sEc5.3"></a><h3>
+5.3&nbsp;&nbsp;Match Operations</h3> <a id="sec:match">
 </a>
 
 <div class="p"><!----></div>
@@ -744,8 +807,8 @@ The following rule matches all objects whose <span style="font-family:helvetica"
 </ul>
 
 <div class="p"><!----></div>
-     <a id="tth_sEc5.3"></a><h3>
-5.3&nbsp;&nbsp;Rule Actions</h3>
+     <a id="tth_sEc5.4"></a><h3>
+5.4&nbsp;&nbsp;Rule Actions</h3>
 <a id="sec:act">
 </a>
 
@@ -810,8 +873,8 @@ for third-party modules.
 All functions are described in Section <a href="#sec:renderfunc">6</a>.
 
 <div class="p"><!----></div>
-     <a id="tth_sEc5.4"></a><h3>
-5.4&nbsp;&nbsp;Measurement Units</h3> <a id="sec:units">
+     <a id="tth_sEc5.5"></a><h3>
+5.5&nbsp;&nbsp;Measurement Units</h3> <a id="sec:units">
 </a>
 
 <div class="p"><!----></div>
@@ -1068,7 +1131,7 @@ The parameter <span style="font-family:helvetica"><span class="small"><u>fontbox
 around the text. This may be used by subsequent rules to decorate the
 background of the text in a more powerful manner as with just <span style="font-family:helvetica"><span class="small"><u>fillcolor</u></span></span>.
 The <span style="font-family:helvetica"><span class="small"><u>fontbox</u></span></span> option may be used together with <span style="font-family:helvetica"><span class="small"><u>hide</u></span></span> since filling
-would ovepaint the text.
+would overpaint the text.
 
 <div class="p"><!----></div>
 <span style="font-family:helvetica"><div class="small"><u>xoff</u></div></span> and <span style="font-family:helvetica"><span class="small"><u>yoff</u></span></span> specify an offset which is additionally added if
@@ -1120,7 +1183,7 @@ parameter <span style="font-family:helvetica">angle</span> is added additionally
 
 <div class="p"><!----></div>
 If <span style="font-family:helvetica"><span class="small"><u>hide</u></span></span> is set to <span style="font-family:helvetica">yes</span> or any other boolean true value (see
-Section <a href="#sec:act">5.3</a>) this function is executed as described above except that
+Section <a href="#sec:act">5.4</a>) this function is executed as described above except that
 it finally does not display the caption. This may be useful if auto-rotation is used
 (<span style="font-family:helvetica"><span class="small"><u>angle = auto</u></span></span>). In a first step <span style="font-family:helvetica">cap()</span> is called with <span style="font-family:helvetica"><span class="small"><u>hide =
 true</u></span></span>. Subsequently other rules may be called by using e.g. the tags
@@ -1232,7 +1295,7 @@ is defined by the macro <span style="font-family:helvetica">DIV_PART</span> whic
 cables. Please note that <span style="font-family:helvetica"><i><span class="small">Smrender</span></i></span> internally uses Bezier curves to achieve
 this. Thus, <span style="font-family:helvetica"><span class="small"><u>wavy</u></span></span> and <span style="font-family:helvetica"><span class="small"><u>curve</u></span></span> are mutually exclusive. The wave
 length can be influenced with the decimal parameter <span style="font-family:helvetica"><span class="small"><u>wavy_length</u></span></span>. Any
-known unit (see Section <a href="#sec:units">5.4</a>) may be used. Milimeters (mm) is the
+known unit (see Section <a href="#sec:units">5.5</a>) may be used. Milimeters (mm) is the
 default if no unit is specified. 
 
 <div class="p"><!----></div>
@@ -1355,7 +1418,7 @@ The parameter <span style="font-family:helvetica"><span class="small"><u>transpa
 
 <div class="p"><!----></div>
 With this action you can add OSM objects as defined in the ruleset to the data.
-You can use this to add specific OSM objects during during the stage of
+You can use this to add specific OSM objects during the stage of
 rendering. Thus, you don't have to "pollute" your source data with
 map-specific data before. Typically, those objects added are graphically
 rendered by a subsequent rule. Currently, <span style="font-family:helvetica"><i><span class="small">Smrender</span></i></span> only OSM nodes are supported.
@@ -1411,8 +1474,7 @@ right and above of the lower left page corner.
 
 <div class="p"><!----></div>
       <a id="tth_sEc6.2.2"></a><h4>
-6.2.2&nbsp;&nbsp;Adding Tags to Objects</h4> <a id="sec:addtag">
-</a><a id="sec:act-addtag">
+6.2.2&nbsp;&nbsp;Adding Tags to Objects</h4> <a id="sec:act-set-tags">
 </a>
 
 <div class="p"><!----></div>
@@ -1772,8 +1834,22 @@ rendered in the second rule.
 <div class="p"><!----></div>
          
 <pre>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;grid()
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;grid2()
+&nbsp;&nbsp;&nbsp;&lt;action&#62;&nbsp;&nbsp;&nbsp;:=&nbsp;(&nbsp;'grid:'&nbsp;|&nbsp;'grid2:'&nbsp;)&nbsp;&lt;param&#62;&nbsp;[&nbsp;';'&nbsp;&lt;param&#62;&nbsp;]
+&nbsp;&nbsp;&nbsp;&lt;param&#62;&nbsp;&nbsp;&nbsp;&nbsp;:=&nbsp;&lt;margin&#62;&nbsp;|&nbsp;&lt;ticksw&#62;&nbsp;|&nbsp;&lt;sticksw&#62;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;|&nbsp;&lt;grid&#62;&nbsp;|&nbsp;&lt;ticks&#62;&nbsp;|&nbsp;&lt;sticks&#62;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;|&nbsp;&lt;copyrgt&#62;&nbsp;|&nbsp;&lt;cmdline&#62;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;|&nbsp;&lt;gridpts&#62;&nbsp;|&nbsp;&lt;polygon&#62;
+
+&nbsp;&nbsp;&nbsp;&lt;margin&#62;&nbsp;&nbsp;&nbsp;:=&nbsp;'margin'&nbsp;'='&nbsp;&lt;length&#62;
+&nbsp;&nbsp;&nbsp;&lt;ticksw&#62;&nbsp;&nbsp;&nbsp;:=&nbsp;'tickswidth'&nbsp;'='&nbsp;&lt;length&#62;
+&nbsp;&nbsp;&nbsp;&lt;sticksw&#62;&nbsp;&nbsp;:=&nbsp;'subtickswidth'&nbsp;'='&nbsp;&lt;length&#62;
+&nbsp;&nbsp;&nbsp;&lt;grid&#62;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;:=&nbsp;'grid'&nbsp;'='&nbsp;grid&nbsp;spacing&nbsp;in&nbsp;arc&nbsp;minutes
+&nbsp;&nbsp;&nbsp;&lt;ticks&#62;&nbsp;&nbsp;&nbsp;&nbsp;:=&nbsp;'ticks'&nbsp;'='&nbsp;major&nbsp;axis&nbsp;spacing&nbsp;in&nbsp;arc&nbsp;minutes
+&nbsp;&nbsp;&nbsp;&lt;sticks&#62;&nbsp;&nbsp;&nbsp;:=&nbsp;'subticks'&nbsp;'='&nbsp;minor&nbsp;axis&nbsp;spacing&nbsp;in&nbsp;arc&nbsp;minutes
+&nbsp;&nbsp;&nbsp;&lt;copyrgt&#62;&nbsp;&nbsp;:=&nbsp;'copyright'&nbsp;'='&nbsp;&lt;bool&#62;
+&nbsp;&nbsp;&nbsp;&lt;cmdline&#62;&nbsp;&nbsp;:=&nbsp;'cmdline'&nbsp;'='&nbsp;&lt;bool&#62;
+&nbsp;&nbsp;&nbsp;&lt;gridpts&#62;&nbsp;&nbsp;:=&nbsp;'gridpoints'&nbsp;'='&nbsp;integer&nbsp;&#62;=&nbsp;2
+&nbsp;&nbsp;&nbsp;&lt;polygon&#62;&nbsp;&nbsp;:=&nbsp;'polygon_window'&nbsp;'='&nbsp;&lt;bool&#62;
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
 </pre>
 
@@ -1787,19 +1863,19 @@ rendered in the second rule.
       Missing parameters are initialized with default values.
 
 <div class="p"><!----></div>
-      The boolean argumenta <span style="font-family:helvetica"><span class="small"><b>-copyright</b></span></span> and <span style="font-family:helvetica"><span class="small"><b>-cmdline</b></span></span> do not generate
+      The boolean arguments <span style="font-family:helvetica"><span class="small"><u>copyright</u></span></span> and <span style="font-family:helvetica"><span class="small"><u>cmdline</u></span></span> do not generate
       these nodes.
 
 <div class="p"><!----></div>
       Each grid line can be generated with a number of intermediate points. The
-      option <span style="font-family:helvetica"><span class="small"><b>-gridpoints</b></span></span> sets the total number of grid points. It has to
+      option <span style="font-family:helvetica"><span class="small"><u>gridpoints</u></span></span> sets the total number of grid points. It has to
       be greater or equal to 2. If this option is not given or a number smaller
       than 2 is set, it is internally reset to 2.
 
 <div class="p"><!----></div>
       The difference between <span style="font-family:helvetica">grid()</span> and <span style="font-family:helvetica">grid2()</span> is that the
       1st generates the grid within the initialization function of the rule
-      while as the latter creates it in the main function at the first match.
+      while the latter creates it in the main function at the first match.
       This may be of interest if some rules should be called before the grid is
       constructed.
 
@@ -1830,11 +1906,12 @@ rendered in the second rule.
 
 <pre>
 &nbsp;&nbsp;&nbsp;&lt;action&#62;&nbsp;&nbsp;&nbsp;&nbsp;:=&nbsp;'translate:'&nbsp;[&nbsp;&lt;param&#62;&nbsp;[&nbsp;';'&nbsp;&lt;param&#62;&nbsp;]&nbsp;]
-&nbsp;&nbsp;&nbsp;&lt;param&#62;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;:=&nbsp;&lt;keydef&#62;&nbsp;|&nbsp;&lt;iddef&#62;&nbsp;|&nbsp;&lt;newtagdef&#62;
-&nbsp;&nbsp;&nbsp;&lt;keydef&#62;&nbsp;&nbsp;&nbsp;&nbsp;:=&nbsp;'key'&nbsp;'='&nbsp;&lt;keyval&#62;
+&nbsp;&nbsp;&nbsp;&lt;param&#62;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;:=&nbsp;&lt;keydef&#62;&nbsp;|&nbsp;&lt;iddef&#62;&nbsp;|&nbsp;&lt;newtagdef&#62;&nbsp;|&nbsp;&lt;coldef&#62;
+&nbsp;&nbsp;&nbsp;&lt;keydef&#62;&nbsp;&nbsp;&nbsp;&nbsp;:=&nbsp;'key'&nbsp;'='&nbsp;&lt;keyval&#62;&nbsp;[&nbsp;';'&nbsp;&lt;keydef&nbsp;]
 &nbsp;&nbsp;&nbsp;&lt;keyval&#62;&nbsp;&nbsp;&nbsp;&nbsp;:=&nbsp;&lt;string&#62;&nbsp;|&nbsp;'/'&nbsp;&lt;regex&#62;&nbsp;'/'
 &nbsp;&nbsp;&nbsp;&lt;iddef&#62;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;:=&nbsp;'id'&nbsp;'='&nbsp;&lt;objid&#62;
 &nbsp;&nbsp;&nbsp;&lt;newtagdef&#62;&nbsp;:=&nbsp;'newtag'&nbsp;'='&nbsp;&lt;bool&#62;
+&nbsp;&nbsp;&nbsp;&lt;coldef&#62;&nbsp;&nbsp;&nbsp;&nbsp;:=&nbsp;'colkey'&nbsp;'='&nbsp;&lt;regex&#62;
 
 </pre>
 
@@ -1858,7 +1935,7 @@ rendered in the second rule.
 
 <div class="p"><!----></div>
    The translation table is defined in the ruleset as well like a template (see
-   Section <a href="#sec:addtag">6.2.2</a>). This is a rule node with an action. It has to have a node
+   Section <a href="#sec:act-set-tags">6.2.2</a>). This is a rule node with an action. It has to have a node
    id because it is referred to by the <span style="font-family:helvetica">translate()</span>-rule. This
    translation object (the template) lists key-value-pairs being the key <span style="font-family:helvetica">k</span> the
    original value and the value <span style="font-family:helvetica">v</span> the one translated one.
@@ -1956,6 +2033,57 @@ rendered in the second rule.
 <div class="p"><!----></div>
    
 <ul>
+<li> <span style="font-family:helvetica">bearings</span> <a id="sec:act-bearings">
+</a>
+
+<div class="p"><!----></div>
+         This functions adds tags containing bearing information to the nodes
+         of a way. Ways are series of nodes connected on after each other. If
+         we look from one node to the next, the next one lies in a specific
+         direction: this is the bearing and is set with the tag
+         <span style="font-family:helvetica">smrender:bearing=&lt;brg&#62;</span> where <span style="font-family:helvetica">brg</span> is the angle
+         between 0 and 360 degrees.
+
+<div class="p"><!----></div>
+         Additionally the tag <span style="font-family:helvetica">smrender:coursedev=&lt;dev&#62;</span> is added. It
+         contains an angle which states how much the bearing has changed in
+         comparison to the previous segment of the way. <span style="font-family:helvetica">Dev</span> is an
+         angle between -180 and 180 degrees.
+
+<div class="p"><!----></div>
+         The 3rd parameter is <span style="font-family:helvetica">smrender:peakdir=&lt;pd&#62;</span> which contains an
+         angle to wich the "peak" between segments (the middle node so to say)
+         points at. This could be used e.g. for putting captions at this points
+         in an appropriate angle to the way.
+
+<div class="p"><!----></div>
+         All angles are expressed as compass bearings.
+<div class="p"><!----></div>
+</li>
+
+<li> <span style="font-family:helvetica">boundingbox</span> <a id="sec:act-boundingbox">
+</a>
+
+<div class="p"><!----></div>
+         This function calculates the bounding box of way and adds the tag
+         <span style="font-family:helvetica">smrender:bbox=&lt;lat0&#62;,&lt;lon0&#62;,&lt;lat1&#62;,&lt;lon1&#62;</span> to the way. The
+         coordinats <span style="font-family:helvetica">lat0</span> and <span style="font-family:helvetica">lon0</span> are the left lower
+         (southwest) corner and <span style="font-family:helvetica">lat1</span> and <span style="font-family:helvetica">lon1</span> are the right
+         upper (northeast) corner of the rectangle.
+<div class="p"><!----></div>
+</li>
+
+<li> <span style="font-family:helvetica">check</span> <a id="sec:act-check">
+</a>
+
+<div class="p"><!----></div>
+         This function does an integrity check on ways. This is it checks for
+         subsequent duplicate nodes which will be removed from the list of
+         references. If the final way has 0 nodes, the whole way will be
+         removed from the data.
+<div class="p"><!----></div>
+</li>
+
 <li> <span style="font-family:helvetica">clip</span> <a id="sec:act-clip">
 </a>
 
@@ -1999,13 +2127,25 @@ rendered in the second rule.
 <div class="p"><!----></div>
 </li>
 
+<li> <span style="font-family:helvetica">global_grid</span> <a id="sec:act-global-grid">
+</a>
+
+<div class="p"><!----></div>
+      This function adds a global grid to the data, including the arctic
+      circles.
+
+<div class="p"><!----></div>
+      Parameters: <span style="font-family:helvetica">lat_grid, lon_grid, grid, gridpoints</span>
+<div class="p"><!----></div>
+</li>
+
 <li> <span style="font-family:helvetica">ins_eqdist</span> ( <span style="font-size:x-small">EXPERIMENTAL</span>) <a id="sec:act-ins-eqdist">
 </a>
 
 <div class="p"><!----></div>
       This function inserts nodes along a way with equal distances. The
       distance is given with the parameter <span style="font-family:helvetica"><span class="small"><u>distance</u></span></span> in any unit
-      according to <a href="#sec:units">5.4</a>. If no unit is specified, nautical miles is
+      according to <a href="#sec:units">5.5</a>. If no unit is specified, nautical miles is
       taken as default.
       The newly inserted nodes inherit all tags from the way and additionally
       the tags <span style="font-family:helvetica">generator=smrender</span>, and <span style="font-family:helvetica">distance=*</span>, and
@@ -2060,6 +2200,33 @@ rendered in the second rule.
 <div class="p"><!----></div>
       This function calculates the length of a polygon in nautical miles. It
       adds the tag <span style="font-family:helvetica">smrender:length=*</span> to the way.
+<div class="p"><!----></div>
+</li>
+
+<li> <span style="font-family:helvetica">random</span> <a id="sec:act-random">
+</a>
+
+<div class="p"><!----></div>
+      This function sets a tag with a random number.
+
+<div class="p"><!----></div>
+
+<pre>
+&nbsp;&nbsp;&nbsp;&lt;action&#62;&nbsp;:=&nbsp;'random:'&nbsp;['key'&nbsp;'='&nbsp;&lt;string&#62;&nbsp;';'&nbsp;]&nbsp;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;['lo'&nbsp;'='&nbsp;&lt;num&#62;&nbsp;';']&nbsp;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;['hi'&nbsp;'='&nbsp;&lt;num&#62;&nbsp;';']
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;['type'&nbsp;'='&nbsp;&lt;bool&#62;]
+
+</pre>
+
+<div class="p"><!----></div>
+   The random number will be between <span style="font-family:helvetica">lo</span> and <span style="font-family:helvetica">hi</span>. If
+   <span style="font-family:helvetica">type</span> is not set or set to <span style="font-family:helvetica">false</span>, the random number will be
+   an integer number. Otherwise a random decimal number will be generated.
+
+<div class="p"><!----></div>
+   The number is set in the tag <span style="font-family:helvetica">smrender:random=&lt;num&#62;</span> except the key
+   is set differently with the parameter <span style="font-family:helvetica">key</span>.
 <div class="p"><!----></div>
 </li>
 
@@ -2351,7 +2518,10 @@ attacker with access to your system to compromise it.
 <div class="p"><!----></div>
 The action <span style="font-family:helvetica">out</span> outputs all matched OSM objects to a file. The default
 file format is OSM but with the option <span style="font-family:helvetica">format=json</span> it is possible to
-output it in JSON format as well. This action has one mandatory option which is
+output it in JSON format as well and <span style="font-family:helvetica">format=js</span> it outputs the data
+formated as Javascript file suitable to be included in a web page or node
+program.
+This action has one mandatory option which is
 <span style="font-family:helvetica">file</span> to choose the ouput file name. If several <span style="font-family:helvetica">out</span> rules with
 the same file name exist, all objects are collected into that single file. As
 shown below there are some additional options but these are honored only in the
@@ -2361,16 +2531,19 @@ first occurance of several rules which share the same file name.
 
 <pre>
 &nbsp;&nbsp;&nbsp;&lt;definition&#62;&nbsp;&nbsp;:=&nbsp;'out:'&nbsp;[&nbsp;&lt;param&#62;&nbsp;[&nbsp;';'&nbsp;&lt;param&#62;&nbsp;...&nbsp;]]
-&nbsp;&nbsp;&nbsp;&lt;param&#62;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;:=&nbsp;&lt;file&#62;&nbsp;|&nbsp;&lt;format&#62;&nbsp;|&nbsp;&lt;renumber&#62;&nbsp;|&nbsp;&lt;jsonopts&#62;
-&nbsp;&nbsp;&nbsp;&lt;jsonopts&#62;&nbsp;&nbsp;&nbsp;&nbsp;:=&nbsp;&lt;condensed&#62;&nbsp;|&nbsp;&lt;short&#62;&nbsp;|&nbsp;&lt;visible&#62;&nbsp;|&nbsp;&lt;nindent&#62;
+&nbsp;&nbsp;&nbsp;&lt;param&#62;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;:=&nbsp;&lt;file&#62;&nbsp;|&nbsp;&lt;format&#62;&nbsp;|&nbsp;&lt;renumber&#62;&nbsp;|&nbsp;&lt;jsonopts&#62;&nbsp;|&nbsp;&lt;precision&#62;
+&nbsp;&nbsp;&nbsp;&lt;jsonopts&#62;&nbsp;&nbsp;&nbsp;&nbsp;:=&nbsp;&lt;condensed&#62;&nbsp;|&nbsp;&lt;short&#62;&nbsp;|&nbsp;&lt;visible&#62;&nbsp;|&nbsp;&lt;nindent&#62;&nbsp;|
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&lt;compact&#62;
 &nbsp;&nbsp;&nbsp;&lt;file&#62;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;:=&nbsp;'file'&nbsp;'='&nbsp;&lt;filename&#62;
 &nbsp;&nbsp;&nbsp;&lt;format&#62;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;:=&nbsp;'format'&nbsp;'='&nbsp;&lt;type&#62;
 &nbsp;&nbsp;&nbsp;&lt;renumber&#62;&nbsp;&nbsp;&nbsp;&nbsp;:=&nbsp;'renumber'&nbsp;'='&nbsp;&lt;bool&#62;
 &nbsp;&nbsp;&nbsp;&lt;condensed&#62;&nbsp;&nbsp;&nbsp;:=&nbsp;'condensed'&nbsp;'='&nbsp;&lt;bool&#62;
 &nbsp;&nbsp;&nbsp;&lt;short&#62;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;:=&nbsp;'short'&nbsp;'='&nbsp;&lt;bool&#62;
 &nbsp;&nbsp;&nbsp;&lt;visible&#62;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;:=&nbsp;'visible'&nbsp;'='&nbsp;&lt;bool&#62;
-&nbsp;&nbsp;&nbsp;&lt;nindent&#62;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;:=&nbsp;&lt;num&#62;
-&nbsp;&nbsp;&nbsp;&lt;type&#62;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;:=&nbsp;'osm'&nbsp;|&nbsp;'json'
+&nbsp;&nbsp;&nbsp;&lt;nindent&#62;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;:=&nbsp;'nindent'&nbsp;'='&nbsp;&lt;num&#62;
+&nbsp;&nbsp;&nbsp;&lt;precision&#62;&nbsp;&nbsp;&nbsp;:=&nbsp;'precision'&nbsp;'='&nbsp;&lt;num&#62;
+&nbsp;&nbsp;&nbsp;&lt;compact&#62;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;:=&nbsp;'compact'&nbsp;'='&nbsp;&lt;bool&#62;
+&nbsp;&nbsp;&nbsp;&lt;type&#62;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;:=&nbsp;'osm'&nbsp;|&nbsp;'json'&nbsp;|&nbsp;'js'
 
 </pre>
 
@@ -2389,6 +2562,41 @@ structure to just a single character. <span style="font-family:helvetica">Visibl
 objects and ommits the <span style="font-family:helvetica">visible</span> attribute. This compacts the data even
 more. <span style="font-family:helvetica">Nindent</span> selects the default number of spaces to indent the data
 if it is output in non-condensed mode.
+The coordinates of nodes are output as decimal numbers with a precision of 7 by
+default. This can be changed with parameter <span style="font-family:helvetica">precision</span>. It should be an
+integer number between 0 and 20.
+
+<div class="p"><!----></div>
+There are currently three different output formats.
+
+<div class="p"><!----></div>
+
+<ul>
+<li> <b>OSM:</b> This is the traditional XML/OSM format containing nodes,
+      ways, and relations in that order. This files are well-formed and can be
+      read in any other OSM software (such as e.g. Josm).
+<div class="p"><!----></div>
+</li>
+
+<li> <b>JSON:</b> This is a translation of the classic OSM format into
+      JSON containing three arrays which hold all nodes, ways, and relations.
+
+<div class="p"><!----></div>
+      The argument <span style="font-family:helvetica">compact=yes</span> modifies the format into much more
+      dense version. In this case the ways contain not references to nodes (as
+      they do in the original format) but directly the coordinates of the
+      nodes. In contrast, nodes are only found in the array of nodes if they
+      own at least one tag.
+<div class="p"><!----></div>
+</li>
+
+<li> <b>JS:</b>
+      This format is almost the same as JSON but it is suitable to be directly
+      included in Javascript either e.g. with a script tag from HTML or with
+      <span style="font-family:helvetica">require()</span> in a node program.
+<div class="p"><!----></div>
+</li>
+</ul>
 
 <div class="p"><!----></div>
       <a id="tth_sEc6.3.3"></a><h4>
@@ -2574,7 +2782,7 @@ The option <span style="font-family:helvetica"><span class="small"><u>version</u
 This example contains 5 rules in 4 groups. The 1st one has no version attribute thus 1 is assumed. The 2nd and 3rd one are in group #65536, the 4th is in group #65537 and the 5th is in group #2.
 
 <div class="p"><!----></div>
-The 1st rule to be executed is the 1st at the beginning because it has the lowest version (group) number and the lowest id - obviously because it is the only element in the group. The 2nd, 3rd, and 4th rule are ignored by the regular rule processor because their version number is  &#8805;  65536 (see Section <a href="#ref:ruleorder">5.1</a>). The 5th rule is executed next after the 1st one.
+The 1st rule to be executed is the 1st at the beginning because it has the lowest version (group) number and the lowest id - obviously because it is the only element in the group. The 2nd, 3rd, and 4th rule are ignored by the regular rule processor because their version number is  &#8805;  65536 (see Section <a href="#ref:ruleorder">5.2</a>). The 5th rule is executed next after the 1st one.
 
 <div class="p"><!----></div>
 The execution is then done as follows. The 1st rule is executed and applied to all ways which have the tags <span style="font-family:helvetica">natural=coastline</span> and <span style="font-family:helvetica">generator=smrender</span>. Since the action is <span style="font-family:helvetica">sub(version=65536)</span>, &#228;pplying" means executing all rules from the given subset. This subset contains 2 rules: the 2nd and the 3rd from the ruleset from above. The 2nd is executed 1st because it has the lower id. This is because both rules have no explicitly defined id so they are numbered with an internal number ascendingly as they appear. The 3rd is executed directly after #2. Since this rule is again a subroutine call to the group #65537, rule #4 is executed.
@@ -2843,8 +3051,18 @@ other rendering rules.
 <div class="p"><!----></div>
 <span style="font-family:helvetica">Pchar()</span> generates a string which contains the characteristics of the
 light as it is used in official sea charts and the <em>List of Lights</em>. See
-Section P and P.16 in particular if the <em>Chart No.
-1</em>.<a href="#tthFtNtACB" id="tthFrefACB"><sup>21</sup></a>
+<em>INT1/Chart No. 1</em> Section P and P.16 in particular.<a href="#tthFtNtACB" id="tthFrefACB"><sup>21</sup></a>
+
+<div class="p"><!----></div>
+
+<pre>
+&nbsp;&nbsp;&nbsp;&lt;action&#62;&nbsp;:=&nbsp;'pchar@libsmfilter.so:'&nbsp;[&nbsp;&lt;param&#62;&nbsp;[&nbsp;';'&nbsp;&lt;param&#62;&nbsp;]]
+&nbsp;&nbsp;&nbsp;&lt;param&#62;&nbsp;&nbsp;:=&nbsp;&lt;lang&#62;&nbsp;|&nbsp;&lt;compat&#62;&nbsp;|&nbsp;&lt;colkey&#62;
+&nbsp;&nbsp;&nbsp;&lt;lang&#62;&nbsp;&nbsp;&nbsp;:=&nbsp;'lang'&nbsp;'='&nbsp;(&nbsp;'de'&nbsp;|&nbsp;'en'&nbsp;|&nbsp;'gr'&nbsp;|&nbsp;'hr'&nbsp;)
+&nbsp;&nbsp;&nbsp;&lt;compat&#62;&nbsp;:=&nbsp;'compat'&nbsp;'='&nbsp;&lt;bool&#62;
+&nbsp;&nbsp;&nbsp;&lt;colkey&#62;&nbsp;:=&nbsp;'colkey'&nbsp;'='&nbsp;regular&nbsp;expression
+
+</pre>
 
 <div class="p"><!----></div>
 The function analyzes the tags of an object. If it contains valid
@@ -2855,10 +3073,18 @@ the string which may be rendered by a subsequent rule.
 
 <div class="p"><!----></div>
 Since the description of lights varies in different languages, <span style="font-family:helvetica"><i><span class="small">Smrender</span></i></span>
-supports the optional parameter <span style="font-family:helvetica"><span class="small"><u>lang</u></span></span> which may be set to either
-<span style="font-family:helvetica">'de'</span> for German or <span style="font-family:helvetica">'hr'</span> for Croatian language. If the
-parameter is omitted it defaults to English. The following table shows language
-examples according to <em>INT-1, IP 51</em>:<br />
+supports the optional parameter <span style="font-family:helvetica"><span class="small"><u>lang</u></span></span> having <span style="font-family:helvetica">'en'</span> as default.
+It depends on the compatibility setting of <span style="font-family:helvetica">'compat'</span> how it will behave.
+
+<div class="p"><!----></div>
+By default it is set to <span style="font-family:helvetica">compat=yes</span> for backwards compatibility. In this case it will 1st translate
+the tags into the chosen language and then format it according to the local <em>INT1</em>.
+
+<div class="p"><!----></div>
+Please note that this mode is deprecated since adding new languages would require to change the code the new suggested variant is to set <span style="font-family:helvetica">compat=no</span>. In this case it formats the string according the chosen language's <em>INT1</em> but it does not translate the light characters and colors. This must be done beforehand by using the action <span style="font-family:helvetica">translate()</span> (see <a href="#sec:act-translate">6.2.9</a>).
+
+<div class="p"><!----></div>
+The following table shows language examples according to <em>INT-1, IP 51</em>:<br />
 
 <div class="p"><!----></div>
 
@@ -2883,10 +3109,12 @@ primitives (s. Section <a href="#sec:act-cap">6.1.1</a> and <a href="#sec:draw">
 <div class="p"><!----></div>
 
 <pre>
-&nbsp;&nbsp;&nbsp;&lt;definition&#62;&nbsp;&nbsp;:=&nbsp;'compass@libsmfilter.so:'&nbsp;[&nbsp;&lt;param&#62;&nbsp;[&nbsp;';'
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&lt;param&#62;&nbsp;...&nbsp;]]
-&nbsp;&nbsp;&nbsp;&lt;param&#62;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;:=&nbsp;&lt;name&#62;&nbsp;'='&nbsp;&lt;value&#62;
-&nbsp;&nbsp;&nbsp;&lt;name&#62;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;:=&nbsp;'variation'&nbsp;|&nbsp;'radius'&nbsp;|&nbsp;'ticks'
+&nbsp;&nbsp;&nbsp;&lt;action&#62;&nbsp;:=&nbsp;'compass@libsmfilter.so:'&nbsp;&lt;param&#62;&nbsp;[&nbsp;';'&nbsp;&lt;param&#62;&nbsp;]
+&nbsp;&nbsp;&nbsp;&lt;param&#62;&nbsp;&nbsp;:=&nbsp;&lt;var&#62;&nbsp;|&nbsp;&lt;radius&#62;&nbsp;|&nbsp;&lt;ticks&#62;&nbsp;|&nbsp;&lt;stldef&#62;
+&nbsp;&nbsp;&nbsp;&lt;var&#62;&nbsp;&nbsp;&nbsp;&nbsp;:=&nbsp;'variation'&nbsp;'='&nbsp;decimal&nbsp;value
+&nbsp;&nbsp;&nbsp;&lt;radius&#62;&nbsp;:=&nbsp;'radius'&nbsp;'='&nbsp;decimal&nbsp;value
+&nbsp;&nbsp;&nbsp;&lt;ticks&#62;&nbsp;&nbsp;:=&nbsp;'ticks'&nbsp;'='&nbsp;integer&nbsp;value
+&nbsp;&nbsp;&nbsp;&lt;stldef&#62;&nbsp;:=&nbsp;'style'&nbsp;'='&nbsp;(&nbsp;'int1'&nbsp;|&nbsp;'int1var'&nbsp;)
 
 </pre>
 
@@ -3446,7 +3674,7 @@ to what <em>Osmarender</em> does.
 <a id="tthFtNtAAJ"></a><a href="#tthFrefAAJ"><sup>9</sup></a>It was emperical determined that the square root function works pretty well.
 <div class="p"><!----></div>
 <a id="tthFtNtABA"></a><a href="#tthFrefABA"><sup>10</sup></a>Basic BNF parameters are
-defined in Section <a href="#sec:act">5.3</a> on page <a href="#sec:act">pageref</a>.
+defined in Section <a href="#sec:act">5.4</a> on page <a href="#sec:act">pageref</a>.
 <div class="p"><!----></div>
 <a id="tthFtNtABB"></a><a href="#tthFrefABB"><sup>11</sup></a>A few features exist in OSM as well of which the rendering
 depends on the direction. Most importantly this is
