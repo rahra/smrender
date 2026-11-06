@@ -775,9 +775,9 @@ int act_shape_ini(smrule_t *r)
 
    if ((s2 = get_param("subtype", NULL, r->act)) != NULL)
    {
-      if (!strcasecmp(s2, "sectored"))
+      if (!strcasecmp(s2, "sector") || !strcasecmp(s2, "sectored"))
          as->type = SHAPE_SECTORED;
-      else if (!strcasecmp(s2, "stared"))
+      else if (!strcasecmp(s2, "star") || !strcasecmp(s2, "stared"))
          as->type = SHAPE_STARED;
       else
          log_msg(LOG_WARN, "unknown subtype '%s'", s2);
