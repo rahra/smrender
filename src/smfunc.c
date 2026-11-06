@@ -19,7 +19,7 @@
  * This file contains all rule functions which do not create graphics output.
  *
  *  @author Bernhard R. Fischer
- *  \date 2026/04/26
+ *  \date 2026/11/06
  */
 #include <stdio.h>
 #include <stdlib.h>
@@ -825,29 +825,58 @@ int act_shape_ini(smrule_t *r)
       as->pcount = pcount;
    }
 
-   if (get_param("radius", &as->size, r->act) == NULL)
+   e = 0;
+   if ((s = get_param_err("radius", &as->size, r->act, &e)) == NULL)
    {
       log_msg(LOG_WARN, "action 'shape' requires parameter 'radius', defaults to 1.0mm");
       as->size = 1.0;
    }
-   else if (as->size <= 0.0)
-      as->size = 1.0;
+   else
+   {
+      // conversion failed
+      if (e)
+      {
+         // input isn't a number
+         if (e == EDOM)
+            as->radiuskey = s;
+         // number has ill value
+         else
+            as->size = 1.0;
+      }
+      // conversion successful without error
+      else
+      {
+         // FIXME: Is the following really necessary?
+         // make sure that radius is positive
+         if (as->size < 0.0)
+            as->size = fabs(as->size);
+      }
+   }
 
    // recalculate node count in case of a circle
-   if (as->pcount == MAX_SHAPE_PCOUNT)
+   if (as->pcount == MAX_SHAPE_PCOUNT && as->radiuskey == NULL)
       as->pcount = MM2PX(2.0 * as->size * M_PI) / 3;
 
    (void) get_param("angle", &as->angle, r->act);
    as->key = get_param("key", NULL, r->act);
 
-   log_debug("nodes = %d, radius = %.2f, angle = %.2f, key = '%s', start = %f, startkey = %s, end = %f, endkey = %s, subtype = %d, r2 = %f",
-         as->pcount, as->size, as->angle, safe_null_str(as->key), as->start, safe_null_str(as->startkey), as->end, safe_null_str(as->endkey), as->type, as->r2);
+   log_debug("nodes = %d, radius = %.2f, angle = %.2f, key = '%s', start = %f, startkey = %s, end = %f, endkey = %s, subtype = %d, r2 = %f, radiuskey = '%s'",
+         as->pcount, as->size, as->angle, safe_null_str(as->key), as->start, safe_null_str(as->startkey), as->end, safe_null_str(as->endkey), as->type, as->r2, safe_null_str(as->radiuskey));
 
    r->data = as;
    return 0;
 }
 
 
+/*! Find attribute attr in object o and convert its value to a double. The
+ * conversion is done with bs_tod() which has no error checking yet
+ * (2026/11/06).
+ * @param o Pointer to object.
+ * @param attr Pointer to attribute key.
+ * @param val Pointer to double which will receive the value.
+ * @return 0 is returned if the conversion was done. If no such attribute
+ * exists, -1 is returned.
+ */
 int attr_tod(const osm_obj_t *o, const char *attr, double *val)
 {
    int i;
@@ -910,7 +939,18 @@ void shape_node(const struct act_shape *as, const osm_node_t *n)
    start = fmod2(start + M_PI_2, 2 * M_PI);
    end = fmod2(end + M_PI_2, 2 * M_PI);
 
-   radius = MM2LAT(as->size);
+   if (as->radiuskey != NULL)
+   {
+      if (attr_tod(&n->obj, as->radiuskey, &radius))
+      {
+         log_debug("object has no radiuskey tag");
+         return;
+      }
+      radius = MM2LAT(radius);
+   }
+   else
+      radius = MM2LAT(as->size);
+
    angle += DEG2RAD(as->angle);
    angle_step = 2 * M_PI / as->pcount;
 

@@ -19,7 +19,7 @@
  * This file contains almost all internal declarations.
  *
  * \author Bernhard R. Fischer, <bf@abenteuerland.at>
- * \version 2026/04/06
+ * \version 2026/11/06
  */
 #ifndef SMRENDER_DEV_H
 #define SMRENDER_DEV_H
@@ -274,7 +274,8 @@ struct actDraw
 
 struct act_shape
 {
-   short pcount;
+   int pcount;
+   int type;
    double size;
    double angle;
    double weight;
@@ -282,8 +283,8 @@ struct act_shape
    char *key;
    double start, end;
    char *startkey, *endkey;
-   int type;
    double r2;
+   char *radiuskey;
 };
 
 struct grid
