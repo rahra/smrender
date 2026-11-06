@@ -697,6 +697,8 @@ The basic format of an action and basic values and types are defined as follows.
 
    <bool>   := 'yes' | 'no' | 'true' | 'false' | <num>
    <num>    := any decimal number
+   <int>    := any integer number
+   <string> := any valid osm key string
    <length> := <num> [ <udef> ]
    <udef>   := <pageunit> | <nautunit>
    <pageunit> := 'mm' | 'cm' | 'in' | 'px' | 'pt' | '"'
@@ -1266,11 +1268,26 @@ allows you to dynamically construct and add tags to objects.
 The formal definition looks like the following.
 
 \begin{verbatim}
-   <action>       := 'shape:' <param>
-   <param>        := <name> '=' <value>
-   <name>         := 'nodes' | 'style' | 'radius' |  'angle' |
-                     'key' | 'weight' | 'phase' | 'start' |
-                     'end' | 'subtype' | 'r2'
+<action>       := 'shape:' <param> [ ';' <param> ]
+<param>        := <nodes> | <style> | <radius> |  <angle> |
+                  <key> | <weight> | <phase> | '<start> |
+                  <end> | <subtype> | <r2> | <rkeyunit>
+
+<nodes>        := 'nodes' '=' <int>
+<style>        := 'style' '=' <styletype>
+<styletype>    := 'triangle' | 'square' | 'circle'
+<radius>       := 'radius' '=' <radiustype>
+<radiustype>   := <length> | <string>
+<angle>        := 'angle' '=' <num>
+<key>          := key '=' <string>
+<weight>       := 'weight' '=' <num>
+<phase>        := 'phase' '=' <num>
+<start>        := 'start' '=' <num>
+<end>          := 'end' '=' <num>
+<subtype>      := 'subtype' '=' <subtypes>
+<subtypes>     := 'sector' | 'star'
+<r2>           := 'r2' '=' <num>
+<rkeyunit>     := 'radiuskeyunit' '=' <udef>
 \end{verbatim}
 
 This action internally generates an ellipse\footnote{Wikipedia: Ellipse, \url{http://en.wikipedia.org/wiki/Ellipse}.}
@@ -1298,9 +1315,20 @@ argument is a preset for a specific number of nodes. Currently the styles
 \textsf{triangle} (= 3 nodes), \textsf{square} (= 4 nodes), and \textsf{circle}
 (= maximum nodes) are supported.
 
-The \textsf{radius} is given in millimeters and the optional parameter
-\textsf{angle} may be used to rotate the shape at any degrees counterclockwise.
-If \textsf{radius} is omitted 1 millimeter is used as a default value.
+The \textsf{radius} can be set in any unit as defined in Section
+\ref{sec:units}, e.g. \textsf{"2nm"}. If no unit is set explicitly, it defaults
+to millimeters. If \textsf{radius} is omitted, 1 millimeter is used as a
+default value.
+
+The radius can either be defined as a numerical value (with or without unit) or
+as string referring to an attribute of an object. In this case the radius will
+be set dynamically according to the matched object. The attribute of the object
+shall contain only a decimal number which will be interpreted as millimeters by
+default. If a different measurement unit shall be used instead, set the
+parameter \textsf{radiuskeyunit}.
+
+The optional parameter \textsf{angle} may be used to rotate the shape at any
+degrees counterclockwise.
 
 With \textsf{key} the shape may be rotated dependent on the value of a tag of a
 node. \textsf{Key} defines the key of this tag.
@@ -1487,7 +1515,6 @@ rendered in the second rule.
    <dir>       := 'up' | 'down'
    <force>     := 'force' '=' <bool>
    <keydef>    := 'key' '=' <string>
-   <string>    := any valid osm key string
 \end{verbatim}
 
 
@@ -1667,6 +1694,84 @@ rendered in the second rule.
    </node>
 \end{verbatim}
       }
+
+      \subsubsection{Generic Calculator} \label{sec:act-calc}
+
+      This is a generic calculator which allows you to dynamically calculate
+      results based on attributes of OSM objects. The calculation is done based
+      on a series of expressions which may include variables based on the
+      attributes.
+
+\begin{verbatim}
+<action>    := 'calc:' [ <param> [ ';' <param> ] ]
+<param>     := <exprdef> | <resdef> | <args> [ ';' <args> ]
+<exprdef>   := 'expr' '=' <expr> [ ',' <expr> ]
+<resdef>    := 'result' '=' <string>
+<args>      := 'arg' '=' <string>
+<expr>      := <term> (('+' | '-') <term>)
+<term>      := <factor> (('*' | '/') <factor>)
+<factor>    := <num> | <vc> | <func> '(' <expr> ')' | '(' <expr> ')'
+<vc>        := <var> | <const>
+<var>       := string containing of [a-zA-Z0-9_$]
+<const>     := 'PI' | 'E'
+<func>      := 'sin' | 'cos' | 'tan' | 'asin' | 'acos' | 'atan' |
+               'sqrt' | 'log' | 'abs' | 'exp'
+\end{verbatim}
+
+      Variable names may include any valid characters and digits and the
+      characters '\$' and '\_'. Expressions are separated by a ',' and are
+      evaluated in the order from left to right. They share all variables, i.e.
+      variables may be set in one expression and then be reused in a later
+      expression.
+
+      Variables from OSM objects are set before the evaluation of expression
+      starts. They are set by the argument \textsf{arg} and will be assigned to
+      the variables '\$0', '\$1', '\$2', and so on exactly in the order as they
+      appear in the action definition of the rule.
+
+      The result of the last expression is then stored into the attribute
+      defined by the parameter \textsf{result}. If this attribute already
+      exists, its value will be overwritten.
+
+      Look at the following example:
+
+      {\small
+\begin{verbatim}
+   <!-- create range of sight circles -->
+   <node version="-10">
+      <tag k='seamark:light:height' v=''/>
+      <tag
+         k='_action_'
+         v='calc:expr="h=3.0,2.075*(sqrt(h)+sqrt($0))";
+                 result=seamark:light:sightrange;
+                 arg=seamark:light:height'
+      />
+   </node>
+   <node version="-10">
+      <tag k='seamark:light:sightrange' v=''/>
+      <tag
+         k='_action_'
+         v='shape:style=circle;
+                  radius=seamark:light:sightrange;
+                  radiuskeyunit=nm'
+      />
+   </node>
+   <way>
+      <tag k='seamark:light:sightrange' v=''/>
+      <tag k='_action_' v='draw:bcolor=black;bstyle=dotted'/>
+   </way>
+\end{verbatim}
+   }
+
+      The rule contains the expression string
+      $h=3.0,2.075*(sqrt(h)+sqrt(\$0))$ which consists of the two
+      expressions $h=3.0$ which sets the (temporary) variable $h$
+      and $2.075*(sqrt(h)+sqrt(\$0))$ whose result will finally be
+      stored into the attribute \textsf{seamark:light:sightrange} of the
+      object. The variable $\$0$ is set to the value of the attribute
+      \textsf{seamark:light:height} of the object.
+
+
 
       \subsubsection{Special Data Manipulation Functions}
 
