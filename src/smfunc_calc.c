@@ -505,7 +505,7 @@ int set_result(osm_obj_t *o, char *key, double val)
 int act_calc_main(smrule_t *r, osm_obj_t *o)
 {
    calc_parser_t p;
-   double res;
+   double res = 0;
    char *expr;
    int i;
 
