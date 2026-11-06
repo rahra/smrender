@@ -285,6 +285,7 @@ struct act_shape
    char *startkey, *endkey;
    double r2;
    char *radiuskey;
+   unit_t rkunit;
 };
 
 struct grid
@@ -388,6 +389,7 @@ int parse_coord(const char *, double *);
 int parse_coord2(const char *, double *, int );
 void parse_auto_rot(const action_t *, double *, struct auto_rot *);
 void parse_dash_style(const char *, struct drawStyle *);
+unit_t parse_unit(const char *);
 
 /* smkap.c */
 int save_kap(FILE *, struct rdata *);

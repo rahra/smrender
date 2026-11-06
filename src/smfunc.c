@@ -846,12 +846,25 @@ int act_shape_ini(smrule_t *r)
       // conversion successful without error
       else
       {
+         value_t v;
+         parse_length_def(s, &v, U_MM);
+         as->size = rdata_unit(&v, U_MM);
+
          // FIXME: Is the following really necessary?
          // make sure that radius is positive
          if (as->size < 0.0)
             as->size = fabs(as->size);
       }
    }
+
+   if ((s = get_param("radiuskeyunit", NULL, r->act)) != NULL)
+   {
+      as->rkunit = parse_unit(s);
+      if (as->rkunit == U_1)
+         as->rkunit = U_MM;
+   }
+   else
+      as->rkunit = U_MM;
 
    // recalculate node count in case of a circle
    if (as->pcount == MAX_SHAPE_PCOUNT && as->radiuskey == NULL)
@@ -860,8 +873,8 @@ int act_shape_ini(smrule_t *r)
    (void) get_param("angle", &as->angle, r->act);
    as->key = get_param("key", NULL, r->act);
 
-   log_debug("nodes = %d, radius = %.2f, angle = %.2f, key = '%s', start = %f, startkey = %s, end = %f, endkey = %s, subtype = %d, r2 = %f, radiuskey = '%s'",
-         as->pcount, as->size, as->angle, safe_null_str(as->key), as->start, safe_null_str(as->startkey), as->end, safe_null_str(as->endkey), as->type, as->r2, safe_null_str(as->radiuskey));
+   log_debug("nodes = %d, radius = %.2f, angle = %.2f, key = '%s', start = %f, startkey = %s, end = %f, endkey = %s, subtype = %d, r2 = %f, radiuskey = '%s', rkunit = %d",
+         as->pcount, as->size, as->angle, safe_null_str(as->key), as->start, safe_null_str(as->startkey), as->end, safe_null_str(as->endkey), as->type, as->r2, safe_null_str(as->radiuskey), as->rkunit);
 
    r->data = as;
    return 0;
@@ -941,12 +954,14 @@ void shape_node(const struct act_shape *as, const osm_node_t *n)
 
    if (as->radiuskey != NULL)
    {
-      if (attr_tod(&n->obj, as->radiuskey, &radius))
+      value_t v;
+      if (attr_tod(&n->obj, as->radiuskey, &v.val))
       {
          log_debug("object has no radiuskey tag");
          return;
       }
-      radius = MM2LAT(radius);
+      v.u = as->rkunit;
+      radius = MM2LAT(rdata_unit(&v, U_MM));
    }
    else
       radius = MM2LAT(as->size);
