@@ -39,6 +39,7 @@ PKG_CHECK_MODULES([FONTCONFIG], [fontconfig],
                   [AC_DEFINE([HAVE_FONTCONFIG], [1], [compile with support for fontconfig.])],
                   []
                   )
+AC_CHECK_LIB([fontconfig], [FcInit], [AC_DEFINE([HAVE_FCINIT], [1], [FcInit() available.])], [])
 ])
 
 AS_IF([test "x$with_libjpeg" != "xno"], [

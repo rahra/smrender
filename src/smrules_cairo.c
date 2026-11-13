@@ -172,6 +172,9 @@ void __attribute__((constructor)) cairo_smr_init(void)
 #else
    log_debug("push()/pop() disabled (thus, rendering is slower)");
 #endif
+#ifdef HAVE_FCINIT
+   FcInit();
+#endif
 }
 
 
